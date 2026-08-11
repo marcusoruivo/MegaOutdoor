@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Mega Outdoor — 1 Milhão de Espaços</title>
+
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #050505;
+    font-family: Arial, Helvetica, sans-serif;
+    color: white;
+}
+
+/* =========================
+   TOPO
+========================= */
+
+.topo {
+    position: fixed;
+    z-index: 100;
+    top: 0;
+    left: 0;
+    right: 0;
+
+    height: 82px;
+
+    display: flex;
+    align-items: center;
+
+    padding: 0 30px;
+
+    background: rgba(5,5,5,.94);
+    border-bottom: 1px solid #292929;
+
+    backdrop-filter: blur(12px);
+}
+
+.logo {
+    width: 32%;
+}
+
+.logo h1 {
+    margin: 0;
+
+    font-size: 27px;
+    font-weight: 900;
+    letter-spacing: -1px;
+}
+
+.logo span {
+    color: #ffd400;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.info {
+    flex: 1;
+
+    display: flex;
+    justify-content: center;
+    gap: 80px;
+
+    text-align: center;
+}
+
+.info-box small {
+    display: block;
+    color: #aaa;
+    font-size: 11px;
+    margin-bottom: 5px;
+}
+
+.info-box strong {
+    font-size: 19px;
+}
+
+.amarelo {
+    color: #ffd400;
+}
+
+.verde {
+    color: #48df70;
+}
+
+/* =========================
+   MURAL
+========================= */
+
+#area {
+    position: absolute;
+
+    top: 82px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    overflow: hidden;
+
+    cursor: grab;
+
+    background:
+        radial-gradient(circle at center, #1b1b1b 0%, #050505 70%);
+}
+
+#area:active {
+    cursor: grabbing;
+}
+
+#mural {
+    position: absolute;
+
+    width: 100000px;
+    height: 100000px;
+
+    transform-origin: 0 0;
+}
+
+/* =========================
+   ESPAÇOS
+========================= */
+
+.espaco {
+    position: absolute;
+
+    width: 100px;
+    height: 100px;
+
+    border: 1px solid #242424;
+
+    background: #111;
+
+    overflow: hidden;
+}
+
+.espaco:hover {
+    border-color: #ffd400;
+    z-index: 5;
+}
+
+.espaco img {
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+
+    display: block;
+}
+
+/* =========================
+   PAINEL ESQUERDO
+========================= */
+
+.painel {
+    position: fixed;
+
+    z-index: 50;
+
+    top: 105px;
+    left: 25px;
+
+    width: 300px;
+
+    padding: 20px;
+
+    border-radius: 15px;
+
+    background: rgba(5,5,5,.88);
+
+    border: 1px solid #292929;
+
+    backdrop-filter: blur(10px);
+}
+
+.painel h2 {
+    margin: 0 0 7px;
+
+    font-size: 20px;
+}
+
+.painel .numero {
+    color: #ffd400;
+
+    font-size: 28px;
+
+    font-weight: 900;
+
+    margin-bottom: 12px;
+}
+
+.painel p {
+    color: #aaa;
+
+    font-size: 13px;
+
+    line-height: 1.5;
+}
+
+.status {
+    display: flex;
+
+    justify-content: space-between;
+
+    margin-top: 15px;
+
+    font-size: 12px;
+}
+
+.status div {
+    padding: 7px 10px;
+
+    border-radius: 7px;
+
+    background: #151515;
+}
+
+/* =========================
+   BOTÃO
+========================= */
+
+.comprar {
+    width: 100%;
+
+    margin-top: 16px;
+
+    padding: 13px;
+
+    border: 0;
+
+    border-radius: 9px;
+
+    background: #ffd400;
+
+    color: #000;
+
+    font-size: 14px;
+
+    font-weight: 900;
+
+    cursor: pointer;
+}
+
+.comprar:hover {
+    background: #fff;
+}
+
+/* =========================
+   ZOOM
+========================= */
+
+.zoom {
+    position: fixed;
+
+    right: 25px;
+    top: 120px;
+
+    z-index: 50;
+
+    display: flex;
+
+    flex-direction: column;
+
+    overflow: hidden;
+
+    border-radius: 10px;
+
+    border: 1px solid #333;
+
+    background: rgba(0,0,0,.85);
+}
+
+.zoom button {
+    width: 45px;
+    height: 45px;
+
+    border: 0;
+
+    background: transparent;
+
+    color: white;
+
+    font-size: 22px;
+
+    cursor: pointer;
+}
+
+.zoom button:hover {
+    background: #222;
+}
+
+/* =========================
+   INSTRUÇÕES
+========================= */
+
+.instrucoes {
+    position: fixed;
+
+    z-index: 50;
+
+    bottom: 25px;
+    left: 50%;
+
+    transform: translateX(-50%);
+
+    padding: 11px 20px;
+
+    border-radius: 10px;
+
+    background: rgba(0,0,0,.8);
+
+    border: 1px solid #292929;
+
+    color: #bbb;
+
+    font-size: 12px;
+}
+
+/* =========================
+   MODAL
+========================= */
+
+.modal {
+    display: none;
+
+    position: fixed;
+
+    z-index: 500;
+
+    inset: 0;
+
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(0,0,0,.85);
+}
+
+.modal-box {
+    width: 400px;
+    max-width: 90%;
+
+    padding: 25px;
+
+    border-radius: 16px;
+
+    background: #111;
+
+    border: 1px solid #333;
+}
+
+.modal-box h2 {
+    margin-top: 0;
+}
+
+.modal-box input {
+    width: 100%;
+
+    padding: 12px;
+
+    margin-top: 10px;
+
+    border-radius: 8px;
+
+    border: 1px solid #333;
+
+    background: #050505;
+
+    color: white;
+}
+
+.fechar {
+    float: right;
+
+    background: transparent;
+
+    border: 0;
+
+    color: #aaa;
+
+    font-size: 22px;
+
+    cursor: pointer;
+}
+
+.confirmar {
+    width: 100%;
+
+    margin-top: 15px;
+
+    padding: 13px;
+
+    border: 0;
+
+    border-radius: 8px;
+
+    background: #ffd400;
+
+    font-weight: bold;
+
+    cursor: pointer;
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- =========================
+     TOPO
+========================= -->
+
+<header class="topo">
+
+    <div class="logo">
+
+        <h1>MEGA OUTDOOR</h1>
+
+        <span>O MAIOR OUTDOOR DA INTERNET</span>
+
+    </div>
+
+    <div class="info">
+
+        <div class="info-box">
+
+            <small>ESPAÇOS</small>
+
+            <strong>1.000.000</strong>
+
+        </div>
+
+        <div class="info-box">
+
+            <small>VALOR POR ESPAÇO</small>
+
+            <strong class="amarelo">R$ 1,00</strong>
+
+        </div>
+
+        <div class="info-box">
+
+            <small>VENDIDOS</small>
+
+            <strong id="vendidos">0</strong>
+
+        </div>
+
+        <div class="info-box">
+
+            <small>FATURAMENTO</small>
+
+            <strong class="verde" id="faturamento">
+                R$ 0,00
+            </strong>
+
+        </div>
+
+    </div>
+
+</header>
+
+
+<!-- =========================
+     MURAL
+========================= -->
+
+<div id="area">
+
+    <div id="mural">
+
+        <!-- Os espaços serão criados
+             automaticamente pelo JavaScript -->
+
+    </div>
+
+</div>
+
+
+<!-- =========================
+     PAINEL
+========================= -->
+
+<div class="painel">
+
+    <h2>1 MILHÃO DE ESPAÇOS</h2>
+
+    <div class="numero">
+        1.000 × 1.000
+    </div>
+
+    <p>
+        Compre seu espaço por apenas
+        <strong>R$ 1,00</strong>
+        e faça parte do maior mural
+        publicitário da internet.
+    </p>
+
+    <div class="status">
+
+        <div>
+            🟩 Vendidos:
+            <strong id="vendidos2">0</strong>
+        </div>
+
+        <div>
+            ⬜ Disponíveis:
+            <strong id="disponiveis">1.000.000</strong>
+        </div>
+
+    </div>
+
+    <button class="comprar" onclick="abrirModal()">
+        COMPRAR MEU ESPAÇO — R$ 1,00
+    </button>
+
+</div>
+
+
+<!-- =========================
+     CONTROLE DE ZOOM
+========================= -->
+
+<div class="zoom">
+
+    <button onclick="zoomIn()">+</button>
+
+    <button onclick="zoomOut()">−</button>
+
+</div>
+
+
+<!-- =========================
+     INSTRUÇÕES
+========================= -->
+
+<div class="instrucoes">
+
+    🖱️ Arraste para navegar
+    &nbsp; • &nbsp;
+    Role o mouse para dar zoom
+
+</div>
+
+
+<!-- =========================
+     MODAL
+========================= -->
+
+<div class="modal" id="modal">
+
+    <div class="modal-box">
+
+        <button class="fechar" onclick="fecharModal()">
+            ×
+        </button>
+
+        <h2>
+            Seu espaço no Mega Outdoor
+        </h2>
+
+        <p>
+            Reserve seu espaço por apenas
+            <strong>R$ 1,00</strong>.
+        </p>
+
+        <input
+            type="text"
+            placeholder="Seu nome ou empresa"
+        >
+
+        <input
+            type="email"
+            placeholder="Seu e-mail"
+        >
+
+        <input
+            type="file"
+            accept="image/*"
+        >
+
+        <button class="confirmar">
+
+            CONTINUAR PARA PAGAMENTO
+
+        </button>
+
+    </div>
+
+</div>
+
+
+<script>
+
+/* ==================================
+   CONFIGURAÇÃO
+================================== */
+
+const TOTAL = 1000000;
+
+const COLUNAS = 1000;
+
+const TAMANHO = 100;
+
+
+/* ==================================
+   VARIÁVEIS DO MURAL
+================================== */
+
+const mural =
+    document.getElementById("mural");
+
+const area =
+    document.getElementById("area");
+
+let escala = 0.06;
+
+let posX = 0;
+
+let posY = 0;
+
+let arrastando = false;
+
+let inicioX = 0;
+
+let inicioY = 0;
+
+let origemX = 0;
+
+let origemY = 0;
+
+
+/* ==================================
+   CRIAR AMOSTRA DO MURAL
+================================== */
+
+/*
+    IMPORTANTE:
+
+    Não vamos colocar 1 milhão de
+    elementos reais no navegador.
+
+    O sistema definitivo utilizará
+    renderização inteligente.
+
+    Aqui mostramos uma amostra
+    representativa do mural.
+*/
+
+const AMOSTRA = 2500;
+
+for (let i = 0; i < AMOSTRA; i++) {
+
+    const espaco =
+        document.createElement("div");
+
+    espaco.className = "espaco";
+
+    const coluna =
+        i % 50;
+
+    const linha =
+        Math.floor(i / 50);
+
+    espaco.style.left =
+        (coluna * TAMANHO) + "px";
+
+    espaco.style.top =
+        (linha * TAMANHO) + "px";
+
+    espaco.title =
+        "Espaço #" + (i + 1);
+
+    mural.appendChild(espaco);
+}
+
+
+/* ==================================
+   POSICIONAR MURAL
+================================== */
+
+function atualizarMural() {
+
+    mural.style.transform =
+        `translate(${posX}px, ${posY}px)
+         scale(${escala})`;
+
+}
+
+
+/* ==================================
+   CENTRALIZAR
+================================== */
+
+function centralizar() {
+
+    posX =
+        (window.innerWidth -
+        (5000 * escala)) / 2;
+
+    posY =
+        (window.innerHeight -
+        (5000 * escala)) / 2;
+
+    atualizarMural();
+
+}
+
+
+/* ==================================
+   ARRASTAR
+================================== */
+
+area.addEventListener(
+    "mousedown",
+    function(event) {
+
+        arrastando = true;
+
+        inicioX = event.clientX;
+
+        inicioY = event.clientY;
+
+        origemX = posX;
+
+        origemY = posY;
+
+    }
+);
+
+
+window.addEventListener(
+    "mousemove",
+    function(event) {
+
+        if (!arrastando) return;
+
+        posX =
+            origemX +
+            (event.clientX - inicioX);
+
+        posY =
+            origemY +
+            (event.clientY - inicioY);
+
+        atualizarMural();
+
+    }
+);
+
+
+window.addEventListener(
+    "mouseup",
+    function() {
+
+        arrastando = false;
+
+    }
+);
+
+
+/* ==================================
+   ZOOM
+================================== */
+
+area.addEventListener(
+    "wheel",
+    function(event) {
+
+        event.preventDefault();
+
+        if (event.deltaY < 0) {
+
+            zoomIn();
+
+        } else {
+
+            zoomOut();
+
+        }
+
+    },
+    { passive: false }
+);
+
+
+function zoomIn() {
+
+    escala *= 1.2;
+
+    if (escala > 5)
+        escala = 5;
+
+    atualizarMural();
+
+}
+
+
+function zoomOut() {
+
+    escala *= 0.83;
+
+    if (escala < 0.03)
+        escala = 0.03;
+
+    atualizarMural();
+
+}
+
+
+/* ==================================
+   MODAL
+================================== */
+
+function abrirModal() {
+
+    document.getElementById("modal")
+        .style.display = "flex";
+
+}
+
+
+function fecharModal() {
+
+    document.getElementById("modal")
+        .style.display = "none";
+
+}
+
+
+/* ==================================
+   INICIALIZAÇÃO
+================================== */
+
+centralizar();
+
+</script>
+
+</body>
+</html>

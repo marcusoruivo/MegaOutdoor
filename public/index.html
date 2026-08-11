@@ -1,0 +1,2113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Milhão Door - O Maior Outdoor da Internet</title>
+<style>
+*{box-sizing:border-box}
+
+html,body{
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#050505;
+    color:#fff;
+    font-family:Arial,Helvetica,sans-serif
+}
+
+.topo{
+    height:82px;
+    position:fixed;
+    z-index:10;
+    inset:0 0 auto;
+    background:#050505;
+    border-bottom:1px solid #292929;
+    display:flex;
+    align-items:center;
+    padding:0 28px
+}
+
+.logo img{
+    width:280px;
+    max-width:100%;
+    height:auto;
+    display:block;
+}
+.logo h1{
+    margin:0;
+    font-size:27px;
+    font-weight:900
+}
+
+.logo span{
+    color:#ffd400;
+    font-size:13px;
+    font-weight:bold
+}
+
+.info{
+    flex:1;
+    display:flex;
+    justify-content:center;
+    gap:65px;
+    text-align:center
+}
+
+.info small{
+    display:block;
+    color:#aaa;
+    font-size:10px
+}
+
+.info strong{
+    font-size:18px
+}
+
+.y{
+    color:#ffd400
+}
+
+.g{
+    color:#45df6e
+}
+.search-box{
+  display:flex;
+  gap:8px;
+  margin:12px 0 14px;
+}
+
+.search-box input{
+  flex:1;
+  min-width:0;
+  background:#111;
+  color:#fff;
+  border:1px solid #333;
+  border-radius:8px;
+  padding:11px;
+  font-size:13px;
+  outline:none;
+}
+
+.search-box input:focus{
+  border-color:#ffd400;
+}
+
+.search-box button{
+  background:#ffd400;
+  color:#000;
+  border:0;
+  border-radius:8px;
+  padding:0 10px;
+  font-size:11px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.search-box button:hover{
+  background:#ffe34d;
+}
+
+#area{
+    position:absolute;
+    inset:82px 0 0;
+    overflow:hidden;
+    background:radial-gradient(circle,#171717,#050505 72%);
+    cursor:grab
+}
+
+#area:active{
+    cursor:grabbing
+}
+
+#canvas{
+    position:absolute
+}
+
+.painel{
+    position:fixed;
+    z-index:20;
+    top:103px;
+    left:22px;
+    width:300px;
+    padding:18px;
+    background:rgba(5,5,5,.94);
+    border:1px solid #292929;
+    border-radius:15px
+}
+
+.painel h2{
+    margin:0 0 7px
+}
+
+.num{
+    color:#ffd400;
+    font-size:27px;
+    font-weight:bold
+}
+
+.painel p{
+    color:#aaa;
+    font-size:13px;
+    line-height:1.45
+}
+
+.status{
+    display:flex;
+    gap:6px
+}
+
+.status div{
+    flex:1;
+    background:#151515;
+    padding:8px;
+    border-radius:7px;
+    font-size:11px
+}
+
+.btn{
+    width:100%;
+    padding:12px;
+    margin-top:10px;
+    border:0;
+    border-radius:9px;
+    background:#ffd400;
+    color:#000;
+    font-weight:900;
+    cursor:pointer
+}
+
+.btn:disabled{
+    opacity:.4;
+    cursor:not-allowed
+}
+
+.sec{
+    background:#222;
+    color:#fff;
+    border:1px solid #444
+}
+
+.zoom{
+    position:fixed;
+    right:22px;
+    top:105px;
+    z-index:20;
+    display:flex;
+    flex-direction:column;
+    background:#000;
+    border:1px solid #333;
+    border-radius:10px;
+    overflow:hidden
+}
+
+.zoom button{
+    width:44px;
+    height:44px;
+    background:none;
+    color:#fff;
+    border:0;
+    font-size:22px;
+    cursor:pointer
+}
+
+.hint{
+    position:fixed;
+    bottom:20px;
+    left:50%;
+    transform:translateX(-50%);
+    background:#000d;
+    border:1px solid #292929;
+    border-radius:10px;
+    padding:10px 18px;
+    color:#bbb;
+    font-size:12px
+}
+
+.cart{
+    display:none;
+    position:fixed;
+    z-index:30;
+    right:22px;
+    bottom:22px;
+    width:300px;
+    background:rgba(8,8,8,.96);
+    border:1px solid #ffd400;
+    border-radius:15px;
+    padding:17px
+}
+
+.cart h3{
+    margin:0 0 8px
+}
+
+.list{
+    max-height:90px;
+    overflow:auto;
+    color:#aaa;
+    font-size:11px
+}
+
+.total{
+    font-size:24px;
+    color:#ffd400;
+    font-weight:bold
+}
+
+.modal{
+    display:none;
+    position:fixed;
+    z-index:100;
+    inset:0;
+    background:#000e;
+    align-items:center;
+    justify-content:center
+}
+
+.box{
+    width:460px;
+    max-width:92%;
+    max-height:90vh;
+    overflow:auto;
+    padding:25px;
+    background:#111;
+    border:1px solid #444;
+    border-radius:16px
+}
+
+.box h2{
+    margin-top:0
+}
+
+.box input{
+    width:100%;
+    padding:13px;
+    margin-top:10px;
+    background:#050505;
+    border:1px solid #333;
+    color:#fff;
+    border-radius:8px
+}
+
+.close{
+    float:right;
+    background:none;
+    border:0;
+    color:#aaa;
+    font-size:25px;
+    cursor:pointer
+}
+
+.pix{
+    display:none;
+    text-align:center
+}
+
+.pix img{
+    width:260px;
+    height:260px;
+    background:#fff;
+    padding:10px;
+    border-radius:10px
+}
+
+.copia{
+    width:100%;
+    padding:12px;
+    background:#050505;
+    color:#fff;
+    border:1px solid #444;
+    border-radius:8px;
+    margin-top:10px
+}
+
+.statusPix{
+    margin-top:15px;
+    padding:12px;
+    border-radius:8px;
+    background:#171717;
+    color:#aaa
+}
+
+.sucesso{
+    color:#45df6e;
+    font-weight:bold
+}
+/* =========================
+   CABEÇALHO MILHÃO DOOR
+========================= */
+
+.topo{
+    height: 90px;
+    padding: 8px 28px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:30px;
+    background:#050505;
+    border-bottom:1px solid #292929;
+}
+
+.logo{
+    width:300px;
+    min-width:300px;
+        display:flex;
+    align-items:center;
+}
+
+.logo img{
+    width:280px;
+    max-width:100%;
+    height:auto;
+    display:block;
+}
+
+.info{
+    flex:1;
+    display:flex;
+    justify-content:space-around;
+    align-items:center;
+    gap:20px;
+    text-align:center;
+    min-width:0;
+}
+
+.info > div{
+    min-width:90px;
+    flex:1;
+}
+.info > div{
+    min-width:100px;
+}
+
+.info small{
+    display:block;
+    color:#aaa;
+    font-size:10px;
+    text-transform:uppercase;
+    margin-bottom:3px;
+    letter-spacing:.3px;
+}
+
+.info strong{
+    display:block;
+    font-size:18px;
+    font-weight:900;
+}
+
+.info .y{
+    color:#ffd400;
+}
+
+.info .g{
+    color:#45df6e;
+}
+
+/* =========================
+   RESPONSIVO
+========================= */
+
+@media(max-width:900px){
+
+    .topo{
+        height:auto;
+        min-height:75px;
+        padding:8px 15px;
+        gap:10px;
+    }
+
+    .logo{
+        min-width:0;
+        width:42%;
+    }
+
+    .logo img{
+        width:230px;
+    }
+
+    .info{
+        gap:12px;
+    }
+
+    .info > div{
+        min-width:65px;
+    }
+
+    .info strong{
+        font-size:14px;
+    }
+
+    .info small{
+        font-size:8px;
+    }
+}
+/* MILHÃO DOOR - MELHORIA VISUAL DO PAINEL */
+.panel{
+    box-shadow:0 15px 45px rgba(0,0,0,.55);
+    backdrop-filter:blur(6px);
+}
+
+.panel h2{
+    letter-spacing:-.3px;
+}
+
+.panel button{
+    transition:transform .15s ease,filter .15s ease;
+}
+
+.panel button:hover{
+    filter:brightness(1.08);
+    transform:translateY(-1px);
+}
+/* MILHÃO DOOR - CARDS DE DISPONIBILIDADE */
+
+.panel .status,
+.panel .stats,
+.panel .counter{
+    border-radius:10px;
+}
+
+.panel button{
+    font-weight:800;
+    letter-spacing:.2px;
+}
+
+.panel input{
+    transition:border-color .2s,box-shadow .2s;
+}
+
+.panel input:focus{
+    border-color:#ffd400 !important;
+    box-shadow:0 0 0 2px rgba(255,212,0,.12);
+}
+/* MILHÃO DOOR - STATUS DO PAINEL */
+
+.panel .status{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin:14px 0;
+}
+
+.panel .status > div{
+    background:linear-gradient(145deg,#171717,#101010);
+    border:1px solid #292929;
+    border-radius:10px;
+    padding:10px 8px;
+    font-size:11px;
+    color:#aaa;
+    line-height:1.35;
+    transition:border-color .2s,transform .2s;
+}
+
+.panel .status > div:hover{
+    border-color:#444;
+    transform:translateY(-1px);
+}
+
+.panel .status b{
+    display:block;
+    margin-top:3px;
+    color:#fff;
+    font-size:14px;
+    font-weight:900;
+}
+
+.panel .status > div:first-child{
+    color:#aaa;
+}
+/* MILHÃO DOOR - BOTÃO PRINCIPAL */
+
+.panel .btn:not(.sec){
+    background:linear-gradient(135deg,#ffd400,#ffb800);
+    color:#000;
+    border:0;
+    font-weight:900;
+    letter-spacing:.3px;
+    box-shadow:0 5px 18px rgba(255,212,0,.18);
+    transition:transform .15s ease,filter .15s ease,box-shadow .15s ease;
+}
+
+.panel .btn:not(.sec):not(:disabled):hover{
+    filter:brightness(1.08);
+    transform:translateY(-2px);
+    box-shadow:0 8px 24px rgba(255,212,0,.28);
+}
+
+.panel .btn:not(.sec):not(:disabled):active{
+    transform:translateY(0);
+}
+
+.panel .btn:disabled{
+    opacity:.45;
+    cursor:not-allowed;
+}
+/* MILHÃO DOOR - BOTÃO LIMPAR */
+
+.panel .btn.sec{
+    background:linear-gradient(135deg,#292929,#1d1d1d);
+    color:#fff;
+    border:1px solid #444;
+    font-weight:800;
+    transition:transform .15s ease,filter .15s ease,border-color .15s ease;
+}
+
+.panel .btn.sec:hover{
+    filter:brightness(1.15);
+    border-color:#666;
+    transform:translateY(-1px);
+}
+
+.panel .btn.sec:active{
+    transform:translateY(0);
+}
+</style>
+
+</head>
+
+<body>
+
+<header class="topo">
+
+<div class="logo">
+    <img src="/logo-milhao-door.png" alt="Milhão Door">
+</div>
+
+<div class="info">
+
+<div>
+<small>ESPAÇOS</small>
+<strong>1.000.000</strong>
+</div>
+
+<div>
+<small>VALOR POR ESPAÇO</small>
+<strong class="y">R$ 1,00</strong>
+</div>
+
+<div>
+<small>VENDIDOS</small>
+<strong id="sold">0</strong>
+</div>
+
+<div>
+<small>FATURAMENTO</small>
+<strong class="g" id="rev">R$ 0,00</strong>
+</div>
+
+</div>
+
+</header>
+
+
+<div id="area">
+<canvas id="canvas"></canvas>
+</div>
+
+
+<div class="painel">
+
+<h2>1 MILHÃO DE ESPAÇOS</h2>
+
+<div class="num">
+1.000 × 1.000
+</div>
+
+<div class="search-box">
+  <input
+    id="spaceSearch"
+    type="number"
+    min="1"
+    max="1000000"
+    placeholder="Digite o número do espaço"
+    onkeydown="if(event.key==='Enter') localizarEspaco()"
+  />
+  <button onclick="localizarEspaco()">🔎 LOCALIZAR</button>
+</div>
+<p>
+Clique nos espaços disponíveis para selecionar vários.
+<br>
+<b>R$ 1,00 por espaço.</b>
+</p>
+
+<div class="status">
+
+<div>
+🟩 Vendidos:
+<b id="sold2">0</b>
+</div>
+
+<div>
+⬜ Livres:
+<b id="free">1.000.000</b>
+</div>
+
+</div>
+
+<button
+class="btn"
+id="go"
+disabled
+onclick="checkout()">
+SELECIONE ESPAÇOS
+</button>
+
+<button
+class="btn sec"
+onclick="clearSel()">
+LIMPAR SELEÇÃO
+</button>
+
+</div>
+
+
+<div class="zoom">
+
+<button onclick="zoom(1.2)">+</button>
+
+<button onclick="zoom(.83)">−</button>
+
+</div>
+
+
+<div class="hint">
+🖱️ Arraste • Role para zoom • Clique para selecionar/deselecionar
+</div>
+
+
+<div class="cart" id="cart">
+
+<h3>Seu carrinho</h3>
+
+<div class="list" id="list"></div>
+
+<p>
+<b id="qty">0</b> espaço(s)
+</p>
+
+<div class="total" id="total">
+R$ 0,00
+</div>
+
+<button
+class="btn"
+onclick="checkout()">
+CONTINUAR
+</button>
+
+<button
+class="btn sec"
+onclick="clearSel()">
+LIMPAR
+</button>
+
+</div>
+
+
+<!-- CHECKOUT -->
+
+<div class="modal" id="modal">
+
+<div class="box">
+
+<button
+class="close"
+onclick="closeModal()">
+×
+</button>
+
+<div id="formulario">
+
+<h2>Finalizar compra</h2>
+
+<p id="ci"></p>
+
+<input
+id="name"
+placeholder="Nome ou empresa">
+
+<input
+id="email"
+type="email"
+placeholder="E-mail">
+
+<input
+id="cpf"
+placeholder="CPF ou CNPJ">
+
+<button
+class="btn"
+onclick="gerarPix()">
+GERAR PIX
+</button>
+
+<p
+id="msg"
+style="color:#aaa;font-size:12px">
+</p>
+
+</div>
+
+
+<!-- PIX -->
+
+<div
+class="pix"
+id="pix">
+
+<h2>Pagamento Pix</h2>
+
+<p>
+Escaneie o QR Code pelo aplicativo do seu banco.
+</p>
+
+<img
+id="qr"
+alt="QR Code Pix">
+
+<p>
+<strong>Ou copie o Pix Copia e Cola:</strong>
+</p>
+
+<input
+class="copia"
+id="payload"
+readonly>
+
+<button
+class="btn"
+onclick="copiarPix()">
+COPIAR PIX
+</button>
+
+<div
+class="statusPix"
+id="statusPix">
+Aguardando pagamento...
+</div>
+<div id="publicacao" style="display:none; margin-top:15px;">
+
+  <div class="statusPix">
+    <span class="sucesso">✅ PAGAMENTO CONFIRMADO!</span>
+    <br>
+    Seu espaço está liberado para publicação.
+  </div>
+
+  <input
+    id="tituloAnuncio"
+    type="text"
+    placeholder="Nome da empresa ou anunciante"
+    style="width:100%; padding:12px; margin-top:10px;">
+
+  <input
+    id="fotoAnuncio"
+    type="file"
+    accept="image/*"
+    style="width:100%; margin-top:10px;">
+
+  <img
+    id="previewAnuncio"
+    style="display:none; width:100%; max-height:220px; object-fit:contain; margin-top:10px; border-radius:8px;">
+
+  <button
+    class="btn"
+    id="btnPublicar"
+    onclick="publicarAnuncio()"
+    style="margin-top:10px;">
+    PUBLICAR ANÚNCIO
+  </button>
+
+  <p
+    id="msgPublicacao"
+    style="color:#aaa; font-size:12px;">
+  </p>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+
+<script>
+
+
+const C = 1000;
+const T = 100;
+
+const canvas =
+document.getElementById("canvas");
+
+const ctx =
+canvas.getContext("2d");
+
+const area =
+document.getElementById("area");
+
+
+let sc = .16;
+
+let x = 0;
+let y = 0;
+
+let drag = false;
+let moved = false;
+
+let sx;
+let sy;
+let ox;
+let oy;
+
+let db = {};
+
+let sel = new Set();
+let paidSpaces = [];
+
+let searchTarget = null;
+
+let imgs = {};
+
+let currentPayment = null;
+
+/* ========================
+   LOCALIZAR ESPAÇO
+======================== */
+
+function localizarEspaco(){
+
+  const input = document.getElementById("spaceSearch");
+  const numero = Number(input.value);
+
+  if(!Number.isInteger(numero) || numero < 1 || numero > 1000000){
+    alert("Digite um número de espaço entre 1 e 1.000.000.");
+    return;
+  }
+
+  const indice = numero - 1;
+
+  const coluna = indice % C;
+  const linha = Math.floor(indice / C);
+
+  const centroX = coluna * T + T / 2;
+  const centroY = linha * T + T / 2;
+
+  x = canvas.width / 2 - centroX * sc;
+  y = canvas.height / 2 - centroY * sc;
+
+ searchTarget = numero;
+
+mostrarInfoEspaco(numero);
+
+draw();
+
+}
+function mostrarInfoEspaco(numero){
+
+  const vendido = !!db[numero];
+
+  let painel = document.getElementById("spaceInfo");
+
+  if(!painel){
+    painel = document.createElement("div");
+    painel.id = "spaceInfo";
+
+    painel.style.position = "fixed";
+    painel.style.left = "18px";
+    painel.style.bottom = "18px";
+    painel.style.zIndex = "9999";
+    painel.style.background = "#111";
+    painel.style.border = "1px solid #333";
+    painel.style.borderRadius = "12px";
+    painel.style.padding = "16px 18px";
+    painel.style.minWidth = "230px";
+    painel.style.boxShadow = "0 8px 30px rgba(0,0,0,.5)";
+    painel.style.color = "#fff";
+
+    document.body.appendChild(painel);
+  }
+
+  painel.innerHTML = `
+    <div style="font-size:12px;color:#aaa;margin-bottom:5px;">
+      ESPAÇO LOCALIZADO
+    </div>
+
+    <div style="font-size:22px;font-weight:800;margin-bottom:8px;">
+      #${numero.toLocaleString("pt-BR")}
+    </div>
+
+    ${
+      vendido
+      ? `
+        <div style="color:#ff4d4d;font-weight:700;">
+          🔴 VENDIDO
+        </div>
+        <div style="font-size:13px;color:#aaa;margin-top:5px;">
+          Este espaço não está disponível.
+        </div>
+      `
+      : `
+        <div style="color:#45d66f;font-weight:700;">
+          🟢 DISPONÍVEL
+        </div>
+        <div style="font-size:13px;color:#aaa;margin-top:5px;">
+          Valor: <b style="color:#ffd400;">R$ 1,00</b>
+        </div>
+
+        <button
+          onclick="selecionarEspacoPesquisado(${numero})"
+          style="
+            width:100%;
+            margin-top:12px;
+            padding:10px;
+            border:0;
+            border-radius:8px;
+            background:#ffd400;
+            color:#000;
+            font-weight:800;
+            cursor:pointer;
+          "
+        >
+         ${sel.has(Number(numero)) ? "REMOVER DA SELEÇÃO" : "SELECIONAR ESPAÇO"}
+        </button>
+      `
+    }
+  `;
+}
+function selecionarEspacoPesquisado(numero){
+
+  const id = Number(numero);
+
+  // Não permite selecionar espaço já vendido
+  if(db[id]){
+    alert("Este espaço já está vendido.");
+    return;
+  }
+
+  // Seleciona o espaço usando a mesma lógica do mapa
+  if(sel.has(id)){
+    sel.delete(id);
+  }else{
+    sel.add(id);
+  }
+searchTarget = null;
+
+  updateCart();
+
+
+draw();
+}
+
+/* =========================
+   DESENHO DO MURAL
+========================= */
+
+function resize(){
+
+canvas.width =
+innerWidth;
+
+canvas.height =
+innerHeight - 82;
+
+draw();
+
+}
+
+
+function draw(){
+
+ctx.clearRect(
+0,
+0,
+canvas.width,
+canvas.height
+);
+
+ctx.save();
+
+ctx.translate(x,y);
+
+ctx.scale(sc,sc);
+
+
+let l =
+Math.max(
+0,
+Math.floor(-x/sc/T)-2
+);
+
+let t =
+Math.max(
+0,
+Math.floor(-y/sc/T)-2
+);
+
+let r =
+Math.min(
+C-1,
+Math.ceil(
+(-x/sc+
+canvas.width/sc)/T
+)+2
+);
+
+let b =
+Math.min(
+C-1,
+Math.ceil(
+(-y/sc+
+canvas.height/sc)/T
+)+2
+);
+
+
+for(
+let row=t;
+row<=b;
+row++
+){
+
+for(
+let col=l;
+col<=r;
+col++
+){
+
+const id =
+row*C+col+1;
+
+const px =
+col*T;
+
+const py =
+row*T;
+
+const v =
+db[id];
+
+
+if(
+v &&
+v.image &&
+imgs[id] &&
+imgs[id].complete
+){
+
+ctx.drawImage(
+imgs[id],
+px+1,
+py+1,
+T-2,
+T-2
+);
+
+}else{
+
+ctx.fillStyle =
+v ? "#241f08" : "#111";
+
+ctx.fillRect(
+px+1,
+py+1,
+T-2,
+T-2
+);
+
+if(sc>.32){
+
+ctx.fillStyle =
+"#777";
+
+ctx.font =
+"10px Arial";
+
+ctx.textAlign =
+"center";
+
+ctx.fillText(
+"#"+id,
+px+50,
+py+55
+);
+
+}
+
+}
+
+
+ctx.strokeStyle =
+sel.has(id)
+? "#ffd400"
+: "#252525";
+
+ctx.lineWidth =
+sel.has(id)
+? 5
+: 1;
+
+ctx.strokeRect(
+px,
+py,
+T,
+T
+);
+if(searchTarget === id && !sel.has(id)){
+  ctx.save();
+
+  ctx.strokeStyle = "#ffd400";
+  ctx.lineWidth = 5 / sc;
+
+  ctx.strokeRect(
+    px + 2,
+    py + 2,
+    T - 4,
+    T - 4
+  );
+
+  ctx.restore();
+}
+
+}
+
+}
+
+ctx.restore();
+
+}
+
+
+/* =========================
+   CARREGAR DADOS
+========================= */
+
+async function load(){
+
+const response =
+await fetch(
+"/api/spaces"
+);
+
+db =
+await response.json();
+
+
+for(
+const id in db
+){
+
+if(db[id].image){
+
+const im =
+new Image();
+
+im.src =
+db[id].image;
+
+imgs[id] =
+im;
+
+im.onload =
+draw;
+
+}
+
+}
+
+
+await stats();
+
+draw();
+
+}
+
+
+/* =========================
+   ESTATÍSTICAS
+========================= */
+
+async function stats(){
+
+const response =
+await fetch(
+"/api/status"
+);
+
+const s =
+await response.json();
+
+
+document.getElementById(
+"sold"
+).textContent =
+s.sold.toLocaleString(
+"pt-BR"
+);
+
+
+document.getElementById(
+"sold2"
+).textContent =
+s.sold.toLocaleString(
+"pt-BR"
+);
+
+
+document.getElementById(
+"free"
+).textContent =
+s.available.toLocaleString(
+"pt-BR"
+);
+
+
+document.getElementById(
+"rev"
+).textContent =
+"R$ "+
+s.revenue.toLocaleString(
+"pt-BR"
+)+",00";
+
+}
+
+
+/* =========================
+   CENTRALIZAR
+========================= */
+
+function center(){
+
+x =
+(canvas.width -
+C*T*sc)/2;
+
+y =
+(canvas.height -
+C*T*sc)/2;
+
+draw();
+
+}
+
+
+/* =========================
+   ZOOM
+========================= */
+
+function zoom(f){
+
+const mx =
+canvas.width/2;
+
+const my =
+canvas.height/2;
+
+const wx =
+(mx-x)/sc;
+
+const wy =
+(my-y)/sc;
+
+const n =
+Math.max(
+.02,
+Math.min(
+4,
+sc*f
+)
+);
+
+x =
+mx-wx*n;
+
+y =
+my-wy*n;
+
+sc =
+n;
+
+draw();
+
+}
+
+
+/* =========================
+   MOUSE ZOOM
+========================= */
+
+area.addEventListener(
+"wheel",
+e=>{
+
+e.preventDefault();
+
+const f =
+e.deltaY<0
+?1.16
+:.86;
+
+const mx =
+e.clientX;
+
+const my =
+e.clientY-82;
+
+const wx =
+(mx-x)/sc;
+
+const wy =
+(my-y)/sc;
+
+const n =
+Math.max(
+.02,
+Math.min(
+4,
+sc*f
+)
+);
+
+x =
+mx-wx*n;
+
+y =
+my-wy*n;
+
+sc =
+n;
+
+draw();
+
+},
+{passive:false}
+);
+
+
+/* =========================
+   ARRASTAR
+========================= */
+
+area.onpointerdown =
+e=>{
+
+drag=true;
+
+moved=false;
+
+sx=e.clientX;
+sy=e.clientY;
+
+ox=x;
+oy=y;
+
+area.setPointerCapture(
+e.pointerId
+);
+
+};
+
+
+area.onpointermove =
+e=>{
+
+if(!drag)return;
+
+if(
+Math.abs(
+e.clientX-sx
+)+
+Math.abs(
+e.clientY-sy
+)>5
+){
+
+moved=true;
+
+}
+
+x =
+ox+
+e.clientX-sx;
+
+y =
+oy+
+e.clientY-sy;
+
+draw();
+
+};
+
+
+area.onpointerup =
+()=>drag=false;
+
+
+/* =========================
+   SELECIONAR ESPAÇO
+========================= */
+
+area.onclick =
+e=>{
+
+if(moved)return;
+
+const mx =
+e.clientX;
+
+const my =
+e.clientY-82;
+
+const col =
+Math.floor(
+((mx-x)/sc)/T
+);
+
+const row =
+Math.floor(
+((my-y)/sc)/T
+);
+
+if(
+col<0 ||
+row<0 ||
+col>=C ||
+row>=C
+)return;
+
+
+const id =
+row*C+col+1;
+
+
+if(db[id]){
+
+alert(
+"Este espaço já está ocupado ou reservado."
+);
+
+return;
+
+}
+
+
+if(sel.has(id)){
+
+sel.delete(id);
+
+}else{
+
+sel.add(id);
+
+}
+
+
+updateCart();
+
+};
+
+
+/* =========================
+   CARRINHO
+========================= */
+
+function updateCart(){
+
+const n =
+sel.size;
+
+
+document.getElementById(
+"qty"
+).textContent =
+n.toLocaleString(
+"pt-BR"
+);
+
+
+document.getElementById(
+"total"
+).textContent =
+"R$ "+
+n.toLocaleString(
+"pt-BR"
+)+",00";
+
+
+const go =
+document.getElementById(
+"go"
+);
+
+
+go.disabled =
+!n;
+
+
+go.textContent =
+n
+?`CONTINUAR — ${n} ESPAÇO${n>1?"S":""} — R$ ${n.toLocaleString("pt-BR")},00`
+:"SELECIONE ESPAÇOS";
+
+
+document.getElementById(
+"cart"
+).style.display =
+n
+?"block"
+:"none";
+
+
+const arr =
+[...sel]
+.sort(
+(a,b)=>a-b
+);
+
+
+document.getElementById(
+"list"
+).textContent =
+arr
+.slice(0,40)
+.map(
+id=>"#"+
+id.toLocaleString(
+"pt-BR"
+)
+)
+.join(" • ")+
+(
+n>40
+?" • ..."
+:""
+);
+
+
+draw();
+
+}
+
+
+/* =========================
+   LIMPAR
+========================= */
+
+function clearSel(){
+
+sel.clear();
+
+updateCart();
+
+}
+
+
+/* =========================
+   ABRIR CHECKOUT
+========================= */
+
+function checkout(){
+
+if(!sel.size)return;
+
+if(sel.size < 5){
+  alert("O valor mínimo para compra é de R$ 5,00. Selecione pelo menos 5 espaços.");
+  return;
+}
+
+
+document.getElementById(
+"ci"
+).textContent =
+`${sel.size.toLocaleString("pt-BR")} espaço(s) selecionado(s) — total R$ ${sel.size.toLocaleString("pt-BR")},00`;
+
+
+document.getElementById(
+"formulario"
+).style.display =
+"block";
+
+
+document.getElementById(
+"pix"
+).style.display =
+"none";
+
+
+document.getElementById(
+"modal"
+).style.display =
+"flex";
+
+}
+
+
+/* =========================
+   FECHAR
+========================= */
+
+function closeModal(){
+
+document.getElementById(
+"modal"
+).style.display =
+"none";
+
+}
+
+
+/* =========================
+   GERAR PIX
+========================= */
+
+async function gerarPix(){
+
+const name =
+document.getElementById(
+"name"
+).value.trim();
+
+const email =
+document.getElementById(
+"email"
+).value.trim();
+
+const cpf =
+document.getElementById(
+"cpf"
+).value.trim();
+
+const msg =
+document.getElementById(
+"msg"
+);
+
+
+if(name.length<3){
+
+msg.textContent =
+"Informe seu nome ou empresa.";
+
+return;
+
+}
+
+
+if(!email.includes("@")){
+
+msg.textContent =
+"Informe um e-mail válido.";
+
+return;
+
+}
+
+
+if(!cpf){
+
+msg.textContent =
+"Informe CPF ou CNPJ.";
+
+return;
+
+}
+
+
+msg.textContent =
+"Criando sua cobrança Pix...";
+
+
+try{
+
+const response =
+await fetch(
+"/api/checkout",
+{
+method:"POST",
+
+headers:{
+"Content-Type":
+"application/json"
+},
+
+body:JSON.stringify({
+
+spaces:
+[...sel],
+
+name:name,
+
+email:email,
+
+cpfCnpj:cpf
+
+})
+
+});
+
+
+const data =
+await response.json();
+
+
+if(!response.ok){
+
+msg.textContent =
+data.error ||
+"Não foi possível criar a cobrança.";
+
+return;
+
+}
+
+
+currentPayment =
+data.paymentId;
+
+
+/*
+   QR CODE
+*/
+
+document.getElementById(
+"qr"
+).src =
+"data:image/png;base64,"+
+data.qrCode;
+
+
+document.getElementById(
+"payload"
+).value =
+data.payload;
+
+
+document.getElementById(
+"formulario"
+).style.display =
+"none";
+
+
+document.getElementById(
+"pix"
+).style.display =
+"block";
+
+
+document.getElementById(
+"statusPix"
+).innerHTML =
+"Aguardando pagamento...";
+
+
+/*
+   Começa a consultar
+*/
+
+monitorarPagamento();
+
+}catch(error){
+
+msg.textContent =
+"Erro de comunicação com o servidor.";
+
+console.error(error);
+
+}
+
+}
+
+
+/* =========================
+   COPIAR PIX
+========================= */
+
+async function copiarPix(){
+
+const campo =
+document.getElementById(
+"payload"
+);
+
+try{
+
+await navigator.clipboard.writeText(
+campo.value
+);
+
+document.getElementById(
+"statusPix"
+).textContent =
+"Pix Copia e Cola copiado!";
+
+}catch{
+
+campo.select();
+
+document.execCommand(
+"copy"
+);
+
+}
+
+}
+
+
+/* =========================
+   MONITORAR PAGAMENTO
+========================= */
+
+let monitorTimer = null;
+
+function monitorarPagamento(){
+
+clearInterval(
+monitorTimer
+);
+
+
+monitorTimer =
+setInterval(
+async()=>{
+
+try{
+
+const response =
+await fetch(
+"/api/payment-status/"+
+currentPayment
+);
+
+
+const data =
+await response.json();
+
+
+if(
+data.status ===
+"RECEIVED" ||
+data.status ===
+"CONFIRMED"
+){
+
+clearInterval(
+monitorTimer
+);
+
+
+document.getElementById(
+"statusPix"
+).innerHTML =
+'<span class="sucesso">✓ PAGAMENTO CONFIRMADO!</span><br><br>'+
+'Seus espaços foram liberados para publicação.';
+
+document.getElementById("publicacao").style.display = "block";
+
+
+await load();
+
+paidSpaces = [...sel];
+
+sel.clear();
+
+updateCart();
+}
+
+}catch(error){
+
+console.error(error);
+
+}
+
+},
+5000
+);
+
+}
+
+
+/* =========================
+   INICIAR
+========================= */
+
+window.addEventListener(
+"resize",
+resize
+);
+
+resize();
+
+center();
+
+load();
+function publicarAnuncio(){
+
+  const titulo = document
+    .getElementById("tituloAnuncio")
+    .value
+    .trim();
+
+  const arquivo = document
+    .getElementById("fotoAnuncio")
+    .files[0];
+
+  const msg = document
+    .getElementById("msgPublicacao");
+
+  if(!titulo){
+    msg.textContent =
+      "Informe o nome da empresa ou anunciante.";
+    return;
+  }
+
+  if(!arquivo){
+    msg.textContent =
+      "Escolha uma imagem para publicar.";
+    return;
+  }
+
+  if(!currentPayment){
+    msg.textContent =
+      "Pagamento ainda não identificado.";
+    return;
+  }
+
+  if(!paidSpaces || !paidSpaces.length){
+  msg.textContent =
+    "Nenhum espaço pago disponível para publicação.";
+  return;
+}
+
+const id = paidSpaces[0];
+
+  const formData = new FormData();
+
+  formData.append("foto", arquivo);
+  formData.append("name", titulo);
+
+  msg.textContent =
+    "Publicando anúncio...";
+
+  fetch(`/api/upload/${id}`, {
+    method: "POST",
+    body: formData
+  })
+  .then(async response => {
+
+    const data = await response.json();
+
+    if(!response.ok){
+      throw new Error(
+        data.error || "Não foi possível publicar."
+      );
+    }
+
+    msg.innerHTML =
+      '<span class="sucesso">✅ ANÚNCIO PUBLICADO COM SUCESSO!</span>';
+
+    document
+      .getElementById("btnPublicar")
+      .disabled = true;
+
+    await load();
+
+    updateCart();
+
+  })
+  .catch(error => {
+
+    console.error(error);
+
+    msg.textContent =
+      error.message ||
+      "Erro ao publicar anúncio.";
+
+  });
+
+}
+function publicarAnuncio(){
+
+  const titulo =
+    document.getElementById("tituloAnuncio").value.trim();
+
+  const arquivo =
+    document.getElementById("fotoAnuncio").files[0];
+
+  const msg =
+    document.getElementById("msgPublicacao");
+
+  if(!titulo){
+    msg.textContent =
+      "Informe o nome da empresa ou anunciante.";
+    return;
+  }
+
+  if(!arquivo){
+    msg.textContent =
+      "Escolha uma imagem para publicar.";
+    return;
+  }
+
+  if(!currentPayment){
+    msg.textContent =
+      "Pagamento ainda não identificado.";
+    return;
+  }
+
+  if(!sel || sel.size === 0){
+    msg.textContent =
+      "Nenhum espaço selecionado.";
+    return;
+  }
+
+  const id = [...sel][0];
+
+  const formData = new FormData();
+
+  formData.append("foto", arquivo);
+  formData.append("name", titulo);
+
+  msg.textContent =
+    "Publicando anúncio...";
+
+  fetch(`/api/upload/${id}`, {
+    method: "POST",
+    body: formData
+  })
+  .then(async response => {
+
+    const data = await response.json();
+
+    if(!response.ok){
+      throw new Error(
+        data.error || "Não foi possível publicar."
+      );
+    }
+
+    msg.innerHTML =
+      '<span class="sucesso">✅ ANÚNCIO PUBLICADO COM SUCESSO!</span>';
+
+    document.getElementById("btnPublicar").disabled = true;
+
+    await load();
+
+    updateCart();
+
+  })
+  .catch(error => {
+
+    console.error(error);
+
+    msg.textContent =
+      error.message ||
+      "Erro ao publicar anúncio.";
+
+  });
+
+}
+</script>
+
+</body>
+</html>

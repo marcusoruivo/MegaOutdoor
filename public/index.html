@@ -692,6 +692,14 @@ LIMPAR
 💰 OFERTA EM BLOCOS
 </button>
 
+<button
+    id="btnMeusBlocos"
+    class="btn"
+    style="margin-top:6px; width:100%; background:#1b3a2a; color:#45d66f;"
+    onclick="toggleMeusBlocos()">
+👁 MEUS BLOCOS
+</button>
+
 <div style="margin-top:6px;">
 
 <label style="font-size:12px;color:#aaa;display:block;margin-bottom:4px;">
@@ -822,9 +830,9 @@ LIMPAR
 
 <button
 class="btn sec"
-onclick="abrirPainelOfertas()"
+onclick="abrirPainelComando()"
 style="margin-top:10px;background:#1b3a2a;color:#45d66f;">
-📨 MINHAS OFERTAS
+⚙️ PAINEL DE COMANDO
 </button>
 
 </div>
@@ -1133,6 +1141,8 @@ id="offerInfo"
 style="color:#aaa;font-size:13px;margin:0 0 12px;">
 </p>
 
+<div id="offerEscopo" style="font-size:13px;color:#ccc;margin-bottom:8px;"></div>
+
 <input
 id="offerName"
 placeholder="Seu nome ou empresa">
@@ -1170,7 +1180,7 @@ ENVIAR OFERTA
 </div>
 
 
-<!-- PAINEL DO PROPRIETÁRIO -->
+<!-- PAINEL DE COMANDO -->
 
 <div class="modal" id="ownerModal" style="display:none;">
 
@@ -1182,7 +1192,31 @@ onclick="closeOwner()">
 ×
 </button>
 
-<h2 style="color:#ffd400;">Minhas ofertas</h2>
+<h2 style="color:#ffd400;">Painel de comando</h2>
+
+<div id="painelTabs" style="display:flex;gap:6px;margin-bottom:10px;">
+  <button
+    class="btn"
+    id="tabOfertas"
+    onclick="abaOfertas()"
+    style="flex:1;margin:0;padding:8px;font-size:12px;">
+    📨 OFERTAS
+  </button>
+  <button
+    class="btn sec"
+    id="tabBlocos"
+    onclick="abaBlocos()"
+    style="flex:1;margin:0;padding:8px;font-size:12px;">
+    🧩 MEUS BLOCOS
+  </button>
+  <button
+    class="btn sec"
+    id="tabPix"
+    onclick="abaPix()"
+    style="flex:1;margin:0;padding:8px;font-size:12px;">
+    🔑 CHAVE PIX
+  </button>
+</div>
 
 <div
 id="ownerList"
@@ -1294,6 +1328,8 @@ orderTokens[id] === s.orderToken
 }
 
 let searchTarget = null;
+
+let meusBlocosMode = false;
 
 let selectAreaMode = false;
 let offerMode = false;
@@ -1885,6 +1921,43 @@ if(searchTarget === id){
   );
 
   ctx.restore();
+}
+
+if(
+  meusBlocosMode &&
+  db[id] &&
+  minhaPropriedade(id)
+){
+
+  ctx.fillStyle =
+  "rgba(69,214,111,0.30)";
+
+  ctx.fillRect(
+    px,
+    py,
+    T,
+    T
+  );
+
+  if(sc > 2){
+
+    ctx.save();
+
+    ctx.strokeStyle =
+    "#45d66f";
+
+    ctx.lineWidth =
+    5 / sc;
+
+    ctx.strokeRect(
+      px + 2,
+      py + 2,
+      T - 4,
+      T - 4
+    );
+
+    ctx.restore();
+  }
 }
 
 }
@@ -3986,21 +4059,43 @@ let editingSpaceId = null;
 
 let editBlocoIds = [];
 
-function blocoVizinhanca(numero){
+function toggleMeusBlocos(){
+
+    meusBlocosMode = !meusBlocosMode;
+
+    const btn =
+        document.getElementById("btnMeusBlocos");
+
+    btn.style.background =
+        meusBlocosMode ? "#ffd400" : "#1b3a2a";
+
+    btn.style.color =
+        meusBlocosMode ? "#000" : "#45d66f";
+
+    btn.textContent =
+        meusBlocosMode
+        ? "👁 MEUS BLOCOS (LIGADO)"
+        : "👁 MEUS BLOCOS";
+
+    draw();
+}
+
+function blocoPorDono(numero, permitidos){
 
     const inicio = Number(numero);
 
     const s = db[inicio];
 
-    if(
-        !s ||
-        s.status !== "published" ||
-        !minhaPropriedade(inicio)
-    ){
+    if(!s) return [inicio];
+
+    const statusOk =
+        permitidos || ["published"];
+
+    if(!statusOk.includes(s.status)){
         return [inicio];
     }
 
-    const token = orderTokens[inicio];
+    const token = s.orderToken;
 
     const grupo = new Set([inicio]);
 
@@ -4031,8 +4126,8 @@ function blocoVizinhanca(numero){
 
             if(
                 espaco &&
-                espaco.status === "published" &&
-                orderTokens[v] === token
+                espaco.orderToken === token &&
+                statusOk.includes(espaco.status)
             ){
                 grupo.add(v);
                 fila.push(v);
@@ -4041,6 +4136,10 @@ function blocoVizinhanca(numero){
     }
 
     return [...grupo].sort((a, b) => a - b);
+}
+
+function blocoVizinhanca(numero){
+    return blocoPorDono(numero, ["published"]);
 }
 
 function editarFoto(numero){
@@ -4289,6 +4388,7 @@ async function salvarEdicaoFoto(){
 let currentOfferId = null;
 let ultimasOfertas = [];
 let offerMonitor = null;
+let offerBlocoIds = [];
 
 function abrirOferta(numero){
 
@@ -4301,6 +4401,46 @@ function abrirOferta(numero){
     document.getElementById("offerInfo").textContent =
         "Espaço #" + numero.toLocaleString("pt-BR") +
         (info.title ? " — " + info.title : "");
+
+    const bloco =
+        blocoPorDono(numero, ["published"]);
+
+    const escopo =
+        document.getElementById("offerEscopo");
+
+    if(bloco.length > 1){
+
+        offerBlocoIds = bloco;
+
+        escopo.innerHTML =
+            '<label style="display:block;margin:4px 0;cursor:pointer;">' +
+            '<input type="radio" name="offerEscopo" ' +
+            'id="ofrBloco" value="bloco" checked> ' +
+            'Oferta pelo <b>bloco inteiro</b> ' +
+            '(' + bloco.length.toLocaleString("pt-BR") +
+            ' espaços vizinhos)' +
+            '</label>' +
+            '<label style="display:block;margin:4px 0;cursor:pointer;">' +
+            '<input type="radio" name="offerEscopo" ' +
+            'id="ofrSolo" value="solo"> ' +
+            'Oferta <b>somente neste espaço</b> ' +
+            '(#' + numero.toLocaleString("pt-BR") + ')' +
+            '</label>' +
+            '<div style="font-size:12px;color:#888;margin-top:4px;">' +
+            'Bloco inteiro: o valor vale pelo conjunto todo. ' +
+            'Mínimo R$ ' +
+            bloco.length.toLocaleString("pt-BR") +
+            ',00 (R$ 1 por espaço).' +
+            '</div>';
+
+    }else{
+
+        offerBlocoIds = [numero];
+
+        escopo.innerHTML =
+            '<div style="font-size:12px;color:#888;">' +
+            'Este espaço é um bloco único.</div>';
+    }
 
     document.getElementById("offerName").value = "";
     document.getElementById("offerEmail").value = "";
@@ -4353,6 +4493,71 @@ async function enviarOferta(){
     msg.textContent = "Enviando sua oferta...";
 
     try{
+
+        const escopoEl =
+            document.querySelector(
+                'input[name="offerEscopo"]:checked'
+            );
+
+        const usarBloco =
+            escopoEl &&
+            escopoEl.value === "bloco" &&
+            offerBlocoIds &&
+            offerBlocoIds.length > 1;
+
+        if(usarBloco){
+
+            const response =
+                await fetch(
+                    "/api/offers",
+                    {
+                        method: "POST",
+                        headers:{
+                            "Content-Type":
+                                "application/json"
+                        },
+                        body: JSON.stringify({
+                            spaceId: offerBlocoIds[0],
+                            spaceIds: offerBlocoIds,
+                            name,
+                            email,
+                            value: Number(value),
+                            message
+                        })
+                    }
+                );
+
+            const data =
+                await reqJSON(response);
+
+            if(!response.ok){
+
+                msg.textContent =
+                    "Não foi possível enviar: " +
+                    (data.error ||
+                     "Erro ao enviar a oferta do bloco.");
+
+                return;
+            }
+
+            salvarMyOffer(data.offerId);
+
+            try{
+                localStorage.setItem(
+                    "mega_myEmail",
+                    email
+                );
+            }catch(e){}
+
+            msg.innerHTML =
+                '<span class="sucesso">✅ ' +
+                'Oferta enviada pelo bloco inteiro ' +
+                '(' + offerBlocoIds.length.toLocaleString("pt-BR") +
+                ' espaços)!</span><br>' +
+                'O proprietário será notificado.';
+
+            return;
+        }
 
         const alvos =
             currentOfferIds && currentOfferIds.length
@@ -4452,12 +4657,67 @@ async function enviarOferta(){
 
 
 /* =========================
-   PAINEL DO PROPRIETÁRIO
+   PAINEL DE COMANDO
 ========================= */
 
-async function abrirPainelOfertas(){
+let abaAtual = "ofertas";
+
+function setAbaAtiva(){
+
+    const tabO =
+        document.getElementById("tabOfertas");
+
+    const tabB =
+        document.getElementById("tabBlocos");
+
+    const tabP =
+        document.getElementById("tabPix");
+
+    tabO.className =
+        abaAtual === "ofertas" ? "btn" : "btn sec";
+
+    tabB.className =
+        abaAtual === "blocos" ? "btn" : "btn sec";
+
+    tabP.className =
+        abaAtual === "pix" ? "btn" : "btn sec";
+}
+
+function abrirPainelComando(){
 
     document.getElementById("ownerModal").style.display = "flex";
+
+    abaOfertas();
+}
+
+function abaOfertas(){
+
+    abaAtual = "ofertas";
+
+    setAbaAtiva();
+
+    carregarOfertasPainel();
+}
+
+function abaBlocos(){
+
+    abaAtual = "blocos";
+
+    setAbaAtiva();
+
+    carregarMeusBlocos();
+}
+
+function abaPix(){
+
+    abaAtual = "pix";
+
+    setAbaAtiva();
+
+    carregarAbaPix();
+}
+
+async function carregarOfertasPainel(){
 
     const list =
         document.getElementById("ownerList");
@@ -4543,10 +4803,33 @@ async function abrirPainelOfertas(){
     carregarMinhasOfertasEnviadas();
 }
 
+function idsBlocoOferta(o){
+
+    if(
+        Array.isArray(o.spaceIds) &&
+        o.spaceIds.length
+    ){
+        return o.spaceIds;
+    }
+
+    return blocoPorDono(o.spaceId, ["published"]);
+}
+
 function cardOferta(o, done){
 
     const valor =
         "R$ " + Number(o.value).toLocaleString("pt-BR");
+
+    const blocoIds = idsBlocoOferta(o);
+
+    const blocoLabel =
+        blocoIds.length > 1
+        ? `<div style="font-size:12px;color:#45d66f;margin-top:4px;">
+             🧩 Bloco de ${blocoIds.length.toLocaleString("pt-BR")} espaços
+             (#${blocoIds[0].toLocaleString("pt-BR")}–
+              #${blocoIds[blocoIds.length-1].toLocaleString("pt-BR")})
+           </div>`
+        : "";
 
     return `
       <div style="border:1px solid #333;border-radius:12px;
@@ -4555,6 +4838,7 @@ function cardOferta(o, done){
           <b>#${o.spaceId.toLocaleString("pt-BR")}</b>
           <span style="color:#ffd400;font-weight:800;">${valor}</span>
         </div>
+        ${blocoLabel}
         <div style="color:#aaa;margin-top:4px;">
           ${o.name} · ${o.email}
         </div>
@@ -4706,7 +4990,7 @@ async function contraproposta(offerId){
             return;
         }
 
-        await abrirPainelOfertas();
+        await carregarOfertasPainel();
 
     }catch(error){
 
@@ -4718,13 +5002,13 @@ async function contraproposta(offerId){
 
 async function aceitarOferta(offerId){
 
-    const cpfCnpj =
-        prompt(
-            "Informe o CPF ou CNPJ do comprador " +
-            "para gerar o Pix:"
-        );
+    const o =
+        ultimasOfertas.find(x => x.id === offerId);
 
-    if(!cpfCnpj)return;
+    if(!o){
+        alert("Oferta não encontrada.");
+        return;
+    }
 
     const token = tokenDaOferta(offerId);
 
@@ -4735,6 +5019,66 @@ async function aceitarOferta(offerId){
         );
         return;
     }
+
+    try{
+
+        const chk =
+            await fetch(
+                "/api/pix-key?token=" +
+                encodeURIComponent(token)
+            );
+
+        const chkData =
+            await reqJSON(chk);
+
+        if(!chkData.chave){
+
+            if(!confirm(
+                "Você ainda não cadastrou sua chave Pix, " +
+                "necessária para receber o pagamento " +
+                "direto do comprador.\n\n" +
+                "Deseja cadastrar agora?"
+            )){
+                return;
+            }
+
+            abaPix();
+            return;
+        }
+
+    }catch(error){
+        console.error(error);
+    }
+
+    const valorCompra =
+        Number(o.value);
+
+    const taxa =
+        Math.round(valorCompra * 0.2);
+
+    const ok =
+        confirm(
+            "Ao aceitar, o comprador pagará:\n\n" +
+            "• R$ " +
+            valorCompra.toLocaleString("pt-BR") +
+            " — direto a você na sua chave Pix\n" +
+            "• R$ " +
+            taxa.toLocaleString("pt-BR") +
+            " — taxa do site (20%)\n\n" +
+            "A transferência do bloco é confirmada " +
+            "após o pagamento da taxa.\n\n" +
+            "Aceitar esta oferta?"
+        );
+
+    if(!ok)return;
+
+    const cpfCnpj =
+        prompt(
+            "Informe o CPF ou CNPJ do comprador " +
+            "para gerar o Pix:"
+        );
+
+    if(!cpfCnpj)return;
 
     try{
 
@@ -4782,9 +5126,53 @@ function mostrarPixOferta(data){
     const list =
         document.getElementById("ownerList");
 
+    const alvos =
+        (Array.isArray(data.spaceIds) &&
+         data.spaceIds.length)
+        ? data.spaceIds
+        : [];
+
+    const valor =
+        Number(data.value || 0).toLocaleString("pt-BR");
+
+    const taxa =
+        Number(data.feeValue || 0).toLocaleString("pt-BR");
+
     list.innerHTML = `
       <div style="color:#45d66f;font-weight:800;margin-bottom:8px;">
         ✓ Oferta aceita! Pix gerado para o comprador.
+      </div>
+
+      ${
+          alvos.length > 1
+          ? `<div style="font-size:12px;color:#45d66f;margin-bottom:6px;">
+               🧩 Bloco de ${alvos.length.toLocaleString("pt-BR")} espaços
+             </div>`
+          : ""
+      }
+
+      <div style="font-size:13px;color:#ccc;margin-bottom:4px;">
+        Você receberá direto na sua chave Pix:
+        <b style="color:#ffd400;">R$ ${valor}</b>
+      </div>
+
+      <div style="font-size:12px;color:#ccc;margin-bottom:4px;">
+        Sua chave Pix:<br>
+        <b style="color:#45d66f;word-break:break-all;">
+          ${data.ownerPixKey || "—"}
+        </b>
+      </div>
+
+      <button
+        class="btn sec"
+        onclick="copiarTexto('${(data.ownerPixKey || "").replace(/'/g, "\\'")}')"
+        style="margin:6px 0 12px;padding:8px 12px;font-size:12px;">
+        📋 COPIAR MINHA CHAVE
+      </button>
+
+      <div style="font-size:12px;color:#aaa;margin-bottom:6px;">
+        O comprador paga a taxa do site de
+        <b style="color:#ffd400;">R$ ${taxa}</b> pelo QR Code abaixo:
       </div>
 
       <img
@@ -4834,7 +5222,7 @@ async function copiarPixOferta(){
     }
 }
 
-function monitorarOferta(paymentId){
+function monitorarOferta(paymentId, callback){
 
     clearInterval(offerMonitor);
 
@@ -4860,13 +5248,21 @@ function monitorarOferta(paymentId){
 
                         clearInterval(offerMonitor);
 
-                        document.getElementById("offerPayStatus")
-                            .innerHTML =
-                            '<span style="color:#45d66f;">' +
-                            '✅ Pagamento recebido! ' +
-                            'Espaço transferido para o novo proprietário.</span>';
+                        const st =
+                            document.getElementById("offerPayStatus");
 
-                        await abrirPainelOfertas();
+                        if(st){
+                            st.innerHTML =
+                                '<span style="color:#45d66f;">' +
+                                '✅ Pagamento recebido! ' +
+                                'Espaço transferido para o novo proprietário.</span>';
+                        }
+
+                        if(typeof callback === "function"){
+                            await callback();
+                        }else{
+                            await carregarOfertasPainel();
+                        }
                     }
 
                 }catch(error){
@@ -4914,7 +5310,7 @@ async function recusarOferta(offerId){
             return;
         }
 
-        await abrirPainelOfertas();
+        await carregarOfertasPainel();
 
     }catch(error){
 
@@ -4943,8 +5339,15 @@ async function carregarMinhasOfertasEnviadas(){
 
     if(!myOffers.length)return;
 
+    const antigo =
+        document.getElementById("minhasOfertasSec");
+
+    if(antigo)antigo.remove();
+
     const div =
         document.createElement("div");
+
+    div.id = "minhasOfertasSec";
 
     div.innerHTML =
         '<div style="font-weight:800;margin:18px 0 6px;' +
@@ -4964,7 +5367,7 @@ async function carregarMinhasOfertasEnviadas(){
 
         card.textContent = offerId + " — verificando...";
 
-        list.appendChild(card);
+        div.appendChild(card);
 
         try{
 
@@ -5015,14 +5418,23 @@ async function carregarMinhasOfertasEnviadas(){
                       "✕ RECUSAR</button>" +
                       "</div>"
                     : "") +
+                (data.status === "accepted"
+                    ? "<div style='margin-top:10px;'>" +
+                      "<button class='btn' " +
+                      "onclick=\"abrirPagamentoOferta('" +
+                      offerId + "')\" " +
+                      "style='margin:0;padding:8px 12px;font-size:12px;'>" +
+                      "💰 EFETUAR PAGAMENTO</button>" +
+                      "</div>"
+                    : "") +
                 (data.status === "paid" && data.newOwnerToken
                     ? "<button class='btn' " +
-                      "onclick=\"salvarEspacoTransferido(" +
+                      "onclick=\"salvarBlocoTransferido(" +
                       data.spaceId + ", '" +
                       data.newOwnerToken + "')\" " +
                       "style='margin-top:10px;padding:8px 12px;" +
                       "font-size:12px;'>" +
-                      "✅ SALVAR MEU ESPAÇO</button>"
+                      "✅ SALVAR MEU BLOCO</button>"
                     : "");
 
         }catch(error){
@@ -5155,6 +5567,489 @@ function salvarEspacoTransferido(spaceId, token){
     closeOwner();
 
     load();
+}
+
+async function salvarBlocoTransferido(spaceId, token){
+
+    await load();
+
+    const bloco = blocoPorDono(spaceId);
+
+    salvarTokens(bloco, token);
+
+    alert(
+        bloco.length > 1
+        ? "Bloco de " +
+          bloco.length.toLocaleString("pt-BR") +
+          " espaços salvo na sua conta."
+        : "Espaço #" +
+          Number(spaceId).toLocaleString("pt-BR") +
+          " salvo na sua conta."
+    );
+
+    closeOwner();
+
+    load();
+}
+
+async function copiarTexto(texto){
+
+    try{
+
+        await navigator.clipboard.writeText(texto);
+
+    }catch{
+
+        const aux =
+            document.createElement("textarea");
+
+        aux.value = texto;
+
+        document.body.appendChild(aux);
+
+        aux.select();
+
+        document.execCommand("copy");
+
+        aux.remove();
+    }
+
+    alert("Copiado!");
+}
+
+async function abrirPagamentoOferta(offerId){
+
+    const list =
+        document.getElementById("ownerList");
+
+    list.innerHTML =
+        "Carregando pagamento...";
+
+    try{
+
+        const response =
+            await fetch(
+                "/api/offers/" +
+                encodeURIComponent(offerId) +
+                "/payment"
+            );
+
+        const data =
+            await reqJSON(response);
+
+        if(!response.ok){
+            alert(
+                data.error ||
+                "Não foi possível carregar o pagamento."
+            );
+            carregarMinhasOfertasEnviadas();
+            return;
+        }
+
+        if(data.status === "paid"){
+
+            list.innerHTML =
+                '<div style="color:#45d66f;font-weight:800;">' +
+                '✅ Pagamento já confirmado. Espaço transferido!</div>';
+
+            return;
+        }
+
+        const alvos =
+            (Array.isArray(data.spaceIds) &&
+             data.spaceIds.length)
+            ? data.spaceIds
+            : [];
+
+        const valor =
+            Number(data.value || 0).toLocaleString("pt-BR");
+
+        const taxa =
+            Number(data.feeValue || 0).toLocaleString("pt-BR");
+
+        const chaveDono =
+            data.ownerPixKey || "";
+
+        list.innerHTML = `
+          <div style="color:#ffd400;font-weight:800;margin-bottom:8px;">
+            💰 PAGAMENTO DA OFERTA
+          </div>
+
+          ${
+              alvos.length > 1
+              ? `<div style="font-size:12px;color:#45d66f;margin-bottom:6px;">
+                   🧩 Bloco de ${alvos.length.toLocaleString("pt-BR")} espaços
+                 </div>`
+              : ""
+          }
+
+          <div style="font-size:13px;color:#ccc;margin-bottom:4px;">
+            Valor ao proprietário:
+            <b style="color:#ffd400;">R$ ${valor}</b>
+          </div>
+
+          <div style="font-size:12px;color:#ccc;margin-bottom:4px;">
+            Pague direto na chave Pix do proprietário:<br>
+            <b style="color:#45d66f;word-break:break-all;">
+              ${chaveDono || "—"}
+            </b>
+          </div>
+
+          <button
+            class="btn sec"
+            onclick="copiarTexto('${chaveDono.replace(/'/g, "\\'")}')"
+            style="margin:6px 0 12px;padding:8px 12px;font-size:12px;">
+            📋 COPIAR CHAVE DO PROPRIETÁRIO
+          </button>
+
+          <div style="font-size:12px;color:#aaa;margin-bottom:6px;">
+            E pague a taxa do site de
+            <b style="color:#ffd400;">R$ ${taxa}</b> pelo QR Code abaixo.
+            A transferência do bloco é confirmada após o
+            pagamento da taxa.
+          </div>
+
+          <img
+            src="data:image/png;base64,${data.qrCode}"
+            alt="QR Code"
+            style="width:200px;height:200px;background:#fff;
+                   padding:8px;border-radius:12px;
+                   display:block;margin:0 auto;">
+
+          <input
+            class="copia"
+            id="offerPayload"
+            value="${data.payload}"
+            readonly
+            style="margin-top:10px;">
+
+          <button
+            class="btn"
+            onclick="copiarPixOferta()"
+            style="margin-top:8px;">
+            COPIAR PIX DA TAXA
+          </button>
+
+          <div
+            id="offerPayStatus"
+            style="margin-top:10px;font-size:13px;">
+            Aguardando pagamento da taxa...
+          </div>
+        `;
+
+        monitorarOferta(
+            data.paymentId,
+            carregarMinhasOfertasEnviadas
+        );
+
+    }catch(error){
+
+        alert("Erro de comunicação com o servidor.");
+
+        console.error(error);
+    }
+}
+
+function meusBlocos(){
+
+    const blocos = [];
+
+    const visitados = new Set();
+
+    for(const id in db){
+
+        const n = Number(id);
+
+        const espaco = db[n];
+
+        if(!espaco)continue;
+
+        if(
+            !orderTokens[n] ||
+            orderTokens[n] !== espaco.orderToken
+        ){
+            continue;
+        }
+
+        if(visitados.has(n))continue;
+
+        const token = espaco.orderToken;
+
+        const grupo = new Set([n]);
+
+        const fila = [n];
+
+        while(fila.length){
+
+            const atual = fila.shift();
+
+            const indice = atual - 1;
+
+            const linha = Math.floor(indice / C);
+
+            const coluna = indice % C;
+
+            const vizinhos = [];
+
+            if(coluna > 0) vizinhos.push(atual - 1);
+            if(coluna < C - 1) vizinhos.push(atual + 1);
+            if(linha > 0) vizinhos.push(atual - C);
+            if(linha < 999) vizinhos.push(atual + C);
+
+            for(const v of vizinhos){
+
+                if(grupo.has(v) || visitados.has(v))continue;
+
+                const viz = db[v];
+
+                if(
+                    viz &&
+                    viz.orderToken === token &&
+                    orderTokens[v] === token
+                ){
+                    grupo.add(v);
+                    fila.push(v);
+                }
+            }
+        }
+
+        for(const m of grupo)visitados.add(m);
+
+        blocos.push(
+            [...grupo].sort((a, b) => a - b)
+        );
+    }
+
+    return blocos;
+}
+
+function carregarMeusBlocos(){
+
+    const list =
+        document.getElementById("ownerList");
+
+    const blocos = meusBlocos();
+
+    if(!blocos.length){
+
+        list.innerHTML =
+            "Você ainda não possui blocos.<br>" +
+            "<span style='font-size:12px;color:#888;'>" +
+            "Compre espaços, publique-os e administre " +
+            "seus blocos aqui.</span>";
+
+        return;
+    }
+
+    let html =
+        '<div style="font-weight:800;margin:8px 0 6px;' +
+        'color:#ffd400;">MEUS BLOCOS</div>';
+
+    let total = 0;
+
+    for(const b of blocos){
+
+        total += b.length;
+
+        const label =
+            b.length > 1
+            ? "Bloco de " +
+              b.length.toLocaleString("pt-BR") +
+              " espaços"
+            : "Espaço avulso";
+
+        const intervalo =
+            b.length > 1
+            ? "#" + b[0].toLocaleString("pt-BR") +
+              " → #" +
+              b[b.length - 1].toLocaleString("pt-BR")
+            : "#" + b[0].toLocaleString("pt-BR");
+
+        html += `
+          <div style="border:1px solid #333;border-radius:12px;
+                      padding:12px 14px;margin-bottom:10px;
+                      background:#161616;">
+            <div style="display:flex;justify-content:space-between;
+                        align-items:center;">
+              <b style="color:#45d66f;">${label}</b>
+            </div>
+            <div style="color:#aaa;margin-top:4px;font-size:12px;">
+              ${intervalo}
+            </div>
+            <div style="margin-top:8px;">
+              <button class="btn"
+                      onclick="verBlocoNoMapa(${b[0]})"
+                      style="margin:0;padding:8px 12px;font-size:12px;">
+                👁 VER NO MAPA
+              </button>
+            </div>
+          </div>`;
+    }
+
+    html +=
+        '<div style="font-size:12px;color:#888;margin-top:4px;">' +
+        'Total: ' + total.toLocaleString("pt-BR") +
+        ' espaços em ' + blocos.length.toLocaleString("pt-BR") +
+        ' bloco(s)</div>';
+
+    list.innerHTML = html;
+}
+
+function verBlocoNoMapa(primeiro){
+
+    meusBlocosMode = true;
+
+    const btn =
+        document.getElementById("btnMeusBlocos");
+
+    if(btn){
+        btn.style.background = "#ffd400";
+        btn.style.color = "#000";
+        btn.textContent = "👁 MEUS BLOCOS (LIGADO)";
+    }
+
+    closeOwner();
+
+    mostrarInfoEspaco(primeiro);
+}
+
+async function carregarAbaPix(){
+
+    const list =
+        document.getElementById("ownerList");
+
+    const tokens =
+        [...new Set(Object.values(orderTokens))];
+
+    if(!tokens.length){
+
+        list.innerHTML =
+            "Você ainda não possui espaços.<br>" +
+            "<span style='font-size:12px;color:#888;'>" +
+            "Compre um espaço para configurar sua " +
+            "chave Pix de recebimento.</span>";
+
+        return;
+    }
+
+    let chave = "";
+
+    try{
+
+        const chk =
+            await fetch(
+                "/api/pix-key?token=" +
+                encodeURIComponent(tokens[0])
+            );
+
+        const chkData =
+            await reqJSON(chk);
+
+        chave = chkData.chave || "";
+
+    }catch(error){
+        console.error(error);
+    }
+
+    list.innerHTML = `
+      <div style="font-weight:800;margin:8px 0 6px;
+                  color:#ffd400;">CHAVE PIX (pagamento direto)</div>
+
+      <div style="font-size:12px;color:#aaa;margin-bottom:8px;">
+        Sua chave recebe o pagamento dos compradores quando
+        você aceita uma oferta. O valor chega direto a você;
+        a taxa do site (20%) é paga à parte pelo comprador.
+      </div>
+
+      <input
+        id="minhaChavePixInput"
+        class="copia"
+        placeholder="e-mail, CPF, CNPJ, telefone ou chave aleatória"
+        value="${chave}"
+        style="margin-bottom:8px;">
+
+      <button
+        class="btn"
+        onclick="salvarMinhaChavePix()">
+        💾 SALVAR CHAVE PIX
+      </button>
+
+      <div id="pixKeyMsg" style="margin-top:8px;font-size:13px;"></div>
+    `;
+}
+
+async function salvarMinhaChavePix(){
+
+    const input =
+        document.getElementById("minhaChavePixInput");
+
+    const msg =
+        document.getElementById("pixKeyMsg");
+
+    const chave =
+        (input.value || "").trim();
+
+    if(!chave){
+        msg.innerHTML =
+            '<span style="color:#ff4d4d;">' +
+            'Informe sua chave Pix.</span>';
+        return;
+    }
+
+    const tokens =
+        [...new Set(Object.values(orderTokens))];
+
+    if(!tokens.length){
+        msg.innerHTML =
+            '<span style="color:#ff4d4d;">' +
+            'Você ainda não possui espaços.</span>';
+        return;
+    }
+
+    let ok = 0;
+
+    const falhas = [];
+
+    for(const t of tokens){
+
+        try{
+
+            const response =
+                await fetch(
+                    "/api/pix-key",
+                    {
+                        method: "POST",
+                        headers:{
+                            "Content-Type":
+                                "application/json"
+                        },
+                        body: JSON.stringify({
+                            token: t,
+                            chave
+                        })
+                    }
+                );
+
+            const data =
+                await reqJSON(response);
+
+            if(response.ok){
+                ok++;
+            }else{
+                falhas.push(data.error || "erro");
+            }
+
+        }catch(error){
+            falhas.push("rede");
+        }
+    }
+
+    msg.innerHTML =
+        ok === tokens.length
+        ? '<span style="color:#45d66f;">✅ Chave Pix salva ' +
+          'para todos os seus espaços.</span>'
+        : '<span style="color:#ff4d4d;">' +
+          'Erro: ' + falhas.join("; ") + '</span>';
 }
 
 </script>

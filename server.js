@@ -17,6 +17,7 @@ const UPLOAD_DIR = path.join(__dirname, "uploads");
 const DB_FILE = path.join(DATA_DIR, "spaces.json");
 const OFFERS_FILE = path.join(DATA_DIR, "offers.json");
 const COUPONS_FILE = path.join(DATA_DIR, "coupons.json");
+const PIXKEYS_FILE = path.join(DATA_DIR, "pixkeys.json");
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -100,8 +101,30 @@ function writeCoupons(data) {
     writeJsonFile(COUPONS_FILE, data);
 }
 
+function readPixKeys() {
+    return readJsonFile(PIXKEYS_FILE, {});
+}
+
+function writePixKeys(data) {
+    writeJsonFile(PIXKEYS_FILE, data);
+}
+
 function gerarToken() {
     return crypto.randomBytes(16).toString("hex");
+}
+
+/* =========================
+   TAXA DE SERVIÇO DO SITE
+   20% sobre o valor negociado
+========================= */
+
+const TAXA_SITE = 0.2;
+
+function taxaDoSite(valor) {
+    return Math.max(
+        0.01,
+        Math.round(valor * TAXA_SITE * 100) / 100
+    );
 }
 
 /* =========================
@@ -907,22 +930,38 @@ function confirmarPagamentoOferta(paymentId) {
     }
 
     const db = readDB();
-    const space = db[oferta.spaceId];
 
-    if (!space) {
-        return false;
-    }
+    const alvos =
+        (Array.isArray(oferta.spaceIds) &&
+         oferta.spaceIds.length)
+        ? oferta.spaceIds
+        : [oferta.spaceId];
 
     const novoToken = gerarToken();
 
-    db[oferta.spaceId] = {
-        ...space,
-        name: oferta.name,
-        email: oferta.email,
-        orderToken: novoToken,
-        transferPaymentId: paymentId,
-        transferredAt: new Date().toISOString()
-    };
+    let transferido = 0;
+
+    for (const sid of alvos) {
+
+        const space = db[sid];
+
+        if (!space) continue;
+
+        db[sid] = {
+            ...space,
+            name: oferta.name,
+            email: oferta.email,
+            orderToken: novoToken,
+            transferPaymentId: paymentId,
+            transferredAt: new Date().toISOString()
+        };
+
+        transferido++;
+    }
+
+    if (!transferido) {
+        return false;
+    }
 
     writeDB(db);
 
@@ -932,10 +971,125 @@ function confirmarPagamentoOferta(paymentId) {
 
     writeOffers(ofertas);
 
-    console.log(`Oferta ${oferta.id} paga. Espaço transferido.`);
+    console.log(
+        `Oferta ${oferta.id} paga. ` +
+        `${transferido} espaço(s) transferido(s).`
+    );
 
     return true;
 }
+
+/* =========================
+   CHAVE PIX DO PROPRIETÁRIO
+   Pagamento direto entre as partes
+========================= */
+
+function tipoChavePix(chave) {
+
+    const c = chave.trim();
+    const digitos = c.replace(/\D/g, "");
+
+    if (/^[\w.+-]+@[\w-]+\.[\w.-]+$/.test(c)) {
+        return "E-mail";
+    }
+
+    if (
+        /^\d{11}$/.test(digitos) &&
+        digitos.length === c.length
+    ) {
+        return "CPF";
+    }
+
+    if (
+        /^\d{14}$/.test(digitos) &&
+        digitos.length === c.length
+    ) {
+        return "CNPJ";
+    }
+
+    if (/^\d{9,13}$/.test(digitos)) {
+        return "Telefone";
+    }
+
+    if (/^[a-zA-Z0-9-]{8,36}$/.test(c)) {
+        return "Aleatória";
+    }
+
+    return "";
+}
+
+app.get("/api/pix-key", (req, res) => {
+
+    const token = (req.query.token || "").trim();
+
+    if (!token) {
+        return res.status(400).json({
+            error: "Token de proprietário não informado."
+        });
+    }
+
+    const keys = readPixKeys();
+    const info = keys[token] || {};
+
+    res.json({
+        ok: true,
+        chave: info.chave || "",
+        tipo: info.tipo || ""
+    });
+});
+
+app.post("/api/pix-key", (req, res) => {
+
+    try {
+
+        const token = (req.body.token || "").trim();
+        const chave = (req.body.chave || "").trim();
+
+        if (!token) {
+            return res.status(400).json({
+                error: "Token de proprietário não informado."
+            });
+        }
+
+        if (!chave) {
+            return res.status(400).json({
+                error: "Informe sua chave Pix."
+            });
+        }
+
+        const tipo = tipoChavePix(chave);
+
+        if (!tipo) {
+            return res.status(400).json({
+                error:
+                    "Chave Pix inválida. Use CPF, CNPJ, " +
+                    "e-mail, telefone ou chave aleatória."
+            });
+        }
+
+        const keys = readPixKeys();
+
+        keys[token] = {
+            chave,
+            tipo,
+            updatedAt: new Date().toISOString()
+        };
+
+        writePixKeys(keys);
+
+        res.json({
+            ok: true,
+            chave,
+            tipo
+        });
+
+    } catch (error) {
+
+        res.status(500).json({
+            error: error.message
+        });
+    }
+});
 
 app.post("/api/offers", (req, res) => {
 
@@ -943,6 +1097,7 @@ app.post("/api/offers", (req, res) => {
 
         const {
             spaceId,
+            spaceIds,
             name,
             email,
             value,
@@ -963,17 +1118,75 @@ app.post("/api/offers", (req, res) => {
 
         const db = readDB();
 
-        if (!db[id]) {
-            return res.status(404).json({
-                error: "Espaço não encontrado."
-            });
+        let alvos = [];
+
+        if (
+            Array.isArray(spaceIds) &&
+            spaceIds.length
+        ) {
+
+            alvos = [
+                ...new Set(
+                    spaceIds.map(Number)
+                )
+            ].filter(n =>
+                Number.isInteger(n) &&
+                n >= 1 &&
+                n <= 1000000
+            );
+
+            if (!alvos.length) {
+                return res.status(400).json({
+                    error: "Lista de espaços inválida."
+                });
+            }
+
+            if (alvos.length > 1000) {
+                return res.status(400).json({
+                    error: "Máximo de 1.000 espaços por oferta."
+                });
+            }
+
+            if (!alvos.includes(id)) {
+                alvos.unshift(id);
+            }
+
+        } else {
+
+            alvos = [id];
         }
 
-        if (db[id].status !== "published") {
+        for (const a of alvos) {
+
+            if (!db[a]) {
+                return res.status(404).json({
+                    error:
+                        "Espaço não encontrado: " +
+                        `#${a.toLocaleString("pt-BR")}.`
+                });
+            }
+
+            if (db[a].status !== "published") {
+                return res.status(400).json({
+                    error:
+                        "Um dos espaços ainda não está publicado " +
+                        "para receber ofertas."
+                });
+            }
+        }
+
+        const donoToken =
+            db[alvos[0]].orderToken || "";
+
+        const mesmoDono = alvos.every(a =>
+            (db[a].orderToken || "") === donoToken
+        );
+
+        if (!mesmoDono || !donoToken) {
             return res.status(400).json({
                 error:
-                    "Este espaço ainda não está publicado " +
-                    "para receber ofertas."
+                    "Os espaços da oferta devem pertencer " +
+                    "ao mesmo proprietário."
             });
         }
 
@@ -1001,6 +1214,16 @@ app.post("/api/offers", (req, res) => {
             });
         }
 
+        if (valor < alvos.length) {
+            return res.status(400).json({
+                error:
+                    "O valor da oferta deve ser de pelo menos " +
+                    "R$ 1,00 por espaço (mínimo de " +
+                    `R$ ${alvos.length.toLocaleString("pt-BR")} ` +
+                    "para este bloco)."
+            });
+        }
+
         const ofertas = readOffers();
 
         const ofertaId =
@@ -1010,26 +1233,34 @@ app.post("/api/offers", (req, res) => {
 
         ofertas[ofertaId] = {
             id: ofertaId,
-            spaceId: id,
+            spaceId: alvos[0],
+            spaceIds: alvos,
             name: name.trim(),
             email: email.trim(),
             value: valor,
             message: (message || "").trim(),
             status: "pending",
-            ownerToken: db[id].orderToken || "",
+            ownerToken: donoToken,
             createdAt: new Date().toISOString()
         };
 
         writeOffers(ofertas);
 
-        const dono = db[id];
+        const dono = db[alvos[0]];
 
         if (dono) {
 
+            const resumoEspacos =
+                alvos.length === 1
+                ? `espaço <b>#${alvos[0].toLocaleString("pt-BR")}</b>`
+                : `bloco de <b>${alvos.length.toLocaleString("pt-BR")}`
+                  + ` espaço(s)</b> (de #`
+                  + `${alvos[0].toLocaleString("pt-BR")} a #`
+                  + `${alvos[alvos.length - 1].toLocaleString("pt-BR")})`;
+
             const item =
                 `<p style="margin:0 0 8px;color:#444;font-size:14px;">` +
-                `Oferta para o espaço ` +
-                `<b>#${id.toLocaleString("pt-BR")}</b>:</p>` +
+                `Oferta para o ${resumoEspacos}:</p>` +
                 `<div style="font-size:14px;color:#333;">` +
                 `Comprador: <b>${name.trim()}</b><br>` +
                 `Valor da oferta: ` +
@@ -1049,7 +1280,8 @@ app.post("/api/offers", (req, res) => {
 
         res.json({
             ok: true,
-            offerId: ofertaId
+            offerId: ofertaId,
+            spaces: alvos.length
         });
 
     } catch (error) {
@@ -1080,22 +1312,37 @@ app.get("/api/offers/owner", (req, res) => {
 
     const lista =
         Object.values(ofertas)
-            .filter(o =>
-                meusIds.includes(o.spaceId) &&
-                (o.status === "pending" ||
-                 o.status === "countered" ||
-                 o.status === "accepted" ||
-                 o.status === "paid")
-            )
+            .filter(o => {
+                const alvos =
+                    (Array.isArray(o.spaceIds) &&
+                     o.spaceIds.length)
+                    ? o.spaceIds
+                    : [o.spaceId];
+
+                return (
+                    alvos.some(s => meusIds.includes(s)) &&
+                    (o.status === "pending" ||
+                     o.status === "countered" ||
+                     o.status === "accepted" ||
+                     o.status === "paid")
+                );
+            })
             .map(o => ({
                 id: o.id,
                 spaceId: o.spaceId,
+                spaceIds:
+                    (Array.isArray(o.spaceIds) &&
+                     o.spaceIds.length)
+                    ? o.spaceIds
+                    : [o.spaceId],
                 name: o.name,
                 email: o.email,
                 value: o.value,
                 originalValue: o.originalValue,
                 message: o.message,
                 status: o.status,
+                feeValue: o.feeValue,
+                ownerPixKey: o.ownerPixKey,
                 createdAt: o.createdAt
             }))
             .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -1110,7 +1357,12 @@ app.get("/api/offers/owner", (req, res) => {
    GERA CLIENTE + PIX PARA UMA OFERTA
 ========================= */
 
-async function gerarPixOferta(oferta, document) {
+async function gerarPixOferta(oferta, document, valor, descricao) {
+
+    const montante =
+        Number.isFinite(valor) && valor > 0
+        ? valor
+        : oferta.value;
 
     const customer = await asaasRequest(
         "/customers",
@@ -1139,9 +1391,10 @@ async function gerarPixOferta(oferta, document) {
             body: JSON.stringify({
                 customer: customer.id,
                 billingType: "PIX",
-                value: oferta.value,
+                value: montante,
                 dueDate,
                 description:
+                    descricao ||
                     `Milhão Door - transferência do espaço ` +
                     `#${oferta.spaceId.toLocaleString("pt-BR")}`,
                 externalReference:
@@ -1177,18 +1430,48 @@ app.post("/api/offers/:id/accept", async (req, res) => {
 
         const db = readDB();
 
-        if (
-            !db[oferta.spaceId] ||
-            db[oferta.spaceId].orderToken !== token
-        ) {
+        const alvos =
+            (Array.isArray(oferta.spaceIds) &&
+             oferta.spaceIds.length)
+            ? oferta.spaceIds
+            : [oferta.spaceId];
+
+        const donoOk =
+            alvos.length &&
+            alvos.every(a =>
+                db[a] &&
+                db[a].orderToken === token
+            );
+
+        if (!donoOk) {
             return res.status(403).json({
                 error:
-                    "Você não é o proprietário deste espaço."
+                    "Você não é o proprietário destes espaços."
             });
         }
 
         /* =========================
-           CRIA CLIENTE + PIX PARA O COMPRADOR
+           CHAVE PIX DO PROPRIETÁRIO
+           (pagamento direto entre as partes)
+        ========================= */
+
+        const pixKeys = readPixKeys();
+        const minhaChave =
+            (pixKeys[token] || {}).chave || "";
+
+        if (!minhaChave) {
+            return res.status(400).json({
+                error:
+                    "Cadastre sua chave Pix no painel de " +
+                    "comando para receber o pagamento " +
+                    "direto do comprador."
+            });
+        }
+
+        /* =========================
+           CRIA CLIENTE + PIX DA TAXA (20%)
+           O comprador paga o valor cheio
+           direto ao dono e paga a taxa ao site
         ========================= */
 
         const document =
@@ -1202,31 +1485,53 @@ app.post("/api/offers/:id/accept", async (req, res) => {
             });
         }
 
+        const feeValue =
+            taxaDoSite(oferta.value);
+
         const { customer, payment, pix } =
-            await gerarPixOferta(oferta, document);
+            await gerarPixOferta(
+                oferta,
+                document,
+                feeValue,
+                "Taxa de serviço Milhão Door (20%)"
+            );
 
         oferta.status = "accepted";
         oferta.paymentId = payment.id;
         oferta.customerId = customer.id;
+        oferta.feeValue = feeValue;
+        oferta.ownerPixKey = minhaChave;
         oferta.acceptedAt = new Date().toISOString();
 
         writeOffers(ofertas);
 
+        const resumoEspacos =
+            alvos.length === 1
+            ? `espaço #${alvos[0].toLocaleString("pt-BR")}`
+            : `bloco de ${alvos.length.toLocaleString("pt-BR")} espaços`;
+
         enviarEmail(
             oferta.email,
-            `Sua oferta para o espaço ` +
-            `#${oferta.spaceId.toLocaleString("pt-BR")} foi aceita`,
+            `Sua oferta para o ${resumoEspacos} foi aceita`,
             htmlNotificacao(
-                "🎉 Oferta aceita — Pix gerado",
+                "🎉 Oferta aceita — pagamento direto",
                 `<p style="margin:0 0 10px;color:#444;font-size:14px;">` +
                 `Sua oferta de ` +
                 `<b style="color:#15803d;">` +
                 `R$ ${Number(oferta.value).toLocaleString("pt-BR")}</b> ` +
-                `para o espaço ` +
-                `<b>#${oferta.spaceId.toLocaleString("pt-BR")}</b> ` +
-                `foi aceita pelo proprietário.</p>` +
-                `<p style="margin:0;color:#666;font-size:13px;">` +
-                `Acesse o site para copiar o Pix e pagar.</p>`
+                `para o ${resumoEspacos} foi aceita.</p>` +
+                `<p style="margin:0 0 8px;color:#444;font-size:14px;">` +
+                `Pague <b>R$ ` +
+                `${Number(oferta.value).toLocaleString("pt-BR")}</b> ` +
+                `diretamente ao proprietário na chave Pix:</p>` +
+                `<div style="background:#f7f7f7;border-radius:8px;` +
+                `padding:12px;font-size:14px;color:#333;word-break:break-all;">` +
+                `${minhaChave}</div>` +
+                `<p style="margin:10px 0 0;color:#666;font-size:13px;">` +
+                `E pague a taxa de 20% do site ` +
+                `(<b>R$ ${feeValue.toLocaleString("pt-BR")}</b>) ` +
+                `pelo Pix gerado no site. A transferência é feita ` +
+                `ao confirmar o pagamento da taxa.</p>`
             )
         );
 
@@ -1237,7 +1542,10 @@ app.post("/api/offers/:id/accept", async (req, res) => {
             qrCode: pix.encodedImage,
             payload: pix.payload,
             paymentId: payment.id,
-            value: oferta.value
+            value: oferta.value,
+            feeValue,
+            ownerPixKey: minhaChave,
+            spaceIds: alvos
         });
 
     } catch (error) {
@@ -1286,26 +1594,51 @@ app.post("/api/offers/:id/buyer-accept", async (req, res) => {
             });
         }
 
+        const db = readDB();
+
+        const alvos =
+            (Array.isArray(oferta.spaceIds) &&
+             oferta.spaceIds.length)
+            ? oferta.spaceIds
+            : [oferta.spaceId];
+
+        const pixKeys = readPixKeys();
+        const chaveDono =
+            (pixKeys[oferta.ownerToken] || {}).chave || "";
+
+        const feeValue =
+            taxaDoSite(oferta.value);
+
         const { customer, payment, pix } =
-            await gerarPixOferta(oferta, document);
+            await gerarPixOferta(
+                oferta,
+                document,
+                feeValue,
+                "Taxa de serviço Milhão Door (20%)"
+            );
 
         oferta.status = "accepted";
         oferta.paymentId = payment.id;
         oferta.customerId = customer.id;
+        oferta.feeValue = feeValue;
+        oferta.ownerPixKey = chaveDono;
         oferta.acceptedAt = new Date().toISOString();
 
         writeOffers(ofertas);
 
-        const db = readDB();
         const dono = db[oferta.spaceId];
 
         if (dono) {
 
+            const resumoEspacos =
+                alvos.length === 1
+                ? `espaço #${alvos[0].toLocaleString("pt-BR")}`
+                : `bloco de ${alvos.length.toLocaleString("pt-BR")} espaços`;
+
             enviarEmail(
                 dono.email,
                 `Comprador aceitou sua contraproposta ` +
-                `para o espaço ` +
-                `#${oferta.spaceId.toLocaleString("pt-BR")}`,
+                `para o ${resumoEspacos}`,
                 htmlNotificacao(
                     "✅ Contraproposta aceita",
                     `<p style="margin:0;color:#444;font-size:14px;">` +
@@ -1313,9 +1646,12 @@ app.post("/api/offers/:id/buyer-accept", async (req, res) => {
                     `contraproposta de ` +
                     `<b style="color:#15803d;">` +
                     `R$ ${Number(oferta.value).toLocaleString("pt-BR")}</b> ` +
-                    `para o espaço ` +
-                    `<b>#${oferta.spaceId.toLocaleString("pt-BR")}</b>. ` +
-                    `Pix gerado para o comprador.</p>`
+                    `para o ${resumoEspacos}.</p>` +
+                    `<p style="margin:8px 0 0;color:#666;font-size:13px;">` +
+                    `O comprador pagará o valor direto na sua chave Pix ` +
+                    `(${chaveDono || "chave cadastrada"}) e a taxa de ` +
+                    `20% ao site. A transferência é feita ao confirmar ` +
+                    `o pagamento da taxa.</p>`
                 )
             );
         }
@@ -1326,7 +1662,10 @@ app.post("/api/offers/:id/buyer-accept", async (req, res) => {
             qrCode: pix.encodedImage,
             payload: pix.payload,
             paymentId: payment.id,
-            value: oferta.value
+            value: oferta.value,
+            feeValue,
+            ownerPixKey: chaveDono,
+            spaceIds: alvos
         });
 
     } catch (error) {
@@ -1539,17 +1878,95 @@ app.get("/api/offers/:id", (req, res) => {
         ok: true,
         id: oferta.id,
         spaceId: oferta.spaceId,
+        spaceIds:
+            (Array.isArray(oferta.spaceIds) &&
+             oferta.spaceIds.length)
+            ? oferta.spaceIds
+            : [oferta.spaceId],
         name: oferta.name,
         email: oferta.email,
         value: oferta.value,
         originalValue: oferta.originalValue,
         status: oferta.status,
+        feeValue: oferta.feeValue,
+        ownerPixKey: oferta.ownerPixKey,
+        paymentId: oferta.paymentId,
         createdAt: oferta.createdAt,
         newOwnerToken:
             oferta.status === "paid"
                 ? oferta.newOwnerToken || ""
                 : undefined
     });
+});
+
+/* =========================
+   DADOS DE PAGAMENTO DA OFERTA
+   Re-fetch do QR da taxa quando
+   o comprador volta ao painel
+========================= */
+
+app.get("/api/offers/:id/payment", async (req, res) => {
+
+    try {
+
+        const ofertas = readOffers();
+        const oferta = ofertas[req.params.id];
+
+        if (
+            !oferta ||
+            (oferta.status !== "accepted" &&
+             oferta.status !== "paid")
+        ) {
+            return res.status(404).json({
+                error: "Oferta não encontrada ou sem pagamento."
+            });
+        }
+
+        const alvos =
+            (Array.isArray(oferta.spaceIds) &&
+             oferta.spaceIds.length)
+            ? oferta.spaceIds
+            : [oferta.spaceId];
+
+        if (oferta.status === "paid") {
+
+            return res.json({
+                ok: true,
+                status: "paid",
+                offerId: oferta.id,
+                value: oferta.value,
+                feeValue: oferta.feeValue,
+                ownerPixKey: oferta.ownerPixKey || "",
+                spaceIds: alvos,
+                newOwnerToken: oferta.newOwnerToken || ""
+            });
+        }
+
+        const pix = await asaasRequest(
+            `/payments/${oferta.paymentId}/pixQrCode`,
+            {
+                method: "GET"
+            }
+        );
+
+        res.json({
+            ok: true,
+            offerId: oferta.id,
+            qrCode: pix.encodedImage,
+            payload: pix.payload,
+            paymentId: oferta.paymentId,
+            value: oferta.value,
+            feeValue: oferta.feeValue,
+            ownerPixKey: oferta.ownerPixKey || "",
+            spaceIds: alvos
+        });
+
+    } catch (error) {
+
+        res.status(500).json({
+            error: error.message
+        });
+    }
 });
 
 /* =========================

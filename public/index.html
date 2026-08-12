@@ -625,6 +625,13 @@ html,body{
   />
   <button onclick="localizarEspaco()">🔎 LOCALIZAR</button>
 </div>
+<button
+    id="btnArea"
+    class="btn"
+    style="margin-top:6px; width:100%;"
+    onclick="toggleSelectArea()">
+⬜ SELECIONAR VÁRIOS (ÁREA)
+</button>
 <p>
 Clique nos espaços disponíveis para selecionar vários.
 <br>
@@ -915,6 +922,13 @@ let paidSpaces = [];
 
 let searchTarget = null;
 
+let selectAreaMode = false;
+let rectDrag = false;
+let rectX1 = 0;
+let rectY1 = 0;
+let rectX2 = 0;
+let rectY2 = 0;
+
 let imgs = {};
 
 let currentPayment = null;
@@ -1136,6 +1150,8 @@ const v =
 db[id];
 
 
+let extCompleto = false;
+
 if(
     v &&
     v.image &&
@@ -1196,6 +1212,8 @@ if(
             linhasGrupo * colunasGrupo;
 
         if(grupoCompleto){
+
+            extCompleto = true;
 
             // Desenha somente uma vez,
             // no primeiro espaço do bloco
@@ -1285,6 +1303,7 @@ py+55
 
 }
 
+if(!extCompleto){
 
 ctx.strokeStyle =
 sel.has(id)
@@ -1302,7 +1321,10 @@ py,
 T,
 T
 );
-if(searchTarget === id && !sel.has(id)){
+
+}
+
+if(searchTarget === id && !sel.has(id) && !extCompleto){
   ctx.save();
 
   ctx.strokeStyle = "#ffd400";
@@ -1323,6 +1345,50 @@ if(searchTarget === id && !sel.has(id)){
 }
 
 ctx.restore();
+
+if(rectDrag){
+
+const rl =
+Math.min(rectX1, rectX2);
+
+const rr =
+Math.max(rectX1, rectX2);
+
+const rt =
+Math.min(rectY1, rectY2);
+
+const rb =
+Math.max(rectY1, rectY2);
+
+ctx.save();
+
+ctx.strokeStyle =
+"#ffd400";
+
+ctx.lineWidth = 2;
+
+ctx.setLineDash([6,4]);
+
+ctx.fillStyle =
+"rgba(255,212,0,.12)";
+
+ctx.fillRect(
+rl,
+rt,
+rr-rl,
+rb-rt
+);
+
+ctx.strokeRect(
+rl,
+rt,
+rr-rl,
+rb-rt
+);
+
+ctx.restore();
+
+}
 
 }
 
@@ -1559,11 +1625,180 @@ draw();
 
 
 /* =========================
-   ARRASTAR
+   ARRASTAR / SELECIONAR ÁREA
 ========================= */
+
+function toggleSelectArea(){
+
+selectAreaMode =
+!selectAreaMode;
+
+const btn =
+document.getElementById("btnArea");
+
+if(selectAreaMode){
+
+btn.textContent =
+"✓ SELECIONANDO ÁREA — CLIQUE PARA SAIR";
+
+btn.style.background =
+"#45d66f";
+
+btn.style.color =
+"#000";
+
+area.style.cursor =
+"crosshair";
+
+}else{
+
+btn.textContent =
+"⬜ SELECIONAR VÁRIOS (ÁREA)";
+
+btn.style.background =
+"";
+
+btn.style.color =
+"";
+
+area.style.cursor =
+"grab";
+
+}
+
+}
+
+function finalizarSelecaoArea(){
+
+const left =
+Math.min(rectX1, rectX2);
+
+const right =
+Math.max(rectX1, rectX2);
+
+const top =
+Math.min(rectY1, rectY2);
+
+const bottom =
+Math.max(rectY1, rectY2);
+
+const colMin =
+Math.max(
+0,
+Math.floor(
+(left-x)/sc/T
+)
+);
+
+const colMax =
+Math.min(
+C-1,
+Math.floor(
+(right-x)/sc/T
+)
+);
+
+const rowMin =
+Math.max(
+0,
+Math.floor(
+(top-y)/sc/T
+)
+);
+
+const rowMax =
+Math.min(
+C-1,
+Math.floor(
+(bottom-y)/sc/T
+)
+);
+
+toggleSelectArea();
+
+if(colMax < colMin || rowMax < rowMin){
+draw();
+return;
+}
+
+const ids = [];
+
+for(
+let r=rowMin;
+r<=rowMax;
+r++
+){
+
+for(
+let c=colMin;
+c<=colMax;
+c++
+){
+
+const id =
+r*C+c+1;
+
+if(!db[id]){
+ids.push(id);
+}
+
+}
+
+}
+
+if(!ids.length){
+draw();
+return;
+}
+
+const todosSelecionados =
+ids.every(
+id=>sel.has(id)
+);
+
+if(todosSelecionados){
+
+for(const id of ids){
+sel.delete(id);
+}
+
+}else{
+
+for(const id of ids){
+sel.add(id);
+}
+
+}
+
+updateCart();
+
+draw();
+
+}
 
 area.onpointerdown =
 e=>{
+
+if(selectAreaMode){
+
+rectDrag=true;
+
+moved=false;
+
+rectX1=e.clientX;
+rectY1=e.clientY-82;
+rectX2=rectX1;
+rectY2=rectY1;
+
+area.setPointerCapture(
+e.pointerId
+);
+
+draw();
+
+return;
+
+}
 
 drag=true;
 
@@ -1584,6 +1819,19 @@ e.pointerId
 
 area.onpointermove =
 e=>{
+
+if(rectDrag){
+
+rectX2=e.clientX;
+rectY2=e.clientY-82;
+
+moved=true;
+
+draw();
+
+return;
+
+}
 
 if(!drag)return;
 
@@ -1614,7 +1862,21 @@ draw();
 
 
 area.onpointerup =
-()=>drag=false;
+()=>{
+
+if(rectDrag){
+
+rectDrag=false;
+
+finalizarSelecaoArea();
+
+return;
+
+}
+
+drag=false;
+
+};
 
 
 /* =========================
@@ -1771,11 +2033,13 @@ function clearSel(){
 
 sel.clear();
 
+searchTarget = null;
+
 updateCart();
 
+draw();
+
 }
-
-
 /* =========================
    ABRIR CHECKOUT
 ========================= */

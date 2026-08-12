@@ -538,6 +538,9 @@ app.post(
         const publishedAt =
             new Date().toISOString();
 
+        const isExtended =
+            req.body.mode === "extended";
+
         for (const spaceId of ids) {
 
             db[spaceId] = {
@@ -545,7 +548,14 @@ app.post(
                 status: "published",
                 image,
                 title,
-                publishedAt
+                publishedAt,
+                ...(isExtended ? {
+                    displayMode: "extended",
+                    imageGroupSpaces: ids
+                } : {
+                    displayMode: "individual",
+                    imageGroupSpaces: [spaceId]
+                })
             };
         }
 

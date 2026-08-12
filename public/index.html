@@ -417,6 +417,27 @@ html,body{
     border-radius:8px
 }
 
+.box label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    cursor:pointer;
+}
+
+.box input[type="radio"],
+.box input[type="checkbox"]{
+    width:auto;
+    flex:none;
+    padding:0;
+    margin:0;
+    display:inline-block;
+    vertical-align:middle;
+    border:none;
+    background:none;
+    border-radius:0;
+    accent-color:#ffd400
+}
+
 .close{
     float:right;
     background:none;
@@ -751,7 +772,22 @@ html,body{
         width:auto;
     }
 
-    .hint{
+#dragCount{
+    position:fixed;
+    z-index:60;
+    pointer-events:none;
+    display:none;
+    background:rgba(255,212,0,.95);
+    color:#000;
+    font-weight:800;
+    font-size:13px;
+    padding:6px 12px;
+    border-radius:20px;
+    box-shadow:0 4px 12px rgba(0,0,0,.5);
+    white-space:nowrap;
+}
+
+.hint{
         font-size:10px;
         padding:8px 12px;
         bottom:12px;
@@ -1055,6 +1091,9 @@ title="Chat geral — converse com a comunidade">
 </button>
 
 
+<div id="dragCount"></div>
+
+
 <!-- CHAT -->
 
 <div class="modal" id="chatModal" style="display:none;">
@@ -1082,17 +1121,17 @@ style="flex:1;overflow-y:auto;border:1px solid #2a2a2a;border-radius:10px;backgr
 Carregando...
 </div>
 
-<div style="display:flex;gap:6px;">
+<div style="display:flex;flex-direction:column;gap:8px;">
 <input
 class="copia"
 id="chatInput"
 placeholder="Escreva sua mensagem..."
-style="flex:1;"
+style="width:100%;box-sizing:border-box;margin:0;"
 onkeydown="if(event.key==='Enter')enviarMensagemChat()">
 <button
 class="btn"
 onclick="enviarMensagemChat()"
-style="margin:0;padding:10px 18px;white-space:nowrap;">
+style="margin:0;padding:12px;width:100%;box-sizing:border-box;">
 ENVIAR
 </button>
 </div>
@@ -1541,16 +1580,26 @@ style="font-size:13px;color:#ccc;">
           Já é dono e quer vender? Ative <b>OFERTA EM BLOCOS</b>,
           arraste sobre os seus espaços para formar um bloco e
           envie a oferta. O comprador paga via Pix — você recebe
-          na sua <b>CHAVE PIX</b> (configure no painel de comando).
+          na sua <b>CHAVE PIX</b> (cadastrada no painel de comando).
+          A taxa do site é de <b>10%</b>, paga pelo comprador.
         </div>
       </div>
 
       <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:11px;">
         <b style="color:#45d66f;">⚙️ Painel de comando</b>
         <div style="font-size:12px;color:#bbb;line-height:1.5;">
-          Acesse <b>PAINEL DE COMANDO</b> (no carrinho) para ver
-          suas ofertas, seus blocos, editar fotos e cadastrar sua
-          chave Pix.
+          Toque no botão fixo <b>PAINEL DE COMANDO</b> (canto
+          inferior esquerdo) para ver ofertas recebidas e enviadas,
+          seus blocos, editar fotos e cadastrar sua chave Pix.
+        </div>
+      </div>
+
+      <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:11px;">
+        <b style="color:#5aa2ff;">💬 Chat</b>
+        <div style="font-size:12px;color:#bbb;line-height:1.5;">
+          Use o botão fixo <b>CHAT</b> para conversar com a
+          comunidade em <b>tempo real</b> e, dentro de cada oferta,
+          negocie diretamente com o comprador ou proprietário.
         </div>
       </div>
 
@@ -1706,6 +1755,12 @@ function localizarEspaco(){
     alert("Digite um número de espaço entre 1 e 1.000.000.");
     return;
   }
+
+  centralizarNoEspaco(numero);
+
+}
+
+function centralizarNoEspaco(numero){
 
   const indice = numero - 1;
 
@@ -2773,6 +2828,147 @@ document.getElementById("offerModal").style.display = "flex";
 
 }
 
+function idsNoRetangulo(){
+
+const left =
+Math.min(rectX1, rectX2);
+
+const right =
+Math.max(rectX1, rectX2);
+
+const top =
+Math.min(rectY1, rectY2);
+
+const bottom =
+Math.max(rectY1, rectY2);
+
+const colMin =
+Math.max(
+0,
+Math.floor(
+(left-x)/sc/T
+)
+);
+
+const colMax =
+Math.min(
+C-1,
+Math.floor(
+(right-x)/sc/T
+)
+);
+
+const rowMin =
+Math.max(
+0,
+Math.floor(
+(top-y)/sc/T
+)
+);
+
+const rowMax =
+Math.min(
+C-1,
+Math.floor(
+(bottom-y)/sc/T
+)
+);
+
+if(colMax < colMin || rowMax < rowMin){
+return [];
+}
+
+const ids = [];
+
+for(
+let r=rowMin;
+r<=rowMax;
+r++
+){
+
+for(
+let c=colMin;
+c<=colMax;
+c++
+){
+
+const id =
+r*C+c+1;
+
+const s =
+db[id];
+
+if(offerMode){
+
+if(s && s.status === "published"){
+ids.push(id);
+}
+
+}else{
+
+if(!s){
+ids.push(id);
+}
+
+}
+
+}
+
+}
+
+return ids;
+
+}
+
+function mostrarContagemDrag(cx, cy){
+
+const badge =
+document.getElementById("dragCount");
+
+if(!badge)return;
+
+const ids =
+idsNoRetangulo();
+
+const conjunto =
+offerMode ? offerSel : sel;
+
+const todosMarcados =
+ids.length &&
+ids.every(
+id=>conjunto.has(id)
+);
+
+badge.textContent =
+ids.length
+? (
+    (todosMarcados ? "− " : "+ ") +
+    ids.length.toLocaleString("pt-BR") +
+    " espaço(s)"
+  )
+: "0 espaços";
+
+badge.style.display = "block";
+
+badge.style.left =
+(cx + 14) + "px";
+
+badge.style.top =
+(cy + 14) + "px";
+
+}
+
+function esconderContagemDrag(){
+
+const badge =
+document.getElementById("dragCount");
+
+if(badge){
+badge.style.display = "none";
+}
+
+}
+
 function finalizarSelecaoOferta(){
 
 const left =
@@ -3189,6 +3385,11 @@ rectY2=e.clientY-82;
 
 moved=true;
 
+mostrarContagemDrag(
+e.clientX,
+e.clientY
+);
+
 draw();
 
 return;
@@ -3229,6 +3430,8 @@ area.onpointerup =
 if(rectDrag){
 
 rectDrag=false;
+
+esconderContagemDrag();
 
 if(offerMode){
 finalizarSelecaoOferta();
@@ -4593,6 +4796,15 @@ function toggleMeusBlocos(){
         ? "👁 MEUS BLOCOS (LIGADO)"
         : "👁 MEUS BLOCOS";
 
+    if(meusBlocosMode){
+
+        const blocos = meusBlocos();
+
+        if(blocos.length){
+            centralizarNoEspaco(blocos[0][0]);
+        }
+    }
+
     draw();
 }
 
@@ -5182,9 +5394,10 @@ async function enviarOferta(){
 
 /* =========================
    CHAT GERAL E NEGOCIAÇÃO
+   Tempo real via SSE
 ========================= */
 
-let chatTimer = null;
+let chatSource = null;
 
 let chatCtx = {
     tipo: "geral",
@@ -5192,6 +5405,8 @@ let chatCtx = {
     email: "",
     token: ""
 };
+
+let chatMsgs = [];
 
 let meuNickChat = "";
 
@@ -5217,9 +5432,6 @@ function abrirChatGeral(){
 
     document.getElementById("chatMsgErro").textContent = "";
 
-    document.getElementById("chatMensagens").innerHTML =
-        "Carregando...";
-
     document.getElementById("chatModal").style.display = "flex";
 
     iniciarChat();
@@ -5242,31 +5454,80 @@ function abrirChatNegociacao(offerId, email, token){
 
     document.getElementById("chatMsgErro").textContent = "";
 
-    document.getElementById("chatMensagens").innerHTML =
-        "Carregando...";
-
     document.getElementById("chatModal").style.display = "flex";
 
     iniciarChat();
 }
 
+function urlChatAtual(){
+
+    let url = "/api/chat/stream";
+
+    if(chatCtx.tipo === "negociacao"){
+
+        url +=
+            "?offerId=" +
+            encodeURIComponent(chatCtx.offerId) +
+            (chatCtx.email
+                ? "&email=" +
+                  encodeURIComponent(chatCtx.email)
+                : "") +
+            (chatCtx.token
+                ? "&token=" +
+                  encodeURIComponent(chatCtx.token)
+                : "");
+    }
+
+    return url;
+}
+
 function iniciarChat(){
 
-    if(chatTimer){
-        clearInterval(chatTimer);
+    if(chatSource){
+        chatSource.close();
+        chatSource = null;
     }
+
+    chatMsgs = [];
 
     carregarChat();
 
-    chatTimer =
-        setInterval(carregarChat, 3000);
+    try{
+
+        chatSource =
+            new EventSource(urlChatAtual());
+
+        chatSource.onmessage =
+            event => {
+                try{
+                    const msg =
+                        JSON.parse(event.data);
+
+                    if(!msg || !msg.text)return;
+
+                    chatMsgs.push(msg);
+
+                    renderChatLista();
+                }catch(e){
+                    console.error(e);
+                }
+            };
+
+        chatSource.onerror =
+            () => {
+                /* O EventSource reconecta sozinho */
+            };
+
+    }catch(error){
+        console.error(error);
+    }
 }
 
 function fecharChatModal(){
 
-    if(chatTimer){
-        clearInterval(chatTimer);
-        chatTimer = null;
+    if(chatSource){
+        chatSource.close();
+        chatSource = null;
     }
 
     document.getElementById("chatModal").style.display = "none";
@@ -5351,6 +5612,20 @@ function renderChatMensagens(msgs){
     return html;
 }
 
+function renderChatLista(){
+
+    const list =
+        document.getElementById("chatMensagens");
+
+    const novoHtml =
+        renderChatMensagens(chatMsgs);
+
+    if(list.innerHTML !== novoHtml){
+        list.innerHTML = novoHtml;
+        list.scrollTop = list.scrollHeight;
+    }
+}
+
 async function carregarChat(){
 
     try{
@@ -5405,16 +5680,9 @@ async function carregarChat(){
                 data.dono;
         }
 
-        const list =
-            document.getElementById("chatMensagens");
+        chatMsgs = data.messages || [];
 
-        const novoHtml =
-            renderChatMensagens(data.messages || []);
-
-        if(list.innerHTML !== novoHtml){
-            list.innerHTML = novoHtml;
-            list.scrollTop = list.scrollHeight;
-        }
+        renderChatLista();
 
     }catch(error){
         console.error(error);
@@ -5513,7 +5781,10 @@ async function enviarMensagemChat(){
 
         if(erro)erro.textContent = "";
 
-        await carregarChat();
+        if(data.message){
+            chatMsgs.push(data.message);
+            renderChatLista();
+        }
 
     }catch(error){
         console.error(error);
@@ -6291,6 +6562,343 @@ function closeOwner(){
    OFERTAS QUE EU FIZ
 ========================= */
 
+let minhasOfertasExpandido = true;
+
+function toggleMinhasOfertas(){
+
+    minhasOfertasExpandido = !minhasOfertasExpandido;
+
+    carregarMinhasOfertasEnviadas();
+}
+
+function agruparOfertasFeitas(ofertas){
+
+    const porEmail = {};
+
+    for(const o of ofertas){
+
+        const e =
+            (o.email || "outros")
+                .trim()
+                .toLowerCase();
+
+        (porEmail[e] = porEmail[e] || []).push(o);
+    }
+
+    const grupos = [];
+
+    for(const email in porEmail){
+
+        const lista = porEmail[email];
+
+        const todosEspacos = new Set();
+
+        for(const o of lista){
+            for(const s of o.spaceIds){
+                todosEspacos.add(s);
+            }
+        }
+
+        const visitados = new Set();
+        const componentes = [];
+
+        for(const inicio of todosEspacos){
+
+            if(visitados.has(inicio))continue;
+
+            const comp = new Set();
+            const fila = [inicio];
+
+            visitados.add(inicio);
+
+            while(fila.length){
+
+                const atual = fila.shift();
+
+                comp.add(atual);
+
+                const indice = atual - 1;
+                const linha = Math.floor(indice / C);
+                const coluna = indice % C;
+
+                const viz = [];
+
+                if(coluna > 0) viz.push(atual - 1);
+                if(coluna < C - 1) viz.push(atual + 1);
+                if(linha > 0) viz.push(atual - C);
+                if(linha < 999) viz.push(atual + C);
+
+                for(const v of viz){
+                    if(
+                        todosEspacos.has(v) &&
+                        !visitados.has(v)
+                    ){
+                        visitados.add(v);
+                        fila.push(v);
+                    }
+                }
+            }
+
+            componentes.push(
+                [...comp].sort((a, b) => a - b)
+            );
+        }
+
+        for(const comp of componentes){
+
+            const ofs = lista.filter(
+                o => o.spaceIds.some(
+                    s => comp.includes(s)
+                )
+            );
+
+            if(!ofs.length)continue;
+
+            grupos.push({
+                email,
+                espacos: comp,
+                ofertas: ofs
+            });
+        }
+    }
+
+    return grupos;
+}
+
+function htmlOfertaFeita(o, emailComprador){
+
+    const espaco =
+        "#" +
+        Number(o.spaceId).toLocaleString("pt-BR");
+
+    const bloco =
+        Array.isArray(o.spaceIds) &&
+        o.spaceIds.length > 1
+        ? "<div style='font-size:11px;color:#45d66f;margin-top:2px;'>" +
+          "🧩 Bloco de " +
+          o.spaceIds.length.toLocaleString("pt-BR") +
+          " espaços (#" +
+          o.spaceIds[0].toLocaleString("pt-BR") +
+          " → #" +
+          o.spaceIds[o.spaceIds.length - 1].toLocaleString("pt-BR") +
+          ")</div>"
+        : "";
+
+    let html =
+        "<div>" +
+        "Oferta para o espaço <b>" + espaco + "</b>" +
+        "</div>" +
+        bloco +
+        "<div style='margin-top:6px;'>" +
+        statusLabel(o.status) +
+        "</div>";
+
+    if(o.status === "countered"){
+
+        html +=
+            "<div style='margin-top:8px;font-size:13px;color:#ffd400;'>" +
+            "Nova proposta: <b>R$ " +
+            Number(o.value).toLocaleString("pt-BR") +
+            "</b>" +
+            (o.originalValue
+                ? " (sua oferta: R$ " +
+                  Number(o.originalValue).toLocaleString("pt-BR") +
+                  ")"
+                : "") +
+            "</div>" +
+            "<div style='margin-top:10px;'>" +
+            "<button class='btn' " +
+            "onclick=\"aceitarContraproposta('" +
+            o.id + "')\" " +
+            "style='margin:0;padding:8px 12px;font-size:12px;'>" +
+            "✓ ACEITAR E PAGAR</button> " +
+            "<button class='btn sec' " +
+            "onclick=\"recusarContraproposta('" +
+            o.id + "')\" " +
+            "style='margin:0;padding:8px 12px;font-size:12px;'>" +
+            "✕ RECUSAR</button>" +
+            "</div>";
+    }
+
+    if(o.status === "accepted"){
+
+        html +=
+            "<div style='margin-top:10px;'>" +
+            "<button class='btn' " +
+            "onclick=\"abrirPagamentoOferta('" +
+            o.id + "')\" " +
+            "style='margin:0;padding:8px 12px;font-size:12px;'>" +
+            "💰 EFETUAR PAGAMENTO</button>" +
+            "</div>";
+    }
+
+    if(o.status === "paid" && o.newOwnerToken){
+
+        html +=
+            "<button class='btn' " +
+            "onclick=\"salvarBlocoTransferido(" +
+            o.spaceId + ", '" +
+            o.newOwnerToken + "')\" " +
+            "style='margin-top:10px;padding:8px 12px;font-size:12px;'>" +
+            "✅ SALVAR MEU BLOCO</button>";
+    }
+
+    if(
+        (o.status === "pending" ||
+         o.status === "countered" ||
+         o.status === "accepted") &&
+        emailComprador
+    ){
+
+        html +=
+            "<div style='margin-top:10px;'>" +
+            "<button class='btn sec' " +
+            "onclick=\"abrirChatNegociacao('" +
+            o.id + "','" +
+            emailComprador.replace(/'/g, "") +
+            "','')\" " +
+            "style='margin:0;padding:8px 12px;font-size:12px;'>" +
+            "💬 NEGOCIAR COM O PROPRIETÁRIO</button>" +
+            "</div>";
+    }
+
+    return html;
+}
+
+function cardGrupoOferta(g, emailComprador){
+
+    const gid =
+        g.email.replace(/\W/g, "_") +
+        "_" + g.espacos[0];
+
+    const ehBloco =
+        g.espacos.length > 1;
+
+    const intervalo =
+        ehBloco
+        ? "#" + g.espacos[0].toLocaleString("pt-BR") +
+          " → #" +
+          g.espacos[g.espacos.length - 1].toLocaleString("pt-BR")
+        : "#" + g.espacos[0].toLocaleString("pt-BR");
+
+    const nome =
+        g.ofertas[0].name || "Você";
+
+    let resumo =
+        g.ofertas.length.toLocaleString("pt-BR") +
+        " oferta(s)";
+
+    const pendentes =
+        g.ofertas.filter(
+            o => o.status === "pending"
+        ).length;
+
+    const contra =
+        g.ofertas.filter(
+            o => o.status === "countered"
+        ).length;
+
+    if(pendentes){
+        resumo += " · " +
+            pendentes.toLocaleString("pt-BR") +
+            " aguardando resposta";
+    }
+
+    if(contra){
+        resumo += " · " +
+            contra.toLocaleString("pt-BR") +
+            " contraproposta(s)";
+    }
+
+    let html =
+        '<div style="border:1px solid #333;border-radius:12px;' +
+        'padding:12px 14px;margin-bottom:10px;' +
+        'background:#161616;font-size:13px;">' +
+
+        '<div style="display:flex;justify-content:space-between;' +
+        'align-items:center;">' +
+        '<b style="color:#45d66f;">' +
+        escapeHtml(nome) +
+        '</b>' +
+        (g.ofertas.length > 1
+            ? '<button class="btn sec" ' +
+              'onclick="toggleGrupoOferta(\'' + gid + '\')" ' +
+              'style="margin:0;padding:6px 10px;font-size:11px;">' +
+              '<span id="grpSeta_' + gid + '">▸</span></button>'
+            : "") +
+        '</div>' +
+
+        '<div style="color:#aaa;margin-top:3px;font-size:12px;">' +
+        (ehBloco
+            ? "🧩 Bloco de " +
+              g.espacos.length.toLocaleString("pt-BR") +
+              " espaços (" + intervalo + ")"
+            : "Espaço avulso " + intervalo) +
+        '</div>' +
+
+        '<div style="color:#888;font-size:11px;margin-top:2px;">' +
+        resumo +
+        '</div>';
+
+    if(g.ofertas.length === 1){
+
+        const o = g.ofertas[0];
+
+        html +=
+            '<div style="margin-top:8px;padding-top:8px;' +
+            'border-top:1px solid #2a2a2a;">' +
+            htmlOfertaFeita(o, emailComprador) +
+            '</div>';
+
+    }else{
+
+        let itens = "";
+
+        for(const o of g.ofertas){
+
+            itens +=
+                '<div style="padding:8px 0;border-top:1px solid #2a2a2a;">' +
+                '<div style="font-size:10px;color:#777;margin-bottom:2px;">' +
+                escapeHtml(o.id) +
+                '</div>' +
+                htmlOfertaFeita(o, emailComprador) +
+                '</div>';
+        }
+
+        html +=
+            '<div id="grp_' + gid + '" ' +
+            'style="display:none;margin-top:8px;">' +
+            itens +
+            '</div>';
+    }
+
+    html += '</div>';
+
+    return html;
+}
+
+function toggleGrupoOferta(gid){
+
+    const box =
+        document.getElementById("grp_" + gid);
+
+    const seta =
+        document.getElementById("grpSeta_" + gid);
+
+    if(!box)return;
+
+    const aberto =
+        box.style.display !== "none";
+
+    box.style.display =
+        aberto ? "none" : "block";
+
+    if(seta){
+        seta.textContent =
+            aberto ? "▸" : "▾";
+    }
+}
+
 async function carregarMinhasOfertasEnviadas(){
 
     const list =
@@ -6308,25 +6916,24 @@ async function carregarMinhasOfertasEnviadas(){
 
     div.id = "minhasOfertasSec";
 
-    div.innerHTML =
-        '<div style="font-weight:800;margin:18px 0 6px;' +
-        'color:#ffd400;">OFERTAS QUE VOCÊ FEZ</div>';
-
     list.appendChild(div);
 
+    const emailComprador =
+        (function(){
+            try{
+                return (
+                    localStorage.getItem(
+                        "mega_myEmail"
+                    ) || ""
+                ).trim();
+            }catch(e){
+                return "";
+            }
+        })();
+
+    const carregadas = [];
+
     for(const offerId of myOffers){
-
-        const card =
-            document.createElement("div");
-
-        card.style.cssText =
-            "border:1px solid #333;border-radius:12px;" +
-            "padding:12px 14px;margin-bottom:10px;" +
-            "background:#161616;font-size:13px;";
-
-        card.textContent = offerId + " — verificando...";
-
-        div.appendChild(card);
 
         try{
 
@@ -6337,96 +6944,90 @@ async function carregarMinhasOfertasEnviadas(){
                 );
 
             if(!response.ok){
-                card.textContent =
-                    offerId + " — não encontrada.";
+                carregadas.push({
+                    offerId,
+                    erro: "não encontrada."
+                });
                 continue;
             }
 
             const data =
                 await reqJSON(response);
 
-            const emailComprador =
-                (function(){
-                    try{
-                        return (
-                            localStorage.getItem(
-                                "mega_myEmail"
-                            ) || ""
-                        ).trim();
-                    }catch(e){
-                        return "";
-                    }
-                })();
-
-            card.innerHTML =
-                "<div>Oferta <b>" + offerId + "</b> para o " +
-                "espaço <b>#" +
-                Number(data.spaceId).toLocaleString("pt-BR") +
-                "</b></div>" +
-                "<div style='margin-top:6px;'>" +
-                statusLabel(data.status) +
-                "</div>" +
-                ((data.status === "pending" ||
-                  data.status === "countered" ||
-                  data.status === "accepted") &&
-                 emailComprador
-                    ? "<div style='margin-top:10px;'>" +
-                      "<button class='btn sec' " +
-                      "onclick=\"abrirChatNegociacao('" +
-                      offerId + "','" +
-                      emailComprador.replace(/'/g, "") +
-                      "','')\" " +
-                      "style='margin:0;padding:8px 12px;font-size:12px;'>" +
-                      "💬 NEGOCIAR COM O PROPRIETÁRIO</button>" +
-                      "</div>"
-                    : "") +
-                (data.status === "countered"
-                    ? "<div style='margin-top:8px;font-size:13px;color:#ffd400;'>" +
-                      "Nova proposta: <b>R$ " +
-                      Number(data.value).toLocaleString("pt-BR") +
-                      "</b>" +
-                      (data.originalValue
-                        ? " (sua oferta: R$ " +
-                          Number(data.originalValue).toLocaleString("pt-BR") +
-                          ")"
-                        : "") +
-                      "</div>" +
-                      "<div style='margin-top:10px;'>" +
-                      "<button class='btn' " +
-                      "onclick=\"aceitarContraproposta('" +
-                      offerId + "')\" " +
-                      "style='margin:0;padding:8px 12px;font-size:12px;'>" +
-                      "✓ ACEITAR E PAGAR</button> " +
-                      "<button class='btn sec' " +
-                      "onclick=\"recusarContraproposta('" +
-                      offerId + "')\" " +
-                      "style='margin:0;padding:8px 12px;font-size:12px;'>" +
-                      "✕ RECUSAR</button>" +
-                      "</div>"
-                    : "") +
-                (data.status === "accepted"
-                    ? "<div style='margin-top:10px;'>" +
-                      "<button class='btn' " +
-                      "onclick=\"abrirPagamentoOferta('" +
-                      offerId + "')\" " +
-                      "style='margin:0;padding:8px 12px;font-size:12px;'>" +
-                      "💰 EFETUAR PAGAMENTO</button>" +
-                      "</div>"
-                    : "") +
-                (data.status === "paid" && data.newOwnerToken
-                    ? "<button class='btn' " +
-                      "onclick=\"salvarBlocoTransferido(" +
-                      data.spaceId + ", '" +
-                      data.newOwnerToken + "')\" " +
-                      "style='margin-top:10px;padding:8px 12px;" +
-                      "font-size:12px;'>" +
-                      "✅ SALVAR MEU BLOCO</button>"
-                    : "");
+            carregadas.push({
+                offerId,
+                id: data.id || offerId,
+                spaceId: data.spaceId,
+                spaceIds:
+                    (Array.isArray(data.spaceIds) &&
+                     data.spaceIds.length)
+                    ? data.spaceIds
+                    : [data.spaceId],
+                email: data.email || "",
+                name: data.name || "",
+                status: data.status,
+                value: data.value,
+                originalValue: data.originalValue,
+                newOwnerToken:
+                    data.newOwnerToken || ""
+            });
 
         }catch(error){
             console.error(error);
+            carregadas.push({
+                offerId,
+                erro: "erro ao carregar."
+            });
         }
     }
+
+    const validas =
+        carregadas.filter(o => !o.erro);
+
+    const invalidas =
+        carregadas.filter(o => o.erro);
+
+    if(!validas.length && !invalidas.length)return;
+
+    const seta =
+        minhasOfertasExpandido ? "▾" : "▸";
+
+    let html =
+        '<div style="margin:18px 0 6px;">' +
+        '<button onclick="toggleMinhasOfertas()" ' +
+        'style="background:none;border:0;color:#ffd400;' +
+        'font-weight:800;font-size:13px;cursor:pointer;' +
+        'padding:4px 0;display:flex;align-items:center;' +
+        'gap:6px;">' +
+        '<span id="minhasOfertasSeta">' + seta + '</span>' +
+        'OFERTAS QUE VOCÊ FEZ (' +
+        validas.length.toLocaleString("pt-BR") +
+        ')</button>' +
+        '</div>';
+
+    if(minhasOfertasExpandido){
+
+        const grupos =
+            agruparOfertasFeitas(validas);
+
+        for(const g of grupos){
+            html += cardGrupoOferta(g, emailComprador);
+        }
+
+        for(const inv of invalidas){
+
+            html +=
+                '<div style="border:1px solid #333;' +
+                'border-radius:12px;padding:10px 12px;' +
+                'margin-bottom:8px;background:#161616;' +
+                'font-size:12px;color:#888;">' +
+                'Oferta ' + escapeHtml(inv.offerId) +
+                ' — ' + inv.erro +
+                '</div>';
+        }
+    }
+
+    div.innerHTML = html;
 }
 
 function meuEmailParaOferta(){
@@ -6982,7 +7583,7 @@ function verBlocoNoMapa(primeiro){
 
     closeOwner();
 
-    mostrarInfoEspaco(primeiro);
+    centralizarNoEspaco(primeiro);
 }
 
 async function carregarAbaPix(){

@@ -2171,9 +2171,14 @@ app.post("/api/chat/general", (req, res) => {
 
     salvarChatGeral(mantidas);
 
+    const novaMsg =
+        mantidas[mantidas.length - 1];
+
+    broadcastChat(null, novaMsg);
+
     res.json({
         ok: true,
-        message: mantidas[mantidas.length - 1]
+        message: novaMsg
     });
 });
 
@@ -2290,11 +2295,114 @@ app.post("/api/chat/negotiation", (req, res) => {
 
     salvarChatNegociacao(dados);
 
+    const novaMsg =
+        dados[offerId][dados[offerId].length - 1];
+
+    broadcastChat(offerId, novaMsg);
+
     res.json({
         ok: true,
-        message:
-            dados[offerId][dados[offerId].length - 1]
+        message: novaMsg
     });
+});
+
+/* =========================
+   STREAM DO CHAT (SSE)
+   Mensagens em tempo real
+========================= */
+
+const chatGeralListeners = new Set();
+const chatNegocListeners = new Map();
+
+function broadcastChat(offerId, msg) {
+
+    if (offerId) {
+
+        const set = chatNegocListeners.get(offerId);
+
+        if (!set) return;
+
+        const dados = `data: ${JSON.stringify(msg)}\n\n`;
+
+        for (const res of set) {
+            try {
+                res.write(dados);
+            } catch (e) {}
+        }
+
+        return;
+    }
+
+    const dados = `data: ${JSON.stringify(msg)}\n\n`;
+
+    for (const res of chatGeralListeners) {
+        try {
+            res.write(dados);
+        } catch (e) {}
+    }
+}
+
+app.get("/api/chat/stream", (req, res) => {
+
+    const offerId =
+        (req.query.offerId || "").trim();
+
+    const email =
+        (req.query.email || "").trim();
+
+    const token =
+        (req.query.token || "").trim();
+
+    if (offerId) {
+
+        const ofertas = readOffers();
+        const oferta = ofertas[offerId];
+
+        if (
+            !oferta ||
+            !identificarParticipante(oferta, email, token)
+        ) {
+            return res.status(403).json({
+                error:
+                    "Acesso restrito aos participantes da negociação."
+            });
+        }
+    }
+
+    res.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no"
+    });
+
+    res.write(":ok\n\n");
+
+    if (offerId) {
+
+        const set =
+            chatNegocListeners.get(offerId) ||
+            new Set();
+
+        set.add(res);
+
+        chatNegocListeners.set(offerId, set);
+
+        req.on("close", () => {
+            set.delete(res);
+            if (!set.size) {
+                chatNegocListeners.delete(offerId);
+            }
+        });
+
+    } else {
+
+        chatGeralListeners.add(res);
+
+        req.on("close", () => {
+            chatGeralListeners.delete(res);
+        });
+    }
 });
 
 /* =========================

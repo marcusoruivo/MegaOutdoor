@@ -2116,53 +2116,59 @@ app.post(
 
         /* =========================
            RECONCILIAÇÃO DE GRUPOS
-           Espaços vizinhos que antes
-           faziam parte do grupo do
-           espaço editado (e não foram
-           incluídos na edição) perdem
-           a referência ao espaço
-           desmembrado.
+           Ao editar o bloco inteiro (modo estendido),
+           espaços vizinhos que antes faziam parte do
+           grupo e não foram incluídos na edição perdem
+           a referência ao espaço desmembrado.
+
+           Em edições individuais (solo) os vizinhos
+           mantêm o grupo original intacto, preservando
+           a foto esticada; apenas o espaço editado
+           passa a exibir a nova foto.
         ========================= */
 
-        for (const sid of Object.keys(db)) {
+        if (isExtended) {
 
-            const nid = Number(sid);
+            for (const sid of Object.keys(db)) {
 
-            if (tocados.has(nid)) continue;
+                const nid = Number(sid);
 
-            const s = db[sid];
+                if (tocados.has(nid)) continue;
 
-            if (
-                s.displayMode !== "extended" ||
-                !Array.isArray(s.imageGroupSpaces)
-            ) continue;
+                const s = db[sid];
 
-            const grupo =
-                s.imageGroupSpaces.map(Number);
+                if (
+                    s.displayMode !== "extended" ||
+                    !Array.isArray(s.imageGroupSpaces)
+                ) continue;
 
-            const novo =
-                grupo.filter(g =>
-                    !tocados.has(g)
-                );
+                const grupo =
+                    s.imageGroupSpaces.map(Number);
 
-            if (novo.length === grupo.length) {
-                continue;
-            }
+                const novo =
+                    grupo.filter(g =>
+                        !tocados.has(g)
+                    );
 
-            if (novo.length <= 1) {
+                if (novo.length === grupo.length) {
+                    continue;
+                }
 
-                db[sid] = {
-                    ...s,
-                    displayMode: "individual",
-                    imageGroupSpaces: [nid]
-                };
+                if (novo.length <= 1) {
 
-            } else {
+                    db[sid] = {
+                        ...s,
+                        displayMode: "individual",
+                        imageGroupSpaces: [nid]
+                    };
 
-                db[sid] = {
-                    ...s,
-                    imageGroupSpaces: novo
-                };
+                } else {
+
+                    db[sid] = {
+                        ...s,
+                        imageGroupSpaces: novo
+                    };
+                }
             }
         }
 

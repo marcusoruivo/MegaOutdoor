@@ -632,6 +632,58 @@ html,body{
     onclick="toggleSelectArea()">
 ⬜ SELECIONAR VÁRIOS (ÁREA)
 </button>
+
+<div style="margin-top:6px;">
+
+<label style="font-size:12px;color:#aaa;display:block;margin-bottom:4px;">
+Selecionar bloco (Largura × Altura) — inicia no espaço pesquisado (canto superior esquerdo):
+</label>
+
+<div style="display:flex; gap:6px; align-items:center;">
+
+<input
+    id="blkL"
+    type="number"
+    min="1"
+    max="1000"
+    value="10"
+    style="
+        width:64px;
+        padding:9px;
+        border-radius:8px;
+        background:#111;
+        color:#fff;
+        border:1px solid #333;
+    ">
+
+<span style="color:#aaa;">×</span>
+
+<input
+    id="blkH"
+    type="number"
+    min="1"
+    max="1000"
+    value="10"
+    style="
+        width:64px;
+        padding:9px;
+        border-radius:8px;
+        background:#111;
+        color:#fff;
+        border:1px solid #333;
+    ">
+
+<button
+    class="btn"
+    style="flex:1;"
+    onclick="selecionarBloco()">
+SELECIONAR BLOCO
+</button>
+
+</div>
+
+</div>
+
 <p>
 Clique nos espaços disponíveis para selecionar vários.
 <br>
@@ -709,6 +761,13 @@ onclick="clearSel()">
 LIMPAR
 </button>
 
+<button
+class="btn sec"
+onclick="abrirPainelOfertas()"
+style="margin-top:10px;background:#1b3a2a;color:#45d66f;">
+📨 MINHAS OFERTAS
+</button>
+
 </div>
 
 
@@ -742,6 +801,10 @@ placeholder="E-mail">
 <input
 id="cpf"
 placeholder="CPF ou CNPJ">
+
+<input
+id="coupon"
+placeholder="Cupom de indicação (opcional)">
 
 <button
 class="btn"
@@ -886,6 +949,86 @@ Aguardando pagamento...
 </div>
 
 
+<!-- MODAL OFERTA -->
+
+<div class="modal" id="offerModal" style="display:none;">
+
+<div class="box">
+
+<button
+class="close"
+onclick="closeOffer()">
+×
+</button>
+
+<h2 style="color:#ffd400;">Fazer oferta</h2>
+
+<p
+id="offerInfo"
+style="color:#aaa;font-size:13px;margin:0 0 12px;">
+</p>
+
+<input
+id="offerName"
+placeholder="Seu nome ou empresa">
+
+<input
+id="offerEmail"
+type="email"
+placeholder="Seu e-mail">
+
+<input
+id="offerValue"
+type="number"
+min="1"
+placeholder="Valor da oferta (R$)">
+
+<textarea
+id="offerMessage"
+placeholder="Mensagem ao proprietário (opcional)"
+style="width:100%;min-height:70px;padding:12px;margin-top:8px;border-radius:8px;background:#111;color:#fff;border:1px solid #333;box-sizing:border-box;">
+</textarea>
+
+<p
+id="offerMsg"
+style="color:#aaa;font-size:12px;">
+</p>
+
+<button
+class="btn"
+onclick="enviarOferta()">
+ENVIAR OFERTA
+</button>
+
+</div>
+
+</div>
+
+
+<!-- PAINEL DO PROPRIETÁRIO -->
+
+<div class="modal" id="ownerModal" style="display:none;">
+
+<div class="box">
+
+<button
+class="close"
+onclick="closeOwner()">
+×
+</button>
+
+<h2 style="color:#ffd400;">Minhas ofertas</h2>
+
+<div
+id="ownerList"
+style="font-size:13px;color:#ccc;">
+</div>
+
+</div>
+
+</div>
+
+
 <script>
 
 
@@ -919,6 +1062,71 @@ let db = {};
 
 let sel = new Set();
 let paidSpaces = [];
+
+let ultimoCupom = "";
+let ultimoDesconto = 0;
+
+let orderTokens =
+JSON.parse(
+localStorage.getItem(
+"mega_orderTokens"
+) || "{}"
+);
+
+let myOffers =
+JSON.parse(
+localStorage.getItem(
+"mega_myOffers"
+) || "[]"
+);
+
+function salvarTokens(spaces, token){
+
+if(!token || !Array.isArray(spaces))return;
+
+for(const id of spaces){
+
+if(!id)continue;
+
+orderTokens[id] =
+token;
+
+}
+
+localStorage.setItem(
+"mega_orderTokens",
+JSON.stringify(orderTokens)
+);
+
+}
+
+function salvarMyOffer(offerId){
+
+if(!offerId)return;
+
+if(myOffers.includes(offerId))return;
+
+myOffers.push(offerId);
+
+localStorage.setItem(
+"mega_myOffers",
+JSON.stringify(myOffers)
+);
+
+}
+
+function minhaPropriedade(id){
+
+const s = db[id];
+
+if(!s)return false;
+
+return (
+orderTokens[id] &&
+orderTokens[id] === s.orderToken
+);
+
+}
 
 let searchTarget = null;
 
@@ -991,8 +1199,14 @@ function mostrarInfoEspaco(numero){
   }
 
   painel.innerHTML = `
-    <div style="font-size:12px;color:#aaa;margin-bottom:5px;">
-      ESPAÇO LOCALIZADO
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+      <div style="font-size:12px;color:#aaa;">
+        ESPAÇO LOCALIZADO
+      </div>
+      <button
+        onclick="fecharInfoEspaco()"
+        style="background:none;border:0;color:#aaa;font-size:18px;cursor:pointer;line-height:1;"
+        title="Fechar">×</button>
     </div>
 
     <div style="font-size:22px;font-weight:800;margin-bottom:8px;">
@@ -1006,8 +1220,34 @@ function mostrarInfoEspaco(numero){
           🔴 VENDIDO
         </div>
         <div style="font-size:13px;color:#aaa;margin-top:5px;">
-          Este espaço não está disponível.
+          Este espaço não está disponível para compra direta.
         </div>
+        ${
+          minhaPropriedade(numero)
+          ? `
+            <div style="font-size:12px;color:#45d66f;margin-top:8px;">
+              ✅ Este espaço é seu.
+            </div>
+          `
+          : `
+            <button
+              onclick="abrirOferta(${numero})"
+              style="
+                width:100%;
+                margin-top:12px;
+                padding:10px;
+                border:0;
+                border-radius:8px;
+                background:#ffd400;
+                color:#000;
+                font-weight:800;
+                cursor:pointer;
+              "
+            >
+              💰 FAZER OFERTA
+            </button>
+          `
+        }
       `
       : `
         <div style="color:#45d66f;font-weight:700;">
@@ -1037,6 +1277,22 @@ function mostrarInfoEspaco(numero){
     }
   `;
 }
+
+function fecharInfoEspaco(){
+
+  const painel =
+    document.getElementById("spaceInfo");
+
+  if(painel){
+    painel.remove();
+  }
+
+  searchTarget = null;
+
+  draw();
+
+}
+
 function selecionarEspacoPesquisado(numero){
 
   const id = Number(numero);
@@ -1057,8 +1313,7 @@ searchTarget = null;
 
   updateCart();
 
-
-draw();
+fecharInfoEspaco();
 }
 
 /* =========================
@@ -1324,7 +1579,7 @@ T
 
 }
 
-if(searchTarget === id && !sel.has(id) && !extCompleto){
+if(searchTarget === id){
   ctx.save();
 
   ctx.strokeStyle = "#ffd400";
@@ -1776,6 +2031,123 @@ draw();
 
 }
 
+function selecionarBloco(){
+
+const colunas =
+Math.floor(
+Number(
+document.getElementById("blkL").value
+)
+);
+
+const linhas =
+Math.floor(
+Number(
+document.getElementById("blkH").value
+)
+);
+
+if(
+!Number.isInteger(colunas) ||
+!Number.isInteger(linhas) ||
+colunas < 1 ||
+linhas < 1 ||
+colunas > C ||
+linhas > C
+){
+alert(
+"Digite a largura e a altura do bloco " +
+"entre 1 e 1.000."
+);
+return;
+}
+
+if(!searchTarget){
+alert(
+"Primeiro pesquise um espaço " +
+"(ele será o canto superior esquerdo do bloco)."
+);
+return;
+}
+
+const indice =
+searchTarget - 1;
+
+const colIni =
+indice % C;
+
+const linIni =
+Math.floor(indice / C);
+
+const colFim =
+Math.min(
+C - 1,
+colIni + colunas - 1
+);
+
+const linFim =
+Math.min(
+C - 1,
+linIni + linhas - 1
+);
+
+const ids = [];
+
+for(
+let r=linIni;
+r<=linFim;
+r++
+){
+
+for(
+let c=colIni;
+c<=colFim;
+c++
+){
+
+const id =
+r*C+c+1;
+
+if(!db[id]){
+ids.push(id);
+}
+
+}
+
+}
+
+if(!ids.length){
+alert(
+"Nenhum espaço livre no bloco informado."
+);
+return;
+}
+
+const todosSelecionados =
+ids.every(
+id=>sel.has(id)
+);
+
+if(todosSelecionados){
+
+for(const id of ids){
+sel.delete(id);
+}
+
+}else{
+
+for(const id of ids){
+sel.add(id);
+}
+
+}
+
+updateCart();
+
+draw();
+
+}
+
 area.onpointerdown =
 e=>{
 
@@ -2033,11 +2405,9 @@ function clearSel(){
 
 sel.clear();
 
-searchTarget = null;
-
 updateCart();
 
-draw();
+fecharInfoEspaco();
 
 }
 /* =========================
@@ -2115,6 +2485,11 @@ document.getElementById(
 "cpf"
 ).value.trim();
 
+const coupon =
+document.getElementById(
+"coupon"
+).value.trim();
+
 const msg =
 document.getElementById(
 "msg"
@@ -2177,7 +2552,9 @@ name:name,
 
 email:email,
 
-cpfCnpj:cpf
+cpfCnpj:cpf,
+
+coupon
 
 })
 
@@ -2202,6 +2579,16 @@ return;
 currentPayment =
 data.paymentId;
 
+salvarTokens(
+data.spaces,
+data.orderToken
+);
+
+ultimoCupom =
+data.meuCupom || "";
+
+ultimoDesconto =
+data.discountPercent || 0;
 
 /*
    QR CODE
@@ -2267,6 +2654,9 @@ async function testeSemPagamento(){
     const cpf =
         document.getElementById("cpf").value.trim();
 
+    const coupon =
+        document.getElementById("coupon").value.trim();
+
     const msg =
         document.getElementById("msg");
 
@@ -2317,7 +2707,9 @@ async function testeSemPagamento(){
                     },
                     body: JSON.stringify({
                         spaces: [...sel],
-                        name
+                        name,
+                        email,
+                        coupon
                     })
                 }
             );
@@ -2335,6 +2727,17 @@ async function testeSemPagamento(){
         currentPayment =
             "TESTE-" + Date.now();
 
+        salvarTokens(
+            data.spaces,
+            data.orderToken
+        );
+
+        ultimoCupom =
+            data.meuCupom || "";
+
+        ultimoDesconto =
+            data.discountPercent || 0;
+
         document.getElementById("formulario")
             .style.display = "none";
 
@@ -2347,7 +2750,14 @@ async function testeSemPagamento(){
         document.getElementById("statusPix")
             .innerHTML =
             '<span class="sucesso">🧪 TESTE: PAGAMENTO SIMULADO!</span><br><br>' +
-            'Pagamento fictício confirmado para teste.';
+            'Pagamento fictício confirmado para teste.' +
+            (ultimoCupom
+                ? '<br><br><b>🎁 Seu cupom de indicação:</b><br>' +
+                  '<span style="font-size:18px;color:#ffd400;font-weight:800;">' +
+                  ultimoCupom + '</span><br>' +
+                  '<span style="font-size:12px;color:#aaa;">' +
+                  'Compartilhe e ganhe bonificação quando seus amigos comprarem.</span>'
+                : '');
 
         document.getElementById("publicacao")
             .style.display = "block";
@@ -2456,7 +2866,14 @@ document.getElementById(
 "statusPix"
 ).innerHTML =
 '<span class="sucesso">✓ PAGAMENTO CONFIRMADO!</span><br><br>'+
-'Seus espaços foram liberados para publicação.';
+'Seus espaços foram liberados para publicação.'+
+(ultimoCupom
+    ?'<br><br><b>🎁 Seu cupom de indicação:</b><br>'+
+     '<span style="font-size:18px;color:#ffd400;font-weight:800;">'+
+     ultimoCupom+'</span><br>'+
+     '<span style="font-size:12px;color:#aaa;">'+
+     'Compartilhe e ganhe bonificação quando seus amigos comprarem.</span>'
+    :'');
 
 document.getElementById("publicacao").style.display = "block";
 
@@ -2839,6 +3256,11 @@ if (modo === "individual") {
             JSON.stringify([id])
         );
 
+        formData.append(
+            "orderToken",
+            orderTokens[id] || ""
+        );
+
         const resposta = await fetch(
             `/api/upload/${id}`,
             {
@@ -2895,6 +3317,11 @@ if (modo === "estendida") {
         JSON.stringify(grupo)
     );
 
+    formData.append(
+        "orderToken",
+        orderTokens[idPrincipal] || ""
+    );
+
     const resposta = await fetch(
         `/api/upload/${idPrincipal}`,
         {
@@ -2948,6 +3375,595 @@ if (modo === "estendida") {
             .disabled = false;
     }
 }
+
+
+/* =========================
+   OFERTA DE COMPRA
+========================= */
+
+let currentOfferId = null;
+let ultimasOfertas = [];
+let offerMonitor = null;
+
+function abrirOferta(numero){
+
+    currentOfferId = numero;
+
+    const info = db[numero] || {};
+
+    document.getElementById("offerInfo").textContent =
+        "Espaço #" + numero.toLocaleString("pt-BR") +
+        (info.title ? " — " + info.title : "");
+
+    document.getElementById("offerName").value = "";
+    document.getElementById("offerEmail").value = "";
+    document.getElementById("offerValue").value = "";
+    document.getElementById("offerMessage").value = "";
+    document.getElementById("offerMsg").textContent = "";
+
+    document.getElementById("offerModal").style.display = "flex";
+
+    fecharInfoEspaco();
+}
+
+function closeOffer(){
+
+    document.getElementById("offerModal").style.display = "none";
+}
+
+async function enviarOferta(){
+
+    const name =
+        document.getElementById("offerName").value.trim();
+
+    const email =
+        document.getElementById("offerEmail").value.trim();
+
+    const value =
+        document.getElementById("offerValue").value.trim();
+
+    const message =
+        document.getElementById("offerMessage").value.trim();
+
+    const msg =
+        document.getElementById("offerMsg");
+
+    if(name.length < 3){
+        msg.textContent = "Informe seu nome ou empresa.";
+        return;
+    }
+
+    if(!email.includes("@")){
+        msg.textContent = "Informe um e-mail válido.";
+        return;
+    }
+
+    if(!value || Number(value) < 1){
+        msg.textContent = "Informe um valor de oferta (R$).";
+        return;
+    }
+
+    msg.textContent = "Enviando sua oferta...";
+
+    try{
+
+        const response =
+            await fetch(
+                "/api/offers",
+                {
+                    method: "POST",
+                    headers:{
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({
+                        spaceId: currentOfferId,
+                        name,
+                        email,
+                        value: Number(value),
+                        message
+                    })
+                }
+            );
+
+        const data =
+            await reqJSON(response);
+
+        if(!response.ok){
+            msg.textContent =
+                data.error ||
+                "Não foi possível enviar a oferta.";
+            return;
+        }
+
+        salvarMyOffer(data.offerId);
+
+        msg.innerHTML =
+            '<span class="sucesso">✅ Oferta enviada!</span><br>' +
+            'O proprietário será notificado.';
+
+    }catch(error){
+
+        msg.textContent =
+            "Erro de comunicação com o servidor.";
+
+        console.error(error);
+    }
+}
+
+
+/* =========================
+   PAINEL DO PROPRIETÁRIO
+========================= */
+
+async function abrirPainelOfertas(){
+
+    document.getElementById("ownerModal").style.display = "flex";
+
+    const list =
+        document.getElementById("ownerList");
+
+    list.innerHTML =
+        "Carregando ofertas...";
+
+    const tokens =
+        [...new Set(Object.values(orderTokens))];
+
+    ultimasOfertas = [];
+
+    for(const token of tokens){
+
+        try{
+
+            const response =
+                await fetch(
+                    "/api/offers/owner?token=" +
+                    encodeURIComponent(token)
+                );
+
+            if(!response.ok)continue;
+
+            const data =
+                await reqJSON(response);
+
+            if(data.ok && Array.isArray(data.offers)){
+                ultimasOfertas =
+                    ultimasOfertas.concat(data.offers);
+            }
+
+        }catch(error){
+            console.error(error);
+        }
+    }
+
+    const pendentes =
+        ultimasOfertas.filter(o => o.status === "pending");
+
+    const outras =
+        ultimasOfertas.filter(o => o.status !== "pending");
+
+    if(!ultimasOfertas.length){
+
+        list.innerHTML =
+            "Você ainda não recebeu ofertas.<br>" +
+            "<span style='font-size:12px;color:#888;'>" +
+            "Compre espaços, publique-os e outros " +
+            "compradores poderão fazer ofertas.</span>";
+
+        carregarMinhasOfertasEnviadas();
+
+        return;
+    }
+
+    let html = "";
+
+    if(pendentes.length){
+
+        html +=
+            '<div style="font-weight:800;margin:8px 0 6px;' +
+            'color:#ffd400;">PENDENTES</div>';
+
+        for(const o of pendentes){
+            html += cardOferta(o, false);
+        }
+    }
+
+    if(outras.length){
+
+        html +=
+            '<div style="font-weight:800;margin:14px 0 6px;' +
+            'color:#aaa;">JÁ RESPONDIDAS</div>';
+
+        for(const o of outras){
+            html += cardOferta(o, true);
+        }
+    }
+
+    list.innerHTML = html;
+
+    carregarMinhasOfertasEnviadas();
+}
+
+function cardOferta(o, done){
+
+    const valor =
+        "R$ " + Number(o.value).toLocaleString("pt-BR");
+
+    return `
+      <div style="border:1px solid #333;border-radius:12px;
+                  padding:12px 14px;margin-bottom:10px;background:#161616;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <b>#${o.spaceId.toLocaleString("pt-BR")}</b>
+          <span style="color:#ffd400;font-weight:800;">${valor}</span>
+        </div>
+        <div style="color:#aaa;margin-top:4px;">
+          ${o.name} · ${o.email}
+        </div>
+        ${
+            o.message
+            ? `<div style="color:#888;font-size:12px;margin-top:4px;">“${o.message}”</div>`
+            : ""
+        }
+        <div style="font-size:12px;color:#888;margin-top:4px;">
+          ${new Date(o.createdAt).toLocaleString("pt-BR")}
+        </div>
+        ${
+            done
+            ? `<div style="margin-top:8px;font-size:12px;">${statusLabel(o.status)}</div>`
+            : `
+              <div style="margin-top:10px;">
+                <button class="btn" onclick="aceitarOferta('${o.id}')"
+                        style="margin:0;padding:8px 12px;font-size:12px;">
+                  ✓ ACEITAR
+                </button>
+                <button class="btn sec" onclick="recusarOferta('${o.id}')"
+                        style="margin:0;padding:8px 12px;font-size:12px;">
+                  ✕ RECUSAR
+                </button>
+              </div>
+            `
+        }
+      </div>
+    `;
+}
+
+function statusLabel(s){
+
+    if(s === "pending"){
+        return '<span style="color:#ffd400;">Aguardando resposta</span>';
+    }
+
+    if(s === "accepted"){
+        return '<span style="color:#45d66f;">Aceita — aguardando pagamento do comprador</span>';
+    }
+
+    if(s === "paid"){
+        return '<span style="color:#45d66f;">✅ Paga — espaço transferido</span>';
+    }
+
+    if(s === "rejected"){
+        return '<span style="color:#ff4d4d;">Recusada</span>';
+    }
+
+    return s;
+}
+
+function tokenDaOferta(offerId){
+
+    const o =
+        ultimasOfertas.find(x => x.id === offerId);
+
+    if(!o)return "";
+
+    return orderTokens[o.spaceId] || "";
+}
+
+async function aceitarOferta(offerId){
+
+    const cpfCnpj =
+        prompt(
+            "Informe o CPF ou CNPJ do comprador " +
+            "para gerar o Pix:"
+        );
+
+    if(!cpfCnpj)return;
+
+    const token = tokenDaOferta(offerId);
+
+    if(!token){
+        alert(
+            "Token de propriedade não encontrado. " +
+            "Sua sessão pode ter expirado."
+        );
+        return;
+    }
+
+    try{
+
+        const response =
+            await fetch(
+                "/api/offers/" + offerId + "/accept",
+                {
+                    method: "POST",
+                    headers:{
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({
+                        token,
+                        cpfCnpj
+                    })
+                }
+            );
+
+        const data =
+            await reqJSON(response);
+
+        if(!response.ok){
+            alert(
+                data.error ||
+                "Não foi possível aceitar a oferta."
+            );
+            return;
+        }
+
+        mostrarPixOferta(data);
+
+    }catch(error){
+
+        alert(
+            "Erro de comunicação com o servidor."
+        );
+
+        console.error(error);
+    }
+}
+
+function mostrarPixOferta(data){
+
+    const list =
+        document.getElementById("ownerList");
+
+    list.innerHTML = `
+      <div style="color:#45d66f;font-weight:800;margin-bottom:8px;">
+        ✓ Oferta aceita! Pix gerado para o comprador.
+      </div>
+
+      <img
+        src="data:image/png;base64,${data.qrCode}"
+        alt="QR Code"
+        style="width:200px;height:200px;background:#fff;
+               padding:8px;border-radius:12px;
+               display:block;margin:0 auto;">
+
+      <input
+        class="copia"
+        id="offerPayload"
+        value="${data.payload}"
+        readonly
+        style="margin-top:10px;">
+
+      <button
+        class="btn"
+        onclick="copiarPixOferta()"
+        style="margin-top:8px;">
+        COPIAR PIX
+      </button>
+
+      <div
+        id="offerPayStatus"
+        style="margin-top:10px;font-size:13px;">
+        Aguardando pagamento do comprador...
+      </div>
+    `;
+
+    monitorarOferta(data.paymentId);
+}
+
+async function copiarPixOferta(){
+
+    const campo =
+        document.getElementById("offerPayload");
+
+    try{
+
+        await navigator.clipboard.writeText(campo.value);
+
+    }catch{
+
+        campo.select();
+        document.execCommand("copy");
+    }
+}
+
+function monitorarOferta(paymentId){
+
+    clearInterval(offerMonitor);
+
+    offerMonitor =
+        setInterval(
+            async () => {
+
+                try{
+
+                    const response =
+                        await fetch(
+                            "/api/payment-status/" +
+                            paymentId
+                        );
+
+                    const data =
+                        await reqJSON(response);
+
+                    if(
+                        data.status === "RECEIVED" ||
+                        data.status === "CONFIRMED"
+                    ){
+
+                        clearInterval(offerMonitor);
+
+                        document.getElementById("offerPayStatus")
+                            .innerHTML =
+                            '<span style="color:#45d66f;">' +
+                            '✅ Pagamento recebido! ' +
+                            'Espaço transferido para o novo proprietário.</span>';
+
+                        await abrirPainelOfertas();
+                    }
+
+                }catch(error){
+                    console.error(error);
+                }
+            },
+            5000
+        );
+}
+
+async function recusarOferta(offerId){
+
+    if(!confirm("Recusar esta oferta?"))return;
+
+    const token = tokenDaOferta(offerId);
+
+    if(!token){
+        alert("Token de propriedade não encontrado.");
+        return;
+    }
+
+    try{
+
+        const response =
+            await fetch(
+                "/api/offers/" + offerId + "/reject",
+                {
+                    method: "POST",
+                    headers:{
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({ token })
+                }
+            );
+
+        const data =
+            await reqJSON(response);
+
+        if(!response.ok){
+            alert(
+                data.error ||
+                "Não foi possível recusar a oferta."
+            );
+            return;
+        }
+
+        await abrirPainelOfertas();
+
+    }catch(error){
+
+        alert("Erro de comunicação com o servidor.");
+
+        console.error(error);
+    }
+}
+
+function closeOwner(){
+
+    clearInterval(offerMonitor);
+
+    document.getElementById("ownerModal").style.display = "none";
+}
+
+
+/* =========================
+   OFERTAS QUE EU FIZ
+========================= */
+
+async function carregarMinhasOfertasEnviadas(){
+
+    const list =
+        document.getElementById("ownerList");
+
+    if(!myOffers.length)return;
+
+    const div =
+        document.createElement("div");
+
+    div.innerHTML =
+        '<div style="font-weight:800;margin:18px 0 6px;' +
+        'color:#ffd400;">OFERTAS QUE VOCÊ FEZ</div>';
+
+    list.appendChild(div);
+
+    for(const offerId of myOffers){
+
+        const card =
+            document.createElement("div");
+
+        card.style.cssText =
+            "border:1px solid #333;border-radius:12px;" +
+            "padding:12px 14px;margin-bottom:10px;" +
+            "background:#161616;font-size:13px;";
+
+        card.textContent = offerId + " — verificando...";
+
+        list.appendChild(card);
+
+        try{
+
+            const response =
+                await fetch(
+                    "/api/offers/" +
+                    encodeURIComponent(offerId)
+                );
+
+            if(!response.ok){
+                card.textContent =
+                    offerId + " — não encontrada.";
+                continue;
+            }
+
+            const data =
+                await reqJSON(response);
+
+            card.innerHTML =
+                "<div>Oferta <b>" + offerId + "</b> para o " +
+                "espaço <b>#" +
+                Number(data.spaceId).toLocaleString("pt-BR") +
+                "</b></div>" +
+                "<div style='margin-top:6px;'>" +
+                statusLabel(data.status) +
+                "</div>" +
+                (data.status === "paid" && data.newOwnerToken
+                    ? "<button class='btn' " +
+                      "onclick=\"salvarEspacoTransferido(" +
+                      data.spaceId + ", '" +
+                      data.newOwnerToken + "')\" " +
+                      "style='margin-top:10px;padding:8px 12px;" +
+                      "font-size:12px;'>" +
+                      "✅ SALVAR MEU ESPAÇO</button>"
+                    : "");
+
+        }catch(error){
+            console.error(error);
+        }
+    }
+}
+
+function salvarEspacoTransferido(spaceId, token){
+
+    salvarTokens([spaceId], token);
+
+    alert(
+        "Espaço #" +
+        Number(spaceId).toLocaleString("pt-BR") +
+        " salvo na sua conta. Agora você pode publicá-lo."
+    );
+
+    closeOwner();
+
+    load();
+}
+
 </script>
 
 </body>

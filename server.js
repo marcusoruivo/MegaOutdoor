@@ -4,6 +4,7 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,6 +15,8 @@ const ASAAS_KEY = process.env.ASAAS_API_KEY;
 const DATA_DIR = path.join(__dirname, "data");
 const UPLOAD_DIR = path.join(__dirname, "uploads");
 const DB_FILE = path.join(DATA_DIR, "spaces.json");
+const OFFERS_FILE = path.join(DATA_DIR, "offers.json");
+const COUPONS_FILE = path.join(DATA_DIR, "coupons.json");
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -57,6 +60,168 @@ function writeDB(data) {
         JSON.stringify(data, null, 2),
         "utf8"
     );
+}
+
+function readJsonFile(file, fallback) {
+    if (!fs.existsSync(file)) {
+        return fallback;
+    }
+
+    try {
+        return JSON.parse(
+            fs.readFileSync(file, "utf8")
+        );
+    } catch {
+        return fallback;
+    }
+}
+
+function writeJsonFile(file, data) {
+    fs.writeFileSync(
+        file,
+        JSON.stringify(data, null, 2),
+        "utf8"
+    );
+}
+
+function readOffers() {
+    return readJsonFile(OFFERS_FILE, {});
+}
+
+function writeOffers(data) {
+    writeJsonFile(OFFERS_FILE, data);
+}
+
+function readCoupons() {
+    return readJsonFile(COUPONS_FILE, {});
+}
+
+function writeCoupons(data) {
+    writeJsonFile(COUPONS_FILE, data);
+}
+
+function gerarToken() {
+    return crypto.randomBytes(16).toString("hex");
+}
+
+function gerarCupom(nome, orderId) {
+    const codigo =
+        "MEGA-" +
+        crypto.randomBytes(4).toString("hex").toUpperCase();
+
+    const cupons = readCoupons();
+
+    cupons[codigo] = {
+        codigo,
+        ownerName: (nome || "").trim(),
+        ownerOrderId: orderId,
+        discountPercent: 10,
+        used: 0,
+        maxUses: 100,
+        active: true,
+        createdAt: new Date().toISOString()
+    };
+
+    writeCoupons(cupons);
+
+    return codigo;
+}
+
+function validarCupom(codigo) {
+    if (!codigo) {
+        return null;
+    }
+
+    const cupons = readCoupons();
+
+    const cupom = cupons[codigo.trim().toUpperCase()];
+
+    if (
+        !cupom ||
+        cupom.active === false ||
+        cupom.used >= cupom.maxUses
+    ) {
+        return null;
+    }
+
+    return cupom;
+}
+
+function validarCpf(cpf) {
+    cpf = cpf.replace(/\D/g, "");
+
+    if (cpf.length !== 11) {
+        return false;
+    }
+
+    if (/^(\d)\1{10}$/.test(cpf)) {
+        return false;
+    }
+
+    let soma = 0;
+
+    for (let i = 0; i < 9; i++) {
+        soma += Number(cpf[i]) * (10 - i);
+    }
+
+    let digito = (soma * 10) % 11 % 10;
+
+    if (digito !== Number(cpf[9])) {
+        return false;
+    }
+
+    soma = 0;
+
+    for (let i = 0; i < 10; i++) {
+        soma += Number(cpf[i]) * (11 - i);
+    }
+
+    digito = (soma * 10) % 11 % 10;
+
+    return digito === Number(cpf[10]);
+}
+
+function validarCnpj(cnpj) {
+    cnpj = cnpj.replace(/\D/g, "");
+
+    if (cnpj.length !== 14) {
+        return false;
+    }
+
+    if (/^(\d)\1{13}$/.test(cnpj)) {
+        return false;
+    }
+
+    const pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    let soma = 0;
+
+    for (let i = 0; i < 12; i++) {
+        soma += Number(cnpj[i]) * pesos1[i];
+    }
+
+    let digito =
+        soma % 11 < 2 ? 0 : 11 - (soma % 11);
+
+    if (digito !== Number(cnpj[12])) {
+        return false;
+    }
+
+    const pesos2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    soma = 0;
+
+    for (let i = 0; i < 13; i++) {
+        soma += Number(cnpj[i]) * pesos2[i];
+    }
+
+    digito =
+        soma % 11 < 2 ? 0 : 11 - (soma % 11);
+
+    return digito === Number(cnpj[13]);
+}
+
+function validarDocumento(doc) {
+    const d = (doc || "").replace(/\D/g, "");
+    return validarCpf(d) || validarCnpj(d);
 }
 
 async function asaasRequest(endpoint, options = {}) {
@@ -133,7 +298,8 @@ app.post("/api/checkout", async (req, res) => {
             spaces,
             name,
             email,
-            cpfCnpj
+            cpfCnpj,
+            coupon
         } = req.body;
 
         const ids = [
@@ -174,7 +340,7 @@ app.post("/api/checkout", async (req, res) => {
 
         const document = cpfCnpj.replace(/\D/g, "");
 
-        if (document.length !== 11 && document.length !== 14) {
+        if (!validarDocumento(document)) {
             return res.status(400).json({
                 error: "CPF ou CNPJ inválido."
             });
@@ -206,6 +372,42 @@ app.post("/api/checkout", async (req, res) => {
         }
 
         const total = ids.length;
+
+        /* =========================
+           CUPOM DE INDICAÇÃO
+        ========================= */
+
+        const cupom = validarCupom(coupon);
+
+        let desconto = null;
+
+        if (coupon && !cupom) {
+            return res.status(400).json({
+                error: "Cupom de indicação inválido ou expirado."
+            });
+        }
+
+        if (cupom) {
+            desconto = {
+                value: cupom.discountPercent,
+                dueDateLimitDays: 0,
+                type: "PERCENTAGE"
+            };
+        }
+
+        if (cupom) {
+            const minimo =
+                Math.ceil(5 / (1 - cupom.discountPercent / 100));
+
+            if (total < minimo) {
+                return res.status(400).json({
+                    error:
+                        `Com o cupom de ${cupom.discountPercent}% de ` +
+                        `desconto, selecione ao menos ${minimo} espaços ` +
+                        `(o valor após o desconto não pode ser menor que R$ 5,00).`
+                });
+            }
+        }
 
         /* =========================
            CRIA CLIENTE ASAAS
@@ -247,7 +449,8 @@ app.post("/api/checkout", async (req, res) => {
                     description:
                         `Milhão Door - ${total} espaço(s)`,
                     externalReference:
-                        `MEGA-${Date.now()}`
+                        `MEGA-${Date.now()}`,
+                    ...(desconto ? { discount: desconto } : {})
                 })
             }
         );
@@ -268,6 +471,9 @@ app.post("/api/checkout", async (req, res) => {
                 .toString(36)
                 .substring(2, 7)}`;
 
+        const orderToken =
+            gerarToken();
+
         /* =========================
            RESERVA
         ========================= */
@@ -278,6 +484,7 @@ app.post("/api/checkout", async (req, res) => {
                 id,
                 status: "reserved",
                 orderId,
+                orderToken,
                 customerId: customer.id,
                 paymentId: payment.id,
                 name: name.trim(),
@@ -289,15 +496,29 @@ app.post("/api/checkout", async (req, res) => {
 
         writeDB(db);
 
+        if (cupom) {
+            cupom.used += 1;
+            const cupons = readCoupons();
+            cupons[cupom.codigo] = cupom;
+            writeCoupons(cupons);
+        }
+
+        const meuCupom =
+            gerarCupom(name, orderId);
+
         res.json({
             ok: true,
             orderId,
+            orderToken,
             paymentId: payment.id,
             spaces: ids,
             total,
             value: total,
+            discountPercent:
+                cupom ? cupom.discountPercent : 0,
             qrCode: pix.encodedImage,
             payload: pix.payload,
+            meuCupom,
             expirationDate:
                 pix.expirationDate
         });
@@ -322,6 +543,8 @@ app.post("/api/test/reserve", (req, res) => {
     try {
 
         const name = (req.body?.name || "").trim();
+        const email = (req.body?.email || "").trim();
+        const coupon = (req.body?.coupon || "").trim();
         const spaces = [
             ...new Set(
                 (req.body?.spaces || []).map(Number)
@@ -331,6 +554,14 @@ app.post("/api/test/reserve", (req, res) => {
         if (!spaces.length) {
             return res.status(400).json({
                 error: "Nenhum espaço selecionado."
+            });
+        }
+
+        const cupom = validarCupom(coupon);
+
+        if (coupon && !cupom) {
+            return res.status(400).json({
+                error: "Cupom de indicação inválido ou expirado."
             });
         }
 
@@ -360,23 +591,46 @@ app.post("/api/test/reserve", (req, res) => {
         const now =
             new Date().toISOString();
 
+        const orderId =
+            `TESTE-${Date.now()}`;
+
+        const orderToken =
+            gerarToken();
+
         for (const id of spaces) {
 
             db[id] = {
                 id,
                 status: "paid",
                 test: true,
+                orderId,
+                orderToken,
                 name: name || "Anunciante",
+                email: email || "",
                 createdAt: now
             };
         }
 
         writeDB(db);
 
+        const meuCupom =
+            gerarCupom(name, orderId);
+
+        if (cupom) {
+            cupom.used += 1;
+            const cupons = readCoupons();
+            cupons[cupom.codigo] = cupom;
+            writeCoupons(cupons);
+        }
+
         res.json({
             ok: true,
             spaces,
-            test: true
+            test: true,
+            orderToken,
+            meuCupom,
+            discountPercent:
+                cupom ? cupom.discountPercent : 0
         });
 
     } catch (error) {
@@ -412,6 +666,8 @@ app.get(
                 payment.status === "CONFIRMED"
             ) {
 
+                confirmarPagamentoOferta(payment.id);
+
                 for (const id of Object.keys(db)) {
 
                     if (
@@ -446,6 +702,372 @@ app.get(
         }
     }
 );
+
+/* =========================
+   OFERTAS (COMPRAR ESPAÇO VENDIDO)
+========================= */
+
+function confirmarPagamentoOferta(paymentId) {
+
+    const ofertas = readOffers();
+
+    const oferta = Object.values(ofertas).find(o =>
+        o.paymentId === paymentId &&
+        o.status === "accepted"
+    );
+
+    if (!oferta) {
+        return false;
+    }
+
+    const db = readDB();
+    const space = db[oferta.spaceId];
+
+    if (!space) {
+        return false;
+    }
+
+    const novoToken = gerarToken();
+
+    db[oferta.spaceId] = {
+        ...space,
+        name: oferta.name,
+        email: oferta.email,
+        orderToken: novoToken,
+        transferPaymentId: paymentId,
+        transferredAt: new Date().toISOString()
+    };
+
+    writeDB(db);
+
+    oferta.status = "paid";
+    oferta.paidAt = new Date().toISOString();
+    oferta.newOwnerToken = novoToken;
+
+    writeOffers(ofertas);
+
+    console.log(`Oferta ${oferta.id} paga. Espaço transferido.`);
+
+    return true;
+}
+
+app.post("/api/offers", (req, res) => {
+
+    try {
+
+        const {
+            spaceId,
+            name,
+            email,
+            value,
+            message
+        } = req.body;
+
+        const id = Number(spaceId);
+
+        if (
+            !Number.isInteger(id) ||
+            id < 1 ||
+            id > 1000000
+        ) {
+            return res.status(400).json({
+                error: "Espaço inválido."
+            });
+        }
+
+        const db = readDB();
+
+        if (!db[id]) {
+            return res.status(404).json({
+                error: "Espaço não encontrado."
+            });
+        }
+
+        if (db[id].status !== "published") {
+            return res.status(400).json({
+                error:
+                    "Este espaço ainda não está publicado " +
+                    "para receber ofertas."
+            });
+        }
+
+        if (!name || name.trim().length < 3) {
+            return res.status(400).json({
+                error: "Informe seu nome."
+            });
+        }
+
+        if (!email || !email.includes("@")) {
+            return res.status(400).json({
+                error: "Informe um e-mail válido."
+            });
+        }
+
+        const valor = Number(value);
+
+        if (
+            !Number.isFinite(valor) ||
+            valor < 1 ||
+            valor > 1000000
+        ) {
+            return res.status(400).json({
+                error: "Informe um valor de oferta válido (R$)."
+            });
+        }
+
+        const ofertas = readOffers();
+
+        const ofertaId =
+            `OFR-${Date.now()}-${Math.random()
+                .toString(36)
+                .substring(2, 7)}`;
+
+        ofertas[ofertaId] = {
+            id: ofertaId,
+            spaceId: id,
+            name: name.trim(),
+            email: email.trim(),
+            value: valor,
+            message: (message || "").trim(),
+            status: "pending",
+            ownerToken: db[id].orderToken || "",
+            createdAt: new Date().toISOString()
+        };
+
+        writeOffers(ofertas);
+
+        res.json({
+            ok: true,
+            offerId: ofertaId
+        });
+
+    } catch (error) {
+
+        res.status(500).json({
+            error: error.message
+        });
+    }
+});
+
+app.get("/api/offers/owner", (req, res) => {
+
+    const token = (req.query.token || "").trim();
+
+    if (!token) {
+        return res.status(400).json({
+            error: "Token de proprietário não informado."
+        });
+    }
+
+    const db = readDB();
+    const ofertas = readOffers();
+
+    const meusIds =
+        Object.values(db)
+            .filter(s => s.orderToken === token)
+            .map(s => s.id);
+
+    const lista =
+        Object.values(ofertas)
+            .filter(o =>
+                meusIds.includes(o.spaceId) &&
+                (o.status === "pending" ||
+                 o.status === "accepted" ||
+                 o.status === "paid")
+            )
+            .map(o => ({
+                id: o.id,
+                spaceId: o.spaceId,
+                name: o.name,
+                email: o.email,
+                value: o.value,
+                message: o.message,
+                status: o.status,
+                createdAt: o.createdAt
+            }))
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+    res.json({
+        ok: true,
+        offers: lista
+    });
+});
+
+app.post("/api/offers/:id/accept", async (req, res) => {
+
+    try {
+
+        const ofertas = readOffers();
+        const oferta = ofertas[req.params.id];
+
+        if (!oferta || oferta.status !== "pending") {
+            return res.status(404).json({
+                error: "Oferta não encontrada ou já respondida."
+            });
+        }
+
+        const token = (req.body.token || "").trim();
+
+        const db = readDB();
+
+        if (
+            !db[oferta.spaceId] ||
+            db[oferta.spaceId].orderToken !== token
+        ) {
+            return res.status(403).json({
+                error:
+                    "Você não é o proprietário deste espaço."
+            });
+        }
+
+        /* =========================
+           CRIA CLIENTE + PIX PARA O COMPRADOR
+        ========================= */
+
+        const document =
+            (req.body.cpfCnpj || "")
+                .replace(/\D/g, "");
+
+        if (!validarDocumento(document)) {
+            return res.status(400).json({
+                error:
+                    "Informe um CPF ou CNPJ válido do comprador."
+            });
+        }
+
+        const customer = await asaasRequest(
+            "/customers",
+            {
+                method: "POST",
+                body: JSON.stringify({
+                    name: oferta.name,
+                    cpfCnpj: document,
+                    email: oferta.email,
+                    externalReference:
+                        `oferta-${oferta.id}`,
+                    notificationDisabled: true
+                })
+            }
+        );
+
+        const dueDate =
+            new Date()
+                .toISOString()
+                .slice(0, 10);
+
+        const payment = await asaasRequest(
+            "/payments",
+            {
+                method: "POST",
+                body: JSON.stringify({
+                    customer: customer.id,
+                    billingType: "PIX",
+                    value: oferta.value,
+                    dueDate,
+                    description:
+                        `Milhão Door - transferência do espaço ` +
+                        `#${oferta.spaceId.toLocaleString("pt-BR")}`,
+                    externalReference:
+                        `OFR-${oferta.id}`
+                })
+            }
+        );
+
+        const pix = await asaasRequest(
+            `/payments/${payment.id}/pixQrCode`,
+            {
+                method: "GET"
+            }
+        );
+
+        oferta.status = "accepted";
+        oferta.paymentId = payment.id;
+        oferta.customerId = customer.id;
+        oferta.acceptedAt = new Date().toISOString();
+
+        writeOffers(ofertas);
+
+        res.json({
+            ok: true,
+            offerId: oferta.id,
+            qrCode: pix.encodedImage,
+            payload: pix.payload,
+            paymentId: payment.id,
+            value: oferta.value
+        });
+
+    } catch (error) {
+
+        console.error("ERRO OFERTA ACEITA:", error.message);
+
+        res.status(500).json({
+            error: error.message
+        });
+    }
+});
+
+app.post("/api/offers/:id/reject", (req, res) => {
+
+    const ofertas = readOffers();
+    const oferta = ofertas[req.params.id];
+
+    if (!oferta || oferta.status !== "pending") {
+        return res.status(404).json({
+            error: "Oferta não encontrada ou já respondida."
+        });
+    }
+
+    const token = (req.body.token || "").trim();
+
+    const db = readDB();
+
+    if (
+        !db[oferta.spaceId] ||
+        db[oferta.spaceId].orderToken !== token
+    ) {
+        return res.status(403).json({
+            error: "Você não é o proprietário deste espaço."
+        });
+    }
+
+    oferta.status = "rejected";
+    oferta.rejectedAt = new Date().toISOString();
+
+    writeOffers(ofertas);
+
+    res.json({
+        ok: true,
+        offerId: oferta.id,
+        status: "rejected"
+    });
+});
+
+app.get("/api/offers/:id", (req, res) => {
+
+    const ofertas = readOffers();
+    const oferta = ofertas[req.params.id];
+
+    if (!oferta) {
+        return res.status(404).json({
+            error: "Oferta não encontrada."
+        });
+    }
+
+    res.json({
+        ok: true,
+        id: oferta.id,
+        spaceId: oferta.spaceId,
+        name: oferta.name,
+        email: oferta.email,
+        value: oferta.value,
+        status: oferta.status,
+        createdAt: oferta.createdAt,
+        newOwnerToken:
+            oferta.status === "paid"
+                ? oferta.newOwnerToken || ""
+                : undefined
+    });
+});
 
 /* =========================
    UPLOAD FOTO
@@ -521,6 +1143,28 @@ app.post(
             }
         }
 
+        /* =========================
+           TOKEN DE PROPRIEDADE
+           Só o dono pode editar a foto
+        ========================= */
+
+        const orderToken =
+            (req.body.orderToken || "").trim();
+
+        for (const spaceId of ids) {
+
+            const dono =
+                db[spaceId].orderToken;
+
+            if (dono && dono !== orderToken) {
+                return res.status(403).json({
+                    error:
+                        `Você não é o proprietário do espaço ` +
+                        `#${spaceId.toLocaleString("pt-BR")}.`
+                });
+            }
+        }
+
         if (!req.file) {
             return res.status(400).json({
                 error: "Envie uma imagem."
@@ -549,6 +1193,8 @@ app.post(
                 image,
                 title,
                 publishedAt,
+                orderToken:
+                    db[spaceId].orderToken || orderToken,
                 ...(isExtended ? {
                     displayMode: "extended",
                     imageGroupSpaces: ids
@@ -592,6 +1238,10 @@ app.post("/webhooks/asaas", (req, res) => {
         const paymentId = evento.payment?.id;
 
         if (paymentId) {
+
+            const ofertaPaga =
+                confirmarPagamentoOferta(paymentId);
+
             const db = readDB();
             let alterado = false;
 
@@ -612,7 +1262,7 @@ app.post("/webhooks/asaas", (req, res) => {
                 }
             }
 
-            if (alterado) {
+            if (alterado || ofertaPaga) {
                 writeDB(db);
                 console.log(
                     `Pagamento ${paymentId} confirmado.`

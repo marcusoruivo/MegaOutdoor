@@ -6,7 +6,7 @@ const path = require("path");
 const fs = require("fs");
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 const ASAAS_API = "https://api.asaas.com/v3";
 const ASAAS_KEY = process.env.ASAAS_API_KEY;
@@ -19,7 +19,7 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 app.use(express.json());
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, "public")));
 app.use("/uploads", express.static(UPLOAD_DIR));
 
 const storage = multer.diskStorage({
@@ -485,6 +485,48 @@ app.post("/webhooks/asaas", (req, res) => {
         received: true
     });
 });
+
+/* =========================
+   404 JSON PARA /api
+========================= */
+
+app.use("/api", (req, res) => {
+    res.status(404).json({
+        error: "Rota não encontrada."
+    });
+});
+
+/* =========================
+   TRATAMENTO DE ERROS
+========================= */
+
+app.use((err, req, res, next) => {
+    console.error("ERRO:", err.message);
+
+    if (err.type === "entity.too.large") {
+        return res.status(413).json({
+            error: "Corpo da requisição muito grande."
+        });
+    }
+
+    if (err.name === "MulterError") {
+        return res.status(400).json({
+            error: err.message
+        });
+    }
+
+    if (
+        req.path.startsWith("/api") ||
+        req.path.startsWith("/webhooks")
+    ) {
+        return res.status(err.status || 500).json({
+            error: err.message || "Erro interno do servidor."
+        });
+    }
+
+    res.status(err.status || 500).send("Erro interno do servidor.");
+});
+
 app.listen(
     PORT,
     () => {

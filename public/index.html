@@ -1329,6 +1329,20 @@ ctx.restore();
    CARREGAR DADOS
 ========================= */
 
+async function reqJSON(resposta){
+    const texto =
+        await resposta.text();
+
+    try{
+        return JSON.parse(texto);
+    }catch{
+        throw new Error(
+            "Servidor fora do ar ou resposta inválida " +
+            "(HTML em vez de JSON)."
+        );
+    }
+}
+
 async function load(){
 
 const response =
@@ -1336,8 +1350,18 @@ await fetch(
 "/api/spaces"
 );
 
-db =
-await response.json();
+if(!response.ok){
+    console.error(
+        "Erro ao carregar /api/spaces:",
+        response.status
+    );
+    return;
+}
+
+const data =
+await reqJSON(response);
+
+db = data;
 
 
 for(
@@ -1382,7 +1406,7 @@ await fetch(
 );
 
 const s =
-await response.json();
+await reqJSON(response);
 
 
 document.getElementById(
@@ -1895,7 +1919,7 @@ cpfCnpj:cpf
 
 
 const data =
-await response.json();
+await reqJSON(response);
 
 
 if(!response.ok){
@@ -2097,7 +2121,7 @@ currentPayment
 
 
 const data =
-await response.json();
+await reqJSON(response);
 
 
 if(
@@ -2412,7 +2436,7 @@ if (modo === "individual") {
             }
         );
 
-        const data = await resposta.json();
+        const data = await reqJSON(resposta);
 
         if (!resposta.ok) {
 
@@ -2468,7 +2492,7 @@ if (modo === "estendida") {
         }
     );
 
-    const data = await resposta.json();
+    const data = await reqJSON(resposta);
 
     if (!resposta.ok) {
 

@@ -172,6 +172,92 @@ async function enviarEmail(to, subject, html) {
     }
 }
 
+/* =========================
+   E-MAIL UNIFICADO DE OFERTAS
+   Agrupa ofertas de blocos do
+   mesmo dono em um único e-mail
+========================= */
+
+const filaEmails = new Map();
+const TEMPO_UNIFICAR_MS =
+    Number(process.env.EMAIL_AGUARDO_MS) || 60000;
+
+function agendarEmailUnificado(email, itemHtml) {
+
+    const chave = email.trim().toLowerCase();
+
+    if (!filaEmails.has(chave)) {
+
+        filaEmails.set(chave, {
+            items: [],
+            timer: null
+        });
+    }
+
+    const entrada = filaEmails.get(chave);
+
+    entrada.items.push(itemHtml);
+
+    if (entrada.timer) {
+        clearTimeout(entrada.timer);
+    }
+
+    entrada.timer = setTimeout(
+        () => flushEmailUnificado(chave),
+        TEMPO_UNIFICAR_MS
+    );
+}
+
+async function flushEmailUnificado(chave) {
+
+    const entrada = filaEmails.get(chave);
+
+    if (!entrada) return;
+
+    filaEmails.delete(chave);
+
+    if (entrada.timer) {
+        clearTimeout(entrada.timer);
+    }
+
+    if (!entrada.items.length) return;
+
+    const n = entrada.items.length;
+
+    const corpo =
+        entrada.items.map((item, i) =>
+            `<div style="background:#f7f7f7;border-radius:8px;` +
+            `padding:14px;margin-bottom:10px;font-size:14px;color:#333;">` +
+            (n > 1
+                ? `<div style="font-weight:700;color:#111;` +
+                  `margin-bottom:6px;">Oferta ${i + 1} de ${n}</div>`
+                : "") +
+            item +
+            `</div>`
+        ).join("");
+
+    await enviarEmail(
+        chave,
+        n > 1
+            ? `Você recebeu ${n} novas ofertas`
+            : `Você recebeu uma nova oferta`,
+        htmlNotificacao(
+            "💰 Novas ofertas de compra",
+            corpo
+        )
+    );
+}
+
+function flushTodasEmails() {
+
+    for (const chave of [...filaEmails.keys()]) {
+        flushEmailUnificado(chave);
+    }
+}
+
+process.on("SIGTERM", flushTodasEmails);
+process.on("SIGINT", flushTodasEmails);
+
 function htmlNotificacao(titulo, linhas) {
 
     return `
@@ -940,12 +1026,11 @@ app.post("/api/offers", (req, res) => {
 
         if (dono) {
 
-            const linhas =
-                `<p style="margin:0 0 10px;color:#444;font-size:14px;">` +
-                `Você recebeu uma oferta para o espaço ` +
+            const item =
+                `<p style="margin:0 0 8px;color:#444;font-size:14px;">` +
+                `Oferta para o espaço ` +
                 `<b>#${id.toLocaleString("pt-BR")}</b>:</p>` +
-                `<div style="background:#f7f7f7;border-radius:8px;` +
-                `padding:14px;font-size:14px;color:#333;">` +
+                `<div style="font-size:14px;color:#333;">` +
                 `Comprador: <b>${name.trim()}</b><br>` +
                 `Valor da oferta: ` +
                 `<b style="color:#15803d;">` +
@@ -956,10 +1041,9 @@ app.post("/api/offers", (req, res) => {
                 `E-mail do comprador: ${email.trim()}` +
                 `</div>`;
 
-            enviarEmail(
+            agendarEmailUnificado(
                 dono.email,
-                `Oferta recebida para o espaço #${id.toLocaleString("pt-BR")}`,
-                htmlNotificacao("💰 Nova oferta de compra", linhas)
+                item
             );
         }
 
@@ -1590,6 +1674,9 @@ app.post(
         const isExtended =
             req.body.mode === "extended";
 
+        const tocados =
+            new Set(ids);
+
         for (const spaceId of ids) {
 
             db[spaceId] = {
@@ -1608,6 +1695,58 @@ app.post(
                     imageGroupSpaces: [spaceId]
                 })
             };
+        }
+
+        /* =========================
+           RECONCILIAÇÃO DE GRUPOS
+           Espaços vizinhos que antes
+           faziam parte do grupo do
+           espaço editado (e não foram
+           incluídos na edição) perdem
+           a referência ao espaço
+           desmembrado.
+        ========================= */
+
+        for (const sid of Object.keys(db)) {
+
+            const nid = Number(sid);
+
+            if (tocados.has(nid)) continue;
+
+            const s = db[sid];
+
+            if (
+                s.displayMode !== "extended" ||
+                !Array.isArray(s.imageGroupSpaces)
+            ) continue;
+
+            const grupo =
+                s.imageGroupSpaces.map(Number);
+
+            const novo =
+                grupo.filter(g =>
+                    !tocados.has(g)
+                );
+
+            if (novo.length === grupo.length) {
+                continue;
+            }
+
+            if (novo.length <= 1) {
+
+                db[sid] = {
+                    ...s,
+                    displayMode: "individual",
+                    imageGroupSpaces: [nid]
+                };
+
+            } else {
+
+                db[sid] = {
+                    ...s,
+                    imageGroupSpaces: novo
+                };
+            }
         }
 
         writeDB(db);

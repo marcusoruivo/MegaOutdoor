@@ -1080,6 +1080,18 @@ style="width:100%; margin-top:10px;">
 
 <div id="editModoInfo" style="font-size:12px;color:#aaa;margin-top:10px;"></div>
 
+<div id="editEscopo" style="margin-top:10px;font-size:13px;color:#ccc;">
+  <label style="display:block;margin:6px 0;cursor:pointer;">
+    <input type="radio" name="editEscopo" id="editRadioSolo" value="solo" checked>
+    Aplicar somente a este espaço
+  </label>
+  <label id="editEscopoBloco" style="display:none;margin:6px 0;cursor:pointer;">
+    <input type="radio" name="editEscopo" id="editRadioBloco" value="bloco">
+    Aplicar a todos os vizinhos do bloco
+    (<span id="editBlocoCount"></span> espaços)
+  </label>
+</div>
+
 <img
 id="editPreview"
 style="display:none; width:100%; max-height:220px; object-fit:contain; margin-top:10px; border-radius:8px;">
@@ -3972,6 +3984,65 @@ if (modo === "estendida") {
 
 let editingSpaceId = null;
 
+let editBlocoIds = [];
+
+function blocoVizinhanca(numero){
+
+    const inicio = Number(numero);
+
+    const s = db[inicio];
+
+    if(
+        !s ||
+        s.status !== "published" ||
+        !minhaPropriedade(inicio)
+    ){
+        return [inicio];
+    }
+
+    const token = orderTokens[inicio];
+
+    const grupo = new Set([inicio]);
+
+    const fila = [inicio];
+
+    while(fila.length){
+
+        const atual = fila.shift();
+
+        const indice = atual - 1;
+
+        const linha = Math.floor(indice / C);
+
+        const coluna = indice % C;
+
+        const vizinhos = [];
+
+        if(coluna > 0) vizinhos.push(atual - 1);
+        if(coluna < C - 1) vizinhos.push(atual + 1);
+        if(linha > 0) vizinhos.push(atual - C);
+        if(linha < 999) vizinhos.push(atual + C);
+
+        for(const v of vizinhos){
+
+            if(grupo.has(v)) continue;
+
+            const espaco = db[v];
+
+            if(
+                espaco &&
+                espaco.status === "published" &&
+                orderTokens[v] === token
+            ){
+                grupo.add(v);
+                fila.push(v);
+            }
+        }
+    }
+
+    return [...grupo].sort((a, b) => a - b);
+}
+
 function editarFoto(numero){
 
     const id = Number(numero);
@@ -4014,15 +4085,54 @@ function editarFoto(numero){
         Array.isArray(s.imageGroupSpaces) &&
         s.imageGroupSpaces.length > 1;
 
+    const bloco = blocoVizinhanca(id);
+
+    editBlocoIds = bloco;
+
+    const temVizinhos = bloco.length > 1;
+
     document.getElementById("editInfo").textContent =
         "Espaço #" + id.toLocaleString("pt-BR");
 
+    const radioSolo =
+        document.getElementById("editRadioSolo");
+
+    const radioBloco =
+        document.getElementById("editRadioBloco");
+
+    const labelBloco =
+        document.getElementById("editEscopoBloco");
+
+    document.getElementById("editBlocoCount").textContent =
+        bloco.length;
+
+    if(temVizinhos){
+
+        labelBloco.style.display = "block";
+
+        if(estendido){
+            radioBloco.checked = true;
+        }else{
+            radioSolo.checked = true;
+        }
+
+    }else{
+
+        labelBloco.style.display = "none";
+
+        radioSolo.checked = true;
+    }
+
     document.getElementById("editModoInfo").textContent =
         estendido
-        ? "⚠️ Este espaço faz parte de um bloco estendido. " +
-          "A nova imagem será aplicada a todo o bloco de " +
-          s.imageGroupSpaces.length + " espaço(s)."
-        : "Modo: imagem individual neste espaço.";
+        ? "⚠️ Este espaço faz parte de um bloco de " +
+          s.imageGroupSpaces.length +
+          " espaço(s). Escolha abaixo o alcance da nova foto."
+        : (temVizinhos
+            ? "Você é dono de " +
+              bloco.length +
+              " espaço(s) vizinho(s). Escolha o alcance da nova foto."
+            : "A foto será aplicada somente a este espaço.");
 
     document.getElementById("editModal").style.display = "flex";
 }
@@ -4059,8 +4169,6 @@ async function salvarEdicaoFoto(){
 
     if(!id)return;
 
-    const s = db[id];
-
     const titulo =
         document.getElementById("editTitulo").value.trim();
 
@@ -4082,14 +4190,17 @@ async function salvarEdicaoFoto(){
         return;
     }
 
+    const escopo =
+        document.querySelector(
+            'input[name="editEscopo"]:checked'
+        )?.value || "solo";
+
     const estendido =
-        s.displayMode === "extended" &&
-        Array.isArray(s.imageGroupSpaces) &&
-        s.imageGroupSpaces.length > 1;
+        escopo === "bloco";
 
     const ids =
         estendido
-        ? s.imageGroupSpaces.map(Number)
+        ? editBlocoIds
         : [id];
 
     msg.textContent =

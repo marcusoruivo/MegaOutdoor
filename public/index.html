@@ -1252,6 +1252,12 @@ Aguardando pagamento...
     placeholder="Nome da empresa ou anunciante"
     style="width:100%; padding:12px; margin-top:10px;">
 
+  <input
+    id="linkAnuncio"
+    type="text"
+    placeholder="Link do seu site (opcional) — ex: https://seusite.com"
+    style="width:100%; padding:12px; margin-top:10px;">
+
 <input
     id="fotoAnuncio"
     type="file"
@@ -1345,6 +1351,9 @@ onclick="fecharDonoModal()">
 <div id="donoNome" style="font-size:16px;font-weight:700;color:#fff;">
 </div>
 
+<div id="donoLink" style="margin-top:12px;">
+</div>
+
 <div id="donoAcoes" style="margin-top:14px;">
 </div>
 
@@ -1383,6 +1392,12 @@ placeholder="Nome da empresa ou anunciante"
 style="width:100%; padding:12px; margin-top:6px; box-sizing:border-box;">
 
 <input
+id="editLink"
+type="text"
+placeholder="Link do seu site (opcional) — ex: https://seusite.com"
+style="width:100%; padding:12px; margin-top:10px; box-sizing:border-box;">
+
+<input
 id="editFoto"
 type="file"
 accept="image/*"
@@ -1417,6 +1432,66 @@ SALVAR FOTO
 
 <p
 id="editMsg"
+style="color:#aaa; font-size:12px;">
+</p>
+
+</div>
+
+</div>
+
+
+<!-- MODAL LINK DO SITE -->
+
+<div class="modal" id="linkModal" style="display:none;">
+
+<div class="box">
+
+<button
+class="close"
+onclick="fecharEditarLink()">
+×
+</button>
+
+<h2 style="color:#ffd400;">🌐 Link do site</h2>
+
+<p
+id="linkInfo"
+style="color:#aaa;font-size:13px;margin:0 0 12px;">
+</p>
+
+<input
+id="linkInput"
+type="text"
+placeholder="https://seusite.com"
+style="width:100%;padding:12px;box-sizing:border-box;">
+
+<div style="font-size:12px;color:#888;margin-top:8px;">
+  Quem clicar no seu espaço será levado para este site.
+  Se o espaço for vendido para outra pessoa, o link é
+  removido e o novo dono pode cadastrar o próprio.
+</div>
+
+<div id="linkEscopo" style="margin-top:10px;font-size:13px;color:#ccc;">
+  <label style="display:block;margin:6px 0;cursor:pointer;">
+    <input type="radio" name="linkEscopo" id="linkRadioSolo" value="solo" checked>
+    Aplicar somente a este espaço
+  </label>
+  <label id="linkEscopoBloco" style="display:none;margin:6px 0;cursor:pointer;">
+    <input type="radio" name="linkEscopo" id="linkRadioBloco" value="bloco">
+    Aplicar a todos os vizinhos do bloco
+    (<span id="linkBlocoCount"></span> espaços)
+  </label>
+</div>
+
+<button
+class="btn"
+onclick="salvarEdicaoLink()"
+style="margin-top:10px;">
+💾 SALVAR LINK
+</button>
+
+<p
+id="linkMsg"
 style="color:#aaa; font-size:12px;">
 </p>
 
@@ -1590,7 +1665,18 @@ style="font-size:13px;color:#ccc;">
         <div style="font-size:12px;color:#bbb;line-height:1.5;">
           Toque no botão fixo <b>PAINEL DE COMANDO</b> (canto
           inferior esquerdo) para ver ofertas recebidas e enviadas,
-          seus blocos, editar fotos e cadastrar sua chave Pix.
+          seus blocos, editar fotos, cadastrar o <b>link do seu site</b>
+          e configurar sua chave Pix.
+        </div>
+      </div>
+
+      <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:11px;">
+        <b style="color:#5aa2ff;">🌐 Link do site</b>
+        <div style="font-size:12px;color:#bbb;line-height:1.5;">
+          Em cada bloco comprado você pode cadastrar o
+          <b>link do seu site</b>. Quem clicar no espaço será levado
+          para o seu site. Ao vender para outra pessoa, o link é
+          removido e o novo dono cadastra o próprio.
         </div>
       </div>
 
@@ -1668,6 +1754,15 @@ localStorage.getItem(
 "mega_orderTokens"
 ) || "{}"
 );
+
+function escStr(s){
+    return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
 
 let myOffers =
 JSON.parse(
@@ -1830,6 +1925,34 @@ function mostrarInfoEspaco(numero){
           Este espaço não está disponível para compra direta.
         </div>
         ${
+          db[numero].link
+          ? `
+            <div style="font-size:11px;color:#888;margin-top:10px;letter-spacing:1px;">
+              LINK DO SITE
+            </div>
+            <div style="font-size:13px;color:#5aa2ff;word-break:break-all;margin:2px 0 6px;">
+              ${escStr(db[numero].link)}
+            </div>
+            <button
+              onclick="abrirLinkDoEspaco(${numero})"
+              style="
+                width:100%;
+                margin-top:4px;
+                padding:10px;
+                border:0;
+                border-radius:8px;
+                background:#1b3a2a;
+                color:#45d66f;
+                font-weight:800;
+                cursor:pointer;
+              "
+            >
+              🌐 VISITAR SITE
+            </button>
+          `
+          : ""
+        }
+        ${
           minhaPropriedade(numero)
           ? `
             <div style="font-size:12px;color:#45d66f;margin-top:8px;">
@@ -1850,6 +1973,22 @@ function mostrarInfoEspaco(numero){
               "
             >
               🖼️ EDITAR FOTO
+            </button>
+            <button
+              onclick="editarLink(${numero})"
+              style="
+                width:100%;
+                margin-top:8px;
+                padding:10px;
+                border:0;
+                border-radius:8px;
+                background:#1b3a2a;
+                color:#45d66f;
+                font-weight:800;
+                cursor:pointer;
+              "
+            >
+              🌐 EDITAR LINK
             </button>
           `
           : db[numero] &&
@@ -1945,6 +2084,27 @@ function mostrarDonoEspaco(numero){
   const titulo = s.title || "";
   const nome = s.name || "";
 
+  const linkEl =
+    document.getElementById("donoLink");
+
+  if (s.link) {
+
+    linkEl.innerHTML =
+      '<div style="font-size:11px;color:#888;letter-spacing:1px;">' +
+      'LINK DO SITE</div>' +
+      '<div style="font-size:13px;color:#5aa2ff;word-break:break-all;' +
+      'margin:2px 0 8px;">' + escStr(s.link) + '</div>' +
+      '<button class="btn sec" style="margin:0;width:100%;" ' +
+      'onclick="abrirLinkDoEspaco(' + numero + ')">' +
+      '🌐 VISITAR SITE</button>';
+
+  } else {
+
+    linkEl.innerHTML =
+      '<div style="font-size:12px;color:#666;">' +
+      'Sem link de site cadastrado.</div>';
+  }
+
   if(s.status === "published"){
 
     statusEl.textContent =
@@ -1959,7 +2119,10 @@ function mostrarDonoEspaco(numero){
         '✅ Este espaço é seu.</div>' +
         '<button class="btn" style="width:100%;margin-top:10px;" ' +
         'onclick="fecharDonoModal(); editarFoto(' + numero + ')">' +
-        '🖼️ EDITAR FOTO</button>'
+        '🖼️ EDITAR FOTO</button>' +
+        '<button class="btn sec" style="width:100%;margin-top:8px;" ' +
+        'onclick="fecharDonoModal(); editarLink(' + numero + ')">' +
+        '🌐 EDITAR LINK</button>'
       : '<button class="btn" style="width:100%;" ' +
         'onclick="fecharDonoModal(); abrirOferta(' + numero + ')">' +
         '💰 FAZER OFERTA</button>';
@@ -2308,6 +2471,40 @@ T,
 T
 );
 
+}
+
+if(
+  v &&
+  v.link &&
+  sc > 0.8 &&
+  (
+    !v.image ||
+    !Array.isArray(v.imageGroupSpaces) ||
+    id === Number(v.imageGroupSpaces[0])
+  )
+){
+
+  ctx.save();
+
+  ctx.font =
+  "16px Arial, sans-serif";
+
+  ctx.textAlign =
+  "right";
+
+  ctx.textBaseline =
+  "top";
+
+  ctx.fillStyle =
+  "#ffd400";
+
+  ctx.fillText(
+    "🔗",
+    px + T - 6,
+    py + 6
+  );
+
+  ctx.restore();
 }
 
 if(searchTarget === id){
@@ -3629,6 +3826,17 @@ return;
 
 if(db[id]){
 
+const s = db[id];
+
+if(
+    s.status === "published" &&
+    s.link &&
+    !minhaPropriedade(id)
+){
+    window.open(s.link, "_blank");
+    return;
+}
+
 mostrarDonoEspaco(id);
 
 return;
@@ -4640,6 +4848,11 @@ if (modo === "individual") {
         );
 
         formData.append(
+            "link",
+            document.getElementById("linkAnuncio").value.trim()
+        );
+
+        formData.append(
             "mode",
             "individual"
         );
@@ -4698,6 +4911,11 @@ if (modo === "estendida") {
     formData.append(
         "name",
         titulo
+    );
+
+    formData.append(
+        "link",
+        document.getElementById("linkAnuncio").value.trim()
     );
 
     formData.append(
@@ -4891,6 +5109,9 @@ function editarFoto(numero){
     document.getElementById("editTitulo").value =
         s.title || "";
 
+    document.getElementById("editLink").value =
+        s.link || "";
+
     document.getElementById("editFoto").value = "";
 
     document.getElementById("editPreview").style.display = "none";
@@ -4971,6 +5192,160 @@ function fecharEditarFoto(){
     editingSpaceId = null;
 }
 
+function abrirLinkDoEspaco(numero){
+
+    const s = db[Number(numero)];
+
+    if(!s || !s.link)return;
+
+    window.open(s.link, "_blank");
+}
+
+let linkEditId = null;
+
+function editarLink(numero){
+
+    const id = Number(numero);
+
+    const s = db[id];
+
+    if(!s){
+        alert("Espaço não encontrado.");
+        return;
+    }
+
+    if(!minhaPropriedade(id)){
+        alert("Você não é o proprietário deste espaço.");
+        return;
+    }
+
+    linkEditId = id;
+
+    document.getElementById("linkInfo").textContent =
+        "Espaço #" + id.toLocaleString("pt-BR");
+
+    document.getElementById("linkInput").value =
+        s.link || "";
+
+    const bloco = blocoVizinhanca(id);
+
+    editBlocoIds = bloco;
+
+    document.getElementById("linkBlocoCount").textContent =
+        bloco.length;
+
+    const temVizinhos = bloco.length > 1;
+
+    document.getElementById("linkEscopoBloco").style.display =
+        temVizinhos ? "block" : "none";
+
+    document.getElementById("linkRadioSolo").checked = true;
+    document.getElementById("linkRadioBloco").checked = false;
+
+    document.getElementById("linkMsg").textContent = "";
+
+    document.getElementById("linkModal").style.display = "flex";
+}
+
+function fecharEditarLink(){
+
+    document.getElementById("linkModal").style.display = "none";
+
+    linkEditId = null;
+}
+
+async function salvarEdicaoLink(){
+
+    const id = linkEditId;
+
+    if(!id)return;
+
+    const input =
+        document.getElementById("linkInput");
+
+    const msg =
+        document.getElementById("linkMsg");
+
+    const link =
+        (input.value || "").trim();
+
+    if(!link &&
+       !confirm(
+           "Remover o link deste espaço? " +
+           "Quem clicar no espaço não será levado a nenhum site."
+       )
+    ){
+        return;
+    }
+
+    const escopo =
+        document.querySelector(
+            'input[name="linkEscopo"]:checked'
+        )?.value || "solo";
+
+    const ids =
+        escopo === "bloco"
+        ? editBlocoIds
+        : [id];
+
+    msg.textContent =
+        "Salvando link...";
+
+    try{
+
+        const response =
+            await fetch(
+                "/api/link",
+                {
+                    method: "POST",
+                    headers:{
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({
+                        ids,
+                        link,
+                        orderToken:
+                            orderTokens[id] || ""
+                    })
+                }
+            );
+
+        const data =
+            await reqJSON(response);
+
+        if(!response.ok){
+            throw new Error(
+                data.error ||
+                "Erro ao salvar o link."
+            );
+        }
+
+        msg.innerHTML =
+            '<span class="sucesso">' +
+            (link
+                ? "✅ Link salvo com sucesso!"
+                : "✅ Link removido.") +
+            '</span>';
+
+        await load();
+
+        setTimeout(() => {
+            fecharEditarLink();
+            fecharDonoModal();
+            fecharInfoEspaco();
+        }, 900);
+
+    }catch(error){
+
+        console.error(error);
+
+        msg.textContent =
+            error.message ||
+            "Erro ao salvar o link.";
+    }
+}
+
 function previewEdicao(){
 
     const arquivo =
@@ -5049,6 +5424,11 @@ async function salvarEdicaoFoto(){
         formData.append(
             "name",
             titulo
+        );
+
+        formData.append(
+            "link",
+            document.getElementById("editLink").value.trim()
         );
 
         formData.append(
@@ -7554,6 +7934,11 @@ function renderMeusBlocos(list, blocos){
                       onclick="verBlocoNoMapa(${b[0]})"
                       style="margin:0;padding:8px 12px;font-size:12px;">
                 👁 VER NO MAPA
+              </button>
+              <button class="btn sec"
+                      onclick="editarLink(${b[0]})"
+                      style="margin:0 0 0 8px;padding:8px 12px;font-size:12px;">
+                🌐 EDITAR LINK
               </button>
             </div>
           </div>`;

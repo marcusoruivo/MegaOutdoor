@@ -190,6 +190,58 @@ function taxaDoSite(valor) {
 }
 
 /* =========================
+   LINK DO SITE DO ANÚNCIO
+   Normaliza e valida o link
+   cadastrado pelo proprietário
+   em cada espaço/bloco
+========================= */
+
+function normalizarLink(link) {
+
+    const t = (link || "").trim();
+
+    if (!t) {
+        return null;
+    }
+
+    if (t.length > 300) {
+        return null;
+    }
+
+    let url = t;
+
+    if (!/^https?:\/\//i.test(url)) {
+        url = "https://" + url;
+    }
+
+    try {
+
+        const parsed = new URL(url);
+
+        if (
+            parsed.protocol !== "http:" &&
+            parsed.protocol !== "https:"
+        ) {
+            return null;
+        }
+
+        const host = parsed.hostname || "";
+
+        if (
+            host !== "localhost" &&
+            !host.includes(".")
+        ) {
+            return null;
+        }
+
+        return url;
+
+    } catch {
+        return null;
+    }
+}
+
+/* =========================
    E-MAIL (RESEND)
 ========================= */
 
@@ -1015,7 +1067,8 @@ function confirmarPagamentoOferta(paymentId) {
             email: oferta.email,
             orderToken: novoToken,
             transferPaymentId: paymentId,
-            transferredAt: new Date().toISOString()
+            transferredAt: new Date().toISOString(),
+            link: undefined
         };
 
         transferido++;
@@ -2521,6 +2574,20 @@ app.post(
             req.body.nome ||
             "Anunciante";
 
+        const linkInput =
+            (req.body.link || "").trim();
+
+        const link =
+            linkInput ? normalizarLink(linkInput) : "";
+
+        if (linkInput && !link) {
+            return res.status(400).json({
+                error:
+                    "Link do site inválido. Use um endereço " +
+                    "válido, ex: https://seusite.com"
+            });
+        }
+
         const publishedAt =
             new Date().toISOString();
 
@@ -2537,6 +2604,10 @@ app.post(
                 status: "published",
                 image,
                 title,
+                link:
+                    link
+                    ? link
+                    : undefined,
                 publishedAt,
                 orderToken:
                     db[spaceId].orderToken || orderToken,
@@ -2617,6 +2688,126 @@ app.post(
         });
     }
 );
+
+/* =========================
+   LINK DO SITE
+   Cadastra/atualiza/remove o
+   link do anúncio sem precisar
+   trocar a foto
+========================= */
+
+app.post("/api/link", (req, res) => {
+
+    try {
+
+        const ids = [
+            ...new Set(
+                (req.body.ids || []).map(Number)
+            )
+        ];
+
+        if (!ids.length) {
+            return res.status(400).json({
+                error: "Nenhum espaço informado."
+            });
+        }
+
+        if (ids.length > 1000) {
+            return res.status(400).json({
+                error: "Máximo de 1.000 espaços por bloco."
+            });
+        }
+
+        const linkInput =
+            (req.body.link || "").trim();
+
+        const link =
+            linkInput ? normalizarLink(linkInput) : "";
+
+        if (linkInput && !link) {
+            return res.status(400).json({
+                error:
+                    "Link do site inválido. Use um endereço " +
+                    "válido, ex: https://seusite.com"
+            });
+        }
+
+        const token =
+            (req.body.orderToken || "").trim();
+
+        if (!token) {
+            return res.status(400).json({
+                error: "Token de proprietário não informado."
+            });
+        }
+
+        const db = readDB();
+
+        for (const sid of ids) {
+
+            if (
+                !Number.isInteger(sid) ||
+                sid < 1 ||
+                sid > 1000000
+            ) {
+                return res.status(400).json({
+                    error: `Espaço inválido: ${sid}`
+                });
+            }
+
+            if (!db[sid]) {
+                return res.status(404).json({
+                    error:
+                        `Espaço não encontrado: ` +
+                        `#${sid.toLocaleString("pt-BR")}`
+                });
+            }
+
+            if (
+                db[sid].status !== "paid" &&
+                db[sid].status !== "published"
+            ) {
+                return res.status(403).json({
+                    error:
+                        `O espaço #${sid.toLocaleString("pt-BR")} ` +
+                        `ainda não está publicado.`
+                });
+            }
+
+            const dono = db[sid].orderToken;
+
+            if (dono && dono !== token) {
+                return res.status(403).json({
+                    error:
+                        `Você não é o proprietário do espaço ` +
+                        `#${sid.toLocaleString("pt-BR")}.`
+                });
+            }
+        }
+
+        for (const sid of ids) {
+
+            db[sid] = {
+                ...db[sid],
+                link: link ? link : undefined
+            };
+        }
+
+        writeDB(db);
+
+        res.json({
+            ok: true,
+            spaces: ids,
+            link
+        });
+
+    } catch (error) {
+
+        res.status(500).json({
+            error: error.message
+        });
+    }
+});
 
 /* =========================
    INICIAR SERVIDOR

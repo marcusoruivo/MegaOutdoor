@@ -1942,171 +1942,93 @@ resize();
 center();
 
 load();
-function publicarAnuncio(){
 
-  const titulo = document
-    .getElementById("tituloAnuncio")
-    .value
-    .trim();
+async function publicarAnuncio() {
 
-  const arquivo = document
-    .getElementById("fotoAnuncio")
-    .files[0];
+    const titulo = document
+        .getElementById("tituloAnuncio")
+        .value
+        .trim();
 
-  const msg = document
-    .getElementById("msgPublicacao");
+    const arquivo = document
+        .getElementById("fotoAnuncio")
+        .files[0];
 
-  if(!titulo){
-    msg.textContent =
-      "Informe o nome da empresa ou anunciante.";
-    return;
-  }
+    const msg = document
+        .getElementById("msgPublicacao");
 
-  if(!arquivo){
-    msg.textContent =
-      "Escolha uma imagem para publicar.";
-    return;
-  }
-
-  if(!currentPayment){
-    msg.textContent =
-      "Pagamento ainda não identificado.";
-    return;
-  }
-
-  if(!paidSpaces || !paidSpaces.length){
-  msg.textContent =
-    "Nenhum espaço pago disponível para publicação.";
-  return;
-}
-
-const id = paidSpaces[0];
-
-  const formData = new FormData();
-
-  formData.append("foto", arquivo);
-  formData.append("name", titulo);
-
-  msg.textContent =
-    "Publicando anúncio...";
-
-  fetch(`/api/upload/${id}`, {
-    method: "POST",
-    body: formData
-  })
-  .then(async response => {
-
-    const data = await response.json();
-
-    if(!response.ok){
-      throw new Error(
-        data.error || "Não foi possível publicar."
-      );
+    if (!titulo) {
+        msg.textContent =
+            "Informe o nome da empresa ou anunciante.";
+        return;
     }
 
-    msg.innerHTML =
-      '<span class="sucesso">✅ ANÚNCIO PUBLICADO COM SUCESSO!</span>';
+    if (!arquivo) {
+        msg.textContent =
+            "Escolha uma imagem para publicar.";
+        return;
+    }
 
-    document
-      .getElementById("btnPublicar")
-      .disabled = true;
+    if (!currentPayment) {
+        msg.textContent =
+            "Pagamento ainda não identificado.";
+        return;
+    }
 
-    await load();
+    if (!paidSpaces || !paidSpaces.length) {
+        msg.textContent =
+            "Nenhum espaço pago disponível para publicação.";
+        return;
+    }
 
-    updateCart();
+    msg.textContent =
+        "Publicando anúncio em todos os espaços...";
 
-  })
-  .catch(error => {
+    try {
+
+        for (const id of paidSpaces) {
+
+            const formData = new FormData();
+
+            formData.append("foto", arquivo);
+            formData.append("name", titulo);
+
+            const resposta = await fetch(`/api/upload/${id}`, {
+                method: "POST",
+                body: formData
+            });
+
+            const data = await resposta.json();
+
+            if (!resposta.ok) {
+                throw new Error(
+                    data.error ||
+                    `Erro ao publicar no espaço ${id}.`
+                );
+            }
+        }
+
+        msg.innerHTML =
+            '<span class="sucesso">✅ ANÚNCIO PUBLICADO COM SUCESSO!</span>';
+
+        document
+            .getElementById("btnPublicar")
+            .disabled = true;
+
+        await load();
+
+        updateCart();
+
+} catch (error) {
 
     console.error(error);
 
     msg.textContent =
-      error.message ||
-      "Erro ao publicar anúncio.";
-
-  });
-
-}
-function publicarAnuncio(){
-
-  const titulo =
-    document.getElementById("tituloAnuncio").value.trim();
-
-  const arquivo =
-    document.getElementById("fotoAnuncio").files[0];
-
-  const msg =
-    document.getElementById("msgPublicacao");
-
-  if(!titulo){
-    msg.textContent =
-      "Informe o nome da empresa ou anunciante.";
-    return;
-  }
-
-  if(!arquivo){
-    msg.textContent =
-      "Escolha uma imagem para publicar.";
-    return;
-  }
-
-  if(!currentPayment){
-    msg.textContent =
-      "Pagamento ainda não identificado.";
-    return;
-  }
-
-  if(!sel || sel.size === 0){
-    msg.textContent =
-      "Nenhum espaço selecionado.";
-    return;
-  }
-
-  const id = [...sel][0];
-
-  const formData = new FormData();
-
-  formData.append("foto", arquivo);
-  formData.append("name", titulo);
-
-  msg.textContent =
-    "Publicando anúncio...";
-
-  fetch(`/api/upload/${id}`, {
-    method: "POST",
-    body: formData
-  })
-  .then(async response => {
-
-    const data = await response.json();
-
-    if(!response.ok){
-      throw new Error(
-        data.error || "Não foi possível publicar."
-      );
+        error.message ||
+        "Erro ao publicar anúncio.";
     }
-
-    msg.innerHTML =
-      '<span class="sucesso">✅ ANÚNCIO PUBLICADO COM SUCESSO!</span>';
-
-    document.getElementById("btnPublicar").disabled = true;
-
-    await load();
-
-    updateCart();
-
-  })
-  .catch(error => {
-
-    console.error(error);
-
-    msg.textContent =
-      error.message ||
-      "Erro ao publicar anúncio.";
-
-  });
-
 }
+
 </script>
 
 </body>

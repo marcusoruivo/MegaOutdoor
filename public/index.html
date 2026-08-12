@@ -1470,30 +1470,47 @@ if(
 
             extCompleto = true;
 
-            // Desenha somente uma vez,
-            // no primeiro espaço do bloco
-            const primeiroEspaco =
-                minLinha * C +
-                minColuna +
-                1;
+            // Desenha a fatia da imagem
+            // correspondente a esta célula,
+            // para a imagem não sumir ao dar zoom
+            // ou rolar para fora do primeiro espaço
+            const indice =
+                id - 1;
 
-            if(id === primeiroEspaco){
+            const linha =
+                Math.floor(indice / C);
 
-                const largura =
-                    colunasGrupo * T - 2;
+            const coluna =
+                indice % C;
 
-                const altura =
-                    linhasGrupo * T - 2;
+            const img =
+                imgs[id];
 
-                ctx.drawImage(
-                    imgs[id],
-                    minColuna * T + 1,
-                    minLinha * T + 1,
-                    largura,
-                    altura
-                );
+            const sw =
+                img.naturalWidth /
+                colunasGrupo;
 
-            }
+            const sh =
+                img.naturalHeight /
+                linhasGrupo;
+
+            const sx =
+                (coluna - minColuna) * sw;
+
+            const sy =
+                (linha - minLinha) * sh;
+
+            ctx.drawImage(
+                img,
+                sx,
+                sy,
+                sw,
+                sh,
+                px + 1,
+                py + 1,
+                T - 2,
+                T - 2
+            );
 
         }else{
 

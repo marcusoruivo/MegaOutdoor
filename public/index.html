@@ -766,6 +766,8 @@ id="pix">
 
 <h2>Pagamento Pix</h2>
 
+<div id="qrArea">
+
 <p>
 Escaneie o QR Code pelo aplicativo do seu banco.
 </p>
@@ -789,6 +791,8 @@ onclick="copiarPix()">
 COPIAR PIX
 </button>
 
+</div>
+
 <div
 class="statusPix"
 id="statusPix">
@@ -803,12 +807,6 @@ Aguardando pagamento...
   </div>
 
   <input
-    id="tituloAnuncio"
-    type="text"
-    placeholder="Nome da empresa ou anunciante"
-    style="width:100%; padding:12px; margin-top:10px;">
-
-<input
     id="tituloAnuncio"
     type="text"
     placeholder="Nome da empresa ou anunciante"
@@ -1990,7 +1988,7 @@ monitorarPagamento();
    TESTE SEM PAGAMENTO
 ========================= */
 
-function testeSemPagamento(){
+async function testeSemPagamento(){
 
     const name =
         document.getElementById("name").value.trim();
@@ -2028,35 +2026,79 @@ function testeSemPagamento(){
         return;
     }
 
-    /*
-       PAGAMENTO SIMULADO
-       NÃO GERA PIX
-       NÃO CHAMA /api/checkout
-    */
-
-    currentPayment =
-        "TESTE-" + Date.now();
-
-    document.getElementById("formulario")
-        .style.display = "none";
-
-    document.getElementById("pix")
-        .style.display = "block";
-
-    document.getElementById("statusPix")
-        .innerHTML =
-        '<span class="sucesso">🧪 TESTE: PAGAMENTO SIMULADO!</span><br><br>' +
-        'Pagamento fictício confirmado para teste.';
-
-    document.getElementById("publicacao")
-        .style.display = "block";
-
-    paidSpaces = [...sel];
-
     msg.textContent =
-        "Modo teste ativado. Você pode testar a publicação.";
+        "Reservando espaços de teste...";
 
-    updateCart();
+    try{
+
+        /*
+           PAGAMENTO SIMULADO
+           NÃO GERA PIX
+           MAS REGISTRA OS ESPAÇOS COMO PAGOS
+           PARA PODER PUBLICAR
+        */
+
+        const response =
+            await fetch(
+                "/api/test/reserve",
+                {
+                    method: "POST",
+                    headers:{
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({
+                        spaces: [...sel],
+                        name
+                    })
+                }
+            );
+
+        const data =
+            await reqJSON(response);
+
+        if(!response.ok){
+            msg.textContent =
+                data.error ||
+                "Não foi possível ativar o modo teste.";
+            return;
+        }
+
+        currentPayment =
+            "TESTE-" + Date.now();
+
+        document.getElementById("formulario")
+            .style.display = "none";
+
+        document.getElementById("qrArea")
+            .style.display = "none";
+
+        document.getElementById("pix")
+            .style.display = "block";
+
+        document.getElementById("statusPix")
+            .innerHTML =
+            '<span class="sucesso">🧪 TESTE: PAGAMENTO SIMULADO!</span><br><br>' +
+            'Pagamento fictício confirmado para teste.';
+
+        document.getElementById("publicacao")
+            .style.display = "block";
+
+        paidSpaces = [...sel];
+
+        msg.textContent =
+            "Modo teste ativado. Você pode testar a publicação.";
+
+        updateCart();
+
+    }catch(error){
+
+        console.error(error);
+
+        msg.textContent =
+            "Erro de comunicação com o servidor.";
+
+    }
 }
 
 /* =========================
@@ -2134,6 +2176,12 @@ data.status ===
 clearInterval(
 monitorTimer
 );
+
+
+document.getElementById(
+"qrArea"
+).style.display =
+"none";
 
 
 document.getElementById(

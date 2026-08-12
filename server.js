@@ -313,6 +313,81 @@ app.post("/api/checkout", async (req, res) => {
 });
 
 /* =========================
+   MODO TESTE - RESERVAR ESPAÇOS
+   USADO PELO BOTÃO "TESTAR SEM PAGAMENTO"
+========================= */
+
+app.post("/api/test/reserve", (req, res) => {
+
+    try {
+
+        const name = (req.body?.name || "").trim();
+        const spaces = [
+            ...new Set(
+                (req.body?.spaces || []).map(Number)
+            )
+        ];
+
+        if (!spaces.length) {
+            return res.status(400).json({
+                error: "Nenhum espaço selecionado."
+            });
+        }
+
+        const db = readDB();
+
+        for (const id of spaces) {
+
+            if (
+                !Number.isInteger(id) ||
+                id < 1 ||
+                id > 1000000
+            ) {
+                return res.status(400).json({
+                    error: `Espaço inválido: ${id}`
+                });
+            }
+
+            if (db[id]) {
+                return res.status(409).json({
+                    error:
+                        `O espaço #${id.toLocaleString("pt-BR")} ` +
+                        `já está ocupado ou reservado.`
+                });
+            }
+        }
+
+        const now =
+            new Date().toISOString();
+
+        for (const id of spaces) {
+
+            db[id] = {
+                id,
+                status: "paid",
+                test: true,
+                name: name || "Anunciante",
+                createdAt: now
+            };
+        }
+
+        writeDB(db);
+
+        res.json({
+            ok: true,
+            spaces,
+            test: true
+        });
+
+    } catch (error) {
+
+        res.status(500).json({
+            error: error.message
+        });
+    }
+});
+
+/* =========================
    CONSULTAR PAGAMENTO
 ========================= */
 

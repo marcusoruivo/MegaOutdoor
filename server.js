@@ -12,8 +12,10 @@ const PORT = process.env.PORT || 3000;
 const ASAAS_API = "https://api.asaas.com/v3";
 const ASAAS_KEY = process.env.ASAAS_API_KEY;
 
-const DATA_DIR = path.join(__dirname, "data");
-const UPLOAD_DIR = path.join(__dirname, "uploads");
+const SEED_DIR = path.join(__dirname, "data");
+const DEFAULT_UPLOAD_DIR = path.join(__dirname, "uploads");
+const DATA_DIR = process.env.DATA_DIR || SEED_DIR;
+const UPLOAD_DIR = process.env.UPLOAD_DIR || DEFAULT_UPLOAD_DIR;
 const DB_FILE = path.join(DATA_DIR, "spaces.json");
 const OFFERS_FILE = path.join(DATA_DIR, "offers.json");
 const COUPONS_FILE = path.join(DATA_DIR, "coupons.json");
@@ -21,6 +23,63 @@ const PIXKEYS_FILE = path.join(DATA_DIR, "pixkeys.json");
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+/* =========================
+   SEMEAR DADOS INICIAIS
+   Em produção (Render), o DATA_DIR aponta para
+   o disco persistente, que nasce vazio. Na primeira
+   subida copiamos os dados iniciais do repositório.
+   Em desenvolvimento (sem DATA_DIR), nada é copiado.
+========================= */
+
+function semearDadosIniciais() {
+
+    if (DATA_DIR !== SEED_DIR) {
+
+        const arquivos = [
+            "spaces.json",
+            "offers.json",
+            "coupons.json",
+            "pixkeys.json"
+        ];
+
+        for (const nome of arquivos) {
+
+            const origem = path.join(SEED_DIR, nome);
+            const destino = path.join(DATA_DIR, nome);
+
+            if (
+                fs.existsSync(origem) &&
+                !fs.existsSync(destino)
+            ) {
+                fs.copyFileSync(origem, destino);
+            }
+        }
+    }
+
+    if (UPLOAD_DIR !== DEFAULT_UPLOAD_DIR) {
+
+        const seedUploads =
+            path.join(SEED_DIR, "seed-uploads");
+
+        if (fs.existsSync(seedUploads)) {
+
+            for (const nome of fs.readdirSync(seedUploads)) {
+
+                const destino = path.join(UPLOAD_DIR, nome);
+
+                if (!fs.existsSync(destino)) {
+                    fs.copyFileSync(
+                        path.join(seedUploads, nome),
+                        destino
+                    );
+                }
+            }
+        }
+    }
+}
+
+semearDadosIniciais();
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
@@ -115,10 +174,11 @@ function gerarToken() {
 
 /* =========================
    TAXA DE SERVIÇO DO SITE
-   20% sobre o valor negociado
+   10% sobre o valor negociado
+   (somente nas negociações de oferta)
 ========================= */
 
-const TAXA_SITE = 0.2;
+const TAXA_SITE = 0.1;
 
 function taxaDoSite(valor) {
     return Math.max(
@@ -1469,7 +1529,7 @@ app.post("/api/offers/:id/accept", async (req, res) => {
         }
 
         /* =========================
-           CRIA CLIENTE + PIX DA TAXA (20%)
+           CRIA CLIENTE + PIX DA TAXA (10%)
            O comprador paga o valor cheio
            direto ao dono e paga a taxa ao site
         ========================= */
@@ -1493,7 +1553,7 @@ app.post("/api/offers/:id/accept", async (req, res) => {
                 oferta,
                 document,
                 feeValue,
-                "Taxa de serviço Milhão Door (20%)"
+                "Taxa de serviço Milhão Door (10%)"
             );
 
         oferta.status = "accepted";
@@ -1528,7 +1588,7 @@ app.post("/api/offers/:id/accept", async (req, res) => {
                 `padding:12px;font-size:14px;color:#333;word-break:break-all;">` +
                 `${minhaChave}</div>` +
                 `<p style="margin:10px 0 0;color:#666;font-size:13px;">` +
-                `E pague a taxa de 20% do site ` +
+                `E pague a taxa de 10% do site ` +
                 `(<b>R$ ${feeValue.toLocaleString("pt-BR")}</b>) ` +
                 `pelo Pix gerado no site. A transferência é feita ` +
                 `ao confirmar o pagamento da taxa.</p>`
@@ -1614,7 +1674,7 @@ app.post("/api/offers/:id/buyer-accept", async (req, res) => {
                 oferta,
                 document,
                 feeValue,
-                "Taxa de serviço Milhão Door (20%)"
+                "Taxa de serviço Milhão Door (10%)"
             );
 
         oferta.status = "accepted";
@@ -1650,7 +1710,7 @@ app.post("/api/offers/:id/buyer-accept", async (req, res) => {
                     `<p style="margin:8px 0 0;color:#666;font-size:13px;">` +
                     `O comprador pagará o valor direto na sua chave Pix ` +
                     `(${chaveDono || "chave cadastrada"}) e a taxa de ` +
-                    `20% ao site. A transferência é feita ao confirmar ` +
+                    `10% ao site. A transferência é feita ao confirmar ` +
                     `o pagamento da taxa.</p>`
                 )
             );

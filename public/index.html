@@ -265,6 +265,48 @@ html,body{
     background:#252525
 }
 
+.cmdFixo{
+    position:fixed;
+    left:22px;
+    bottom:22px;
+    z-index:45;
+    width:auto;
+    margin:0;
+    padding:13px 20px;
+    font-size:13px;
+    background:linear-gradient(180deg,#1f4733,#17301f 60%,#122a1b);
+    color:#45d66f;
+    border:1px solid #2f5c42;
+    box-shadow:
+        0 3px 0 #0c1c12,
+        0 8px 18px rgba(0,0,0,.55);
+    animation:cmdPulse 3s ease-in-out infinite;
+}
+
+.cmdFixo:hover{
+    color:#6fe89a;
+    border-color:#3f7a56;
+    box-shadow:
+        0 4px 0 #0c1c12,
+        0 12px 24px rgba(0,0,0,.6)
+}
+
+.cmdFixo:active{
+    transform:translateY(2px);
+    box-shadow:
+        0 1px 0 #0c1c12,
+        0 3px 8px rgba(0,0,0,.4)
+}
+
+@keyframes cmdPulse{
+    0%,100%{
+        box-shadow:0 3px 0 #0c1c12,0 8px 18px rgba(0,0,0,.55);
+    }
+    50%{
+        box-shadow:0 3px 0 #0c1c12,0 8px 22px rgba(69,214,111,.35);
+    }
+}
+
 .hint{
     position:fixed;
     bottom:20px;
@@ -656,6 +698,13 @@ html,body{
         top:105px;
     }
 
+    .cmdFixo{
+        left:12px;
+        bottom:56px;
+        padding:12px 16px;
+        font-size:12px;
+    }
+
     .cart{
         right:12px;
         bottom:12px;
@@ -947,14 +996,16 @@ onclick="clearSel()">
 LIMPAR
 </button>
 
+</div>
+
+
 <button
-class="btn sec"
+id="btnPainelCmd"
+class="btn cmdFixo"
 onclick="abrirPainelComando()"
-style="margin-top:10px;background:#1b3a2a;color:#45d66f;">
+title="Painel de comando — ofertas, meus blocos e chave Pix">
 ⚙️ PAINEL DE COMANDO
 </button>
-
-</div>
 
 
 <!-- CHECKOUT -->
@@ -5433,7 +5484,7 @@ async function aceitarOferta(offerId){
         Number(o.value);
 
     const taxa =
-        Math.round(valorCompra * 0.2);
+        Math.round(valorCompra * 0.1);
 
     const ok =
         confirm(
@@ -5443,7 +5494,7 @@ async function aceitarOferta(offerId){
             " — direto a você na sua chave Pix\n" +
             "• R$ " +
             taxa.toLocaleString("pt-BR") +
-            " — taxa do site (20%)\n\n" +
+            " — taxa do site (10%)\n\n" +
             "A transferência do bloco é confirmada " +
             "após o pagamento da taxa.\n\n" +
             "Aceitar esta oferta?"
@@ -5500,7 +5551,7 @@ async function aceitarOferta(offerId){
     }
 }
 
-function mostrarPixOferta(data){
+function mostrarPixOferta(data, ehComprador){
 
     const list =
         document.getElementById("ownerList");
@@ -5516,6 +5567,87 @@ function mostrarPixOferta(data){
 
     const taxa =
         Number(data.feeValue || 0).toLocaleString("pt-BR");
+
+    const chave =
+        (data.ownerPixKey || "")
+            .replace(/'/g, "\\'");
+
+    if(ehComprador){
+
+        list.innerHTML = `
+          <div style="color:#45d66f;font-weight:800;margin-bottom:8px;">
+            ✅ Contraproposta aceita! Agora é só pagar.
+          </div>
+
+          ${
+              alvos.length > 1
+              ? `<div style="font-size:12px;color:#45d66f;margin-bottom:6px;">
+                   🧩 Bloco de ${alvos.length.toLocaleString("pt-BR")} espaços
+                 </div>`
+              : ""
+          }
+
+          <div style="font-size:13px;color:#ccc;margin-bottom:4px;">
+            Você pagará direto ao proprietário:
+            <b style="color:#ffd400;">R$ ${valor}</b>
+          </div>
+
+          <div style="font-size:12px;color:#ccc;margin-bottom:4px;">
+            Chave Pix do proprietário:<br>
+            <b style="color:#45d66f;word-break:break-all;">
+              ${data.ownerPixKey || "—"}
+            </b>
+          </div>
+
+          <button
+            class="btn sec"
+            onclick="copiarTexto('${chave}')"
+            style="margin:6px 0 12px;padding:8px 12px;font-size:12px;">
+            📋 COPIAR CHAVE DO PROPRIETÁRIO
+          </button>
+
+          <div style="font-size:12px;color:#aaa;margin-bottom:6px;">
+            E pague a taxa do site (10%) de
+            <b style="color:#ffd400;">R$ ${taxa}</b> pelo QR Code abaixo.
+            A transferência do bloco é confirmada após o
+            pagamento da taxa.
+          </div>
+
+          <img
+            src="data:image/png;base64,${data.qrCode}"
+            alt="QR Code"
+            style="width:200px;height:200px;background:#fff;
+                   padding:8px;border-radius:12px;
+                   display:block;margin:0 auto;">
+
+          <input
+            class="copia"
+            id="offerPayload"
+            value="${data.payload}"
+            readonly
+            style="margin-top:10px;">
+
+          <button
+            class="btn"
+            onclick="copiarPixOferta()"
+            style="margin-top:8px;">
+            COPIAR PIX DA TAXA
+          </button>
+
+          <div
+            id="offerPayStatus"
+            style="margin-top:10px;font-size:13px;">
+            Aguardando pagamento da taxa...
+          </div>
+        `;
+
+        monitorarOferta(
+            data.paymentId,
+            carregarMinhasOfertasEnviadas
+        );
+
+        return;
+    }
 
     list.innerHTML = `
       <div style="color:#45d66f;font-weight:800;margin-bottom:8px;">
@@ -5544,13 +5676,13 @@ function mostrarPixOferta(data){
 
       <button
         class="btn sec"
-        onclick="copiarTexto('${(data.ownerPixKey || "").replace(/'/g, "\\'")}')"
+        onclick="copiarTexto('${chave}')"
         style="margin:6px 0 12px;padding:8px 12px;font-size:12px;">
         📋 COPIAR MINHA CHAVE
       </button>
 
       <div style="font-size:12px;color:#aaa;margin-bottom:6px;">
-        O comprador paga a taxa do site de
+        O comprador paga a taxa do site (10%) de
         <b style="color:#ffd400;">R$ ${taxa}</b> pelo QR Code abaixo:
       </div>
 
@@ -5878,7 +6010,7 @@ async function aceitarContraproposta(offerId){
             return;
         }
 
-        mostrarPixOferta(data);
+        mostrarPixOferta(data, true);
 
     }catch(error){
 
@@ -6423,7 +6555,7 @@ async function carregarAbaPix(){
       <div style="font-size:12px;color:#aaa;margin-bottom:8px;">
         Sua chave recebe o pagamento dos compradores quando
         você aceita uma oferta. O valor chega direto a você;
-        a taxa do site (20%) é paga à parte pelo comprador.
+        a taxa do site (10%) é paga à parte pelo comprador.
       </div>
 
       <input

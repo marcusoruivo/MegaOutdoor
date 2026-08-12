@@ -8,3 +8,17 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 20
+      - key: DATA_DIR
+        value: /var/lib/megaoutdoor/data
+      - key: UPLOAD_DIR
+        value: /var/lib/megaoutdoor/uploads
+      - key: ASAAS_API_KEY
+        sync: false
+      - key: WEBHOOK_TOKEN
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+    disk:
+      name: megaoutdoor-data
+      mountPath: /var/lib/megaoutdoor
+      sizeGB: 1

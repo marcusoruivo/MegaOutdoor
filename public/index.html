@@ -1347,6 +1347,87 @@ style="font-size:13px;color:#ccc;">
 </div>
 
 
+<!-- TUTORIAL DE BOAS-VINDAS -->
+
+<div class="modal" id="modalTutorial">
+
+  <div class="box" style="max-width:560px;">
+
+    <button
+        class="close"
+        onclick="fecharTutorial()"
+        title="Fechar">×</button>
+
+    <h2 style="color:#ffd400;margin-top:0;">
+      👋 Bem-vindo ao Milhão Door!
+    </h2>
+
+    <p>
+      Aqui você compra espaços no <b>maior outdoor
+      da internet</b> e exibe o que quiser
+      (fotos, anúncios, desenhos).
+    </p>
+
+    <div style="display:grid;gap:10px;margin:14px 0;">
+
+      <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:11px;">
+        <b style="color:#ffd400;">🖱️ Navegar</b>
+        <div style="font-size:12px;color:#bbb;line-height:1.5;">
+          <b>Arraste</b> para mover o mapa &nbsp;•&nbsp;
+          <b>Rolagem</b> (ou <b>pinça</b> no celular) para
+          dar zoom &nbsp;•&nbsp; <b>Clique/toque</b> em um
+          espaço para selecionar ou inspecionar.
+        </div>
+      </div>
+
+      <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:11px;">
+        <b style="color:#ffd400;">🛒 Comprar</b>
+        <div style="font-size:12px;color:#bbb;line-height:1.5;">
+          Clique nos espaços livres (⬜) ou use
+          <b>SELECIONAR BLOCO</b> (largura × altura) para
+          marcar um bloco inteiro de uma vez. Depois clique em
+          <b>CONTINUAR</b> para pagar. <b>R$ 1,00 por espaço.</b>
+        </div>
+      </div>
+
+      <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:11px;">
+        <b style="color:#ff7a00;">💰 Oferta em blocos</b>
+        <div style="font-size:12px;color:#bbb;line-height:1.5;">
+          Já é dono e quer vender? Ative <b>OFERTA EM BLOCOS</b>,
+          arraste sobre os seus espaços para formar um bloco e
+          envie a oferta. O comprador paga via Pix — você recebe
+          na sua <b>CHAVE PIX</b> (configure no painel de comando).
+        </div>
+      </div>
+
+      <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:11px;">
+        <b style="color:#45d66f;">⚙️ Painel de comando</b>
+        <div style="font-size:12px;color:#bbb;line-height:1.5;">
+          Acesse <b>PAINEL DE COMANDO</b> (no carrinho) para ver
+          suas ofertas, seus blocos, editar fotos e cadastrar sua
+          chave Pix.
+        </div>
+      </div>
+
+    </div>
+
+    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#aaa;margin-top:6px;">
+      <input id="tutorialNunca" type="checkbox">
+      Não mostrar de novo
+    </label>
+
+    <button
+        class="btn"
+        style="margin-top:14px;"
+        onclick="fecharTutorial()">
+      ENTENDI, VAMOS NESSA →
+    </button>
+
+  </div>
+
+</div>
+
+
 <script>
 
 
@@ -1754,33 +1835,6 @@ draw();
 }
 
 
-function roundRectPath(ctx, x, y, w, h, r){
-
-    r = Math.min(r, w / 2, h / 2);
-
-    ctx.beginPath();
-
-    ctx.moveTo(x + r, y);
-
-    ctx.lineTo(x + w - r, y);
-
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-
-    ctx.lineTo(x + w, y + h - r);
-
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-
-    ctx.lineTo(x + r, y + h);
-
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-
-    ctx.lineTo(x, y + r);
-
-    ctx.quadraticCurveTo(x, y, x + r, y);
-
-    ctx.closePath();
-}
-
 function draw(){
 
 ctx.clearRect(
@@ -2005,36 +2059,16 @@ T-2
 if(sc>.32){
 
 ctx.font =
-"bold 13px 'Arial Rounded MT Bold', Arial";
+"13px 'Arial Rounded MT Bold', Arial";
 
 ctx.textAlign =
 "center";
-
-const etiqueta =
-"#"+id;
-
-const ew =
-ctx.measureText(etiqueta).width;
-
-ctx.fillStyle =
-"rgba(0,0,0,.72)";
-
-roundRectPath(
-ctx,
-px+50-ew/2-6,
-py+55-11,
-ew+12,
-18,
-5
-);
-
-ctx.fill();
 
 ctx.fillStyle =
 "#ffd400";
 
 ctx.fillText(
-etiqueta,
+"#"+id,
 px+50,
 py+55
 );
@@ -3986,16 +4020,26 @@ function mostrarTutorial(){
 
     }catch(e){}
 
-    document.getElementById(
-        "modalTutorial"
-    ).style.display = "flex";
+    const el =
+        document.getElementById(
+            "modalTutorial"
+        );
+
+    if(el){
+        el.style.display = "flex";
+    }
 }
 
 function fecharTutorial(){
 
-    document.getElementById(
-        "modalTutorial"
-    ).style.display = "none";
+    const el =
+        document.getElementById(
+            "modalTutorial"
+        );
+
+    if(el){
+        el.style.display = "none";
+    }
 
     try{
 
@@ -6474,86 +6518,6 @@ async function salvarMinhaChavePix(){
 }
 
 </script>
-
-<!-- TUTORIAL DE BOAS-VINDAS -->
-
-<div class="modal" id="modalTutorial">
-
-  <div class="box" style="max-width:560px;">
-
-    <button
-        class="close"
-        onclick="fecharTutorial()"
-        title="Fechar">×</button>
-
-    <h2 style="color:#ffd400;margin-top:0;">
-      👋 Bem-vindo ao Milhão Door!
-    </h2>
-
-    <p>
-      Aqui você compra espaços no <b>maior outdoor
-      da internet</b> e exibe o que quiser
-      (fotos, anúncios, desenhos).
-    </p>
-
-    <div style="display:grid;gap:10px;margin:14px 0;">
-
-      <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:11px;">
-        <b style="color:#ffd400;">🖱️ Navegar</b>
-        <div style="font-size:12px;color:#bbb;line-height:1.5;">
-          <b>Arraste</b> para mover o mapa &nbsp;•&nbsp;
-          <b>Rolagem</b> (ou <b>pinça</b> no celular) para
-          dar zoom &nbsp;•&nbsp; <b>Clique/toque</b> em um
-          espaço para selecionar ou inspecionar.
-        </div>
-      </div>
-
-      <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:11px;">
-        <b style="color:#ffd400;">🛒 Comprar</b>
-        <div style="font-size:12px;color:#bbb;line-height:1.5;">
-          Clique nos espaços livres (⬜) ou use
-          <b>SELECIONAR BLOCO</b> (largura × altura) para
-          marcar um bloco inteiro de uma vez. Depois clique em
-          <b>CONTINUAR</b> para pagar. <b>R$ 1,00 por espaço.</b>
-        </div>
-      </div>
-
-      <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:11px;">
-        <b style="color:#ff7a00;">💰 Oferta em blocos</b>
-        <div style="font-size:12px;color:#bbb;line-height:1.5;">
-          Já é dono e quer vender? Ative <b>OFERTA EM BLOCOS</b>,
-          arraste sobre os seus espaços para formar um bloco e
-          envie a oferta. O comprador paga via Pix — você recebe
-          na sua <b>CHAVE PIX</b> (configure no painel de comando).
-        </div>
-      </div>
-
-      <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:11px;">
-        <b style="color:#45d66f;">⚙️ Painel de comando</b>
-        <div style="font-size:12px;color:#bbb;line-height:1.5;">
-          Acesse <b>PAINEL DE COMANDO</b> (no carrinho) para ver
-          suas ofertas, seus blocos, editar fotos e cadastrar sua
-          chave Pix.
-        </div>
-      </div>
-
-    </div>
-
-    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#aaa;margin-top:6px;">
-      <input id="tutorialNunca" type="checkbox">
-      Não mostrar de novo
-    </label>
-
-    <button
-        class="btn"
-        style="margin-top:14px;"
-        onclick="fecharTutorial()">
-      ENTENDI, VAMOS NESSA →
-    </button>
-
-  </div>
-
-</div>
 
 </body>
 </html>

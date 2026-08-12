@@ -268,7 +268,10 @@ app.get("/api/status", (req, res) => {
 
     for (const space of Object.values(db)) {
 
-        if (space.status === "published") {
+        if (
+            space.status === "published" ||
+            space.status === "paid"
+        ) {
             sold++;
         }
 
@@ -554,6 +557,12 @@ app.post("/api/test/reserve", (req, res) => {
         if (!spaces.length) {
             return res.status(400).json({
                 error: "Nenhum espaço selecionado."
+            });
+        }
+
+        if (spaces.length > 1000) {
+            return res.status(400).json({
+                error: "Máximo de 1.000 espaços por compra."
             });
         }
 
@@ -1106,6 +1115,12 @@ app.post(
             if (!ids.length) {
                 return res.status(400).json({
                     error: "Nenhum espaço informado."
+                });
+            }
+
+            if (ids.length > 1000) {
+                return res.status(400).json({
+                    error: "Máximo de 1.000 espaços por anúncio."
                 });
             }
         }

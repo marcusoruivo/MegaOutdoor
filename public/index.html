@@ -2011,6 +2011,16 @@ ids.every(
 id=>sel.has(id)
 );
 
+if(!todosSelecionados &&
+sel.size + ids.length > 1000){
+alert(
+"Máximo de 1.000 espaços por compra. " +
+"Reduza a área selecionada."
+);
+draw();
+return;
+}
+
 if(todosSelecionados){
 
 for(const id of ids){
@@ -2127,6 +2137,15 @@ const todosSelecionados =
 ids.every(
 id=>sel.has(id)
 );
+
+if(!todosSelecionados &&
+sel.size + ids.length > 1000){
+alert(
+"Máximo de 1.000 espaços por compra. " +
+"Reduza o bloco."
+);
+return;
+}
 
 if(todosSelecionados){
 
@@ -2420,6 +2439,11 @@ if(!sel.size)return;
 
 if(sel.size < 5){
   alert("O valor mínimo para compra é de R$ 5,00. Selecione pelo menos 5 espaços.");
+  return;
+}
+
+if(sel.size > 1000){
+  alert("Máximo de 1.000 espaços por compra.");
   return;
 }
 

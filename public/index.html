@@ -742,6 +742,14 @@ onclick="gerarPix()">
 GERAR PIX
 </button>
 
+<button
+class="btn sec"
+type="button"
+onclick="testeSemPagamento()"
+style="margin-top:10px;">
+🧪 TESTAR SEM PAGAMENTO
+</button>
+
 <p
 id="msg"
 style="color:#aaa;font-size:12px">
@@ -800,29 +808,66 @@ Aguardando pagamento...
     placeholder="Nome da empresa ou anunciante"
     style="width:100%; padding:12px; margin-top:10px;">
 
-  <input
+<input
+    id="tituloAnuncio"
+    type="text"
+    placeholder="Nome da empresa ou anunciante"
+    style="width:100%; padding:12px; margin-top:10px;">
+
+<input
     id="fotoAnuncio"
     type="file"
     accept="image/*"
+    multiple
     style="width:100%; margin-top:10px;">
 
-  <img
+<div style="margin-top:10px;">
+
+    <label style="font-size:13px; color:#aaa;">
+        MODO DE PUBLICAÇÃO
+    </label>
+
+    <select
+        id="modoAnuncio"
+        style="
+            width:100%;
+            padding:12px;
+            margin-top:5px;
+            border-radius:8px;
+            background:#111;
+            color:#fff;
+            border:1px solid #333;
+        "
+    >
+
+        <option value="individual">
+            🖼️ Uma imagem por espaço
+        </option>
+
+        <option value="estendida">
+            🖼️ Estender uma imagem pelos espaços
+        </option>
+
+    </select>
+
+</div>
+
+<img
     id="previewAnuncio"
     style="display:none; width:100%; max-height:220px; object-fit:contain; margin-top:10px; border-radius:8px;">
 
-  <button
+<button
     class="btn"
     id="btnPublicar"
     onclick="publicarAnuncio()"
     style="margin-top:10px;">
     PUBLICAR ANÚNCIO
-  </button>
+</button>
 
-  <p
+<p
     id="msgPublicacao"
     style="color:#aaa; font-size:12px;">
-  </p>
-
+</p>
 </div>
 
 </div>
@@ -1090,19 +1135,120 @@ db[id];
 
 
 if(
-v &&
-v.image &&
-imgs[id] &&
-imgs[id].complete
+    v &&
+    v.image &&
+    imgs[id] &&
+    imgs[id].complete
 ){
 
-ctx.drawImage(
-imgs[id],
-px+1,
-py+1,
-T-2,
-T-2
-);
+    // ==========================================
+    // IMAGEM ESTENDIDA
+    // ==========================================
+
+    if(
+        v.displayMode === "extended" &&
+        Array.isArray(v.imageGroupSpaces) &&
+        v.imageGroupSpaces.length > 1
+    ){
+
+        const grupo = v.imageGroupSpaces.map(Number);
+
+        // Calcula linha e coluna de cada espaço
+        const posicoes = grupo.map(numero => {
+
+            const indice = numero - 1;
+
+            return {
+                id: numero,
+                linha: Math.floor(indice / C),
+                coluna: indice % C
+            };
+
+        });
+
+        const minLinha = Math.min(
+            ...posicoes.map(p => p.linha)
+        );
+
+        const maxLinha = Math.max(
+            ...posicoes.map(p => p.linha)
+        );
+
+        const minColuna = Math.min(
+            ...posicoes.map(p => p.coluna)
+        );
+
+        const maxColuna = Math.max(
+            ...posicoes.map(p => p.coluna)
+        );
+
+        const linhasGrupo =
+            maxLinha - minLinha + 1;
+
+        const colunasGrupo =
+            maxColuna - minColuna + 1;
+
+        // Confirma que os espaços formam um bloco completo
+        const grupoCompleto =
+            grupo.length ===
+            linhasGrupo * colunasGrupo;
+
+        if(grupoCompleto){
+
+            // Desenha somente uma vez,
+            // no primeiro espaço do bloco
+            const primeiroEspaco =
+                minLinha * C +
+                minColuna +
+                1;
+
+            if(id === primeiroEspaco){
+
+                const largura =
+                    colunasGrupo * T - 2;
+
+                const altura =
+                    linhasGrupo * T - 2;
+
+                ctx.drawImage(
+                    imgs[id],
+                    minColuna * T + 1,
+                    minLinha * T + 1,
+                    largura,
+                    altura
+                );
+
+            }
+
+        }else{
+
+            // Caso o grupo não forme um retângulo,
+            // mantém o comportamento individual
+            ctx.drawImage(
+                imgs[id],
+                px + 1,
+                py + 1,
+                T - 2,
+                T - 2
+            );
+
+        }
+
+    }else{
+
+        // ==========================================
+        // IMAGEM INDIVIDUAL
+        // ==========================================
+
+        ctx.drawImage(
+            imgs[id],
+            px + 1,
+            py + 1,
+            T - 2,
+            T - 2
+        );
+
+    }
 
 }else{
 
@@ -1810,14 +1956,91 @@ monitorarPagamento();
 
 }catch(error){
 
+    msg.textContent =
+        "Erro de comunicação com o servidor.";
+
+    console.error(error);
+
+}
+}  /* =========================
+   TESTE SEM PAGAMENTO
+========================= */
+
+function testeSemPagamento(){
+
+    const name =
+        document.getElementById("name").value.trim();
+
+    const email =
+        document.getElementById("email").value.trim();
+
+    const cpf =
+        document.getElementById("cpf").value.trim();
+
+    const msg =
+        document.getElementById("msg");
+
+    if(name.length < 3){
+        msg.textContent =
+            "Informe seu nome ou empresa.";
+        return;
+    }
+
+    if(!email.includes("@")){
+        msg.textContent =
+            "Informe um e-mail válido.";
+        return;
+    }
+
+    if(!cpf){
+        msg.textContent =
+            "Informe CPF ou CNPJ.";
+        return;
+    }
+
+    if(!sel.size){
+        msg.textContent =
+            "Nenhum espaço selecionado.";
+        return;
+    }
+
+    /*
+       PAGAMENTO SIMULADO
+       NÃO GERA PIX
+       NÃO CHAMA /api/checkout
+    */
+
+    currentPayment =
+        "TESTE-" + Date.now();
+
+    document.getElementById("formulario")
+        .style.display = "none";
+
+    document.getElementById("pix")
+        .style.display = "block";
+
+    document.getElementById("statusPix")
+        .innerHTML =
+        '<span class="sucesso">🧪 TESTE: PAGAMENTO SIMULADO!</span><br><br>' +
+        'Pagamento fictício confirmado para teste.';
+
+    document.getElementById("publicacao")
+        .style.display = "block";
+
+    paidSpaces = [...sel];
+
+    msg.textContent =
+        "Modo teste ativado. Você pode testar a publicação.";
+
+    updateCart();
+}
+
 msg.textContent =
 "Erro de comunicação com o servidor.";
 
 console.error(error);
 
-}
 
-}
 
 
 /* =========================
@@ -1926,7 +2149,119 @@ console.error(error);
 );
 
 }
+// ==========================================
+// TESTE LOCAL - IMAGEM ESTENDIDA
+// NÃO ENVIA NADA PARA O SERVIDOR
+// ==========================================
 
+function testarImagemEstendida(){
+
+    const grupoTeste = [
+        4, 5, 6,
+        1004, 1005, 1006,
+        2004, 2005, 2006
+    ];
+
+    const primeiroId = grupoTeste[0];
+
+    // Cria uma imagem de teste
+    const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg"
+             width="900"
+             height="900">
+            <defs>
+                <linearGradient id="g"
+                    x1="0%" y1="0%"
+                    x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#ff0000"/>
+                    <stop offset="50%" stop-color="#ffd000"/>
+                    <stop offset="100%" stop-color="#0066ff"/>
+                </linearGradient>
+            </defs>
+
+            <rect
+                width="900"
+                height="900"
+                fill="url(#g)"
+            />
+
+            <text
+                x="450"
+                y="400"
+                text-anchor="middle"
+                font-family="Arial"
+                font-size="70"
+                font-weight="bold"
+                fill="white">
+                TESTE
+            </text>
+
+            <text
+                x="450"
+                y="490"
+                text-anchor="middle"
+                font-family="Arial"
+                font-size="42"
+                fill="white">
+                IMAGEM ESTENDIDA
+            </text>
+
+            <text
+                x="450"
+                y="550"
+                text-anchor="middle"
+                font-family="Arial"
+                font-size="30"
+                fill="white">
+                9 ESPAÇOS
+            </text>
+        </svg>
+    `;
+
+    const imagem =
+        new Image();
+
+    imagem.onload = function(){
+
+        imgs[primeiroId] = imagem;
+
+        // Cria os dados dos 9 espaços
+        for(const id of grupoTeste){
+
+            db[id] = {
+                ...(db[id] || {}),
+                id: id,
+                status: "published",
+                image: "teste-local",
+                displayMode: "extended",
+                imageGroupId: "TESTE-LOCAL",
+                imageGroupSpaces: grupoTeste
+            };
+
+        }
+
+        // Desenha o mural
+        draw();
+
+        console.log(
+            "TESTE LOCAL ATIVADO:",
+            grupoTeste
+        );
+
+        alert(
+            "Teste ativado!\n\n" +
+            "A imagem foi simulada nos 9 espaços:\n" +
+            "#4 #5 #6\n" +
+            "#1004 #1005 #1006\n" +
+            "#2004 #2005 #2006"
+        );
+
+    };
+
+    imagem.src =
+        "data:image/svg+xml;charset=utf-8," +
+        encodeURIComponent(svg);
+}
 
 /* =========================
    INICIAR
@@ -1950,12 +2285,22 @@ async function publicarAnuncio() {
         .value
         .trim();
 
-    const arquivo = document
-        .getElementById("fotoAnuncio")
-        .files[0];
+    const inputFotos =
+        document.getElementById("fotoAnuncio");
 
-    const msg = document
-        .getElementById("msgPublicacao");
+    const arquivos =
+        Array.from(inputFotos.files || []);
+
+    const modo =
+        document.getElementById("modoAnuncio").value;
+
+    const msg =
+        document.getElementById("msgPublicacao");
+
+
+    // =========================
+    // VALIDAÇÕES
+    // =========================
 
     if (!titulo) {
         msg.textContent =
@@ -1963,11 +2308,13 @@ async function publicarAnuncio() {
         return;
     }
 
-    if (!arquivo) {
+
+    if (!arquivos.length) {
         msg.textContent =
-            "Escolha uma imagem para publicar.";
+            "Escolha pelo menos uma imagem para publicar.";
         return;
     }
+
 
     if (!currentPayment) {
         msg.textContent =
@@ -1975,60 +2322,205 @@ async function publicarAnuncio() {
         return;
     }
 
+
     if (!paidSpaces || !paidSpaces.length) {
         msg.textContent =
             "Nenhum espaço pago disponível para publicação.";
         return;
     }
 
+
+    // =========================
+    // MODO INDIVIDUAL
+    // =========================
+
+    if (modo === "individual") {
+
+        if (arquivos.length > paidSpaces.length) {
+
+            msg.textContent =
+                `Você comprou ${paidSpaces.length} espaço(s), ` +
+                `portanto pode enviar no máximo ` +
+                `${paidSpaces.length} imagem(ns).`;
+
+            return;
+        }
+    }
+
+
+    // =========================
+    // MODO ESTENDIDO
+    // =========================
+
+    if (modo === "estendida") {
+
+        if (arquivos.length !== 1) {
+
+            msg.textContent =
+                "No modo estendido, selecione apenas 1 imagem.";
+
+            return;
+        }
+    }
+
+
+    // =========================
+    // INICIANDO PUBLICAÇÃO
+    // =========================
+
     msg.textContent =
-        "Publicando anúncio em todos os espaços...";
+        "Publicando anúncio...";
+
+    document
+        .getElementById("btnPublicar")
+        .disabled = true;
+
 
     try {
 
-        for (const id of paidSpaces) {
 
-            const formData = new FormData();
+// =========================================
+// MODO INDIVIDUAL
+// UMA IMAGEM PARA CADA ESPAÇO
+// =========================================
 
-            formData.append("foto", arquivo);
-            formData.append("name", titulo);
+if (modo === "individual") {
 
-            const resposta = await fetch(`/api/upload/${id}`, {
+    for (let i = 0; i < arquivos.length; i++) {
+
+        const id = paidSpaces[i];
+
+        const formData = new FormData();
+
+        formData.append(
+            "fotos",
+            arquivos[i]
+        );
+
+        formData.append(
+            "name",
+            titulo
+        );
+
+        formData.append(
+            "mode",
+            "individual"
+        );
+
+        formData.append(
+            "ids",
+            JSON.stringify([id])
+        );
+
+        const resposta = await fetch(
+            `/api/upload/${id}`,
+            {
                 method: "POST",
                 body: formData
-            });
-
-            const data = await resposta.json();
-
-            if (!resposta.ok) {
-                throw new Error(
-                    data.error ||
-                    `Erro ao publicar no espaço ${id}.`
-                );
             }
+        );
+
+        const data = await resposta.json();
+
+        if (!resposta.ok) {
+
+            throw new Error(
+                data.error ||
+                `Erro ao publicar no espaço ${id}.`
+            );
         }
+    }
+}
+
+
+// =========================================
+// MODO ESTENDIDO
+// UMA IMAGEM PARA TODOS OS ESPAÇOS
+// =========================================
+
+if (modo === "estendida") {
+
+    const arquivo = arquivos[0];
+
+    const grupo = [...paidSpaces];
+
+    const idPrincipal = grupo[0];
+
+    const formData = new FormData();
+
+    formData.append(
+        "fotos",
+        arquivo
+    );
+
+    formData.append(
+        "name",
+        titulo
+    );
+
+    formData.append(
+        "mode",
+        "extended"
+    );
+
+    formData.append(
+        "ids",
+        JSON.stringify(grupo)
+    );
+
+    const resposta = await fetch(
+        `/api/upload/${idPrincipal}`,
+        {
+            method: "POST",
+            body: formData
+        }
+    );
+
+    const data = await resposta.json();
+
+    if (!resposta.ok) {
+
+        throw new Error(
+            data.error ||
+            "Erro ao publicar anúncio estendido."
+        );
+    }
+}
+
+        // ==========================================
+        // SUCESSO
+        // ==========================================
 
         msg.innerHTML =
-            '<span class="sucesso">✅ ANÚNCIO PUBLICADO COM SUCESSO!</span>';
+            '<span class="sucesso">' +
+            '✅ ANÚNCIO PUBLICADO COM SUCESSO!' +
+            '</span>';
+
 
         document
             .getElementById("btnPublicar")
             .disabled = true;
 
+
         await load();
 
         updateCart();
 
-} catch (error) {
 
-    console.error(error);
+    } catch (error) {
 
-    msg.textContent =
-        error.message ||
-        "Erro ao publicar anúncio.";
+        console.error(error);
+
+        msg.textContent =
+            error.message ||
+            "Erro ao publicar anúncio.";
+
+
+        document
+            .getElementById("btnPublicar")
+            .disabled = false;
     }
 }
-
 </script>
 
 </body>

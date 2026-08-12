@@ -949,6 +949,66 @@ Aguardando pagamento...
 </div>
 
 
+<!-- MODAL EDITAR FOTO -->
+
+<div class="modal" id="editModal" style="display:none;">
+
+<div class="box">
+
+<button
+class="close"
+onclick="fecharEditarFoto()">
+×
+</button>
+
+<h2 style="color:#ffd400;">Editar foto</h2>
+
+<p
+id="editInfo"
+style="color:#aaa;font-size:13px;margin:0 0 12px;">
+</p>
+
+<img
+id="editPreviewAtual"
+style="width:100%; max-height:160px; object-fit:contain; margin-bottom:10px; border-radius:8px; display:none;">
+
+<input
+id="editTitulo"
+type="text"
+placeholder="Nome da empresa ou anunciante"
+style="width:100%; padding:12px; margin-top:6px; box-sizing:border-box;">
+
+<input
+id="editFoto"
+type="file"
+accept="image/*"
+onchange="previewEdicao()"
+style="width:100%; margin-top:10px;">
+
+<div id="editModoInfo" style="font-size:12px;color:#aaa;margin-top:10px;"></div>
+
+<img
+id="editPreview"
+style="display:none; width:100%; max-height:220px; object-fit:contain; margin-top:10px; border-radius:8px;">
+
+<button
+class="btn"
+id="btnSalvarEdicao"
+onclick="salvarEdicaoFoto()"
+style="margin-top:10px;">
+SALVAR FOTO
+</button>
+
+<p
+id="editMsg"
+style="color:#aaa; font-size:12px;">
+</p>
+
+</div>
+
+</div>
+
+
 <!-- MODAL OFERTA -->
 
 <div class="modal" id="offerModal" style="display:none;">
@@ -1228,6 +1288,22 @@ function mostrarInfoEspaco(numero){
             <div style="font-size:12px;color:#45d66f;margin-top:8px;">
               ✅ Este espaço é seu.
             </div>
+            <button
+              onclick="editarFoto(${numero})"
+              style="
+                width:100%;
+                margin-top:12px;
+                padding:10px;
+                border:0;
+                border-radius:8px;
+                background:#ffd400;
+                color:#000;
+                font-weight:800;
+                cursor:pointer;
+              "
+            >
+              🖼️ EDITAR FOTO
+            </button>
           `
           : db[numero] &&
             db[numero].status === "published"
@@ -3421,6 +3497,211 @@ if (modo === "estendida") {
 
         document
             .getElementById("btnPublicar")
+            .disabled = false;
+    }
+}
+
+
+/* =========================
+   EDITAR FOTO DO ANÚNCIO
+========================= */
+
+let editingSpaceId = null;
+
+function editarFoto(numero){
+
+    const id = Number(numero);
+
+    const s = db[id];
+
+    if(!s){
+        alert("Espaço não encontrado.");
+        return;
+    }
+
+    if(!minhaPropriedade(id)){
+        alert("Você não é o proprietário deste espaço.");
+        return;
+    }
+
+    editingSpaceId = id;
+
+    document.getElementById("editTitulo").value =
+        s.title || "";
+
+    document.getElementById("editFoto").value = "";
+
+    document.getElementById("editPreview").style.display = "none";
+
+    document.getElementById("editMsg").textContent = "";
+
+    const atual =
+        document.getElementById("editPreviewAtual");
+
+    if(s.image){
+        atual.src = s.image;
+        atual.style.display = "block";
+    }else{
+        atual.style.display = "none";
+    }
+
+    const estendido =
+        s.displayMode === "extended" &&
+        Array.isArray(s.imageGroupSpaces) &&
+        s.imageGroupSpaces.length > 1;
+
+    document.getElementById("editInfo").textContent =
+        "Espaço #" + id.toLocaleString("pt-BR");
+
+    document.getElementById("editModoInfo").textContent =
+        estendido
+        ? "⚠️ Este espaço faz parte de um bloco estendido. " +
+          "A nova imagem será aplicada a todo o bloco de " +
+          s.imageGroupSpaces.length + " espaço(s)."
+        : "Modo: imagem individual neste espaço.";
+
+    document.getElementById("editModal").style.display = "flex";
+}
+
+function fecharEditarFoto(){
+
+    document.getElementById("editModal").style.display = "none";
+
+    editingSpaceId = null;
+}
+
+function previewEdicao(){
+
+    const arquivo =
+        document.getElementById("editFoto").files[0];
+
+    const prev =
+        document.getElementById("editPreview");
+
+    if(!arquivo){
+        prev.style.display = "none";
+        return;
+    }
+
+    prev.src =
+        URL.createObjectURL(arquivo);
+
+    prev.style.display = "block";
+}
+
+async function salvarEdicaoFoto(){
+
+    const id = editingSpaceId;
+
+    if(!id)return;
+
+    const s = db[id];
+
+    const titulo =
+        document.getElementById("editTitulo").value.trim();
+
+    const arquivo =
+        document.getElementById("editFoto").files[0];
+
+    const msg =
+        document.getElementById("editMsg");
+
+    if(!titulo){
+        msg.textContent =
+            "Informe o nome da empresa ou anunciante.";
+        return;
+    }
+
+    if(!arquivo){
+        msg.textContent =
+            "Escolha uma imagem.";
+        return;
+    }
+
+    const estendido =
+        s.displayMode === "extended" &&
+        Array.isArray(s.imageGroupSpaces) &&
+        s.imageGroupSpaces.length > 1;
+
+    const ids =
+        estendido
+        ? s.imageGroupSpaces.map(Number)
+        : [id];
+
+    msg.textContent =
+        "Salvando nova foto...";
+
+    document
+        .getElementById("btnSalvarEdicao")
+        .disabled = true;
+
+    try {
+
+        const formData = new FormData();
+
+        formData.append(
+            "fotos",
+            arquivo
+        );
+
+        formData.append(
+            "name",
+            titulo
+        );
+
+        formData.append(
+            "mode",
+            estendido ? "extended" : "individual"
+        );
+
+        formData.append(
+            "ids",
+            JSON.stringify(ids)
+        );
+
+        formData.append(
+            "orderToken",
+            orderTokens[id] || ""
+        );
+
+        const resposta = await fetch(
+            `/api/upload/${id}`,
+            {
+                method: "POST",
+                body: formData
+            }
+        );
+
+        const data = await reqJSON(resposta);
+
+        if(!resposta.ok){
+            throw new Error(
+                data.error ||
+                "Erro ao salvar a foto."
+            );
+        }
+
+        msg.innerHTML =
+            '<span class="sucesso">' +
+            '✅ Foto atualizada com sucesso!' +
+            '</span>';
+
+        await load();
+
+        fecharEditarFoto();
+
+        fecharInfoEspaco();
+
+    }catch(error){
+
+        console.error(error);
+
+        msg.textContent =
+            error.message ||
+            "Erro ao salvar a foto.";
+
+        document
+            .getElementById("btnSalvarEdicao")
             .disabled = false;
     }
 }

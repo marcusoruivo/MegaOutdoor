@@ -1008,6 +1008,40 @@ Aguardando pagamento...
 </div>
 
 
+<!-- MODAL DONO DO ESPAÇO -->
+
+<div class="modal" id="donoModal" style="display:none;">
+
+<div class="box" style="text-align:center;">
+
+<button
+class="close"
+onclick="fecharDonoModal()">
+×
+</button>
+
+<div style="font-size:14px;color:#ff4d4d;font-weight:800;">
+🔴 ESPAÇO VENDIDO
+</div>
+
+<div style="font-size:30px;font-weight:800;margin:8px 0;">
+<span id="donoNumero"></span>
+</div>
+
+<div id="donoStatus" style="font-size:13px;color:#aaa;margin-bottom:6px;">
+</div>
+
+<div id="donoNome" style="font-size:16px;font-weight:700;color:#fff;">
+</div>
+
+<div id="donoAcoes" style="margin-top:14px;">
+</div>
+
+</div>
+
+</div>
+
+
 <!-- MODAL EDITAR FOTO -->
 
 <div class="modal" id="editModal" style="display:none;">
@@ -1437,6 +1471,77 @@ function fecharInfoEspaco(){
 
   draw();
 
+}
+
+function mostrarDonoEspaco(numero){
+
+  const s = db[numero];
+
+  if(!s)return;
+
+  document.getElementById("donoNumero").textContent =
+    "#" + numero.toLocaleString("pt-BR");
+
+  const statusEl =
+    document.getElementById("donoStatus");
+
+  const nomeEl =
+    document.getElementById("donoNome");
+
+  const acoesEl =
+    document.getElementById("donoAcoes");
+
+  const titulo = s.title || "";
+  const nome = s.name || "";
+
+  if(s.status === "published"){
+
+    statusEl.textContent =
+      "Anúncio publicado";
+
+    nomeEl.textContent =
+      titulo || nome || "Proprietário";
+
+    acoesEl.innerHTML =
+      minhaPropriedade(numero)
+      ? '<div style="color:#45d66f;font-weight:700;">' +
+        '✅ Este espaço é seu.</div>' +
+        '<button class="btn" style="width:100%;margin-top:10px;" ' +
+        'onclick="fecharDonoModal(); editarFoto(' + numero + ')">' +
+        '🖼️ EDITAR FOTO</button>'
+      : '<button class="btn" style="width:100%;" ' +
+        'onclick="fecharDonoModal(); abrirOferta(' + numero + ')">' +
+        '💰 FAZER OFERTA</button>';
+
+  }else if(s.status === "reserved"){
+
+    statusEl.textContent =
+      "Reservado";
+
+    nomeEl.textContent =
+      "Aguardando confirmação de pagamento";
+
+    acoesEl.innerHTML = "";
+
+  }else{
+
+    statusEl.textContent =
+      "Vendido";
+
+    nomeEl.textContent =
+      titulo || nome || "Proprietário";
+
+    acoesEl.innerHTML =
+      '<div style="font-size:13px;color:#aaa;">' +
+      'Aguardando publicação do proprietário.</div>';
+  }
+
+  document.getElementById("donoModal").style.display = "flex";
+}
+
+function fecharDonoModal(){
+
+  document.getElementById("donoModal").style.display = "none";
 }
 
 function selecionarEspacoPesquisado(numero){
@@ -2771,9 +2876,7 @@ return;
 
 if(db[id]){
 
-alert(
-"Este espaço já está ocupado ou reservado."
-);
+mostrarDonoEspaco(id);
 
 return;
 
@@ -4176,6 +4279,13 @@ async function enviarOferta(){
 
                 salvarMyOffer(data.offerId);
 
+                try{
+                    localStorage.setItem(
+                        "mega_myEmail",
+                        email
+                    );
+                }catch(e){}
+
                 enviadas++;
 
             }else{
@@ -4354,11 +4464,23 @@ function cardOferta(o, done){
                         style="margin:0;padding:8px 12px;font-size:12px;">
                   ✓ ACEITAR
                 </button>
+                <button class="btn sec" onclick="contraproposta('${o.id}')"
+                        style="margin:0;padding:8px 12px;font-size:12px;">
+                  ↗ AUMENTAR
+                </button>
                 <button class="btn sec" onclick="recusarOferta('${o.id}')"
                         style="margin:0;padding:8px 12px;font-size:12px;">
                   ✕ RECUSAR
                 </button>
               </div>
+              ${
+                  o.status === "countered"
+                  ? `<div style="margin-top:8px;font-size:12px;color:#ffd400;">
+                      Contraproposta de R$ ${Number(o.value).toLocaleString("pt-BR")} —
+                      aguardando resposta do comprador.
+                    </div>`
+                  : ""
+              }
             `
         }
       </div>
@@ -4368,7 +4490,11 @@ function cardOferta(o, done){
 function statusLabel(s){
 
     if(s === "pending"){
-        return '<span style="color:#ffd400;">Aguardando resposta</span>';
+        return '<span style="color:#ffd400;">Aguardando resposta do proprietário</span>';
+    }
+
+    if(s === "countered"){
+        return '<span style="color:#ff7a00;">Contraproposta do proprietário — aguarda sua confirmação</span>';
     }
 
     if(s === "accepted"){
@@ -4394,6 +4520,89 @@ function tokenDaOferta(offerId){
     if(!o)return "";
 
     return orderTokens[o.spaceId] || "";
+}
+
+async function contraproposta(offerId){
+
+    const o =
+        ultimasOfertas.find(x => x.id === offerId);
+
+    if(!o)return;
+
+    const atual =
+        Number(o.value);
+
+    const texto =
+        prompt(
+            "Valor da contraproposta (R$):",
+            Math.max(atual + 1, 1)
+        );
+
+    if(!texto)return;
+
+    const novoValor =
+        Number(texto);
+
+    if(
+        !Number.isFinite(novoValor) ||
+        novoValor < 1
+    ){
+        alert("Informe um valor de contraproposta válido.");
+        return;
+    }
+
+    if(novoValor <= atual){
+        alert(
+            "A contraproposta deve ser maior que a oferta atual " +
+            "(R$ " + atual.toLocaleString("pt-BR") + ")."
+        );
+        return;
+    }
+
+    const token = tokenDaOferta(offerId);
+
+    if(!token){
+        alert("Token de propriedade não encontrado.");
+        return;
+    }
+
+    try{
+
+        const response =
+            await fetch(
+                "/api/offers/" + offerId + "/counter",
+                {
+                    method: "POST",
+                    headers:{
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({
+                        token,
+                        value: novoValor
+                    })
+                }
+            );
+
+        const data =
+            await reqJSON(response);
+
+        if(!response.ok){
+            alert(
+                data.error ||
+                "Não foi possível enviar a contraproposta."
+            );
+            return;
+        }
+
+        await abrirPainelOfertas();
+
+    }catch(error){
+
+        alert("Erro de comunicação com o servidor.");
+
+        console.error(error);
+    }
 }
 
 async function aceitarOferta(offerId){
@@ -4671,6 +4880,30 @@ async function carregarMinhasOfertasEnviadas(){
                 "<div style='margin-top:6px;'>" +
                 statusLabel(data.status) +
                 "</div>" +
+                (data.status === "countered"
+                    ? "<div style='margin-top:8px;font-size:13px;color:#ffd400;'>" +
+                      "Nova proposta: <b>R$ " +
+                      Number(data.value).toLocaleString("pt-BR") +
+                      "</b>" +
+                      (data.originalValue
+                        ? " (sua oferta: R$ " +
+                          Number(data.originalValue).toLocaleString("pt-BR") +
+                          ")"
+                        : "") +
+                      "</div>" +
+                      "<div style='margin-top:10px;'>" +
+                      "<button class='btn' " +
+                      "onclick=\"aceitarContraproposta('" +
+                      offerId + "')\" " +
+                      "style='margin:0;padding:8px 12px;font-size:12px;'>" +
+                      "✓ ACEITAR E PAGAR</button> " +
+                      "<button class='btn sec' " +
+                      "onclick=\"recusarContraproposta('" +
+                      offerId + "')\" " +
+                      "style='margin:0;padding:8px 12px;font-size:12px;'>" +
+                      "✕ RECUSAR</button>" +
+                      "</div>"
+                    : "") +
                 (data.status === "paid" && data.newOwnerToken
                     ? "<button class='btn' " +
                       "onclick=\"salvarEspacoTransferido(" +
@@ -4687,8 +4920,119 @@ async function carregarMinhasOfertasEnviadas(){
     }
 }
 
-function salvarEspacoTransferido(spaceId, token){
+function meuEmailParaOferta(){
 
+    try{
+
+        const salvo =
+            localStorage.getItem("mega_myEmail");
+
+        if(salvo)return salvo;
+
+    }catch(e){}
+
+    return prompt("Informe seu e-mail:");
+}
+
+async function aceitarContraproposta(offerId){
+
+    const email = meuEmailParaOferta();
+
+    if(!email)return;
+
+    const cpfCnpj =
+        prompt(
+            "Informe seu CPF ou CNPJ para gerar o Pix:"
+        );
+
+    if(!cpfCnpj)return;
+
+    try{
+
+        const response =
+            await fetch(
+                "/api/offers/" + offerId + "/buyer-accept",
+                {
+                    method: "POST",
+                    headers:{
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({
+                        email,
+                        cpfCnpj
+                    })
+                }
+            );
+
+        const data =
+            await reqJSON(response);
+
+        if(!response.ok){
+            alert(
+                data.error ||
+                "Não foi possível aceitar a contraproposta."
+            );
+            return;
+        }
+
+        mostrarPixOferta(data);
+
+    }catch(error){
+
+        alert("Erro de comunicação com o servidor.");
+
+        console.error(error);
+    }
+}
+
+async function recusarContraproposta(offerId){
+
+    if(!confirm(
+        "Recusar esta contraproposta?"
+    ))return;
+
+    const email = meuEmailParaOferta();
+
+    if(!email)return;
+
+    try{
+
+        const response =
+            await fetch(
+                "/api/offers/" + offerId + "/buyer-reject",
+                {
+                    method: "POST",
+                    headers:{
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({ email })
+                }
+            );
+
+        const data =
+            await reqJSON(response);
+
+        if(!response.ok){
+            alert(
+                data.error ||
+                "Não foi possível recusar."
+            );
+            return;
+        }
+
+        await carregarMinhasOfertasEnviadas();
+
+    }catch(error){
+
+        alert("Erro de comunicação com o servidor.");
+
+        console.error(error);
+    }
+}
+
+function salvarEspacoTransferido(spaceId, token){
     salvarTokens([spaceId], token);
 
     alert(

@@ -104,6 +104,97 @@ function gerarToken() {
     return crypto.randomBytes(16).toString("hex");
 }
 
+/* =========================
+   E-MAIL (RESEND)
+========================= */
+
+const RESEND_KEY =
+    process.env.RESEND_API_KEY || "";
+
+const EMAIL_FROM =
+    process.env.EMAIL_FROM ||
+    "MegaOutdoor <onboarding@resend.dev>";
+
+const SITE_URL =
+    process.env.SITE_URL ||
+    "https://megaoutdoor.onrender.com";
+
+async function enviarEmail(to, subject, html) {
+
+    if (!RESEND_KEY) {
+        console.log(
+            "[EMAIL] Sem RESEND_API_KEY configurada. " +
+            `E-mail não enviado para ${to}: ${subject}`
+        );
+        return false;
+    }
+
+    try {
+
+        const r = await fetch(
+            "https://api.resend.com/emails",
+            {
+                method: "POST",
+                headers: {
+                    "Authorization":
+                        `Bearer ${RESEND_KEY}`,
+                    "Content-Type":
+                        "application/json"
+                },
+                body: JSON.stringify({
+                    from: EMAIL_FROM,
+                    to,
+                    subject,
+                    html
+                })
+            }
+        );
+
+        if (!r.ok) {
+            console.error(
+                "[EMAIL] Resend retornou " +
+                r.status + ":",
+                (await r.text()).slice(0, 300)
+            );
+            return false;
+        }
+
+        return true;
+
+    } catch (error) {
+
+        console.error(
+            "[EMAIL] Falha ao enviar:",
+            error.message
+        );
+
+        return false;
+    }
+}
+
+function htmlNotificacao(titulo, linhas) {
+
+    return `
+    <div style="font-family:Arial,sans-serif;max-width:520px;
+                margin:0 auto;background:#fff;border-radius:12px;
+                overflow:hidden;border:1px solid #eee;">
+      <div style="background:#111;color:#ffd400;padding:20px;
+                  font-size:20px;font-weight:800;">
+        🏙️ Milhão Door
+      </div>
+      <div style="padding:24px;">
+        <h2 style="margin:0 0 14px;color:#111;font-size:17px;">
+          ${titulo}
+        </h2>
+        ${linhas}
+        <p style="margin-top:22px;font-size:12px;color:#999;">
+          Acesse <a href="${SITE_URL}" style="color:#ffd400;">
+          ${SITE_URL}</a> para gerenciar.
+        </p>
+      </div>
+    </div>`;
+}
+
 function gerarCupom(nome, orderId) {
     const codigo =
         "MEGA-" +
@@ -845,6 +936,33 @@ app.post("/api/offers", (req, res) => {
 
         writeOffers(ofertas);
 
+        const dono = db[id];
+
+        if (dono) {
+
+            const linhas =
+                `<p style="margin:0 0 10px;color:#444;font-size:14px;">` +
+                `Você recebeu uma oferta para o espaço ` +
+                `<b>#${id.toLocaleString("pt-BR")}</b>:</p>` +
+                `<div style="background:#f7f7f7;border-radius:8px;` +
+                `padding:14px;font-size:14px;color:#333;">` +
+                `Comprador: <b>${name.trim()}</b><br>` +
+                `Valor da oferta: ` +
+                `<b style="color:#15803d;">` +
+                `R$ ${Number(value).toLocaleString("pt-BR")}</b><br>` +
+                (message
+                    ? `Mensagem: ${message.trim()}<br>`
+                    : "") +
+                `E-mail do comprador: ${email.trim()}` +
+                `</div>`;
+
+            enviarEmail(
+                dono.email,
+                `Oferta recebida para o espaço #${id.toLocaleString("pt-BR")}`,
+                htmlNotificacao("💰 Nova oferta de compra", linhas)
+            );
+        }
+
         res.json({
             ok: true,
             offerId: ofertaId
@@ -881,6 +999,7 @@ app.get("/api/offers/owner", (req, res) => {
             .filter(o =>
                 meusIds.includes(o.spaceId) &&
                 (o.status === "pending" ||
+                 o.status === "countered" ||
                  o.status === "accepted" ||
                  o.status === "paid")
             )
@@ -890,6 +1009,7 @@ app.get("/api/offers/owner", (req, res) => {
                 name: o.name,
                 email: o.email,
                 value: o.value,
+                originalValue: o.originalValue,
                 message: o.message,
                 status: o.status,
                 createdAt: o.createdAt
@@ -901,6 +1021,60 @@ app.get("/api/offers/owner", (req, res) => {
         offers: lista
     });
 });
+
+/* =========================
+   GERA CLIENTE + PIX PARA UMA OFERTA
+========================= */
+
+async function gerarPixOferta(oferta, document) {
+
+    const customer = await asaasRequest(
+        "/customers",
+        {
+            method: "POST",
+            body: JSON.stringify({
+                name: oferta.name,
+                cpfCnpj: document,
+                email: oferta.email,
+                externalReference:
+                    `oferta-${oferta.id}`,
+                notificationDisabled: true
+            })
+        }
+    );
+
+    const dueDate =
+        new Date()
+            .toISOString()
+            .slice(0, 10);
+
+    const payment = await asaasRequest(
+        "/payments",
+        {
+            method: "POST",
+            body: JSON.stringify({
+                customer: customer.id,
+                billingType: "PIX",
+                value: oferta.value,
+                dueDate,
+                description:
+                    `Milhão Door - transferência do espaço ` +
+                    `#${oferta.spaceId.toLocaleString("pt-BR")}`,
+                externalReference:
+                    `OFR-${oferta.id}`
+            })
+        }
+    );
+
+    const pix = await asaasRequest(
+        `/payments/${payment.id}/pixQrCode`,
+        {
+            method: "GET"
+        }
+    );
+
+    return { customer, payment, pix };
+}
 
 app.post("/api/offers/:id/accept", async (req, res) => {
 
@@ -944,50 +1118,8 @@ app.post("/api/offers/:id/accept", async (req, res) => {
             });
         }
 
-        const customer = await asaasRequest(
-            "/customers",
-            {
-                method: "POST",
-                body: JSON.stringify({
-                    name: oferta.name,
-                    cpfCnpj: document,
-                    email: oferta.email,
-                    externalReference:
-                        `oferta-${oferta.id}`,
-                    notificationDisabled: true
-                })
-            }
-        );
-
-        const dueDate =
-            new Date()
-                .toISOString()
-                .slice(0, 10);
-
-        const payment = await asaasRequest(
-            "/payments",
-            {
-                method: "POST",
-                body: JSON.stringify({
-                    customer: customer.id,
-                    billingType: "PIX",
-                    value: oferta.value,
-                    dueDate,
-                    description:
-                        `Milhão Door - transferência do espaço ` +
-                        `#${oferta.spaceId.toLocaleString("pt-BR")}`,
-                    externalReference:
-                        `OFR-${oferta.id}`
-                })
-            }
-        );
-
-        const pix = await asaasRequest(
-            `/payments/${payment.id}/pixQrCode`,
-            {
-                method: "GET"
-            }
-        );
+        const { customer, payment, pix } =
+            await gerarPixOferta(oferta, document);
 
         oferta.status = "accepted";
         oferta.paymentId = payment.id;
@@ -996,7 +1128,26 @@ app.post("/api/offers/:id/accept", async (req, res) => {
 
         writeOffers(ofertas);
 
+        enviarEmail(
+            oferta.email,
+            `Sua oferta para o espaço ` +
+            `#${oferta.spaceId.toLocaleString("pt-BR")} foi aceita`,
+            htmlNotificacao(
+                "🎉 Oferta aceita — Pix gerado",
+                `<p style="margin:0 0 10px;color:#444;font-size:14px;">` +
+                `Sua oferta de ` +
+                `<b style="color:#15803d;">` +
+                `R$ ${Number(oferta.value).toLocaleString("pt-BR")}</b> ` +
+                `para o espaço ` +
+                `<b>#${oferta.spaceId.toLocaleString("pt-BR")}</b> ` +
+                `foi aceita pelo proprietário.</p>` +
+                `<p style="margin:0;color:#666;font-size:13px;">` +
+                `Acesse o site para copiar o Pix e pagar.</p>`
+            )
+        );
+
         res.json({
+
             ok: true,
             offerId: oferta.id,
             qrCode: pix.encodedImage,
@@ -1013,6 +1164,152 @@ app.post("/api/offers/:id/accept", async (req, res) => {
             error: error.message
         });
     }
+});
+
+app.post("/api/offers/:id/buyer-accept", async (req, res) => {
+
+    try {
+
+        const ofertas = readOffers();
+        const oferta = ofertas[req.params.id];
+
+        if (!oferta || oferta.status !== "countered") {
+            return res.status(404).json({
+                error: "Oferta não encontrada ou já respondida."
+            });
+        }
+
+        const email =
+            (req.body.email || "").trim().toLowerCase();
+
+        if (
+            !email ||
+            email !== (oferta.email || "").trim().toLowerCase()
+        ) {
+            return res.status(403).json({
+                error: "E-mail não confere com a oferta."
+            });
+        }
+
+        const document =
+            (req.body.cpfCnpj || "")
+                .replace(/\D/g, "");
+
+        if (!validarDocumento(document)) {
+            return res.status(400).json({
+                error:
+                    "Informe um CPF ou CNPJ válido."
+            });
+        }
+
+        const { customer, payment, pix } =
+            await gerarPixOferta(oferta, document);
+
+        oferta.status = "accepted";
+        oferta.paymentId = payment.id;
+        oferta.customerId = customer.id;
+        oferta.acceptedAt = new Date().toISOString();
+
+        writeOffers(ofertas);
+
+        const db = readDB();
+        const dono = db[oferta.spaceId];
+
+        if (dono) {
+
+            enviarEmail(
+                dono.email,
+                `Comprador aceitou sua contraproposta ` +
+                `para o espaço ` +
+                `#${oferta.spaceId.toLocaleString("pt-BR")}`,
+                htmlNotificacao(
+                    "✅ Contraproposta aceita",
+                    `<p style="margin:0;color:#444;font-size:14px;">` +
+                    `O comprador <b>${oferta.name}</b> aceitou sua ` +
+                    `contraproposta de ` +
+                    `<b style="color:#15803d;">` +
+                    `R$ ${Number(oferta.value).toLocaleString("pt-BR")}</b> ` +
+                    `para o espaço ` +
+                    `<b>#${oferta.spaceId.toLocaleString("pt-BR")}</b>. ` +
+                    `Pix gerado para o comprador.</p>`
+                )
+            );
+        }
+
+        res.json({
+            ok: true,
+            offerId: oferta.id,
+            qrCode: pix.encodedImage,
+            payload: pix.payload,
+            paymentId: payment.id,
+            value: oferta.value
+        });
+
+    } catch (error) {
+
+        console.error("ERRO CONTRA-PROPOSTA ACEITA:", error.message);
+
+        res.status(500).json({
+            error: error.message
+        });
+    }
+});
+
+app.post("/api/offers/:id/buyer-reject", (req, res) => {
+
+    const ofertas = readOffers();
+    const oferta = ofertas[req.params.id];
+
+    if (!oferta || oferta.status !== "countered") {
+        return res.status(404).json({
+            error: "Oferta não encontrada ou já respondida."
+        });
+    }
+
+    const email =
+        (req.body.email || "").trim().toLowerCase();
+
+    if (
+        !email ||
+        email !== (oferta.email || "").trim().toLowerCase()
+    ) {
+        return res.status(403).json({
+            error: "E-mail não confere com a oferta."
+        });
+    }
+
+    oferta.status = "rejected";
+    oferta.rejectedAt = new Date().toISOString();
+
+    writeOffers(ofertas);
+
+    const db = readDB();
+    const dono = db[oferta.spaceId];
+
+    if (dono) {
+
+        enviarEmail(
+            dono.email,
+            `Comprador recusou sua contraproposta ` +
+            `para o espaço ` +
+            `#${oferta.spaceId.toLocaleString("pt-BR")}`,
+            htmlNotificacao(
+                "Contraproposta recusada",
+                `<p style="margin:0;color:#444;font-size:14px;">` +
+                `O comprador <b>${oferta.name}</b> recusou sua ` +
+                `contraproposta de ` +
+                `<b>R$ ${Number(oferta.value).toLocaleString("pt-BR")}</b> ` +
+                `para o espaço ` +
+                `<b>#${oferta.spaceId.toLocaleString("pt-BR")}</b>.</p>`
+            )
+        );
+    }
+
+    res.json({
+        ok: true,
+        offerId: oferta.id,
+        status: "rejected"
+    });
 });
 
 app.post("/api/offers/:id/reject", (req, res) => {
@@ -1044,10 +1341,102 @@ app.post("/api/offers/:id/reject", (req, res) => {
 
     writeOffers(ofertas);
 
+    enviarEmail(
+        oferta.email,
+        `Sua oferta para o espaço ` +
+        `#${oferta.spaceId.toLocaleString("pt-BR")} foi recusada`,
+        htmlNotificacao(
+            "😔 Oferta recusada",
+            `<p style="margin:0;color:#444;font-size:14px;">` +
+            `O proprietário recusou sua oferta de ` +
+            `<b>R$ ${Number(oferta.value).toLocaleString("pt-BR")}</b> ` +
+            `para o espaço ` +
+            `<b>#${oferta.spaceId.toLocaleString("pt-BR")}</b>.` +
+            `</p>`
+        )
+    );
+
     res.json({
         ok: true,
         offerId: oferta.id,
         status: "rejected"
+    });
+});
+
+app.post("/api/offers/:id/counter", (req, res) => {
+
+    const ofertas = readOffers();
+    const oferta = ofertas[req.params.id];
+
+    if (
+        !oferta ||
+        (oferta.status !== "pending" &&
+         oferta.status !== "countered")
+    ) {
+        return res.status(404).json({
+            error: "Oferta não encontrada ou já respondida."
+        });
+    }
+
+    const token = (req.body.token || "").trim();
+
+    const db = readDB();
+
+    if (
+        !db[oferta.spaceId] ||
+        db[oferta.spaceId].orderToken !== token
+    ) {
+        return res.status(403).json({
+            error: "Você não é o proprietário deste espaço."
+        });
+    }
+
+    const novoValor = Number(req.body.value);
+
+    if (
+        !Number.isFinite(novoValor) ||
+        novoValor < 1 ||
+        novoValor > 1000000
+    ) {
+        return res.status(400).json({
+            error: "Informe um valor de contraproposta válido (R$)."
+        });
+    }
+
+    if (!oferta.originalValue) {
+        oferta.originalValue = oferta.value;
+    }
+
+    oferta.value = novoValor;
+    oferta.status = "countered";
+    oferta.counteredAt = new Date().toISOString();
+
+    writeOffers(ofertas);
+
+    enviarEmail(
+        oferta.email,
+        `Contraproposta para o espaço ` +
+        `#${oferta.spaceId.toLocaleString("pt-BR")}`,
+        htmlNotificacao(
+            "🤝 Contraproposta do proprietário",
+            `<p style="margin:0 0 10px;color:#444;font-size:14px;">` +
+            `O proprietário do espaço ` +
+            `<b>#${oferta.spaceId.toLocaleString("pt-BR")}</b> ` +
+            `fez uma contraproposta de ` +
+            `<b style="color:#15803d;">` +
+            `R$ ${novoValor.toLocaleString("pt-BR")}</b> ` +
+            `(sua oferta original: ` +
+            `R$ ${oferta.originalValue.toLocaleString("pt-BR")}).</p>` +
+            `<p style="margin:0;color:#666;font-size:13px;">` +
+            `Acesse o site e confirme o novo valor para gerar o Pix.</p>`
+        )
+    );
+
+    res.json({
+        ok: true,
+        offerId: oferta.id,
+        status: "countered",
+        value: novoValor
     });
 });
 
@@ -1069,6 +1458,7 @@ app.get("/api/offers/:id", (req, res) => {
         name: oferta.name,
         email: oferta.email,
         value: oferta.value,
+        originalValue: oferta.originalValue,
         status: oferta.status,
         createdAt: oferta.createdAt,
         newOwnerToken:

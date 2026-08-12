@@ -8,7 +8,7 @@ const fs = require("fs");
 const app = express();
 const PORT = 3000;
 
-const ASAAS_API = "https://api-sandbox.asaas.com/v3";
+const ASAAS_API = "https://api.asaas.com/v3";
 const ASAAS_KEY = process.env.ASAAS_API_KEY;
 
 const DATA_DIR = path.join(__dirname, "data");

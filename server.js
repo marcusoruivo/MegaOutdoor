@@ -378,7 +378,7 @@ app.get(
 
 app.post(
     "/api/upload/:id",
-    upload.single("foto"),
+    upload.single("fotos"),
     (req, res) => {
 
         const id = Number(req.params.id);

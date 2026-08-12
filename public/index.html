@@ -307,6 +307,38 @@ html,body{
     }
 }
 
+.chatFixo{
+    position:fixed;
+    left:22px;
+    bottom:76px;
+    z-index:45;
+    width:auto;
+    margin:0;
+    padding:13px 20px;
+    font-size:13px;
+    background:linear-gradient(180deg,#1b3557,#132640 60%,#0f2036);
+    color:#5aa2ff;
+    border:1px solid #2c4f7c;
+    box-shadow:
+        0 3px 0 #0b1626,
+        0 8px 18px rgba(0,0,0,.55);
+}
+
+.chatFixo:hover{
+    color:#8cc0ff;
+    border-color:#3c6ba1;
+    box-shadow:
+        0 4px 0 #0b1626,
+        0 12px 24px rgba(0,0,0,.6)
+}
+
+.chatFixo:active{
+    transform:translateY(2px);
+    box-shadow:
+        0 1px 0 #0b1626,
+        0 3px 8px rgba(0,0,0,.4)
+}
+
 .hint{
     position:fixed;
     bottom:20px;
@@ -705,6 +737,13 @@ html,body{
         font-size:12px;
     }
 
+    .chatFixo{
+        left:12px;
+        bottom:108px;
+        padding:12px 16px;
+        font-size:12px;
+    }
+
     .cart{
         right:12px;
         bottom:12px;
@@ -1006,6 +1045,61 @@ onclick="abrirPainelComando()"
 title="Painel de comando — ofertas, meus blocos e chave Pix">
 ⚙️ PAINEL DE COMANDO
 </button>
+
+<button
+id="btnChatGeral"
+class="btn chatFixo"
+onclick="abrirChatGeral()"
+title="Chat geral — converse com a comunidade">
+💬 CHAT
+</button>
+
+
+<!-- CHAT -->
+
+<div class="modal" id="chatModal" style="display:none;">
+
+<div class="box" style="max-width:540px;display:flex;flex-direction:column;height:600px;">
+
+<button
+class="close"
+onclick="fecharChatModal()">
+×
+</button>
+
+<h2 id="chatTitulo" style="color:#ffd400;margin-top:0;">
+💬 Chat
+</h2>
+
+<div
+id="chatMsgErro"
+style="color:#ff4d4d;font-size:12px;margin-bottom:6px;">
+</div>
+
+<div
+id="chatMensagens"
+style="flex:1;overflow-y:auto;border:1px solid #2a2a2a;border-radius:10px;background:#111;padding:10px;font-size:13px;margin-bottom:10px;">
+Carregando...
+</div>
+
+<div style="display:flex;gap:6px;">
+<input
+class="copia"
+id="chatInput"
+placeholder="Escreva sua mensagem..."
+style="flex:1;"
+onkeydown="if(event.key==='Enter')enviarMensagemChat()">
+<button
+class="btn"
+onclick="enviarMensagemChat()"
+style="margin:0;padding:10px 18px;white-space:nowrap;">
+ENVIAR
+</button>
+</div>
+
+</div>
+
+</div>
 
 
 <!-- CHECKOUT -->
@@ -5087,6 +5181,346 @@ async function enviarOferta(){
 
 
 /* =========================
+   CHAT GERAL E NEGOCIAÇÃO
+========================= */
+
+let chatTimer = null;
+
+let chatCtx = {
+    tipo: "geral",
+    offerId: "",
+    email: "",
+    token: ""
+};
+
+let meuNickChat = "";
+
+try{
+    meuNickChat =
+        localStorage.getItem("mega_chatNick") || "";
+}catch(e){}
+
+function abrirChatGeral(){
+
+    chatCtx = {
+        tipo: "geral",
+        offerId: "",
+        email: "",
+        token: ""
+    };
+
+    document.getElementById("chatTitulo").textContent =
+        "💬 Chat geral";
+
+    document.getElementById("chatInput").placeholder =
+        "Escreva sua mensagem...";
+
+    document.getElementById("chatMsgErro").textContent = "";
+
+    document.getElementById("chatMensagens").innerHTML =
+        "Carregando...";
+
+    document.getElementById("chatModal").style.display = "flex";
+
+    iniciarChat();
+}
+
+function abrirChatNegociacao(offerId, email, token){
+
+    chatCtx = {
+        tipo: "negociacao",
+        offerId,
+        email,
+        token
+    };
+
+    document.getElementById("chatTitulo").textContent =
+        "💬 Negociação";
+
+    document.getElementById("chatInput").placeholder =
+        "Escreva para a outra parte...";
+
+    document.getElementById("chatMsgErro").textContent = "";
+
+    document.getElementById("chatMensagens").innerHTML =
+        "Carregando...";
+
+    document.getElementById("chatModal").style.display = "flex";
+
+    iniciarChat();
+}
+
+function iniciarChat(){
+
+    if(chatTimer){
+        clearInterval(chatTimer);
+    }
+
+    carregarChat();
+
+    chatTimer =
+        setInterval(carregarChat, 3000);
+}
+
+function fecharChatModal(){
+
+    if(chatTimer){
+        clearInterval(chatTimer);
+        chatTimer = null;
+    }
+
+    document.getElementById("chatModal").style.display = "none";
+}
+
+function escapeHtml(t){
+
+    return String(t)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function renderChatMensagens(msgs){
+
+    if(!msgs || !msgs.length){
+        return '<div style="color:#888;text-align:center;' +
+               'margin-top:20px;font-size:13px;">' +
+               'Nenhuma mensagem ainda. ' +
+               'Seja o primeiro a escrever!</div>';
+    }
+
+    let html = "";
+
+    for(const m of msgs){
+
+        const ehMinha =
+            chatCtx.tipo === "negociacao"
+            ? (
+                (chatCtx.email && m.who === "buyer") ||
+                (chatCtx.token && m.who === "owner")
+            )
+            : m.nick === meuNickChat;
+
+        const hora =
+            new Date(m.at).toLocaleTimeString(
+                "pt-BR",
+                {hour:"2-digit", minute:"2-digit"}
+            );
+
+        const etiqueta =
+            chatCtx.tipo === "negociacao"
+            ? (
+                m.who === "owner"
+                ? " · proprietário"
+                : " · comprador"
+            )
+            : "";
+
+        html +=
+            '<div style="display:flex;justify-content:' +
+            (ehMinha ? "flex-end" : "flex-start") +
+            ';margin-bottom:8px;">' +
+              '<div style="max-width:82%;background:' +
+              (ehMinha ? "#1f4733" : "#242424") +
+              ';border-radius:10px;padding:7px 10px;' +
+              (ehMinha
+                ? "border-bottom-right-radius:2px;"
+                : "border-bottom-left-radius:2px;") +
+              '">' +
+                '<div style="font-size:11px;color:' +
+                (ehMinha ? "#6fe89a" : "#ffd400") +
+                ';font-weight:800;">' +
+                escapeHtml(m.nick) +
+                '<span style="color:#777;font-weight:400;">' +
+                etiqueta +
+                '</span></div>' +
+                '<div style="color:#eee;white-space:pre-wrap;' +
+                'word-break:break-word;">' +
+                escapeHtml(m.text) +
+                '</div>' +
+                '<div style="font-size:10px;color:#777;' +
+                'text-align:right;margin-top:2px;">' +
+                hora +
+                '</div>' +
+              '</div>' +
+            '</div>';
+    }
+
+    return html;
+}
+
+async function carregarChat(){
+
+    try{
+
+        let url = "/api/chat/general";
+
+        if(chatCtx.tipo === "negociacao"){
+
+            url =
+                "/api/chat/negotiation?offerId=" +
+                encodeURIComponent(chatCtx.offerId) +
+                (chatCtx.email
+                    ? "&email=" +
+                      encodeURIComponent(chatCtx.email)
+                    : "") +
+                (chatCtx.token
+                    ? "&token=" +
+                      encodeURIComponent(chatCtx.token)
+                    : "");
+        }
+
+        const response =
+            await fetch(url);
+
+        const data =
+            await reqJSON(response);
+
+        const erro =
+            document.getElementById("chatMsgErro");
+
+        if(!response.ok){
+
+            if(erro){
+                erro.textContent =
+                    data.error ||
+                    "Não foi possível carregar o chat.";
+            }
+
+            return;
+        }
+
+        if(erro)erro.textContent = "";
+
+        if(
+            chatCtx.tipo === "negociacao" &&
+            data.dono
+        ){
+            document.getElementById("chatTitulo").textContent =
+                "💬 Negociação — " +
+                data.comprador +
+                " × " +
+                data.dono;
+        }
+
+        const list =
+            document.getElementById("chatMensagens");
+
+        const novoHtml =
+            renderChatMensagens(data.messages || []);
+
+        if(list.innerHTML !== novoHtml){
+            list.innerHTML = novoHtml;
+            list.scrollTop = list.scrollHeight;
+        }
+
+    }catch(error){
+        console.error(error);
+    }
+}
+
+async function enviarMensagemChat(){
+
+    const input =
+        document.getElementById("chatInput");
+
+    const texto =
+        input.value.trim();
+
+    if(!texto)return;
+
+    const erro =
+        document.getElementById("chatMsgErro");
+
+    let body;
+
+    if(chatCtx.tipo === "geral"){
+
+        if(!meuNickChat){
+
+            const nick =
+                prompt(
+                    "Como você quer ser chamado no chat? " +
+                    "(2 a 40 caracteres)"
+                );
+
+            if(
+                !nick ||
+                nick.trim().length < 2
+            ){
+                return;
+            }
+
+            meuNickChat = nick.trim();
+
+            try{
+                localStorage.setItem(
+                    "mega_chatNick",
+                    meuNickChat
+                );
+            }catch(e){}
+        }
+
+        body = {
+            nick: meuNickChat,
+            text: texto
+        };
+
+    }else{
+
+        body = {
+            offerId: chatCtx.offerId,
+            email: chatCtx.email,
+            token: chatCtx.token,
+            text: texto
+        };
+    }
+
+    try{
+
+        const response =
+            await fetch(
+                chatCtx.tipo === "geral"
+                    ? "/api/chat/general"
+                    : "/api/chat/negotiation",
+                {
+                    method: "POST",
+                    headers:{
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify(body)
+                }
+            );
+
+        const data =
+            await reqJSON(response);
+
+        if(!response.ok){
+
+            if(erro){
+                erro.textContent =
+                    data.error ||
+                    "Não foi possível enviar a mensagem.";
+            }
+
+            return;
+        }
+
+        input.value = "";
+
+        if(erro)erro.textContent = "";
+
+        await carregarChat();
+
+    }catch(error){
+        console.error(error);
+    }
+}
+
+/* =========================
    PAINEL DE COMANDO
 ========================= */
 
@@ -5282,7 +5716,17 @@ function cardOferta(o, done){
         </div>
         ${
             done
-            ? `<div style="margin-top:8px;font-size:12px;">${statusLabel(o.status)}</div>`
+            ? `<div style="margin-top:8px;font-size:12px;">${statusLabel(o.status)}</div>
+               ${
+                   o.status === "pending" ||
+                   o.status === "countered" ||
+                   o.status === "accepted"
+                   ? `<button class="btn sec" onclick="abrirChatNegociacao('${o.id}','','${tokenDaOferta(o.id)}')"
+                          style="margin-top:10px;padding:8px 12px;font-size:12px;">
+                        💬 NEGOCIAR COM O COMPRADOR
+                      </button>`
+                   : ""
+               }`
             : `
               <div style="margin-top:10px;">
                 <button class="btn" onclick="aceitarOferta('${o.id}')"
@@ -5296,6 +5740,10 @@ function cardOferta(o, done){
                 <button class="btn sec" onclick="recusarOferta('${o.id}')"
                         style="margin:0;padding:8px 12px;font-size:12px;">
                   ✕ RECUSAR
+                </button>
+                <button class="btn sec" onclick="abrirChatNegociacao('${o.id}','','${tokenDaOferta(o.id)}')"
+                        style="margin:0;padding:8px 12px;font-size:12px;">
+                  💬 NEGOCIAR
                 </button>
               </div>
               ${
@@ -5897,6 +6345,19 @@ async function carregarMinhasOfertasEnviadas(){
             const data =
                 await reqJSON(response);
 
+            const emailComprador =
+                (function(){
+                    try{
+                        return (
+                            localStorage.getItem(
+                                "mega_myEmail"
+                            ) || ""
+                        ).trim();
+                    }catch(e){
+                        return "";
+                    }
+                })();
+
             card.innerHTML =
                 "<div>Oferta <b>" + offerId + "</b> para o " +
                 "espaço <b>#" +
@@ -5905,6 +6366,20 @@ async function carregarMinhasOfertasEnviadas(){
                 "<div style='margin-top:6px;'>" +
                 statusLabel(data.status) +
                 "</div>" +
+                ((data.status === "pending" ||
+                  data.status === "countered" ||
+                  data.status === "accepted") &&
+                 emailComprador
+                    ? "<div style='margin-top:10px;'>" +
+                      "<button class='btn sec' " +
+                      "onclick=\"abrirChatNegociacao('" +
+                      offerId + "','" +
+                      emailComprador.replace(/'/g, "") +
+                      "','')\" " +
+                      "style='margin:0;padding:8px 12px;font-size:12px;'>" +
+                      "💬 NEGOCIAR COM O PROPRIETÁRIO</button>" +
+                      "</div>"
+                    : "") +
                 (data.status === "countered"
                     ? "<div style='margin-top:8px;font-size:13px;color:#ffd400;'>" +
                       "Nova proposta: <b>R$ " +

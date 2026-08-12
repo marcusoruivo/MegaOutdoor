@@ -20,6 +20,8 @@ const DB_FILE = path.join(DATA_DIR, "spaces.json");
 const OFFERS_FILE = path.join(DATA_DIR, "offers.json");
 const COUPONS_FILE = path.join(DATA_DIR, "coupons.json");
 const PIXKEYS_FILE = path.join(DATA_DIR, "pixkeys.json");
+const CHAT_FILE = path.join(DATA_DIR, "chat.json");
+const CHAT_NEGOC_FILE = path.join(DATA_DIR, "chat-negociacao.json");
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -1078,6 +1080,81 @@ function tipoChavePix(chave) {
     return "";
 }
 
+/* Chave Pix do proprietário sempre atualizada:
+   busca a chave cadastrada no painel (pixKeys) e,
+   se o vendedor cadastrou/alterou depois de aceitar,
+   o comprador recebe o valor correto automaticamente. */
+
+function chavePixDoProprietario(oferta) {
+
+    if (!oferta) {
+        return "";
+    }
+
+    const chaveCadastrada =
+        (readPixKeys()[oferta.ownerToken] || {}).chave;
+
+    return (
+        chaveCadastrada ||
+        oferta.ownerPixKey ||
+        ""
+    );
+}
+
+/* Dados da negociação para o chat */
+
+function alvosDaOferta(oferta) {
+
+    return (
+        Array.isArray(oferta.spaceIds) &&
+        oferta.spaceIds.length
+    )
+        ? oferta.spaceIds
+        : [oferta.spaceId];
+}
+
+function nomeDoProprietario(oferta) {
+
+    const db = readDB();
+    const alvos = alvosDaOferta(oferta);
+
+    return (
+        (db[alvos[0]] || {}).name ||
+        "Proprietário"
+    );
+}
+
+function identificarParticipante(oferta, email, token) {
+
+    if (
+        email &&
+        email.trim().toLowerCase() ===
+            (oferta.email || "").trim().toLowerCase()
+    ) {
+        return {
+            who: "buyer",
+            nick: oferta.name || "Comprador"
+        };
+    }
+
+    const db = readDB();
+    const alvos = alvosDaOferta(oferta);
+
+    if (
+        token &&
+        alvos.every(a =>
+            db[a] && db[a].orderToken === token
+        )
+    ) {
+        return {
+            who: "owner",
+            nick: (db[alvos[0]] || {}).name || "Proprietário"
+        };
+    }
+
+    return null;
+}
+
 app.get("/api/pix-key", (req, res) => {
 
     const token = (req.query.token || "").trim();
@@ -1402,7 +1479,7 @@ app.get("/api/offers/owner", (req, res) => {
                 message: o.message,
                 status: o.status,
                 feeValue: o.feeValue,
-                ownerPixKey: o.ownerPixKey,
+                ownerPixKey: chavePixDoProprietario(o),
                 createdAt: o.createdAt
             }))
             .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -1949,7 +2026,7 @@ app.get("/api/offers/:id", (req, res) => {
         originalValue: oferta.originalValue,
         status: oferta.status,
         feeValue: oferta.feeValue,
-        ownerPixKey: oferta.ownerPixKey,
+        ownerPixKey: chavePixDoProprietario(oferta),
         paymentId: oferta.paymentId,
         createdAt: oferta.createdAt,
         newOwnerToken:
@@ -1996,7 +2073,7 @@ app.get("/api/offers/:id/payment", async (req, res) => {
                 offerId: oferta.id,
                 value: oferta.value,
                 feeValue: oferta.feeValue,
-                ownerPixKey: oferta.ownerPixKey || "",
+                ownerPixKey: chavePixDoProprietario(oferta),
                 spaceIds: alvos,
                 newOwnerToken: oferta.newOwnerToken || ""
             });
@@ -2017,7 +2094,7 @@ app.get("/api/offers/:id/payment", async (req, res) => {
             paymentId: oferta.paymentId,
             value: oferta.value,
             feeValue: oferta.feeValue,
-            ownerPixKey: oferta.ownerPixKey || "",
+            ownerPixKey: chavePixDoProprietario(oferta),
             spaceIds: alvos
         });
 
@@ -2027,6 +2104,197 @@ app.get("/api/offers/:id/payment", async (req, res) => {
             error: error.message
         });
     }
+});
+
+/* =========================
+   CHAT GERAL
+========================= */
+
+function lerChatGeral() {
+    return readJsonFile(CHAT_FILE, []);
+}
+
+function salvarChatGeral(mensagens) {
+    writeJsonFile(CHAT_FILE, mensagens);
+}
+
+function mensagemValida(texto) {
+
+    const t = (texto || "").trim();
+
+    if (!t || t.length > 500) {
+        return "";
+    }
+
+    return t;
+}
+
+app.get("/api/chat/general", (req, res) => {
+
+    res.json({
+        ok: true,
+        messages: lerChatGeral()
+    });
+});
+
+app.post("/api/chat/general", (req, res) => {
+
+    const nick = (req.body.nick || "").trim();
+    const texto = mensagemValida(req.body.text);
+
+    if (nick.length < 2 || nick.length > 40) {
+        return res.status(400).json({
+            error: "Informe seu nome (2 a 40 caracteres)."
+        });
+    }
+
+    if (!texto) {
+        return res.status(400).json({
+            error: "Escreva a mensagem (máximo 500 caracteres)."
+        });
+    }
+
+    const mensagens = lerChatGeral();
+
+    mensagens.push({
+        id: Date.now().toString(36) +
+            Math.random().toString(36).substring(2, 6),
+        nick,
+        text: texto,
+        at: new Date().toISOString()
+    });
+
+    const mantidas =
+        mensagens.length > 200
+            ? mensagens.slice(mensagens.length - 200)
+            : mensagens;
+
+    salvarChatGeral(mantidas);
+
+    res.json({
+        ok: true,
+        message: mantidas[mantidas.length - 1]
+    });
+});
+
+/* =========================
+   CHAT DE NEGOCIAÇÃO
+   Conversa privada entre comprador
+   e proprietário de uma oferta
+========================= */
+
+function lerChatNegociacao() {
+    return readJsonFile(CHAT_NEGOC_FILE, {});
+}
+
+function salvarChatNegociacao(dados) {
+    writeJsonFile(CHAT_NEGOC_FILE, dados);
+}
+
+app.get("/api/chat/negotiation", (req, res) => {
+
+    const offerId =
+        (req.query.offerId || "").trim();
+
+    const email =
+        (req.query.email || "").trim();
+
+    const token =
+        (req.query.token || "").trim();
+
+    const ofertas = readOffers();
+    const oferta = ofertas[offerId];
+
+    if (!oferta) {
+        return res.status(404).json({
+            error: "Negociação não encontrada."
+        });
+    }
+
+    const participante =
+        identificarParticipante(oferta, email, token);
+
+    if (!participante) {
+        return res.status(403).json({
+            error:
+                "Acesso restrito aos participantes da negociação."
+        });
+    }
+
+    const dados = lerChatNegociacao();
+
+    res.json({
+        ok: true,
+        offerId,
+        comprador: oferta.name || "Comprador",
+        dono: nomeDoProprietario(oferta),
+        messages: dados[offerId] || []
+    });
+});
+
+app.post("/api/chat/negotiation", (req, res) => {
+
+    const offerId =
+        (req.body.offerId || "").trim();
+
+    const email =
+        (req.body.email || "").trim();
+
+    const token =
+        (req.body.token || "").trim();
+
+    const texto =
+        mensagemValida(req.body.text);
+
+    const ofertas = readOffers();
+    const oferta = ofertas[offerId];
+
+    if (!oferta) {
+        return res.status(404).json({
+            error: "Negociação não encontrada."
+        });
+    }
+
+    const participante =
+        identificarParticipante(oferta, email, token);
+
+    if (!participante) {
+        return res.status(403).json({
+            error:
+                "Acesso restrito aos participantes da negociação."
+        });
+    }
+
+    if (!texto) {
+        return res.status(400).json({
+            error: "Escreva a mensagem (máximo 500 caracteres)."
+        });
+    }
+
+    const dados = lerChatNegociacao();
+    const mensagens = dados[offerId] || [];
+
+    mensagens.push({
+        id: Date.now().toString(36) +
+            Math.random().toString(36).substring(2, 6),
+        who: participante.who,
+        nick: participante.nick,
+        text: texto,
+        at: new Date().toISOString()
+    });
+
+    dados[offerId] =
+        mensagens.length > 300
+            ? mensagens.slice(mensagens.length - 300)
+            : mensagens;
+
+    salvarChatNegociacao(dados);
+
+    res.json({
+        ok: true,
+        message:
+            dados[offerId][dados[offerId].length - 1]
+    });
 });
 
 /* =========================

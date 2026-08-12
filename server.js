@@ -459,21 +459,66 @@ app.post(
         const id = Number(req.params.id);
         const db = readDB();
 
-        if (!db[id]) {
-            return res.status(404).json({
-                error:
-                    "Espaço não encontrado."
-            });
+        let ids = [id];
+
+        if (req.body.mode === "extended") {
+
+            try {
+                ids = JSON.parse(req.body.ids || "[]");
+            } catch {
+                return res.status(400).json({
+                    error: "Lista de espaços inválida."
+                });
+            }
+
+            ids = [
+                ...new Set(
+                    ids.map(Number)
+                )
+            ];
+
+            if (!ids.includes(id)) {
+                ids.unshift(id);
+            }
+
+            if (!ids.length) {
+                return res.status(400).json({
+                    error: "Nenhum espaço informado."
+                });
+            }
         }
 
-        if (
-            db[id].status !== "paid" &&
-            db[id].status !== "published"
-        ) {
-            return res.status(403).json({
-                error:
-                    "O pagamento deste espaço ainda não foi confirmado."
-            });
+        for (const spaceId of ids) {
+
+            if (
+                !Number.isInteger(spaceId) ||
+                spaceId < 1 ||
+                spaceId > 1000000
+            ) {
+                return res.status(400).json({
+                    error: `Espaço inválido: ${spaceId}`
+                });
+            }
+
+            if (!db[spaceId]) {
+                return res.status(404).json({
+                    error:
+                        `Espaço não encontrado: ` +
+                        `#${spaceId.toLocaleString("pt-BR")}`
+                });
+            }
+
+            if (
+                db[spaceId].status !== "paid" &&
+                db[spaceId].status !== "published"
+            ) {
+                return res.status(403).json({
+                    error:
+                        `O pagamento do espaço ` +
+                        `#${spaceId.toLocaleString("pt-BR")} ` +
+                        `ainda não foi confirmado.`
+                });
+            }
         }
 
         if (!req.file) {
@@ -482,24 +527,34 @@ app.post(
             });
         }
 
-        db[id] = {
-            ...db[id],
-            status: "published",
-            image:
-                `/uploads/${req.file.filename}`,
-            title:
-                req.body.nome ||
-                db[id].name ||
-                "Anunciante",
-            publishedAt:
-                new Date().toISOString()
-        };
+        const image =
+            `/uploads/${req.file.filename}`;
+
+        const title =
+            req.body.name ||
+            req.body.nome ||
+            "Anunciante";
+
+        const publishedAt =
+            new Date().toISOString();
+
+        for (const spaceId of ids) {
+
+            db[spaceId] = {
+                ...db[spaceId],
+                status: "published",
+                image,
+                title,
+                publishedAt
+            };
+        }
 
         writeDB(db);
 
         res.json({
             ok: true,
-            space: db[id]
+            spaces: ids,
+            image
         });
     }
 );

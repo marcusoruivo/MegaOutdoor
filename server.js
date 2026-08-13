@@ -1449,6 +1449,90 @@ app.post("/api/test/reserve", (req, res) => {
 });
 
 /* =========================
+   MODO TESTE - CONFIRMAR OFERTA
+   Simula o pagamento da oferta para
+   testes de homologação do histórico.
+   Desativado em produção.
+========================= */
+
+app.post("/api/test/confirm-offer", (req, res) => {
+
+    if (PRODUCAO && !ALLOW_TEST_MODE) {
+        return res.status(403).json({
+            error:
+                "Modo de teste está desativado nesta " +
+                "versão do site."
+        });
+    }
+
+    try {
+
+        const offerId =
+            (req.body?.offerId || "").trim();
+
+        if (!offerId) {
+            return res.status(400).json({
+                error: "Informe o offerId."
+            });
+        }
+
+        const ofertas = readOffers();
+
+        const oferta = ofertas[offerId];
+
+        if (!oferta) {
+            return res.status(404).json({
+                error: "Oferta não encontrada."
+            });
+        }
+
+        if (oferta.status !== "pending") {
+            return res.status(400).json({
+                error:
+                    "Oferta não está pendente " +
+                    "para confirmação."
+            });
+        }
+
+        oferta.status = "accepted";
+        oferta.paymentId =
+            `TESTE-PAY-${Date.now()}`;
+        oferta.feeValue =
+            taxaDoSite(oferta.value);
+        oferta.acceptedAt =
+            new Date().toISOString();
+
+        writeOffers(ofertas);
+
+        const confirmado =
+            confirmarPagamentoOferta(oferta.paymentId);
+
+        const atualizada =
+            readOffers()[offerId] || {};
+
+        res.json({
+            ok: confirmado === true,
+            offerId,
+            newOwnerToken:
+                atualizada.newOwnerToken || null,
+            newOwnerAccessCode:
+                atualizada.newOwnerAccessCode || null
+        });
+
+    } catch (error) {
+
+        console.error(
+            "ERRO confirmar oferta teste:",
+            error.message
+        );
+
+        res.status(500).json({
+            error: error.message
+        });
+    }
+});
+
+/* =========================
    CONSULTAR PAGAMENTO
 ========================= */
 
@@ -1605,8 +1689,8 @@ app.get("/api/historico", async (req, res) => {
             .map(t => t.trim())
             .filter(Boolean);
 
-    const codigosQuery =
-        (req.query.accessCode || "")
+    const codigosHeader =
+        (req.headers["x-owner-access-code"] || "")
             .split(",")
             .map(t => t.trim().toUpperCase())
             .filter(Boolean);
@@ -1619,7 +1703,7 @@ app.get("/api/historico", async (req, res) => {
         });
     }
 
-    if (!tokens.length && !codigosQuery.length) {
+    if (!tokens.length && !codigosHeader.length) {
         return res.status(400).json({
             error:
                 "Nenhuma identificação de proprietário enviada."
@@ -1628,7 +1712,7 @@ app.get("/api/historico", async (req, res) => {
 
     const db = readDB();
 
-    const meusCodigos = new Set(codigosQuery);
+    const meusCodigos = new Set(codigosHeader);
 
     for (const s of Object.values(db)) {
 

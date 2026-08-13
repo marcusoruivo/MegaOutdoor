@@ -104,6 +104,46 @@ fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 function semearDadosIniciais() {
 
+    const RESET_FILE = path.join(DATA_DIR, ".reset-feito");
+
+    if (
+        process.env.RESET_DATA === "true" &&
+        !fs.existsSync(RESET_FILE)
+    ) {
+
+        const arquivosDados = [
+            "spaces.json",
+            "offers.json",
+            "coupons.json",
+            "pixkeys.json",
+            "chat.json",
+            "chat-negociacao.json"
+        ];
+
+        for (const nome of arquivosDados) {
+
+            const caminho = path.join(DATA_DIR, nome);
+
+            if (fs.existsSync(caminho)) {
+                fs.unlinkSync(caminho);
+            }
+        }
+
+        for (const nome of fs.readdirSync(UPLOAD_DIR)) {
+
+            const caminho = path.join(UPLOAD_DIR, nome);
+
+            if (fs.statSync(caminho).isFile()) {
+                fs.unlinkSync(caminho);
+            }
+        }
+
+        fs.writeFileSync(
+            RESET_FILE,
+            new Date().toISOString()
+        );
+    }
+
     if (DATA_DIR !== SEED_DIR) {
 
         const arquivos = [

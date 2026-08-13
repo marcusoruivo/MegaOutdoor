@@ -2078,6 +2078,8 @@ orderTokens[id] === s.orderToken
 
 let searchTarget = null;
 
+let primeiraCarga = true;
+
 let meusBlocosMode = false;
 
 let selectAreaMode = false;
@@ -2888,6 +2890,32 @@ async function reqJSON(resposta){
     }
 }
 
+function iniciarVista(){
+
+    const blocos = meusBlocos();
+
+    const temBloco = blocos.length > 0;
+
+    const alvo = temBloco ? blocos[0][0] : 1;
+
+    if(temBloco){
+        sc = 0.8;
+    }
+
+    const indice = alvo - 1;
+
+    const coluna = indice % C;
+
+    const linha = Math.floor(indice / C);
+
+    x = canvas.width / 2 - (coluna * T + T / 2) * sc;
+
+    y = canvas.height / 2 - (linha * T + T / 2) * sc;
+
+    draw();
+
+}
+
 async function load(){
 
 const meusTokens =
@@ -2947,6 +2975,14 @@ draw;
 await stats();
 
 draw();
+
+if(primeiraCarga){
+
+    primeiraCarga = false;
+
+    iniciarVista();
+
+}
 
 }
 

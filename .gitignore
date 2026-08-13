@@ -1,5 +1,4 @@
 ﻿.env
 node_modules/
 uploads/
-data/pixkeys.json
-data/.reset-feito
+data/

@@ -451,13 +451,22 @@ async function carregarResumo(){
             ).join("");
 
         const status = resumo.porStatus || {};
-        document.getElementById("resumoStatus").innerHTML =
+        const modoAsaas =
+            resumo.asaasModo === "sandbox"
+                ? { txt: "🧪 SANDBOX", cor: "#ffd400" }
+                : { txt: "✅ PRODUÇÃO", cor: "#45d66f" };
+        const statusHtml =
             Object.keys(status).map(s =>
                 "<div style='display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e1e1e;'>" +
                 "<span class='pill " + s + "'>" + s + "</span>" +
                 "<b>" + fmtNum(status[s]) + "</b></div>"
             ).join("") ||
             "<div class='fade'>Nenhum espaço ainda.</div>";
+        document.getElementById("resumoStatus").innerHTML =
+            "<div style='display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e1e1e;'>" +
+            "<span class='fade'>Pagamentos</span>" +
+            "<b style='color:" + modoAsaas.cor + ";'>" + modoAsaas.txt + "</b></div>" +
+            statusHtml;
     } catch(err){
         alert("Erro: " + err.message);
     }

@@ -82,7 +82,12 @@ const limiterUpload = rateLimit({
     }
 });
 
-const ASAAS_API = "https://api.asaas.com/v3";
+const ASAAS_SANDBOX =
+    process.env.ASAAS_SANDBOX === "true";
+const ASAAS_API =
+    ASAAS_SANDBOX
+        ? "https://api-sandbox.asaas.com/v3"
+        : "https://api.asaas.com/v3";
 const ASAAS_KEY = process.env.ASAAS_API_KEY;
 
 const SEED_DIR = path.join(__dirname, "data");
@@ -5258,16 +5263,17 @@ app.get("/api/admin/resumo", authAdmin, (req, res) => {
         }
     }
 
-    res.json({
-        ok: true,
-        espacosTotal: espacos.length,
-        disponiveis: 1000000 - espacos.length,
-        sold,
-        reserved,
-        porStatus,
-        valorEspaco: 1,
-        receitaPotencial: sold
-    });
+        res.json({
+            ok: true,
+            espacosTotal: espacos.length,
+            disponiveis: 1000000 - espacos.length,
+            sold,
+            reserved,
+            porStatus,
+            valorEspaco: 1,
+            receitaPotencial: sold,
+            asaasModo: ASAAS_SANDBOX ? "sandbox" : "producao"
+        });
 });
 
 app.get("/api/admin/spaces", authAdmin, (req, res) => {
@@ -5964,11 +5970,18 @@ app.use((err, req, res, next) => {
 });
 
 initBanco().then(() => {
+    if (ASAAS_SANDBOX) {
+        console.warn(
+            "⚠️  ATENÇÃO: ASAAS_SANDBOX=true — os pagamentos " +
+            "usarão o AMBIENTE DE TESTE do Asaas (dinheiro simulado)."
+        );
+    }
     app.listen(
         PORT,
         () => {
             console.log(
-                `Milhão Door funcionando em http://localhost:${PORT}`
+                `Milhão Door funcionando em http://localhost:${PORT}` +
+                (ASAAS_SANDBOX ? " (Asaas SANDBOX)" : "")
             );
         }
     );

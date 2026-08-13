@@ -1050,7 +1050,7 @@ function htmlNotificacao(titulo, linhas) {
     </div>`;
 }
 
-function gerarCupom(nome, orderId) {
+function gerarCupom(nome, email, orderId) {
     const codigo =
         "MEGA-" +
         crypto.randomBytes(4).toString("hex").toUpperCase();
@@ -1059,10 +1059,13 @@ function gerarCupom(nome, orderId) {
 
     cupons[codigo] = {
         codigo,
+        tipo: "indicacao",
         ownerName: (nome || "").trim(),
+        ownerEmail: (email || "").trim().toLowerCase(),
         ownerOrderId: orderId,
-        discountPercent: 10,
+        discountPercent: 5,
         used: 0,
+        credits: 0,
         maxUses: 100,
         active: true,
         createdAt: new Date().toISOString()
@@ -1727,6 +1730,7 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
         const cupom = validarCupom(coupon);
 
         let desconto = null;
+        let cupomCredito = null;
 
         if (coupon && !cupom) {
             return res.status(400).json({
@@ -1734,15 +1738,33 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             });
         }
 
-        if (cupom) {
+        if (cupom && cupom.tipo === "indicacao") {
+            if (
+                cupom.ownerEmail &&
+                cupom.ownerEmail === req.usuario.email
+            ) {
+                return res.status(400).json({
+                    error:
+                        "Você não pode usar o seu próprio cupom " +
+                        "de indicação."
+                });
+            }
+
+            if (total < 10) {
+                return res.status(400).json({
+                    error:
+                        "Este cupom de indicação vale apenas para " +
+                        "compras de 10 blocos ou mais " +
+                        "(você selecionou " + total + ")."
+                });
+            }
+        } else if (cupom && cupom.tipo !== "indicacao") {
             desconto = {
                 value: cupom.discountPercent,
                 dueDateLimitDays: 0,
                 type: "PERCENTAGE"
             };
-        }
 
-        if (cupom) {
             const minimo =
                 Math.ceil(5 / (1 - cupom.discountPercent / 100));
 
@@ -1753,6 +1775,24 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
                         `desconto, selecione ao menos ${minimo} espaços ` +
                         `(o valor após o desconto não pode ser menor que R$ 5,00).`
                 });
+            }
+        }
+
+        if (!desconto && req.usuario) {
+            const meus = Object.values(readCoupons()).filter(
+                c =>
+                    c.tipo === "indicacao" &&
+                    c.ownerEmail === req.usuario.email &&
+                    (c.credits || 0) > 0
+            );
+
+            if (meus.length) {
+                cupomCredito = meus[0];
+                desconto = {
+                    value: cupomCredito.discountPercent,
+                    dueDateLimitDays: 0,
+                    type: "PERCENTAGE"
+                };
             }
         }
 
@@ -1848,7 +1888,11 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
         writeDB(db);
 
         const descontoPct =
-            cupom ? cupom.discountPercent : 0;
+            cupomCredito
+                ? cupomCredito.discountPercent
+                : (cupom && cupom.tipo !== "indicacao")
+                    ? cupom.discountPercent
+                    : 0;
 
         const valorCobrado =
             Math.round(
@@ -1891,15 +1935,30 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             valor: valorCobrado
         });
 
-        if (cupom) {
-            cupom.used += 1;
+        if (cupom && cupom.tipo === "indicacao") {
             const cupons = readCoupons();
-            cupons[cupom.codigo] = cupom;
-            writeCoupons(cupons);
+            const c = cupons[cupom.codigo];
+            if (c) {
+                c.used = (c.used || 0) + 1;
+                c.credits = (c.credits || 0) + 1;
+                writeCoupons(cupons);
+            }
+        }
+
+        if (cupomCredito) {
+            const cupons = readCoupons();
+            const c = cupons[cupomCredito.codigo];
+            if (c) {
+                c.credits = Math.max(
+                    0,
+                    (c.credits || 1) - 1
+                );
+                writeCoupons(cupons);
+            }
         }
 
         const meuCupom =
-            gerarCupom(name, orderId);
+            gerarCupom(name, req.usuario.email, orderId);
 
         enviarEmail(
             email.trim(),
@@ -1935,7 +1994,14 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             total,
             value: total,
             discountPercent:
-                cupom ? cupom.discountPercent : 0,
+                cupomCredito
+                    ? cupomCredito.discountPercent
+                    : (cupom && cupom.tipo !== "indicacao")
+                        ? cupom.discountPercent
+                        : 0,
+            creditoUsado: !!cupomCredito,
+            indicacaoRegistrada:
+                !!(cupom && cupom.tipo === "indicacao"),
             qrCode: pix.encodedImage,
             payload: pix.payload,
             meuCupom,
@@ -1993,10 +2059,47 @@ app.post("/api/test/reserve", authUsuario, async (req, res) => {
 
         const cupom = validarCupom(coupon);
 
+        let cupomCredito = null;
+
         if (coupon && !cupom) {
             return res.status(400).json({
                 error: "Cupom de indicação inválido ou expirado."
             });
+        }
+
+        if (cupom && cupom.tipo === "indicacao") {
+            if (
+                cupom.ownerEmail &&
+                cupom.ownerEmail === req.usuario.email
+            ) {
+                return res.status(400).json({
+                    error:
+                        "Você não pode usar o seu próprio cupom " +
+                        "de indicação."
+                });
+            }
+
+            if (spaces.length < 10) {
+                return res.status(400).json({
+                    error:
+                        "Este cupom de indicação vale apenas para " +
+                        "compras de 10 blocos ou mais " +
+                        "(você selecionou " + spaces.length + ")."
+                });
+            }
+        }
+
+        if (!cupom && req.usuario) {
+            const meus = Object.values(readCoupons()).filter(
+                c =>
+                    c.tipo === "indicacao" &&
+                    c.ownerEmail === req.usuario.email &&
+                    (c.credits || 0) > 0
+            );
+
+            if (meus.length) {
+                cupomCredito = meus[0];
+            }
         }
 
         const db = readDB();
@@ -2051,6 +2154,19 @@ app.post("/api/test/reserve", authUsuario, async (req, res) => {
 
         writeDB(db);
 
+        const descontoPct =
+            cupomCredito
+                ? cupomCredito.discountPercent
+                : (cupom && cupom.tipo !== "indicacao")
+                    ? cupom.discountPercent
+                    : 0;
+
+        const valorTotal =
+            Math.round(
+                spaces.length *
+                (1 - descontoPct / 100) * 100
+            ) / 100;
+
         registrarTransacao({
             tipo: "compra",
             accessCode,
@@ -2060,7 +2176,7 @@ app.post("/api/test/reserve", authUsuario, async (req, res) => {
             nome: name || "Anunciante",
             email: email || "",
             espacos: spaces,
-            valorTotal: spaces.length,
+            valorTotal,
             comissao: 0,
             status: "pago",
             test: true
@@ -2085,13 +2201,28 @@ app.post("/api/test/reserve", authUsuario, async (req, res) => {
         });
 
         const meuCupom =
-            gerarCupom(name, orderId);
+            gerarCupom(name, req.usuario.email, orderId);
 
-        if (cupom) {
-            cupom.used += 1;
+        if (cupom && cupom.tipo === "indicacao") {
             const cupons = readCoupons();
-            cupons[cupom.codigo] = cupom;
-            writeCoupons(cupons);
+            const c = cupons[cupom.codigo];
+            if (c) {
+                c.used = (c.used || 0) + 1;
+                c.credits = (c.credits || 0) + 1;
+                writeCoupons(cupons);
+            }
+        }
+
+        if (cupomCredito) {
+            const cupons = readCoupons();
+            const c = cupons[cupomCredito.codigo];
+            if (c) {
+                c.credits = Math.max(
+                    0,
+                    (c.credits || 1) - 1
+                );
+                writeCoupons(cupons);
+            }
         }
 
         res.json({
@@ -2102,7 +2233,14 @@ app.post("/api/test/reserve", authUsuario, async (req, res) => {
             accessCode,
             meuCupom,
             discountPercent:
-                cupom ? cupom.discountPercent : 0
+                cupomCredito
+                    ? cupomCredito.discountPercent
+                    : (cupom && cupom.tipo !== "indicacao")
+                        ? cupom.discountPercent
+                        : 0,
+            creditoUsado: !!cupomCredito,
+            indicacaoRegistrada:
+                !!(cupom && cupom.tipo === "indicacao")
         });
 
     } catch (error) {
@@ -5440,10 +5578,13 @@ app.post("/api/admin/cupons", authAdmin, (req, res) => {
 
     cupons[nome] = {
         codigo: nome,
+        tipo: existente.tipo || "promocao",
         ownerName: existente.ownerName || "Admin",
+        ownerEmail: existente.ownerEmail || "",
         ownerOrderId: existente.ownerOrderId || "ADMIN",
         discountPercent: pct,
         used: existente.used || 0,
+        credits: existente.credits || 0,
         maxUses:
             maxUses !== undefined
             ? Math.max(1, Number(maxUses))

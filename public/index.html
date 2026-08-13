@@ -1824,6 +1824,13 @@ onclick="closeOwner()">
     style="flex:1;margin:0;padding:8px;font-size:12px;">
     🎟️ ACESSO
   </button>
+  <button
+    class="btn sec"
+    id="tabExtrato"
+    onclick="abaExtrato()"
+    style="flex:1;margin:0;padding:8px;font-size:12px;">
+    📊 EXTRATO
+  </button>
 </div>
 
 <div
@@ -6532,6 +6539,9 @@ function setAbaAtiva(){
     const tabA =
         document.getElementById("tabAcesso");
 
+    const tabE =
+        document.getElementById("tabExtrato");
+
     tabO.className =
         abaAtual === "ofertas" ? "btn" : "btn sec";
 
@@ -6543,6 +6553,9 @@ function setAbaAtiva(){
 
     tabA.className =
         abaAtual === "acesso" ? "btn" : "btn sec";
+
+    tabE.className =
+        abaAtual === "extrato" ? "btn" : "btn sec";
 }
 
 function abrirPainelComando(){
@@ -6615,6 +6628,178 @@ function abaAcesso(){
         },
         100
     );
+}
+
+function abaExtrato(){
+
+    abaAtual = "extrato";
+
+    setAbaAtiva();
+
+    carregarExtrato();
+}
+
+async function carregarExtrato(){
+
+    const list =
+        document.getElementById("ownerList");
+
+    const meusTokens =
+        [...new Set(
+            Object.values(orderTokens)
+        )]
+        .filter(Boolean)
+        .join(",");
+
+    list.innerHTML =
+        "<div style='color:#aaa;padding:10px 0;'>" +
+        "Carregando extrato...</div>";
+
+    try{
+
+        const response =
+            await fetch(
+                "/api/historico",
+                {
+                    headers: meusTokens
+                        ? { "x-owner-tokens": meusTokens }
+                        : {}
+                }
+            );
+
+        const data =
+            await reqJSON(response);
+
+        if(
+            response.status === 503 ||
+            data.error
+        ){
+
+            list.innerHTML =
+                "<h3 style='margin:0 0 8px;color:#ffd400;'>📊 Extrato</h3>" +
+                "<div style='font-size:13px;color:#aaa;line-height:1.5;'>" +
+                (data.error ||
+                 "Não foi possível carregar o extrato.") +
+                "</div>";
+            return;
+        }
+
+        const fmt =
+            (n) => "R$ " +
+                Number(n || 0).toLocaleString(
+                    "pt-BR",
+                    { minimumFractionDigits: 2 }
+                );
+
+        let html =
+            "<h3 style='margin:0 0 8px;color:#ffd400;'>📊 Meu extrato</h3>" +
+            "<div style='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;'>" +
+            "<div style='flex:1;min-width:120px;background:#1b3a2a;" +
+            "border-radius:8px;padding:10px;'>" +
+            "<div style='font-size:10px;color:#8bd4a5;'>TOTAL GASTO</div>" +
+            "<div style='font-size:16px;font-weight:800;color:#45d66f;'>" +
+            fmt(data.gastoTotal) + "</div></div>" +
+            "<div style='flex:1;min-width:120px;background:#3a2f1b;" +
+            "border-radius:8px;padding:10px;'>" +
+            "<div style='font-size:10px;color:#ffd400;'>TOTAL RECEBIDO</div>" +
+            "<div style='font-size:16px;font-weight:800;color:#ffd400;'>" +
+            fmt(data.recebidoTotal) + "</div></div>" +
+            "<div style='flex:1;min-width:120px;background:#222;" +
+            "border-radius:8px;padding:10px;'>" +
+            "<div style='font-size:10px;color:#aaa;'>ESPAÇOS COMPRADOS</div>" +
+            "<div style='font-size:16px;font-weight:800;color:#fff;'>" +
+            Number(data.comprados).toLocaleString("pt-BR") + "</div></div>" +
+            "<div style='flex:1;min-width:120px;background:#222;" +
+            "border-radius:8px;padding:10px;'>" +
+            "<div style='font-size:10px;color:#aaa;'>ESPAÇOS VENDIDOS</div>" +
+            "<div style='font-size:16px;font-weight:800;color:#fff;'>" +
+            Number(data.vendidos).toLocaleString("pt-BR") + "</div></div>" +
+            "</div>";
+
+        const transacoes =
+            data.transacoes || [];
+
+        if(!transacoes.length){
+
+            html +=
+                "<div style='font-size:13px;color:#888;'>" +
+                "Nenhuma transação encontrada ainda. " +
+                "Seu histórico aparecerá aqui após a " +
+                "primeira compra.</div>";
+        } else {
+
+            html +=
+                "<div style='font-size:12px;color:#888;" +
+                "margin-bottom:6px;'>" +
+                transacoes.length.toLocaleString("pt-BR") +
+                " transação(ões)</div>";
+
+            for(const t of transacoes){
+
+                const dataTxt =
+                    new Date(t.criadoEm || Date.now())
+                        .toLocaleString("pt-BR");
+
+                const resumo =
+                    t.espacos.length > 3
+                    ? "#" +
+                      t.espacos[0].toLocaleString("pt-BR") +
+                      " a #" +
+                      t.espacos[t.espacos.length - 1]
+                          .toLocaleString("pt-BR") +
+                      " (" + t.quantidade.toLocaleString("pt-BR") + ")"
+                    : t.espacos
+                        .map(n => "#" + n.toLocaleString("pt-BR"))
+                        .join(", ");
+
+                const ehCompra =
+                    t.tipo === "compra";
+
+                const valor =
+                    ehCompra
+                    ? "- " + fmt(t.valorTotal)
+                    : "+ " + fmt(
+                        t.valorTotal - t.comissao
+                      );
+
+                const valorCor =
+                    ehCompra ? "#e07272" : "#45d66f";
+
+                html +=
+                    "<div style='border:1px solid #333;" +
+                    "border-radius:8px;padding:8px 10px;" +
+                    "margin-bottom:6px;font-size:12px;'>" +
+                    "<div style='display:flex;justify-content:space-between;' >" +
+                    "<b style='color:" + valorCor + ";'>" +
+                    (ehCompra ? "🛒 COMPRA" : "💰 VENDA") +
+                    "</b>" +
+                    "<span style='color:#888;'>" + dataTxt + "</span>" +
+                    "</div>" +
+                    "<div style='margin-top:4px;color:#ddd;'>" +
+                    resumo + "</div>" +
+                    "<div style='display:flex;justify-content:space-between;" +
+                    "margin-top:4px;'>" +
+                    "<span style='color:#888;'>" +
+                    (t.status === "pago"
+                        ? "✓ pago"
+                        : "⏳ aguardando pagamento") +
+                    (t.test ? " (teste)" : "") +
+                    "</span>" +
+                    "<b style='color:" + valorCor + ";'>" +
+                    valor + "</b></div>" +
+                    "</div>";
+            }
+        }
+
+        list.innerHTML = html;
+
+    } catch(error){
+
+        list.innerHTML =
+            "<h3 style='margin:0 0 8px;color:#ffd400;'>📊 Extrato</h3>" +
+            "<div style='font-size:13px;color:#aaa;'>" +
+            "Erro ao carregar o extrato. Tente novamente.</div>";
+    }
 }
 
 async function restaurarAcesso(){

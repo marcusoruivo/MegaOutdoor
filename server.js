@@ -7,6 +7,7 @@ const rateLimit = require("express-rate-limit");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
+const { Pool } = require("pg");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -191,6 +192,162 @@ function semearDadosIniciais() {
 
 semearDadosIniciais();
 
+/* =========================
+   BANCO DE DADOS (PostgreSQL)
+   Histórico de compras e vendas dos
+   proprietários. Usa DATABASE_URL do
+   Render. Sem o banco, o site continua
+   funcionando (o histórico fica indisponível).
+========================= */
+
+let pgPool = null;
+let pgDisponivel = false;
+
+async function initBanco() {
+
+    const url = process.env.DATABASE_URL;
+
+    if (!url) {
+        console.log(
+            "DATABASE_URL não definido — " +
+            "histórico de transações desativado."
+        );
+        return;
+    }
+
+    try {
+
+        const ssl =
+            /localhost|127\.0\.0\.1/.test(url)
+            ? false
+            : { rejectUnauthorized: false };
+
+        pgPool = new Pool({
+            connectionString: url,
+            ssl
+        });
+
+        await pgPool.query(`
+            CREATE TABLE IF NOT EXISTS transacoes (
+                id          SERIAL PRIMARY KEY,
+                tipo        VARCHAR(10) NOT NULL,
+                access_code VARCHAR(30) NOT NULL,
+                token       VARCHAR(64),
+                order_id    VARCHAR(60) NOT NULL,
+                customer_id VARCHAR(60),
+                payment_id  VARCHAR(60),
+                nome        VARCHAR(200),
+                email       VARCHAR(200),
+                espacos     INTEGER[] NOT NULL,
+                quantidade  INTEGER NOT NULL,
+                valor_total NUMERIC(12,2) NOT NULL,
+                comissao    NUMERIC(12,2) NOT NULL DEFAULT 0,
+                status      VARCHAR(20) NOT NULL DEFAULT 'pendente',
+                test        BOOLEAN NOT NULL DEFAULT FALSE,
+                criado_em   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                pago_em     TIMESTAMPTZ
+            )
+        `);
+
+        await pgPool.query(
+            "CREATE INDEX IF NOT EXISTS " +
+            "idx_transacoes_token ON transacoes(token)"
+        );
+
+        await pgPool.query(
+            "CREATE INDEX IF NOT EXISTS " +
+            "idx_transacoes_access ON transacoes(access_code)"
+        );
+
+        pgDisponivel = true;
+
+        console.log(
+            "PostgreSQL conectado — " +
+            "tabela 'transacoes' pronta."
+        );
+
+    } catch (error) {
+
+        pgDisponivel = false;
+        pgPool = null;
+
+        console.error(
+            "Falha ao conectar PostgreSQL:",
+            error.message
+        );
+    }
+}
+
+function registrarTransacao({
+    tipo,
+    accessCode,
+    token,
+    orderId,
+    customerId,
+    paymentId,
+    nome,
+    email,
+    espacos,
+    valorTotal,
+    comissao = 0,
+    status,
+    test = false
+}) {
+
+    if (!pgDisponivel) {
+        return Promise.resolve(false);
+    }
+
+    return pgPool.query(
+        `INSERT INTO transacoes
+            (tipo, access_code, token, order_id,
+             customer_id, payment_id, nome, email,
+             espacos, quantidade, valor_total,
+             comissao, status, test)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+        [
+            tipo,
+            accessCode,
+            token || null,
+            orderId,
+            customerId || null,
+            paymentId || null,
+            nome || null,
+            email || null,
+            espacos,
+            espacos.length,
+            valorTotal,
+            comissao,
+            status,
+            test
+        ]
+    ).catch((err) => {
+        console.error("ERRO ao registrar transação:", err.message);
+        return false;
+    });
+}
+
+function pgPagamentoPago(paymentId) {
+
+    if (!pgDisponivel) {
+        return Promise.resolve(false);
+    }
+
+    return pgPool.query(
+        `UPDATE transacoes
+            SET status = 'pago',
+                pago_em = NOW()
+          WHERE payment_id = $1
+            AND status = 'pendente'`,
+        [paymentId]
+    ).catch((err) => {
+        console.error("ERRO ao atualizar transação:", err.message);
+        return false;
+    });
+}
+
+initBanco();
+
 app.use(helmet({
     contentSecurityPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" }
@@ -203,6 +360,7 @@ app.use(express.json({
 app.use("/api", limiterGlobal);
 app.use("/api/checkout", limiterSensivel);
 app.use("/api/restore", limiterSensivel);
+app.use("/api/historico", limiterSensivel);
 app.use("/api/test", limiterSensivel);
 app.use("/api/offers", limiterOfertas);
 app.use("/api/pix-key", limiterSensivel);
@@ -1063,6 +1221,30 @@ app.post("/api/checkout", async (req, res) => {
 
         writeDB(db);
 
+        const descontoPct =
+            cupom ? cupom.discountPercent : 0;
+
+        const valorCobrado =
+            Math.round(
+                total * (1 - descontoPct / 100) * 100
+            ) / 100;
+
+        registrarTransacao({
+            tipo: "compra",
+            accessCode,
+            token: orderToken,
+            orderId,
+            customerId: customer.id,
+            paymentId: payment.id,
+            nome: name.trim(),
+            email: email.trim(),
+            espacos: ids,
+            valorTotal: valorCobrado,
+            comissao: 0,
+            status: "pendente",
+            test: false
+        });
+
         if (cupom) {
             cupom.used += 1;
             const cupons = readCoupons();
@@ -1223,6 +1405,20 @@ app.post("/api/test/reserve", (req, res) => {
 
         writeDB(db);
 
+        registrarTransacao({
+            tipo: "compra",
+            accessCode,
+            token: orderToken,
+            orderId,
+            nome: name || "Anunciante",
+            email: email || "",
+            espacos: spaces,
+            valorTotal: spaces.length,
+            comissao: 0,
+            status: "pago",
+            test: true
+        });
+
         const meuCupom =
             gerarCupom(name, orderId);
 
@@ -1278,6 +1474,8 @@ app.get(
             ) {
 
                 confirmarPagamentoOferta(payment.id);
+
+                pgPagamentoPago(payment.id);
 
                 for (const id of Object.keys(db)) {
 
@@ -1392,6 +1590,136 @@ app.post("/api/restore", (req, res) => {
 });
 
 /* =========================
+   HISTÓRICO DE TRANSAÇÕES
+   Compras e vendas do proprietário,
+   consultadas pelo token de dono
+   (header x-owner-tokens) ou código
+   de acesso (query accessCode).
+========================= */
+
+app.get("/api/historico", async (req, res) => {
+
+    const tokens =
+        (req.headers["x-owner-tokens"] || "")
+            .split(",")
+            .map(t => t.trim())
+            .filter(Boolean);
+
+    const codigosQuery =
+        (req.query.accessCode || "")
+            .split(",")
+            .map(t => t.trim().toUpperCase())
+            .filter(Boolean);
+
+    if (!pgDisponivel) {
+        return res.status(503).json({
+            error:
+                "Banco de dados ainda não configurado. " +
+                "Defina DATABASE_URL para ativar o histórico."
+        });
+    }
+
+    if (!tokens.length && !codigosQuery.length) {
+        return res.status(400).json({
+            error:
+                "Nenhuma identificação de proprietário enviada."
+        });
+    }
+
+    const db = readDB();
+
+    const meusCodigos = new Set(codigosQuery);
+
+    for (const s of Object.values(db)) {
+
+        if (
+            tokens.includes(s.orderToken) &&
+            s.accessCode
+        ) {
+            meusCodigos.add(s.accessCode);
+        }
+    }
+
+    try {
+
+        const result = await pgPool.query(
+            `SELECT id, tipo, access_code, order_id,
+                    nome, email, espacos, quantidade,
+                    valor_total, comissao, status,
+                    test, criado_em, pago_em
+               FROM transacoes
+              WHERE token = ANY($1::text[])
+                 OR access_code = ANY($2::text[])
+              ORDER BY criado_em DESC`,
+            [
+                tokens,
+                [...meusCodigos]
+            ]
+        );
+
+        const transacoes =
+            result.rows.map(r => ({
+                id: r.id,
+                tipo: r.tipo,
+                accessCode: r.access_code,
+                orderId: r.order_id,
+                nome: r.nome,
+                email: r.email,
+                espacos: r.espacos,
+                quantidade: r.quantidade,
+                valorTotal: Number(r.valor_total),
+                comissao: Number(r.comissao),
+                status: r.status,
+                test: r.test,
+                criadoEm: r.criado_em,
+                pagoEm: r.pago_em
+            }));
+
+        let gastoTotal = 0;
+        let recebidoTotal = 0;
+        let comprados = 0;
+        let vendidos = 0;
+
+        for (const t of transacoes) {
+
+            if (t.status !== "pago") continue;
+
+            if (t.tipo === "compra") {
+                gastoTotal += t.valorTotal;
+                comprados += t.quantidade;
+            } else {
+                recebidoTotal +=
+                    t.valorTotal - t.comissao;
+                vendidos += t.quantidade;
+            }
+        }
+
+        res.json({
+            ok: true,
+            total: transacoes.length,
+            gastoTotal:
+                Math.round(gastoTotal * 100) / 100,
+            recebidoTotal:
+                Math.round(recebidoTotal * 100) / 100,
+            comprados,
+            vendidos,
+            transacoes
+        });
+
+    } catch (error) {
+
+        console.error(
+            "ERRO ao consultar histórico:",
+            error.message
+        );
+
+        res.status(500).json({
+            error: error.message
+        });
+    }
+});
+
+/* =========================
    OFERTAS (COMPRAR ESPAÇO VENDIDO)
 ========================= */
 
@@ -1421,11 +1749,20 @@ function confirmarPagamentoOferta(paymentId) {
 
     let transferido = 0;
 
+    const vendedores = new Set();
+
     for (const sid of alvos) {
 
         const space = db[sid];
 
         if (!space) continue;
+
+        if (space.accessCode || space.orderToken) {
+            vendedores.add(
+                `${space.accessCode || ""}|` +
+                `${space.orderToken || ""}`
+            );
+        }
 
         db[sid] = {
             ...space,
@@ -1453,6 +1790,51 @@ function confirmarPagamentoOferta(paymentId) {
     oferta.newOwnerAccessCode = novoAccessCode;
 
     writeOffers(ofertas);
+
+    const valorVenda = Number(oferta.value) || 0;
+
+    const comissaoVenda =
+        Number(oferta.feeValue) || taxaDoSite(valorVenda);
+
+    const valorPagoComprador =
+        Math.round(
+            (valorVenda + comissaoVenda) * 100
+        ) / 100;
+
+    for (const par of vendedores) {
+
+        const [codigo, tok] = par.split("|");
+
+        registrarTransacao({
+            tipo: "venda",
+            accessCode: codigo || novoAccessCode,
+            token: tok || null,
+            orderId: oferta.id,
+            paymentId,
+            nome: oferta.name,
+            email: oferta.email,
+            espacos: alvos,
+            valorTotal: valorVenda,
+            comissao: comissaoVenda,
+            status: "pago",
+            test: false
+        });
+    }
+
+    registrarTransacao({
+        tipo: "compra",
+        accessCode: novoAccessCode,
+        token: novoToken,
+        orderId: oferta.id,
+        paymentId,
+        nome: oferta.name,
+        email: oferta.email,
+        espacos: alvos,
+        valorTotal: valorPagoComprador,
+        comissao: 0,
+        status: "pago",
+        test: false
+    });
 
     const resumoEspacos =
         alvos.length === 1
@@ -3376,6 +3758,8 @@ app.post("/webhooks/asaas", (req, res) => {
 
             const ofertaPaga =
                 confirmarPagamentoOferta(paymentId);
+
+            pgPagamentoPago(paymentId);
 
             const db = readDB();
             let alterado = false;

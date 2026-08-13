@@ -2,12 +2,80 @@ require("dotenv").config();
 
 const express = require("express");
 const multer = require("multer");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+app.disable("x-powered-by");
+
+if (
+    process.env.RENDER ||
+    process.env.TRUST_PROXY === "true"
+) {
+    app.set("trust proxy", 1);
+}
+
+const PRODUCAO =
+    process.env.NODE_ENV === "production" ||
+    Boolean(process.env.RENDER);
+
+const ALLOW_TEST_MODE =
+    process.env.ALLOW_TEST_MODE === "true";
+
+const limiterGlobal = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 1000,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        error: "Muitas requisições. Tente novamente em alguns minutos."
+    }
+});
+
+const limiterSensivel = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 15,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        error: "Muitas tentativas. Aguarde um pouco e tente novamente."
+    }
+});
+
+const limiterChat = rateLimit({
+    windowMs: 10 * 1000,
+    limit: 3,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        error: "Aguarde alguns segundos antes de enviar outra mensagem."
+    }
+});
+
+const limiterOfertas = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 120,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        error: "Muitas tentativas. Aguarde um pouco e tente novamente."
+    }
+});
+
+const limiterUpload = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        error: "Muitos envios. Aguarde um pouco."
+    }
+});
 
 const ASAAS_API = "https://api.asaas.com/v3";
 const ASAAS_KEY = process.env.ASAAS_API_KEY;
@@ -83,22 +151,110 @@ function semearDadosIniciais() {
 
 semearDadosIniciais();
 
-app.use(express.json());
+app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
+app.use(express.json({
+    limit: "100kb"
+}));
+
+app.use("/api", limiterGlobal);
+app.use("/api/checkout", limiterSensivel);
+app.use("/api/restore", limiterSensivel);
+app.use("/api/test", limiterSensivel);
+app.use("/api/offers", limiterOfertas);
+app.use("/api/pix-key", limiterSensivel);
+app.use("/api/upload", limiterUpload);
+app.use("/api/chat", limiterChat);
+app.use("/webhooks/asaas", limiterSensivel);
+
 app.use(express.static(path.join(__dirname, "public")));
-app.use("/uploads", express.static(UPLOAD_DIR));
+app.use("/uploads", express.static(UPLOAD_DIR, {
+    dotfiles: "deny",
+    index: false,
+    setHeaders: (res) => {
+        res.setHeader(
+            "X-Content-Type-Options",
+            "nosniff"
+        );
+    }
+}));
 
 const storage = multer.diskStorage({
     destination: UPLOAD_DIR,
     filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname).toLowerCase();
-        cb(null, `space-${req.params.id}${ext}`);
+        const id =
+            String(req.params.id || "")
+                .replace(/\D/g, "");
+
+        const segura = id
+            ? `space-${id}`
+            : `space-${Date.now()}`;
+
+        const ext =
+            (path.extname(file.originalname) || "")
+                .toLowerCase()
+                .replace(/[^a-z0-9.]/g, "");
+
+        cb(null, `${segura}${ext}`);
     }
 });
+
+const IMAGE_EXTENSIONS = new Set([
+    ".jpg", ".jpeg", ".png", ".webp", ".gif"
+]);
+
+const IMAGE_MAGIC = [
+    { magic: [0xFF, 0xD8, 0xFF], ext: ".jpg" },
+    { magic: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A], ext: ".png" },
+    { magic: [0x52, 0x49, 0x46, 0x46], ext: ".webp" },
+    { magic: [0x47, 0x49, 0x46, 0x38], ext: ".gif" }
+];
+
+function ehImagemValida(buf) {
+
+    if (!buf || buf.length < 12) {
+        return false;
+    }
+
+    return IMAGE_MAGIC.some(({ magic }) =>
+        magic.every((b, i) => buf[i] === b)
+    );
+}
 
 const upload = multer({
     storage,
     limits: {
-        fileSize: 5 * 1024 * 1024
+        fileSize: 5 * 1024 * 1024,
+        files: 1
+    },
+    fileFilter: (req, file, cb) => {
+
+        const ext =
+            path.extname(file.originalname)
+                .toLowerCase();
+
+        const mime =
+            String(file.mimetype || "").toLowerCase();
+
+        const mimeOk =
+            mime.startsWith("image/");
+
+        if (
+            !IMAGE_EXTENSIONS.has(ext) ||
+            !mimeOk
+        ) {
+            return cb(
+                new Error(
+                    "Formato de imagem inválido. " +
+                    "Use JPG, PNG, WEBP ou GIF."
+                )
+            );
+        }
+
+        cb(null, true);
     }
 });
 
@@ -172,6 +328,15 @@ function writePixKeys(data) {
 
 function gerarToken() {
     return crypto.randomBytes(16).toString("hex");
+}
+
+function gerarAccessCode() {
+
+    const h = crypto.randomBytes(8)
+        .toString("hex")
+        .toUpperCase();
+
+    return `MEGA-${h.slice(0, 4)}-${h.slice(4, 8)}-${h.slice(8, 12)}-${h.slice(12)}`;
 }
 
 /* =========================
@@ -570,7 +735,48 @@ async function asaasRequest(endpoint, options = {}) {
 ========================= */
 
 app.get("/api/spaces", (req, res) => {
-    res.json(readDB());
+
+    const db = readDB();
+
+    const header =
+        req.headers["x-owner-tokens"] || "";
+
+    const meusTokens = new Set(
+        header
+            .split(",")
+            .map(t => t.trim())
+            .filter(Boolean)
+    );
+
+    const publico = {};
+
+    for (const [id, s] of Object.entries(db)) {
+
+        const pub = {
+            id: s.id,
+            status: s.status,
+            image: s.image,
+            title: s.title,
+            link: s.link,
+            displayMode: s.displayMode,
+            imageGroupSpaces: s.imageGroupSpaces,
+            test: s.test === true,
+            publishedAt: s.publishedAt,
+            paidAt: s.paidAt,
+            transferredAt: s.transferredAt
+        };
+
+        if (
+            s.orderToken &&
+            meusTokens.has(s.orderToken)
+        ) {
+            pub.orderToken = s.orderToken;
+        }
+
+        publico[id] = pub;
+    }
+
+    res.json(publico);
 });
 
 app.get("/api/status", (req, res) => {
@@ -791,6 +997,9 @@ app.post("/api/checkout", async (req, res) => {
         const orderToken =
             gerarToken();
 
+        const accessCode =
+            gerarAccessCode();
+
         /* =========================
            RESERVA
         ========================= */
@@ -802,6 +1011,7 @@ app.post("/api/checkout", async (req, res) => {
                 status: "reserved",
                 orderId,
                 orderToken,
+                accessCode,
                 customerId: customer.id,
                 paymentId: payment.id,
                 name: name.trim(),
@@ -823,10 +1033,35 @@ app.post("/api/checkout", async (req, res) => {
         const meuCupom =
             gerarCupom(name, orderId);
 
+        enviarEmail(
+            email.trim(),
+            "Seu código de acesso Milhão Door",
+            htmlNotificacao(
+                "🎟️ Guarde seu código de acesso",
+                `<p style="margin:0 0 8px;color:#444;font-size:14px;">` +
+                `Olá, <b>${name.trim()}</b>! Você reservou ` +
+                `<b>${ids.length.toLocaleString("pt-BR")}</b> espaço(s) ` +
+                `(pedido ${orderId}).</p>` +
+                `<p style="margin:0 0 8px;color:#444;font-size:14px;">` +
+                `Este código serve para <b>recuperar o acesso aos seus ` +
+                `espaços</b> caso você troque de aparelho, limpe o ` +
+                `navegador ou perca a sessão:</p>` +
+                `<div style="background:#111;border:1px solid #ffd400;` +
+                `border-radius:8px;padding:12px;text-align:center;` +
+                `font-size:18px;font-weight:800;color:#ffd400;` +
+                `letter-spacing:1px;margin:10px 0;">${accessCode}</div>` +
+                `<p style="margin:0;color:#666;font-size:13px;">` +
+                `O acesso também é liberado automaticamente no ` +
+                `navegador após a confirmação do pagamento. ` +
+                `Guarde este código em um lugar seguro.</p>`
+            )
+        );
+
         res.json({
             ok: true,
             orderId,
             orderToken,
+            accessCode,
             paymentId: payment.id,
             spaces: ids,
             total,
@@ -856,6 +1091,14 @@ app.post("/api/checkout", async (req, res) => {
 ========================= */
 
 app.post("/api/test/reserve", (req, res) => {
+
+    if (PRODUCAO && !ALLOW_TEST_MODE) {
+        return res.status(403).json({
+            error:
+                "Modo de teste está desativado nesta " +
+                "versão do site."
+        });
+    }
 
     try {
 
@@ -920,6 +1163,9 @@ app.post("/api/test/reserve", (req, res) => {
         const orderToken =
             gerarToken();
 
+        const accessCode =
+            gerarAccessCode();
+
         for (const id of spaces) {
 
             db[id] = {
@@ -928,6 +1174,7 @@ app.post("/api/test/reserve", (req, res) => {
                 test: true,
                 orderId,
                 orderToken,
+                accessCode,
                 name: name || "Anunciante",
                 email: email || "",
                 createdAt: now
@@ -951,6 +1198,7 @@ app.post("/api/test/reserve", (req, res) => {
             spaces,
             test: true,
             orderToken,
+            accessCode,
             meuCupom,
             discountPercent:
                 cupom ? cupom.discountPercent : 0
@@ -1027,6 +1275,83 @@ app.get(
 );
 
 /* =========================
+   RECUPERAR ACESSO
+   Quem comprou espaços recebe um
+   código de acesso (por e-mail e na
+   tela). Com ele, recupera os tokens
+   de propriedade em qualquer aparelho.
+========================= */
+
+app.post("/api/restore", (req, res) => {
+
+    try {
+
+        const code =
+            (req.body.accessCode || "")
+                .trim()
+                .toUpperCase();
+
+        if (!code) {
+            return res.status(400).json({
+                error: "Informe seu código de acesso."
+            });
+        }
+
+        if (!/^MEGA-[A-F0-9-]{16,}$/.test(code)) {
+            return res.status(400).json({
+                error: "Código de acesso inválido."
+            });
+        }
+
+        const db = readDB();
+
+        const encontrados = [];
+
+        for (const id of Object.keys(db)) {
+
+            const s = db[id];
+
+            if (!s.accessCode) continue;
+
+            if (s.accessCode.toUpperCase() !== code) {
+                continue;
+            }
+
+            encontrados.push({
+                id: s.id,
+                orderToken: s.orderToken || "",
+                name: s.name,
+                email: s.email,
+                status: s.status,
+                image: s.image,
+                title: s.title,
+                link: s.link
+            });
+        }
+
+        if (!encontrados.length) {
+            return res.status(404).json({
+                error:
+                    "Código de acesso não encontrado. " +
+                    "Confira se digitou corretamente."
+            });
+        }
+
+        res.json({
+            ok: true,
+            spaces: encontrados,
+            total: encontrados.length
+        });
+
+    } catch (error) {
+
+        res.status(500).json({
+            error: error.message
+        });
+    }
+});
+
+/* =========================
    OFERTAS (COMPRAR ESPAÇO VENDIDO)
 ========================= */
 
@@ -1052,6 +1377,7 @@ function confirmarPagamentoOferta(paymentId) {
         : [oferta.spaceId];
 
     const novoToken = gerarToken();
+    const novoAccessCode = gerarAccessCode();
 
     let transferido = 0;
 
@@ -1066,6 +1392,7 @@ function confirmarPagamentoOferta(paymentId) {
             name: oferta.name,
             email: oferta.email,
             orderToken: novoToken,
+            accessCode: novoAccessCode,
             transferPaymentId: paymentId,
             transferredAt: new Date().toISOString(),
             link: undefined
@@ -1083,8 +1410,31 @@ function confirmarPagamentoOferta(paymentId) {
     oferta.status = "paid";
     oferta.paidAt = new Date().toISOString();
     oferta.newOwnerToken = novoToken;
+    oferta.newOwnerAccessCode = novoAccessCode;
 
     writeOffers(ofertas);
+
+    const resumoEspacos =
+        alvos.length === 1
+        ? `espaço #${alvos[0].toLocaleString("pt-BR")}`
+        : `bloco de ${alvos.length.toLocaleString("pt-BR")} espaços`;
+
+    enviarEmail(
+        oferta.email,
+        "Seu bloco foi transferido — guarde este código",
+        htmlNotificacao(
+            "🎉 Espaço transferido para você",
+            `<p style="margin:0 0 8px;color:#444;font-size:14px;">` +
+            `O ${resumoEspacos} agora é seu (transferência confirmada).</p>` +
+            `<p style="margin:0 0 8px;color:#444;font-size:14px;">` +
+            `Guarde o código de acesso abaixo para recuperar ` +
+            `seus espaços em qualquer aparelho:</p>` +
+            `<div style="background:#111;border:1px solid #ffd400;` +
+            `border-radius:8px;padding:12px;text-align:center;` +
+            `font-size:18px;font-weight:800;color:#ffd400;` +
+            `letter-spacing:1px;margin:10px 0;">${novoAccessCode}</div>`
+        )
+    );
 
     console.log(
         `Oferta ${oferta.id} paga. ` +
@@ -2064,27 +2414,64 @@ app.get("/api/offers/:id", (req, res) => {
         });
     }
 
+    const email =
+        (req.query.email || "")
+            .trim()
+            .toLowerCase();
+
+    const token =
+        (req.query.token || "").trim();
+
+    const ehComprador =
+        email ===
+        (oferta.email || "").trim().toLowerCase();
+
+    const db = readDB();
+
+    const alvos =
+        (Array.isArray(oferta.spaceIds) &&
+         oferta.spaceIds.length)
+        ? oferta.spaceIds
+        : [oferta.spaceId];
+
+    const ehDono =
+        token &&
+        alvos.length &&
+        alvos.every(a =>
+            db[a] && db[a].orderToken === token
+        );
+
+    if (!ehComprador && !ehDono) {
+        return res.status(403).json({
+            error:
+                "Acesso restrito aos participantes da negociação."
+        });
+    }
+
     res.json({
         ok: true,
         id: oferta.id,
         spaceId: oferta.spaceId,
-        spaceIds:
-            (Array.isArray(oferta.spaceIds) &&
-             oferta.spaceIds.length)
-            ? oferta.spaceIds
-            : [oferta.spaceId],
+        spaceIds: alvos,
         name: oferta.name,
         email: oferta.email,
         value: oferta.value,
         originalValue: oferta.originalValue,
         status: oferta.status,
         feeValue: oferta.feeValue,
-        ownerPixKey: chavePixDoProprietario(oferta),
-        paymentId: oferta.paymentId,
         createdAt: oferta.createdAt,
+        ...(ehDono
+            ? { ownerPixKey: chavePixDoProprietario(oferta) }
+            : {}),
         newOwnerToken:
             oferta.status === "paid"
                 ? oferta.newOwnerToken || ""
+                : undefined,
+        newOwnerAccessCode:
+            oferta.status === "paid"
+                ? oferta.newOwnerAccessCode ||
+                  (db[alvos[0]] || {}).accessCode ||
+                  ""
                 : undefined
     });
 });
@@ -2118,6 +2505,34 @@ app.get("/api/offers/:id/payment", async (req, res) => {
             ? oferta.spaceIds
             : [oferta.spaceId];
 
+        const email =
+            (req.query.email || "")
+                .trim()
+                .toLowerCase();
+
+        const token =
+            (req.query.token || "").trim();
+
+        const ehComprador =
+            email ===
+            (oferta.email || "").trim().toLowerCase();
+
+        const db = readDB();
+
+        const ehDono =
+            token &&
+            alvos.length &&
+            alvos.every(a =>
+                db[a] && db[a].orderToken === token
+            );
+
+        if (!ehComprador && !ehDono) {
+            return res.status(403).json({
+                error:
+                    "Acesso restrito aos participantes da negociação."
+            });
+        }
+
         if (oferta.status === "paid") {
 
             return res.json({
@@ -2128,7 +2543,11 @@ app.get("/api/offers/:id/payment", async (req, res) => {
                 feeValue: oferta.feeValue,
                 ownerPixKey: chavePixDoProprietario(oferta),
                 spaceIds: alvos,
-                newOwnerToken: oferta.newOwnerToken || ""
+                newOwnerToken: oferta.newOwnerToken || "",
+                newOwnerAccessCode:
+                    oferta.newOwnerAccessCode ||
+                    (db[alvos[0]] || {}).accessCode ||
+                    ""
             });
         }
 
@@ -2249,6 +2668,42 @@ function salvarChatNegociacao(dados) {
     writeJsonFile(CHAT_NEGOC_FILE, dados);
 }
 
+const CHAVES_PERIGOSAS = new Set([
+    "__proto__",
+    "constructor",
+    "prototype"
+]);
+
+function chaveNegociacaoSegura(chave) {
+
+    const c = String(chave || "");
+
+    return (
+        c.length >= 1 &&
+        c.length <= 64 &&
+        !CHAVES_PERIGOSAS.has(c)
+    );
+}
+
+function lerChatNegociacaoDa(offerId) {
+
+    if (!chaveNegociacaoSegura(offerId)) {
+        return null;
+    }
+
+    const dados = lerChatNegociacao();
+
+    if (
+        !Object.prototype.hasOwnProperty.call(
+            dados, offerId
+        )
+    ) {
+        return [];
+    }
+
+    return dados[offerId];
+}
+
 app.get("/api/chat/negotiation", (req, res) => {
 
     const offerId =
@@ -2259,6 +2714,12 @@ app.get("/api/chat/negotiation", (req, res) => {
 
     const token =
         (req.query.token || "").trim();
+
+    if (!chaveNegociacaoSegura(offerId)) {
+        return res.status(400).json({
+            error: "Negociação inválida."
+        });
+    }
 
     const ofertas = readOffers();
     const oferta = ofertas[offerId];
@@ -2279,14 +2740,14 @@ app.get("/api/chat/negotiation", (req, res) => {
         });
     }
 
-    const dados = lerChatNegociacao();
+    const mensagens = lerChatNegociacaoDa(offerId);
 
     res.json({
         ok: true,
         offerId,
         comprador: oferta.name || "Comprador",
         dono: nomeDoProprietario(oferta),
-        messages: dados[offerId] || []
+        messages: mensagens
     });
 });
 
@@ -2303,6 +2764,12 @@ app.post("/api/chat/negotiation", (req, res) => {
 
     const texto =
         mensagemValida(req.body.text);
+
+    if (!chaveNegociacaoSegura(offerId)) {
+        return res.status(400).json({
+            error: "Negociação inválida."
+        });
+    }
 
     const ofertas = readOffers();
     const oferta = ofertas[offerId];
@@ -2408,6 +2875,12 @@ app.get("/api/chat/stream", (req, res) => {
 
     if (offerId) {
 
+        if (!chaveNegociacaoSegura(offerId)) {
+            return res.status(400).json({
+                error: "Negociação inválida."
+            });
+        }
+
         const ofertas = readOffers();
         const oferta = ofertas[offerId];
 
@@ -2467,7 +2940,35 @@ app.post(
     upload.single("fotos"),
     (req, res) => {
 
-        const id = Number(req.params.id);
+        const idRaw =
+            String(req.params.id || "");
+
+        if (!/^\d{1,7}$/.test(idRaw)) {
+            if (req.file) {
+                fs.unlink(req.file.path, () => {});
+            }
+            return res.status(400).json({
+                error: "Identificador de espaço inválido."
+            });
+        }
+
+        if (req.file) {
+
+            const dadosImagem =
+                fs.readFileSync(req.file.path);
+
+            if (!ehImagemValida(dadosImagem)) {
+
+                fs.unlink(req.file.path, () => {});
+
+                return res.status(400).json({
+                    error:
+                        "O arquivo enviado não é uma imagem válida."
+                });
+            }
+        }
+
+        const id = Number(idRaw);
         const db = readDB();
 
         let ids = [id];
@@ -2814,10 +3315,10 @@ app.post("/api/link", (req, res) => {
 ========================= */
 
 app.post("/webhooks/asaas", (req, res) => {
-    const tokenRecebido = req.headers["asaas-access-token"];
-    const tokenEsperado = process.env.WEBHOOK_TOKEN;
+    const tokenRecebido =
+        req.headers["asaas-access-token"];
 
-    if (!tokenEsperado || tokenRecebido !== tokenEsperado) {
+    if (!validarTokenWebhook(tokenRecebido)) {
         console.log("Webhook Asaas recusado: token inválido.");
         return res.status(401).json({
             error: "Unauthorized"
@@ -2869,6 +3370,27 @@ app.post("/webhooks/asaas", (req, res) => {
         received: true
     });
 });
+
+function validarTokenWebhook(recebido) {
+
+    const esperado = process.env.WEBHOOK_TOKEN;
+
+    if (
+        !esperado ||
+        typeof recebido !== "string"
+    ) {
+        return false;
+    }
+
+    const a = Buffer.from(recebido, "utf8");
+    const b = Buffer.from(esperado, "utf8");
+
+    if (a.length !== b.length) {
+        return false;
+    }
+
+    return crypto.timingSafeEqual(a, b);
+}
 
 /* =========================
    404 JSON PARA /api

@@ -805,6 +805,206 @@ html,body{
         padding:18px;
     }
 }
+
+/* =========================
+   MOBILE (CELULARES)
+   Cabeçalho travado em 82px para
+   bater com a matemática do mapa
+========================= */
+
+@media (max-width:640px){
+
+    .topo{
+        height:82px;
+        min-height:82px;
+        padding:0 12px;
+        gap:8px;
+        overflow:hidden;
+    }
+
+    .logo{
+        width:auto;
+        min-width:0;
+        flex:0 0 auto;
+    }
+
+    .logo img{
+        width:80px;
+        height:53px;
+    }
+
+    .info{
+        gap:6px;
+        justify-content:flex-end;
+    }
+
+    .info > div{
+        min-width:0;
+        flex:1 1 0;
+        padding:0 2px;
+    }
+
+    .info small{
+        font-size:7px;
+        margin-bottom:2px;
+    }
+
+    .info strong{
+        font-size:13px;
+    }
+
+    .search-box input{
+        padding:13px;
+        font-size:16px;
+    }
+
+    .search-box button{
+        font-size:13px;
+        padding:0 14px;
+    }
+
+    .painel{
+        top:94px;
+        left:10px;
+        right:10px;
+        width:auto;
+        padding:14px;
+        max-height:calc(100vh - 190px);
+        overflow-y:auto;
+        border-radius:14px;
+    }
+
+    .zoom{
+        right:10px;
+        bottom:118px;
+        top:auto;
+        border-radius:12px;
+    }
+
+    .zoom button{
+        width:48px;
+        height:48px;
+        font-size:24px;
+    }
+
+    .cmdFixo{
+        left:10px;
+        right:10px;
+        bottom:10px;
+        width:auto;
+        text-align:center;
+        padding:14px;
+        font-size:13px;
+    }
+
+    .chatFixo{
+        left:10px;
+        bottom:72px;
+        padding:12px 16px;
+        font-size:12px;
+    }
+
+    .hint{
+        bottom:128px;
+        font-size:11px;
+        max-width:96vw;
+        white-space:normal;
+        line-height:1.4;
+        text-align:center;
+    }
+
+    .cart{
+        left:8px;
+        right:8px;
+        bottom:8px;
+        width:auto;
+        padding:14px;
+    }
+
+    .list{
+        max-height:120px;
+    }
+
+    .modal{
+        align-items:flex-end;
+    }
+
+    .box{
+        width:100%;
+        max-width:100%;
+        max-height:94vh;
+        border-radius:18px 18px 0 0;
+        border:0;
+        padding:20px 16px 24px;
+        font-size:14px;
+    }
+
+    #chatModal .box{
+        height:94vh !important;
+        max-height:94vh !important;
+        width:100% !important;
+        max-width:100% !important;
+    }
+
+    .box h2{
+        font-size:18px;
+    }
+
+    .box input,
+    .box select,
+    .copia{
+        font-size:16px;
+        padding:14px;
+    }
+
+    .btn{
+        padding:14px;
+        font-size:14px;
+    }
+
+    .close{
+        font-size:30px;
+    }
+
+    .pix img{
+        width:min(62vw,240px);
+        height:auto;
+        aspect-ratio:1/1;
+    }
+
+    #offerBar{
+        left:10px;
+        right:10px;
+        width:auto;
+        bottom:10px;
+        flex-wrap:wrap;
+        justify-content:center;
+    }
+
+    #painelTabs{
+        flex-wrap:wrap;
+    }
+
+    #painelTabs button{
+        min-width:44%;
+    }
+}
+
+@media (max-width:420px){
+
+    .info > div:nth-child(2){
+        display:none;
+    }
+
+    .info strong{
+        font-size:12px;
+    }
+
+    .logo img{
+        width:64px;
+        height:43px;
+    }
+}
 </style>
 
 </head>
@@ -1041,7 +1241,7 @@ LIMPAR SELEÇÃO
 
 
 <div class="hint">
-🖱️ Arraste • Role para zoom • Clique para selecionar/deselecionar
+🖱️ Arraste • Role ou pinça para zoom • Clique/toque para selecionar
 </div>
 
 
@@ -1238,6 +1438,29 @@ class="statusPix"
 id="statusPix">
 Aguardando pagamento...
 </div>
+
+<div id="accessArea" style="display:none; margin-top:15px;">
+  <div class="statusPix" style="background:#1a2f1f;border:1px solid #2f5c42;">
+    <span class="sucesso">🎟️ SEU CÓDIGO DE ACESSO</span>
+    <div style="font-size:12px;color:#bbb;margin-top:6px;line-height:1.5;">
+      Guarde este código! Ele <b>recupera seus espaços</b> caso você
+      troque de aparelho, limpe o navegador ou perca a sessão.
+      Também enviamos por e-mail.
+    </div>
+    <input
+      class="copia"
+      id="accessCodeOut"
+      readonly
+      style="margin-top:10px;font-weight:800;letter-spacing:1px;color:#ffd400;">
+    <button
+      class="btn"
+      onclick="copiarTexto(document.getElementById('accessCodeOut').value)"
+      style="margin-top:8px;">
+      📋 COPIAR CÓDIGO
+    </button>
+  </div>
+</div>
+
 <div id="publicacao" style="display:none; margin-top:15px;">
 
   <div class="statusPix">
@@ -1594,6 +1817,13 @@ onclick="closeOwner()">
     style="flex:1;margin:0;padding:8px;font-size:12px;">
     🔑 CHAVE PIX
   </button>
+  <button
+    class="btn sec"
+    id="tabAcesso"
+    onclick="abaAcesso()"
+    style="flex:1;margin:0;padding:8px;font-size:12px;">
+    🎟️ ACESSO
+  </button>
 </div>
 
 <div
@@ -1787,6 +2017,33 @@ token;
 localStorage.setItem(
 "mega_orderTokens",
 JSON.stringify(orderTokens)
+);
+
+}
+
+let accessCodes =
+JSON.parse(
+localStorage.getItem(
+"mega_accessCodes"
+) || "{}"
+);
+
+function salvarAccessCodes(spaces, code){
+
+if(!code || !Array.isArray(spaces))return;
+
+for(const id of spaces){
+
+if(!id)continue;
+
+accessCodes[id] =
+code;
+
+}
+
+localStorage.setItem(
+"mega_accessCodes",
+JSON.stringify(accessCodes)
 );
 
 }
@@ -2633,9 +2890,21 @@ async function reqJSON(resposta){
 
 async function load(){
 
+const meusTokens =
+[...new Set(
+    Object.values(orderTokens)
+)]
+.filter(Boolean)
+.join(",");
+
 const response =
 await fetch(
-"/api/spaces"
+"/api/spaces",
+{
+    headers: meusTokens
+        ? { "x-owner-tokens": meusTokens }
+        : {}
+}
 );
 
 if(!response.ok){
@@ -4134,6 +4403,25 @@ data.spaces,
 data.orderToken
 );
 
+if(data.accessCode){
+
+document.getElementById(
+"accessCodeOut"
+).value =
+data.accessCode;
+
+document.getElementById(
+"accessArea"
+).style.display =
+"block";
+
+salvarAccessCodes(
+data.spaces,
+data.accessCode
+);
+
+}
+
 ultimoCupom =
 data.meuCupom || "";
 
@@ -4282,6 +4570,15 @@ async function testeSemPagamento(){
             data.orderToken
         );
 
+        if(data.accessCode){
+
+            salvarAccessCodes(
+                data.spaces,
+                data.accessCode
+            );
+
+        }
+
         ultimoCupom =
             data.meuCupom || "";
 
@@ -4301,6 +4598,14 @@ async function testeSemPagamento(){
             .innerHTML =
             '<span class="sucesso">🧪 TESTE: PAGAMENTO SIMULADO!</span><br><br>' +
             'Pagamento fictício confirmado para teste.' +
+            (data.accessCode
+                ? '<br><br><b>🎟️ Seu código de acesso:</b><br>' +
+                  '<span style="font-size:16px;color:#ffd400;font-weight:800;' +
+                  'word-break:break-all;">' +
+                  data.accessCode + '</span><br>' +
+                  '<span style="font-size:12px;color:#aaa;">' +
+                  'Guarde para recuperar seus espaços em outro aparelho.</span>'
+                : '') +
             (ultimoCupom
                 ? '<br><br><b>🎁 Seu cupom de indicação:</b><br>' +
                   '<span style="font-size:18px;color:#ffd400;font-weight:800;">' +
@@ -6188,6 +6493,9 @@ function setAbaAtiva(){
     const tabP =
         document.getElementById("tabPix");
 
+    const tabA =
+        document.getElementById("tabAcesso");
+
     tabO.className =
         abaAtual === "ofertas" ? "btn" : "btn sec";
 
@@ -6196,6 +6504,9 @@ function setAbaAtiva(){
 
     tabP.className =
         abaAtual === "pix" ? "btn" : "btn sec";
+
+    tabA.className =
+        abaAtual === "acesso" ? "btn" : "btn sec";
 }
 
 function abrirPainelComando(){
@@ -6230,6 +6541,142 @@ function abaPix(){
     setAbaAtiva();
 
     carregarAbaPix();
+}
+
+function abaAcesso(){
+
+    abaAtual = "acesso";
+
+    setAbaAtiva();
+
+    const list =
+        document.getElementById("ownerList");
+
+    list.innerHTML =
+        "<h3 style='margin:0 0 8px;color:#ffd400;'>🎟️ Recuperar acesso</h3>" +
+        "<div style='font-size:13px;color:#aaa;line-height:1.5;margin-bottom:10px;'>" +
+        "Perdeu seus espaços (troca de aparelho, navegador limpo, " +
+        "sessão perdida)? Digite o <b>código de acesso</b> recebido " +
+        "na compra (também enviado por e-mail) e restaure seus blocos.</div>" +
+        "<input id='accessCodeInput' " +
+        "class='copia' " +
+        "placeholder='MEGA-XXXX-XXXX-XXXX-XXXX' " +
+        "style='text-transform:uppercase;' " +
+        "onkeydown=\"if(event.key==='Enter')restaurarAcesso()\">" +
+        "<button class='btn' " +
+        "onclick='restaurarAcesso()' " +
+        "style='margin-top:10px;'>🔓 RESTAURAR MEUS ESPAÇOS</button>" +
+        "<div id='accessMsg' " +
+        "style='margin-top:10px;font-size:12px;color:#aaa;'></div>";
+
+    setTimeout(
+        () => {
+            const input =
+                document.getElementById("accessCodeInput");
+            if(input){
+                input.focus();
+            }
+        },
+        100
+    );
+}
+
+async function restaurarAcesso(){
+
+    const input =
+        document.getElementById("accessCodeInput");
+
+    const msg =
+        document.getElementById("accessMsg");
+
+    if(!input || !msg)return;
+
+    const code =
+        input.value.trim().toUpperCase();
+
+    if(!code){
+        msg.textContent = "Informe seu código de acesso.";
+        return;
+    }
+
+    msg.textContent = "Consultando seu código...";
+
+    try{
+
+        const response =
+            await fetch(
+                "/api/restore",
+                {
+                    method: "POST",
+                    headers:{
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({
+                        accessCode: code
+                    })
+                }
+            );
+
+        const data =
+            await reqJSON(response);
+
+        if(!response.ok){
+
+            msg.innerHTML =
+                '<span style="color:#ff4d4d;">' +
+                (data.error || "Não foi possível recuperar o acesso.") +
+                "</span>";
+
+            return;
+        }
+
+        const espacos =
+            Array.isArray(data.spaces)
+            ? data.spaces
+            : [];
+
+        if(!espacos.length){
+            msg.innerHTML =
+                '<span style="color:#ff4d4d;">' +
+                "Nenhum espaço encontrado com este código.</span>";
+            return;
+        }
+
+        for(const s of espacos){
+            if(s.id && s.orderToken){
+                orderTokens[Number(s.id)] =
+                    s.orderToken;
+                accessCodes[Number(s.id)] =
+                    code;
+            }
+        }
+
+        localStorage.setItem(
+            "mega_orderTokens",
+            JSON.stringify(orderTokens)
+        );
+
+        localStorage.setItem(
+            "mega_accessCodes",
+            JSON.stringify(accessCodes)
+        );
+
+        msg.innerHTML =
+            '<span class="sucesso">✅ ' +
+            data.total.toLocaleString("pt-BR") +
+            " espaço(s) restaurado(s)!</span>";
+
+        input.value = "";
+
+        await load();
+
+        draw();
+    }catch(error){
+        console.error(error);
+        msg.textContent =
+            "Erro de comunicação com o servidor.";
+    }
 }
 
 async function carregarOfertasPainel(){
@@ -7118,7 +7565,8 @@ function htmlOfertaFeita(o, emailComprador){
             "<button class='btn' " +
             "onclick=\"salvarBlocoTransferido(" +
             o.spaceId + ", '" +
-            o.newOwnerToken + "')\" " +
+            o.newOwnerToken + "', '" +
+            (o.newOwnerAccessCode || "") + "')\" " +
             "style='margin-top:10px;padding:8px 12px;font-size:12px;'>" +
             "✅ SALVAR MEU BLOCO</button>";
     }
@@ -7320,7 +7768,9 @@ async function carregarMinhasOfertasEnviadas(){
             const response =
                 await fetch(
                     "/api/offers/" +
-                    encodeURIComponent(offerId)
+                    encodeURIComponent(offerId) +
+                    "?email=" +
+                    encodeURIComponent(emailComprador)
                 );
 
             if(!response.ok){
@@ -7536,13 +7986,22 @@ function salvarEspacoTransferido(spaceId, token){
     load();
 }
 
-async function salvarBlocoTransferido(spaceId, token){
+async function salvarBlocoTransferido(spaceId, token, accessCode){
 
     await load();
 
     const bloco = blocoPorDono(spaceId);
 
     salvarTokens(bloco, token);
+
+    if(accessCode){
+
+        salvarAccessCodes(
+            bloco,
+            accessCode
+        );
+
+    }
 
     alert(
         bloco.length > 1
@@ -7594,11 +8053,25 @@ async function abrirPagamentoOferta(offerId){
 
     try{
 
+        const emailPagamento =
+            (function(){
+                try{
+                    return (
+                        localStorage.getItem(
+                            "mega_myEmail"
+                        ) || ""
+                    ).trim();
+                }catch(e){
+                    return "";
+                }
+            })();
+
         const response =
             await fetch(
                 "/api/offers/" +
                 encodeURIComponent(offerId) +
-                "/payment"
+                "/payment?email=" +
+                encodeURIComponent(emailPagamento)
             );
 
         const data =
@@ -7798,10 +8271,25 @@ async function espacosComOfertaNaoPaga(){
 
         try{
 
+            const emailOferecido =
+                (function(){
+                    try{
+                        return (
+                            localStorage.getItem(
+                                "mega_myEmail"
+                            ) || ""
+                        ).trim();
+                    }catch(e){
+                        return "";
+                    }
+                })();
+
             const response =
                 await fetch(
                     "/api/offers/" +
-                    encodeURIComponent(offerId)
+                    encodeURIComponent(offerId) +
+                    "?email=" +
+                    encodeURIComponent(emailOferecido)
                 );
 
             if(!response.ok)continue;

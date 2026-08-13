@@ -316,6 +316,11 @@ async function initBanco() {
         `);
 
         await pgPool.query(
+            "ALTER TABLE transacoes " +
+            "ADD COLUMN IF NOT EXISTS usuario_id INTEGER"
+        );
+
+        await pgPool.query(
             "CREATE INDEX IF NOT EXISTS " +
             "idx_transacoes_token ON transacoes(token)"
         );

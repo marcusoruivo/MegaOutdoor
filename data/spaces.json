@@ -1,1 +1,33 @@
-{}
+{
+  "933180": {
+    "id": 933180,
+    "status": "published",
+    "test": true,
+    "orderId": "TESTE-1786594026747",
+    "orderToken": "5223e7277f23b51f1b13c92d6f0ae457",
+    "accessCode": "MEGA-FCD3-D77E-B429-860B",
+    "name": "Comprador de Teste",
+    "email": "comprador.msqzycx7@teste.com",
+    "createdAt": "2026-08-13T04:07:06.747Z",
+    "image": "/uploads/space-933180.png",
+    "title": "Anunciante",
+    "publishedAt": "2026-08-13T04:07:08.330Z",
+    "displayMode": "individual",
+    "imageGroupSpaces": [
+      933180
+    ],
+    "transferPaymentId": "TESTE-PAY-1786594028413",
+    "transferredAt": "2026-08-13T04:07:08.416Z"
+  },
+  "933181": {
+    "id": 933181,
+    "status": "paid",
+    "test": true,
+    "orderId": "TESTE-1786594026747",
+    "orderToken": "608aeec867a1f29806bd43347a54cded",
+    "accessCode": "MEGA-CEB0-ED50-FB27-08EB",
+    "name": "Dona de Teste",
+    "email": "dona.msqzycx7@teste.com",
+    "createdAt": "2026-08-13T04:07:06.747Z"
+  }
+}

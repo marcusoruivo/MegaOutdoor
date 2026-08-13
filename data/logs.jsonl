@@ -1,0 +1,6 @@
+{"ts":"2026-08-13T04:07:06.244Z","evento":"usuario_cadastrado","usuarioId":1,"email":"dona.msqzycx7@teste.com"}
+{"ts":"2026-08-13T04:07:06.721Z","evento":"usuario_cadastrado","usuarioId":2,"email":"comprador.msqzycx7@teste.com"}
+{"ts":"2026-08-13T04:07:08.314Z","evento":"pedido_teste_criado","usuarioId":1,"orderId":"TESTE-1786594026747","espacos":2}
+{"ts":"2026-08-13T04:07:08.331Z","evento":"espaco_publicado","ids":[933180],"title":"Anunciante"}
+{"ts":"2026-08-13T04:07:08.418Z","evento":"transferencia_concluida","offerId":"OFR-1786594028351-8cl9f","espacos":1,"valor":100,"comissao":10}
+{"ts":"2026-08-13T04:07:10.036Z","evento":"bloco_anexado","usuarioId":2,"espaco":933180,"tipo":"access"}

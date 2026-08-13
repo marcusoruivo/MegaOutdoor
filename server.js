@@ -30,6 +30,8 @@ const PRODUCAO =
 const ALLOW_TEST_MODE =
     process.env.ALLOW_TEST_MODE === "true";
 
+const MAX_CREDITOS_INDICACAO = 4;
+
 const limiterGlobal = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 1000,
@@ -1940,7 +1942,20 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             const c = cupons[cupom.codigo];
             if (c) {
                 c.used = (c.used || 0) + 1;
-                c.credits = (c.credits || 0) + 1;
+
+                const totais = Object.values(cupons)
+                    .filter(x =>
+                        x.ownerEmail === cupom.ownerEmail
+                    )
+                    .reduce(
+                        (s, x) => s + (x.credits || 0),
+                        0
+                    );
+
+                if (totais < MAX_CREDITOS_INDICACAO) {
+                    c.credits = (c.credits || 0) + 1;
+                }
+
                 writeCoupons(cupons);
             }
         }
@@ -2002,6 +2017,15 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             creditoUsado: !!cupomCredito,
             indicacaoRegistrada:
                 !!(cupom && cupom.tipo === "indicacao"),
+            creditos: Object.values(readCoupons())
+                .filter(c =>
+                    c.tipo === "indicacao" &&
+                    c.ownerEmail === req.usuario.email
+                )
+                .reduce(
+                    (s, c) => s + (c.credits || 0),
+                    0
+                ),
             qrCode: pix.encodedImage,
             payload: pix.payload,
             meuCupom,
@@ -2208,7 +2232,20 @@ app.post("/api/test/reserve", authUsuario, async (req, res) => {
             const c = cupons[cupom.codigo];
             if (c) {
                 c.used = (c.used || 0) + 1;
-                c.credits = (c.credits || 0) + 1;
+
+                const totais = Object.values(cupons)
+                    .filter(x =>
+                        x.ownerEmail === cupom.ownerEmail
+                    )
+                    .reduce(
+                        (s, x) => s + (x.credits || 0),
+                        0
+                    );
+
+                if (totais < MAX_CREDITOS_INDICACAO) {
+                    c.credits = (c.credits || 0) + 1;
+                }
+
                 writeCoupons(cupons);
             }
         }
@@ -2240,7 +2277,16 @@ app.post("/api/test/reserve", authUsuario, async (req, res) => {
                         : 0,
             creditoUsado: !!cupomCredito,
             indicacaoRegistrada:
-                !!(cupom && cupom.tipo === "indicacao")
+                !!(cupom && cupom.tipo === "indicacao"),
+            creditos: Object.values(readCoupons())
+                .filter(c =>
+                    c.tipo === "indicacao" &&
+                    c.ownerEmail === req.usuario.email
+                )
+                .reduce(
+                    (s, c) => s + (c.credits || 0),
+                    0
+                )
         });
 
     } catch (error) {

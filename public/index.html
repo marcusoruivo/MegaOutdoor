@@ -5085,10 +5085,10 @@ async function testeSemPagamento(){
                 "/api/test/reserve",
                 {
                     method: "POST",
-                    headers:{
+                    headers: authHeaders({
                         "Content-Type":
                             "application/json"
-                    },
+                    }),
                     body: JSON.stringify({
                         spaces: [...sel],
                         name,

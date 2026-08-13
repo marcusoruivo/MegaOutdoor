@@ -1114,6 +1114,48 @@ LIMPAR
 </div>
 
 
+<div
+    id="sorteioBanner"
+    style="
+        display:none;
+        position:fixed;
+        left:50%;
+        transform:translateX(-50%);
+        top:92px;
+        z-index:8999;
+        background:linear-gradient(90deg,#ffd400,#ff9d00);
+        color:#111;
+        border-radius:10px;
+        padding:10px 16px;
+        box-shadow:0 6px 24px rgba(0,0,0,.45);
+        font-size:14px;
+        font-weight:bold;
+        align-items:center;
+        gap:10px;
+        cursor:pointer;
+        max-width:92%;
+    "
+    onclick="abrirPaginaSorteio()"
+>
+<span>🎲</span>
+<span id="sorteioBannerTexto">Sorteio semanal!</span>
+<button
+    onclick="fecharBannerSorteio(event)"
+    style="
+        background:rgba(0,0,0,.15);
+        border:0;
+        color:#111;
+        font-size:16px;
+        cursor:pointer;
+        line-height:1;
+        border-radius:50%;
+        width:22px;
+        height:22px;
+    "
+    title="Fechar">×</button>
+</div>
+
+
 <div class="painel">
 
 <h2>1 MILHÃO DE ESPAÇOS</h2>
@@ -9502,6 +9544,56 @@ async function salvarMinhaChavePix(){
 ========================= */
 
 updateBtnConta();
+carregarBannerSorteio();
+
+/* =========================
+   BANNER DE SORTEIO SEMANAL
+========================= */
+
+const LS_BANNER_SORTEIO = "mega_banner_sorteio";
+
+async function carregarBannerSorteio(){
+    try{
+
+        const resp = await fetch("/api/sorteio");
+        const data = await resp.json();
+
+        const aviso = data.aviso;
+        const banner = document.getElementById("sorteioBanner");
+
+        if(!aviso || !banner) return;
+
+        const fechado = sessionStorage.getItem(LS_BANNER_SORTEIO);
+        if(fechado === String(aviso.avisadoEm)) return;
+
+        const texto = document.getElementById("sorteioBannerTexto");
+        texto.textContent =
+            "SORTEIO DE " + aviso.valor +
+            (aviso.mensagem ? " — " + aviso.mensagem : "") +
+            "! Cada bloco = 1 bilhete. Boa sorte!";
+
+        banner.style.display = "flex";
+
+    }catch(error){
+        /* site funciona mesmo sem o banner */
+    }
+}
+
+function fecharBannerSorteio(event){
+    event.stopPropagation();
+    const banner = document.getElementById("sorteioBanner");
+    if(banner) banner.style.display = "none";
+    try{
+        sessionStorage.setItem(LS_BANNER_SORTEIO, "1");
+    }catch(error){}
+}
+
+function abrirPaginaSorteio(){
+    try{
+        sessionStorage.removeItem(LS_BANNER_SORTEIO);
+    }catch(error){}
+    window.open("/sorteio.html", "_blank");
+}
 
 </script>
 

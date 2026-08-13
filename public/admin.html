@@ -155,6 +155,7 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
         <button id="tabUsuarios" onclick="aba('usuarios')">👥 USUÁRIOS</button>
         <button id="tabLogs" onclick="aba('logs')">📜 LOGS</button>
         <button id="tabCupons" onclick="aba('cupons')">🎟️ CUPONS</button>
+        <button id="tabSorteio" onclick="aba('sorteio')">🎲 SORTEIO</button>
     </div>
 
     <main>
@@ -290,6 +291,49 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
             </div>
         </div>
 
+        <div id="viewSorteio" style="display:none;">
+            <div class="card">
+                <h3 style="color:#ffd400;margin-bottom:10px;">Realizar sorteio</h3>
+                <div class="toolbar">
+                    <input id="sorValorSorteio" placeholder="Valor do prêmio (ex: R$ 500)">
+                    <button onclick="sortearAgora()">🎲 SORTEAR GANHADOR</button>
+                    <button class="danger" onclick="limparUltimoSorteio()">🗑 APAGAR ÚLTIMO</button>
+                </div>
+                <div id="sorResultado" style="margin-top:10px;font-size:15px;"></div>
+            </div>
+
+            <div class="card">
+                <h3 style="color:#ffd400;margin-bottom:10px;">Aviso do sorteio (e-mail + banner no site)</h3>
+                <div class="toolbar">
+                    <input id="sorValorAviso" placeholder="Valor do prêmio (ex: R$ 500)">
+                    <input id="sorMensagem" placeholder="Mensagem (opcional)" style="flex:2;">
+                    <button onclick="avisarSorteio()">📧 AVISAR PARTICIPANTES</button>
+                    <button class="danger" onclick="removerAviso()">✖ REMOVER BANNER</button>
+                </div>
+                <div id="sorAvisoAtual" style="margin-top:10px;font-size:14px;color:#bbb;"></div>
+            </div>
+
+            <div class="card">
+                <h3 style="color:#ffd400;margin-bottom:10px;">Participantes</h3>
+                <div id="sorParticipantes" style="font-size:14px;color:#bbb;"></div>
+            </div>
+
+            <div class="card">
+                <h3 style="color:#ffd400;margin-bottom:10px;">Histórico de sorteios</h3>
+                <div style="overflow:auto;max-height:60vh;">
+                    <table id="sorTabela">
+                        <thead>
+                            <tr>
+                                <th>Data</th><th>Valor</th><th>Bloco</th>
+                                <th>Dono</th><th>E-mail</th><th>Bilhetes</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
     </main>
 </div>
 
@@ -358,7 +402,7 @@ function sairAdmin(){
 
 function aba(nome){
     abaAtual = nome;
-    for(const n of ["resumo","espacos","transacoes","usuarios","logs","cupons"]){
+    for(const n of ["resumo","espacos","transacoes","usuarios","logs","cupons","sorteio"]){
         const bt = document.getElementById("tab" + n.charAt(0).toUpperCase() + n.slice(1));
         const vw = document.getElementById("view" + n.charAt(0).toUpperCase() + n.slice(1));
         if(bt) bt.className = n === nome ? "ativa" : "";
@@ -370,6 +414,7 @@ function aba(nome){
     if(nome === "usuarios") carregarUsuarios();
     if(nome === "logs") carregarLogs();
     if(nome === "cupons") carregarCupons();
+    if(nome === "sorteio") carregarSorteio();
 }
 
 const fmtDin = (n) => "R$ " + Number(n || 0).toLocaleString("pt-BR", {minimumFractionDigits: 2});
@@ -623,6 +668,99 @@ async function removerCupom(codigo){
     try {
         await api("/api/admin/cupons/" + encodeURIComponent(codigo), { method: "DELETE" });
         carregarCupons();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function carregarSorteio(){
+    try {
+        const data = await api("/api/admin/sorteio");
+        const aviso = data.aviso;
+        document.getElementById("sorAvisoAtual").innerHTML = aviso ?
+            "Aviso ativo: <b>" + esc(aviso.valor) + "</b>" +
+            (aviso.mensagem ? " — " + esc(aviso.mensagem) : "") +
+            " <span class='fade'>(" + fmtData(aviso.avisadoEm) +
+            ", enviados: " + fmtNum(aviso.enviados) + ")</span>" :
+            "Nenhum aviso ativo no momento.";
+        document.getElementById("sorParticipantes").innerHTML =
+            "<b>" + fmtNum(data.totalBilhetes) + "</b> bilhetes " +
+            "(" + fmtNum(data.totalParticipantes) + " participantes com bloco ativo).";
+        const tbody = document.querySelector("#sorTabela tbody");
+        tbody.innerHTML = data.historico.map(r =>
+            "<tr>" +
+            "<td class='fade'>" + fmtData(r.sorteadoEm) + "</td>" +
+            "<td><b>" + esc(r.valor) + "</b></td>" +
+            "<td>" + esc(r.bloco) + "</td>" +
+            "<td>" + esc(r.dono) + "</td>" +
+            "<td class='fade'>" + esc(r.email) + "</td>" +
+            "<td class='fade'>" + fmtNum(r.totalBilhetes) + "</td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='6' class='fade'>Nenhum sorteio realizado.</td></tr>";
+        document.getElementById("sorResultado").innerHTML = "";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function sortearAgora(){
+    const valor = document.getElementById("sorValorSorteio").value.trim();
+    if(!valor){ alert("Informe o valor do prêmio do sorteio."); return; }
+    if(!confirm("Sortear o ganhador com prêmio de " + valor + "?")) return;
+    try {
+        const r = await api("/api/admin/sorteio/sortear", {
+            method: "POST",
+            body: JSON.stringify({ valor })
+        });
+        const g = r.registro;
+        document.getElementById("sorResultado").innerHTML =
+            "🏆 <b style='color:#ffd400;font-size:17px;'>GANHADOR:</b> " +
+            esc(g.dono) + " (" + esc(g.email) + ") " +
+            "— bloco <b>" + esc(g.bloco) + "</b> — prêmio " +
+            "<b>" + esc(g.valor) + "</b>.";
+        document.getElementById("sorValorSorteio").value = "";
+        carregarSorteio();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function limparUltimoSorteio(){
+    if(!confirm("Apagar o último sorteio do histórico?")) return;
+    try {
+        await api("/api/admin/sorteio", {
+            method: "DELETE",
+            body: JSON.stringify({ ultimo: true })
+        });
+        carregarSorteio();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function avisarSorteio(){
+    const valor = document.getElementById("sorValorAviso").value.trim();
+    const mensagem = document.getElementById("sorMensagem").value.trim();
+    if(!valor){ alert("Informe o valor do prêmio do aviso."); return; }
+    try {
+        const r = await api("/api/admin/sorteio/aviso", {
+            method: "POST",
+            body: JSON.stringify({ valor, mensagem })
+        });
+        alert("Aviso enviado para " + fmtNum(r.destinatarios) +
+            " e-mails (" + fmtNum(r.enviados) + " enviados).");
+        document.getElementById("sorValorAviso").value = "";
+        document.getElementById("sorMensagem").value = "";
+        carregarSorteio();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function removerAviso(){
+    try {
+        await api("/api/admin/sorteio/aviso", { method: "DELETE" });
+        carregarSorteio();
     } catch(err){
         alert("Erro: " + err.message);
     }

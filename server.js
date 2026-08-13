@@ -96,6 +96,7 @@ const PIXKEYS_FILE = path.join(DATA_DIR, "pixkeys.json");
 const CHAT_FILE = path.join(DATA_DIR, "chat.json");
 const CHAT_NEGOC_FILE = path.join(DATA_DIR, "chat-negociacao.json");
 const LOGS_FILE = path.join(DATA_DIR, "logs.jsonl");
+const SORTEIOS_FILE = path.join(DATA_DIR, "sorteios.json");
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -615,6 +616,33 @@ function readPixKeys() {
 
 function writePixKeys(data) {
     writeJsonFile(PIXKEYS_FILE, data);
+}
+
+/* =========================
+   SORTEIO SEMANAL
+========================= */
+
+function readSorteios() {
+    return readJsonFile(SORTEIOS_FILE, {
+        aviso: null,
+        historico: []
+    });
+}
+
+function writeSorteios(data) {
+    writeJsonFile(SORTEIOS_FILE, data);
+}
+
+function blocosParticipantesSorteio() {
+    const db = readDB();
+
+    return Object.values(db).filter(b =>
+        (b.status === "paid" ||
+            b.status === "published") &&
+        !b.test &&
+        typeof b.email === "string" &&
+        b.email.includes("@")
+    );
 }
 
 function gerarToken() {
@@ -5669,6 +5697,230 @@ app.delete("/api/admin/cupons/:codigo", authAdmin, (req, res) => {
 
     res.json({ ok: true });
 });
+
+/* =========================
+   SORTEIO SEMANAL
+========================= */
+
+app.get("/api/sorteio", (req, res) => {
+
+    const s = readSorteios();
+    const participantes = blocosParticipantesSorteio();
+
+    const emails = new Set(
+        participantes.map(b => b.email.trim().toLowerCase())
+    );
+
+    const ultimoGanhador = (s.historico || [])[0] || null;
+
+    if (ultimoGanhador) {
+        delete ultimoGanhador.email;
+    }
+
+    res.json({
+        ok: true,
+        aviso: s.aviso || null,
+        ultimoGanhador,
+        totalParticipantes: emails.size,
+        totalBilhetes: participantes.length
+    });
+});
+
+app.get("/api/admin/sorteio", authAdmin, (req, res) => {
+
+    const s = readSorteios();
+    const participantes = blocosParticipantesSorteio();
+
+    const emails = new Set(
+        participantes.map(b => b.email.trim().toLowerCase())
+    );
+
+    res.json({
+        ok: true,
+        aviso: s.aviso || null,
+        historico: s.historico || [],
+        totalParticipantes: emails.size,
+        totalBilhetes: participantes.length
+    });
+});
+
+app.post("/api/admin/sorteio/sortear", authAdmin, async (req, res) => {
+
+    const valor = String(req.body.valor || "").trim();
+
+    if (!valor) {
+        return res.status(400).json({
+            error: "Informe o valor do prêmio do sorteio."
+        });
+    }
+
+    const participantes = blocosParticipantesSorteio();
+
+    if (participantes.length === 0) {
+        return res.status(400).json({
+            error: "Nenhum bloco participante disponível."
+        });
+    }
+
+    const vencedor =
+        participantes[Math.floor(
+            Math.random() * participantes.length
+        )];
+
+    const s = readSorteios();
+    s.historico = s.historico || [];
+    s.aviso = null;
+
+    const registro = {
+        id:
+            "SOR-" +
+            Date.now().toString(36).toUpperCase(),
+        sorteadoEm: new Date().toISOString(),
+        valor,
+        bloco: vencedor.id,
+        dono: vencedor.name || "—",
+        email: vencedor.email || "",
+        totalBilhetes: participantes.length,
+        totalParticipantes: new Set(
+            participantes.map(b => b.email.trim().toLowerCase())
+        ).size
+    };
+
+    s.historico.unshift(registro);
+
+    writeSorteios(s);
+
+    registrarLog("sorteio_realizado", {
+        bloco: vencedor.id,
+        email: vencedor.email,
+        valor
+    });
+
+    res.json({ ok: true, registro });
+});
+
+app.post("/api/admin/sorteio/aviso", authAdmin, async (req, res) => {
+
+    const valor = String(req.body.valor || "").trim();
+    const mensagem =
+        String(req.body.mensagem || "").trim();
+
+    if (!valor) {
+        return res.status(400).json({
+            error: "Informe o valor do prêmio do aviso."
+        });
+    }
+
+    const s = readSorteios();
+
+    s.aviso = {
+        valor,
+        mensagem:
+            mensagem ||
+            "Sorteio de valor em blocos do Mega Outdoor!",
+        avisadoEm: new Date().toISOString(),
+        enviados: 0
+    };
+
+    const participantes = blocosParticipantesSorteio();
+
+    const emails = [
+        ...new Set(
+            participantes.map(b => b.email.trim().toLowerCase())
+        )
+    ];
+
+    let enviados = 0;
+
+    for (const email of emails) {
+
+        const ok = await enviarEmail(
+            email,
+            "🎲 Sorteio de " + valor +
+                " no Mega Outdoor!",
+            gerarHtmlAvisoSorteio(
+                valor,
+                s.aviso.mensagem,
+                email
+            )
+        );
+
+        if (ok) enviados++;
+    }
+
+    s.aviso.enviados = enviados;
+
+    writeSorteios(s);
+
+    registrarLog("sorteio_aviso", {
+        valor,
+        destinatarios: emails.length,
+        enviados
+    });
+
+    res.json({
+        ok: true,
+        aviso: s.aviso,
+        destinatarios: emails.length,
+        enviados
+    });
+});
+
+app.delete("/api/admin/sorteio/aviso", authAdmin, (req, res) => {
+
+    const s = readSorteios();
+    s.aviso = null;
+    writeSorteios(s);
+
+    registrarLog("sorteio_aviso_removido", {});
+
+    res.json({ ok: true });
+});
+
+app.delete("/api/admin/sorteio", authAdmin, (req, res) => {
+
+    const s = readSorteios();
+    s.historico = s.historico || [];
+
+    if (s.historico.length === 0) {
+        return res.status(404).json({
+            error: "Nenhum sorteio no histórico."
+        });
+    }
+
+    const removido = s.historico.shift();
+
+    writeSorteios(s);
+
+    registrarLog("sorteio_removido", {
+        id: removido.id,
+        bloco: removido.bloco
+    });
+
+    res.json({ ok: true });
+});
+
+function gerarHtmlAvisoSorteio(valor, mensagem, email) {
+    return (
+        "<div style='font-family:Arial,Helvetica,sans-serif;" +
+        "max-width:600px;margin:0 auto;padding:20px;" +
+        "background:#111;color:#eee;border-radius:8px;'>" +
+        "<h2 style='color:#ffd400;margin-top:0;'>🎲 " +
+        "Sorteio " + valor + "</h2>" +
+        "<p style='font-size:16px;line-height:1.6;'>" +
+        mensagem.replace(/</g, "&lt;") +
+        "</p>" +
+        "<p style='font-size:15px;line-height:1.6;'>" +
+        "Cada bloco comprado vale <b>1 bilhete</b> no " +
+        "sorteio. Quanto mais blocos, mais chances! " +
+        "Boa sorte!</p>" +
+        "<hr style='border-color:#333;'>" +
+        "<p style='font-size:13px;color:#888;'>" +
+        "Você está recebendo este e-mail por ter blocos " +
+        "ativos no Mega Outdoor (" + email + ").</p>" +
+        "</div>"
+    );
+}
 
 /* =========================
    404 JSON PARA /api

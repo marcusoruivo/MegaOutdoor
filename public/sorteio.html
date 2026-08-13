@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sorteio — Mega Outdoor</title>
+<meta name="theme-color" content="#050505">
+<style>
+*{box-sizing:border-box}
+html,body{
+    margin:0;
+    min-height:100%;
+    background:#050505;
+    color:#fff;
+    font-family:Arial,Helvetica,sans-serif;
+}
+body{
+    padding:32px 16px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+.card{
+    width:100%;
+    max-width:620px;
+    background:#111;
+    border:1px solid #292929;
+    border-radius:14px;
+    padding:28px;
+    box-shadow:0 10px 40px rgba(0,0,0,.5);
+}
+.logo img{
+    width:220px;
+    max-width:100%;
+    display:block;
+    margin:0 auto 18px;
+}
+h1{
+    text-align:center;
+    margin:0 0 6px;
+    font-size:24px;
+    color:#ffd400;
+    text-transform:uppercase;
+}
+.sub{
+    text-align:center;
+    color:#999;
+    font-size:14px;
+    margin:0 0 24px;
+}
+.status{
+    text-align:center;
+    padding:22px 10px;
+    border:1px dashed #333;
+    border-radius:12px;
+    color:#aaa;
+    font-size:15px;
+    line-height:1.7;
+}
+.ganhador{
+    text-align:center;
+    padding:26px 12px;
+    background:linear-gradient(180deg,#1a1a1a,#111);
+    border:1px solid #ffd400;
+    border-radius:12px;
+    margin-bottom:16px;
+}
+.ganhador .trofeu{
+    font-size:44px;
+}
+.ganhador .valor{
+    font-size:30px;
+    font-weight:900;
+    color:#ffd400;
+    margin:8px 0 4px;
+}
+.ganhador .dono{
+    font-size:20px;
+    font-weight:bold;
+}
+.ganhador .bloco{
+    font-size:16px;
+    color:#fff;
+    margin-top:4px;
+}
+.ganhador .data{
+    font-size:13px;
+    color:#999;
+    margin-top:8px;
+}
+.meta{
+    display:flex;
+    justify-content:center;
+    gap:24px;
+    margin-top:18px;
+    color:#bbb;
+    font-size:13px;
+    text-align:center;
+}
+.meta b{
+    display:block;
+    font-size:18px;
+    color:#fff;
+}
+.link-voltar{
+    display:block;
+    text-align:center;
+    margin-top:20px;
+    color:#ffd400;
+    font-weight:bold;
+    text-decoration:none;
+    font-size:14px;
+}
+.rodape{
+    margin-top:22px;
+    color:#555;
+    font-size:12px;
+    text-align:center;
+}
+</style>
+</head>
+<body>
+
+<div class="card">
+
+<div class="logo">
+    <img src="/logo-milhao-door.png" alt="Mega Outdoor">
+</div>
+
+<h1>🎲 Sorteio</h1>
+<p class="sub">A cada semana, um ganhador de verdade!</p>
+
+<div id="conteudo">
+    <div class="status">Carregando…</div>
+</div>
+
+</div>
+
+<a class="link-voltar" href="/">← Voltar para o site</a>
+
+<p class="rodape">Cada bloco comprado vale 1 bilhete no sorteio. Quanto mais blocos, mais chances!</p>
+
+<script>
+const fmtData = (d) => d ? new Date(d).toLocaleString("pt-BR") : "—";
+const fmtNum = (n) => Number(n || 0).toLocaleString("pt-BR");
+
+async function carregar(){
+    const caixa = document.getElementById("conteudo");
+
+    try{
+
+        const resp = await fetch("/api/sorteio");
+        const data = await resp.json();
+        const g = data.ultimoGanhador;
+        const aviso = data.aviso;
+
+        if(g){
+
+            caixa.innerHTML =
+                '<div class="ganhador">' +
+                '<div class="trofeu">🏆</div>' +
+                '<div class="valor">' + esc(g.valor) + '</div>' +
+                '<div class="dono">' + esc(g.dono) + '</div>' +
+                '<div class="bloco">Bloco #' + esc(g.bloco) + '</div>' +
+                '<div class="data">Sorteado em ' +
+                fmtData(g.sorteadoEm) + '</div>' +
+                '</div>' +
+                '<div class="meta">' +
+                '<div><b>' + fmtNum(g.totalBilhetes) + '</b>bilhetes</div>' +
+                '<div><b>' + fmtNum(g.totalParticipantes) + '</b>participantes</div>' +
+                '<div><b>' + fmtNum(data.totalParticipantes) + '</b>próximo sorteio</div>' +
+                '</div>' +
+                (aviso
+                    ? '<p class="status" style="margin-top:16px;">🎲 Próximo sorteio: ' +
+                      esc(aviso.valor) + '!</p>'
+                    : '');
+
+        }else if(aviso){
+
+            caixa.innerHTML =
+                '<div class="status">🎲 Sorteio de ' +
+                esc(aviso.valor) +
+                ' em andamento!' +
+                (aviso.mensagem ? '<br>' + esc(aviso.mensagem) : '') +
+                '<br>O ganhador será anunciado em breve.</div>';
+
+        }else{
+
+            caixa.innerHTML =
+                '<div class="status">Nenhum sorteio realizado ainda.<br>' +
+                'Acompanhe o site para o próximo sorteio!</div>';
+
+        }
+
+    }catch(err){
+
+        caixa.innerHTML =
+            '<div class="status">Não foi possível carregar os dados do sorteio.</div>';
+
+    }
+}
+
+function esc(s){
+    return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+carregar();
+</script>
+
+</body>
+</html>

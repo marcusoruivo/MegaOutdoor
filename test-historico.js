@@ -1,6 +1,7 @@
 /* =========================================================
-   TESTE DE HOMOLOGAÇÃO — CICLO COMPLETO DO HISTÓRICO
-   Compra -> Venda (transferência) -> Extrato individual
+   TESTE DE HOMOLOGAÇÃO — CICLO COMPLETO DO HISTÓRICO + CONTAS
+   Cadastro/login -> Compra -> Venda (transferência)
+   -> Extrato individual -> Exportação PDF/CSV
 
    Requer o servidor rodando com:
      - ALLOW_TEST_MODE=true  (nunca em produção)
@@ -34,9 +35,29 @@ async function reqJson(url, opts) {
     try {
         body = JSON.parse(texto);
     } catch (e) {
-        body = { raw: texto };
+        body = { raw: texto.slice(0, 120) };
     }
     return { r, body };
+}
+
+async function registrarConta(nome, email) {
+    const { r, body } = await reqJson(
+        BASE + "/api/auth/registrar",
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                nome,
+                email,
+                senha: "senha-teste-123"
+            })
+        }
+    );
+    return { r, body };
+}
+
+function authH(token) {
+    return { "Authorization": "Bearer " + token };
 }
 
 const PNG_1x1 = Buffer.from(
@@ -61,21 +82,63 @@ const PNG_1x1 = Buffer.from(
         "comprador." + rodada + "@teste.com";
 
     /* -------------------------------------------------
-       1) COMPRA (modo teste) — 2 espaços
+       0) CONTAS dos dois usuários
     ------------------------------------------------- */
 
-    let { r, body } = await reqJson(
+    let { r, body } =
+        await registrarConta("Dona de Teste", donaEmail);
+
+    t(
+        "0a. conta da dona criada",
+        r.ok && !!body.token && body.usuario.email === donaEmail,
+        "usuario=" + (body.usuario ? body.usuario.id : "SEM")
+    );
+
+    const tokenDonaConta = body.token;
+
+    let r2 =
+        await registrarConta("Comprador de Teste", compradorEmail);
+
+    t(
+        "0b. conta do comprador criada",
+        r2.r.ok && !!r2.body.token
+    );
+
+    const tokenCompradorConta = r2.body.token;
+
+    ({ r, body } = await reqJson(
         BASE + "/api/test/reserve",
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ spaces: [s1] })
+        }
+    ));
+
+    t(
+        "0c. reserve sem login -> 401",
+        r.status === 401
+    );
+
+    /* -------------------------------------------------
+       1) COMPRA (modo teste) — 2 espaços, com login
+    ------------------------------------------------- */
+
+    ({ r, body } = await reqJson(
+        BASE + "/api/test/reserve",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...authH(tokenDonaConta)
+            },
             body: JSON.stringify({
                 spaces: [s1, s2],
                 name: "Dona de Teste",
                 email: donaEmail
             })
         }
-    );
+    ));
 
     t(
         "1. compra criada (test/reserve)",
@@ -155,6 +218,28 @@ const PNG_1x1 = Buffer.from(
     );
 
     const tokenNovoDono = body.newOwnerToken;
+    const accessNovoDono = body.newOwnerAccessCode;
+
+    /* -------------------------------------------------
+       4b) NOVO DONO anexa o bloco à conta dele
+    ------------------------------------------------- */
+
+    ({ r, body } = await reqJson(
+        BASE + "/api/auth/anexar",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...authH(tokenCompradorConta)
+            },
+            body: JSON.stringify({ accessCode: accessNovoDono })
+        }
+    ));
+
+    t(
+        "4b. novo dono anexou o bloco à conta",
+        r.ok && body.ok === true
+    );
 
     /* -------------------------------------------------
        5) EXTRATO DA DONA ORIGINAL
@@ -267,6 +352,43 @@ const PNG_1x1 = Buffer.from(
     );
 
     /* -------------------------------------------------
+       7c) CONTA (JWT) enxerga as próprias transações
+    ------------------------------------------------- */
+
+    ({ r, body } = await reqJson(
+        BASE + "/api/historico",
+        { headers: authH(tokenCompradorConta) }
+    ));
+
+    t(
+        "7c. conta do comprador vê a compra via JWT",
+        r.ok &&
+            (body.transacoes || []).some(x =>
+                x.tipo === "compra" &&
+                (x.espacos || []).includes(s1)
+            ),
+        "total=" + (body.total ?? "SEM")
+    );
+
+    /* -------------------------------------------------
+       7d) MINHA CONTA (me) lista os blocos
+    ------------------------------------------------- */
+
+    ({ r, body } = await reqJson(
+        BASE + "/api/auth/me",
+        { headers: authH(tokenCompradorConta) }
+    ));
+
+    t(
+        "7d. me: conta lista o bloco anexado",
+        r.ok &&
+            body.ok === true &&
+            (body.espacos || []).some(e => e.id === s1) &&
+            body.usuario.email === compradorEmail,
+        "espacos=" + JSON.stringify((body.espacos || []).map(e => e.id))
+    );
+
+    /* -------------------------------------------------
        8) SEGURANÇA do endpoint
     ------------------------------------------------- */
 
@@ -301,6 +423,43 @@ const PNG_1x1 = Buffer.from(
                 x.tipo === "compra" &&
                 (x.espacos || []).includes(s2)
             )
+    );
+
+    /* -------------------------------------------------
+       9) EXPORTAÇÃO do extrato
+    ------------------------------------------------- */
+
+    ({ r, body } = await reqJson(
+        BASE + "/api/extrato/export?formato=csv",
+        { headers: authH(tokenCompradorConta) }
+    ));
+
+    t(
+        "9a. extrato CSV exportado (conta)",
+        r.ok &&
+            (r.headers.get("content-type") || "").includes("text/csv"),
+        "bytes=" + (r.ok ? r.headers.get("content-length") : "ERR")
+    );
+
+    ({ r, body } = await reqJson(
+        BASE + "/api/extrato/export?formato=pdf",
+        { headers: authH(tokenCompradorConta) }
+    ));
+
+    t(
+        "9b. extrato PDF exportado (conta)",
+        r.ok &&
+            (r.headers.get("content-type") || "").includes("application/pdf"),
+        "bytes=" + (r.ok ? r.headers.get("content-length") : "ERR")
+    );
+
+    ({ r, body } = await reqJson(
+        BASE + "/api/extrato/export?formato=csv"
+    ));
+
+    t(
+        "9c. extrato sem identificação -> 400",
+        r.status === 400
     );
 
     /* -------------------------------------------------

@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Milhão Door</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+    background:#0a0a0a;
+    color:#eaeaea;
+    font-family:Segoe UI,Arial,sans-serif;
+    font-size:14px;
+}
+header{
+    background:#111;
+    border-bottom:1px solid #2a2a2a;
+    padding:14px 20px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
+}
+header h1{color:#ffd400;font-size:18px;font-weight:900;}
+header span{color:#888;font-size:12px;}
+button{
+    background:#ffd400;
+    color:#111;
+    border:0;
+    border-radius:8px;
+    padding:8px 14px;
+    font-weight:800;
+    font-size:12px;
+    cursor:pointer;
+}
+button.sec{background:#222;color:#ddd;border:1px solid #333;}
+button.danger{background:#7a1f1f;color:#fff;}
+button:hover{filter:brightness(1.1);}
+input,select{
+    background:#111;
+    color:#fff;
+    border:1px solid #333;
+    border-radius:8px;
+    padding:8px 10px;
+    font-size:13px;
+    outline:none;
+}
+input:focus,select:focus{border-color:#ffd400;}
+table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:12px;
+}
+th{
+    text-align:left;
+    background:#111;
+    color:#ffd400;
+    padding:8px;
+    border-bottom:1px solid #333;
+    position:sticky;
+    top:0;
+}
+td{
+    padding:7px 8px;
+    border-bottom:1px solid #1e1e1e;
+    vertical-align:top;
+    word-break:break-word;
+}
+tr:hover td{background:#141414;}
+.pill{
+    display:inline-block;
+    padding:2px 8px;
+    border-radius:20px;
+    font-size:10px;
+    font-weight:800;
+    text-transform:uppercase;
+}
+.pill.sold{background:#1b3a2a;color:#45d66f;}
+.pill.reserved{background:#3a2f1b;color:#ffd400;}
+.pill.available{background:#1a1a1a;color:#aaa;}
+.pill.paid{background:#1b3a2a;color:#45d66f;}
+.pill.published{background:#0f3a4a;color:#4dc3ff;}
+.pill.pendente{background:#3a2f1b;color:#ffd400;}
+.pill.pago{background:#1b3a2a;color:#45d66f;}
+.card{
+    background:#141414;
+    border:1px solid #242424;
+    border-radius:10px;
+    padding:16px;
+    margin-bottom:16px;
+}
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:10px;
+    margin-bottom:16px;
+}
+.metric{
+    background:#141414;
+    border:1px solid #242424;
+    border-radius:10px;
+    padding:14px;
+    text-align:center;
+}
+.metric b{display:block;font-size:24px;color:#ffd400;font-weight:900;}
+.metric span{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.4px;}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;}
+.toolbar input{flex:1;min-width:180px;}
+main{padding:20px;}
+.tabbar{display:flex;gap:6px;padding:12px 20px 0;flex-wrap:wrap;}
+.tabbar button{background:#1a1a1a;color:#ccc;border:1px solid #2c2c2c;}
+.tabbar button.ativa{background:#ffd400;color:#111;}
+#login{
+    max-width:360px;
+    margin:90px auto;
+    background:#111;
+    border:1px solid #2a2a2a;
+    border-radius:14px;
+    padding:26px;
+}
+#login h2{color:#ffd400;margin-bottom:16px;font-size:20px;}
+#login input{width:100%;margin-bottom:10px;}
+#loginMsg{color:#ff6b6b;font-size:12px;min-height:16px;margin-top:8px;}
+.mono{font-family:Consolas,monospace;font-size:11px;color:#bbb;}
+.fade{color:#888;}
+img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px solid #333;display:block;}
+.badge-count{background:#222;border-radius:10px;padding:2px 8px;font-size:11px;color:#ccc;margin-left:6px;}
+.paginacao{display:flex;gap:8px;margin-top:12px;align-items:center;font-size:12px;color:#888;}
+</style>
+</head>
+<body>
+
+<header>
+    <h1>⚙️ PAINEL ADMIN — MILHÃO DOOR</h1>
+    <span id="adminInfo"></span>
+    <button class="sec" onclick="sairAdmin()">🚪 SAIR</button>
+</header>
+
+<div id="login" style="display:none;">
+    <h2>🔐 Acesso do administrador</h2>
+    <input id="admUser" placeholder="Usuário admin" autocomplete="username">
+    <input id="admPass" type="password" placeholder="Senha" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')loginAdmin()">
+    <button onclick="loginAdmin()" style="width:100%;">ENTRAR</button>
+    <div id="loginMsg"></div>
+</div>
+
+<div id="app" style="display:none;">
+
+    <div class="tabbar">
+        <button id="tabResumo" class="ativa" onclick="aba('resumo')">📊 RESUMO</button>
+        <button id="tabEspacos" onclick="aba('espacos')">🧩 ESPAÇOS</button>
+        <button id="tabTransacoes" onclick="aba('transacoes')">💰 TRANSAÇÕES</button>
+        <button id="tabUsuarios" onclick="aba('usuarios')">👥 USUÁRIOS</button>
+        <button id="tabLogs" onclick="aba('logs')">📜 LOGS</button>
+        <button id="tabCupons" onclick="aba('cupons')">🎟️ CUPONS</button>
+    </div>
+
+    <main>
+
+        <div id="viewResumo">
+            <div class="grid" id="resumoCards"></div>
+            <div class="card">
+                <h3 style="color:#ffd400;margin-bottom:10px;">Status dos espaços</h3>
+                <div id="resumoStatus"></div>
+            </div>
+        </div>
+
+        <div id="viewEspacos" style="display:none;">
+            <div class="card">
+                <div class="toolbar">
+                    <input id="espBusca" placeholder="Buscar por número, nome, e-mail, título, pedido, token ou código de acesso"
+                        onkeydown="if(event.key==='Enter')carregarEspacos()">
+                    <select id="espStatus" onchange="carregarEspacos()">
+                        <option value="">Todos os status</option>
+                        <option value="reserved">reserved</option>
+                        <option value="paid">paid</option>
+                        <option value="published">published</option>
+                    </select>
+                    <button onclick="carregarEspacos()">BUSCAR</button>
+                </div>
+                <div style="overflow:auto;max-height:70vh;">
+                    <table id="espTabela">
+                        <thead>
+                            <tr>
+                                <th>#</th><th>Status</th><th>Foto</th><th>Título</th>
+                                <th>Link</th><th>Nome/E-mail</th><th>Pedido</th>
+                                <th>Token</th><th>Código</th><th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="paginacao" id="espPag"></div>
+            </div>
+        </div>
+
+        <div id="viewTransacoes" style="display:none;">
+            <div class="card">
+                <div class="toolbar">
+                    <input id="trBusca" placeholder="Buscar por pedido, nome, e-mail, código de acesso ou espaço"
+                        onkeydown="if(event.key==='Enter')carregarTransacoes()">
+                    <select id="trTipo" onchange="carregarTransacoes()">
+                        <option value="">Todos os tipos</option>
+                        <option value="compra">compra</option>
+                        <option value="venda">venda</option>
+                    </select>
+                    <select id="trStatus" onchange="carregarTransacoes()">
+                        <option value="">Todos os status</option>
+                        <option value="pago">pago</option>
+                        <option value="pendente">pendente</option>
+                    </select>
+                    <button onclick="carregarTransacoes()">BUSCAR</button>
+                </div>
+                <div style="overflow:auto;max-height:70vh;">
+                    <table id="trTabela">
+                        <thead>
+                            <tr>
+                                <th>ID</th><th>Data</th><th>Tipo</th><th>Espaços</th>
+                                <th>Qtd</th><th>Valor</th><th>Comissão</th><th>Status</th>
+                                <th>Nome/E-mail</th><th>Pedido</th><th>Usuário</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="paginacao" id="trPag"></div>
+            </div>
+        </div>
+
+        <div id="viewUsuarios" style="display:none;">
+            <div class="card">
+                <div style="overflow:auto;max-height:70vh;">
+                    <table id="usTabela">
+                        <thead>
+                            <tr>
+                                <th>ID</th><th>Nome</th><th>E-mail</th>
+                                <th>Criado em</th><th>Último login</th><th>Blocos</th><th>Transações</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="viewLogs" style="display:none;">
+            <div class="card">
+                <div class="toolbar">
+                    <input id="logBusca" placeholder="Buscar nos logs"
+                        onkeydown="if(event.key==='Enter')carregarLogs()">
+                    <select id="logEvento" onchange="carregarLogs()">
+                        <option value="">Todos os eventos</option>
+                    </select>
+                    <button onclick="carregarLogs()">BUSCAR</button>
+                    <button class="danger" onclick="limparLogs()">🗑 LIMPAR LOGS</button>
+                </div>
+                <div style="overflow:auto;max-height:70vh;">
+                    <table id="logTabela">
+                        <thead>
+                            <tr><th>Quando</th><th>Evento</th><th>Detalhes</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="viewCupons" style="display:none;">
+            <div class="card">
+                <h3 style="color:#ffd400;margin-bottom:10px;">Criar cupom de indicação</h3>
+                <div class="toolbar">
+                    <input id="cupCodigo" placeholder="Código (ex: PROMO10)">
+                    <input id="cupPct" type="number" min="1" max="99" placeholder="Desconto %">
+                    <input id="cupMax" type="number" min="1" placeholder="Máx. usos (100)">
+                    <button onclick="salvarCupom()">SALVAR</button>
+                </div>
+                <div style="overflow:auto;max-height:60vh;">
+                    <table id="cupTabela">
+                        <thead>
+                            <tr>
+                                <th>Código</th><th>Desconto</th><th>Usos</th>
+                                <th>Máx</th><th>Ativo</th><th>Criado</th><th>Dono</th><th></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+const LS = "mega_admin_token";
+let token = localStorage.getItem(LS) || null;
+let abaAtual = "resumo";
+
+function reqJSON(resp){
+    return resp.json().catch(() => ({}));
+}
+
+function authH(){
+    return { "Authorization": "Bearer " + token };
+}
+
+async function api(url, opts){
+    const resp = await fetch(url, {
+        ...(opts || {}),
+        headers: {
+            ...(opts && opts.body ? { "Content-Type": "application/json" } : {}),
+            ...authH()
+        }
+    });
+    const data = await reqJSON(resp);
+    if(!resp.ok){
+        throw new Error(data.error || ("HTTP " + resp.status));
+    }
+    return data;
+}
+
+function loginAdmin(){
+    const msg = document.getElementById("loginMsg");
+    fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            usuario: document.getElementById("admUser").value,
+            senha: document.getElementById("admPass").value
+        })
+    }).then(reqJSON).then(data => {
+        if(!data.ok){
+            msg.textContent = data.error || "Credenciais inválidas.";
+            return;
+        }
+        token = data.token;
+        localStorage.setItem(LS, token);
+        entrar();
+    }).catch(() => {
+        msg.textContent = "Erro de conexão.";
+    });
+}
+
+function entrar(){
+    document.getElementById("login").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    aba("resumo");
+}
+
+function sairAdmin(){
+    token = null;
+    localStorage.removeItem(LS);
+    document.getElementById("login").style.display = "block";
+    document.getElementById("app").style.display = "none";
+}
+
+function aba(nome){
+    abaAtual = nome;
+    for(const n of ["resumo","espacos","transacoes","usuarios","logs","cupons"]){
+        const bt = document.getElementById("tab" + n.charAt(0).toUpperCase() + n.slice(1));
+        const vw = document.getElementById("view" + n.charAt(0).toUpperCase() + n.slice(1));
+        if(bt) bt.className = n === nome ? "ativa" : "";
+        if(vw) vw.style.display = n === nome ? "block" : "none";
+    }
+    if(nome === "resumo") carregarResumo();
+    if(nome === "espacos") carregarEspacos();
+    if(nome === "transacoes") carregarTransacoes();
+    if(nome === "usuarios") carregarUsuarios();
+    if(nome === "logs") carregarLogs();
+    if(nome === "cupons") carregarCupons();
+}
+
+const fmtDin = (n) => "R$ " + Number(n || 0).toLocaleString("pt-BR", {minimumFractionDigits: 2});
+const fmtNum = (n) => Number(n || 0).toLocaleString("pt-BR");
+const fmtData = (d) => d ? new Date(d).toLocaleString("pt-BR") : "—";
+
+async function carregarResumo(){
+    try {
+        const [resumo, trans, usuarios] = await Promise.all([
+            api("/api/admin/resumo"),
+            api("/api/admin/transacoes?limite=1").catch(() => null),
+            api("/api/admin/usuarios").catch(() => null)
+        ]);
+
+        let pago = 0;
+        let totalTrans = 0;
+        if(trans){
+            const tr = await api("/api/admin/transacoes?status=pago&limite=500");
+            pago = tr.transacoes.reduce((s,t) => s + Number(t.valorTotal), 0);
+        }
+
+        const cards = [
+            ["Vendidos", fmtNum(resumo.sold)],
+            ["Reservados", fmtNum(resumo.reserved)],
+            ["Disponíveis", fmtNum(resumo.disponiveis)],
+            ["Receita bruta", fmtDin(pago)],
+            ["Usuários", fmtNum(usuarios ? usuarios.total : 0)],
+            ["Transações", fmtNum(trans ? trans.total : 0)]
+        ];
+
+        document.getElementById("resumoCards").innerHTML =
+            cards.map(([l,v]) =>
+                "<div class='metric'><b>" + v + "</b><span>" + l + "</span></div>"
+            ).join("");
+
+        const status = resumo.porStatus || {};
+        document.getElementById("resumoStatus").innerHTML =
+            Object.keys(status).map(s =>
+                "<div style='display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e1e1e;'>" +
+                "<span class='pill " + s + "'>" + s + "</span>" +
+                "<b>" + fmtNum(status[s]) + "</b></div>"
+            ).join("") ||
+            "<div class='fade'>Nenhum espaço ainda.</div>";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function carregarEspacos(offset){
+    const busca = document.getElementById("espBusca").value.trim();
+    const status = document.getElementById("espStatus").value;
+    try {
+        const data = await api("/api/admin/spaces?limite=200" +
+            (busca ? "&busca=" + encodeURIComponent(busca) : "") +
+            (status ? "&status=" + encodeURIComponent(status) : ""));
+        const tbody = document.querySelector("#espTabela tbody");
+        tbody.innerHTML = data.espacos.map(s =>
+            "<tr>" +
+            "<td><b>#" + fmtNum(s.id) + "</b></td>" +
+            "<td><span class='pill " + s.status + "'>" + s.status + "</span>" +
+            (s.test ? " <span class='pill available'>teste</span>" : "") + "</td>" +
+            "<td>" + (s.image
+                ? "<img class='thumb' src='" + s.image + "'>"
+                : "<span class='fade'>—</span>") + "</td>" +
+            "<td>" + esc(s.title || "") + "</td>" +
+            "<td>" + (s.link ? "<a href='" + esc(s.link) + "' target='_blank' style='color:#4dc3ff;'>link</a>" : "—") + "</td>" +
+            "<td>" + esc(s.name || "") + "<br><span class='fade'>" + esc(s.email || "") + "</span></td>" +
+            "<td class='mono'>" + esc(s.orderId || "") + "</td>" +
+            "<td class='mono'>" + esc((s.orderToken || "").slice(0,10)) + "…</td>" +
+            "<td class='mono'>" + esc(s.accessCode || "") + "</td>" +
+            "<td>" +
+              "<button class='sec' onclick='editarEspaco(" + s.id + ")' style='margin-right:4px;'>✏️</button>" +
+              "<button class='danger' onclick='removerEspaco(" + s.id + ")'>🗑</button>" +
+            "</td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='10' class='fade'>Nada encontrado.</td></tr>";
+        document.getElementById("espPag").innerHTML =
+            "<span>" + fmtNum(data.total) + " espaço(s) (mostrando até 200)</span>";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function editarEspaco(id){
+    const status = prompt("Novo status (reserved, paid, published):");
+    if(status === null) return;
+    const body = {};
+    if(["reserved","paid","published"].includes(status)) body.status = status;
+    const title = prompt("Título / nome do anúncio (Enter mantém, digite - para apagar):");
+    if(title !== null && title !== "") body.title = title === "-" ? "" : title;
+    try {
+        await api("/api/admin/spaces/" + id, {
+            method: "POST",
+            body: JSON.stringify(body)
+        });
+        carregarEspacos();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function removerEspaco(id){
+    if(!confirm("Remover o espaço #" + fmtNum(id) + " definitivamente?")) return;
+    try {
+        await api("/api/admin/spaces/" + id, { method: "DELETE" });
+        carregarEspacos();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function carregarTransacoes(){
+    const busca = document.getElementById("trBusca").value.trim();
+    const tipo = document.getElementById("trTipo").value;
+    const status = document.getElementById("trStatus").value;
+    let url = "/api/admin/transacoes?limite=500";
+    if(busca) url += "&busca=" + encodeURIComponent(busca);
+    if(tipo) url += "&tipo=" + encodeURIComponent(tipo);
+    if(status) url += "&status=" + encodeURIComponent(status);
+    try {
+        const data = await api(url);
+        const tbody = document.querySelector("#trTabela tbody");
+        tbody.innerHTML = data.transacoes.map(t =>
+            "<tr>" +
+            "<td>" + t.id + "</td>" +
+            "<td>" + fmtData(t.criadoEm) + "</td>" +
+            "<td><span class='pill " + t.tipo + "'>" + t.tipo + "</span></td>" +
+            "<td class='mono'>" + (t.espacos || []).map(n => "#" + fmtNum(n)).join(" ") + "</td>" +
+            "<td>" + fmtNum(t.quantidade) + "</td>" +
+            "<td>" + fmtDin(t.valorTotal) + "</td>" +
+            "<td>" + fmtDin(t.comissao) + "</td>" +
+            "<td><span class='pill " + (t.status === "pago" ? "pago" : "pendente") + "'>" +
+            t.status + "</span>" + (t.test ? " <span class='pill available'>teste</span>" : "") + "</td>" +
+            "<td>" + esc(t.nome || "") + "<br><span class='fade'>" + esc(t.email || "") + "</span></td>" +
+            "<td class='mono'>" + esc(t.orderId || "") + "</td>" +
+            "<td>" + (t.usuarioId ? "#" + t.usuarioId : "<span class='fade'>—</span>") + "</td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='11' class='fade'>Nada encontrado.</td></tr>";
+        document.getElementById("trPag").innerHTML =
+            "<span>" + fmtNum(data.total) + " transação(ões) (mostrando até 500)</span>";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function carregarUsuarios(){
+    try {
+        const data = await api("/api/admin/usuarios");
+        const tbody = document.querySelector("#usTabela tbody");
+        tbody.innerHTML = data.usuarios.map(u =>
+            "<tr>" +
+            "<td>" + u.id + "</td>" +
+            "<td>" + esc(u.nome) + "</td>" +
+            "<td>" + esc(u.email) + "</td>" +
+            "<td>" + fmtData(u.criadoEm) + "</td>" +
+            "<td>" + fmtData(u.ultimoLogin) + "</td>" +
+            "<td>" + fmtNum(u.chaves) + "</td>" +
+            "<td>" + fmtNum(u.transacoes) + "</td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='7' class='fade'>Nenhum usuário ainda.</td></tr>";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function carregarLogs(){
+    const busca = document.getElementById("logBusca").value.trim();
+    const evento = document.getElementById("logEvento").value;
+    let url = "/api/admin/logs?limite=500";
+    if(busca) url += "&busca=" + encodeURIComponent(busca);
+    if(evento) url += "&evento=" + encodeURIComponent(evento);
+    try {
+        const data = await api(url);
+        const tbody = document.querySelector("#logTabela tbody");
+        tbody.innerHTML = data.logs.map(l =>
+            "<tr>" +
+            "<td class='fade'>" + fmtData(l.ts) + "</td>" +
+            "<td><span class='pill paid'>" + esc(l.evento) + "</span></td>" +
+            "<td class='mono'>" + esc(JSON.stringify(Object.assign({}, l, {ts:undefined, evento:undefined}))) + "</td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='3' class='fade'>Sem logs.</td></tr>";
+
+        const sel = document.getElementById("logEvento");
+        const eventos = [...new Set(data.logs.map(l => l.evento))].sort();
+        const atual = sel.value;
+        sel.innerHTML = "<option value=''>Todos os eventos</option>" +
+            eventos.map(e => "<option value='" + esc(e) + "'>" + esc(e) + "</option>").join("");
+        sel.value = atual;
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function limparLogs(){
+    if(!confirm("Apagar TODOS os logs?")) return;
+    try {
+        await api("/api/admin/logs", { method: "DELETE" });
+        carregarLogs();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function carregarCupons(){
+    try {
+        const data = await api("/api/admin/cupons");
+        const tbody = document.querySelector("#cupTabela tbody");
+        tbody.innerHTML = data.cupons.map(c =>
+            "<tr>" +
+            "<td><b>" + esc(c.codigo) + "</b></td>" +
+            "<td>" + c.discountPercent + "%</td>" +
+            "<td>" + fmtNum(c.used) + "</td>" +
+            "<td>" + fmtNum(c.maxUses) + "</td>" +
+            "<td>" + (c.active === false ? "❌" : "✅") + "</td>" +
+            "<td class='fade'>" + fmtData(c.createdAt) + "</td>" +
+            "<td class='fade'>" + esc(c.ownerName || "") + "</td>" +
+            "<td><button class='danger' onclick='removerCupom(\"" + esc(c.codigo) + "\")'>🗑</button></td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='8' class='fade'>Nenhum cupom.</td></tr>";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function salvarCupom(){
+    const codigo = document.getElementById("cupCodigo").value.trim();
+    const pct = Number(document.getElementById("cupPct").value);
+    const max = document.getElementById("cupMax").value;
+    if(!codigo){ alert("Informe o código do cupom."); return; }
+    if(!(pct >= 1 && pct <= 99)){ alert("Informe o desconto entre 1% e 99%."); return; }
+    try {
+        await api("/api/admin/cupons", {
+            method: "POST",
+            body: JSON.stringify({
+                codigo,
+                discountPercent: pct,
+                maxUses: max ? Number(max) : 100,
+                active: true
+            })
+        });
+        document.getElementById("cupCodigo").value = "";
+        document.getElementById("cupPct").value = "";
+        carregarCupons();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function removerCupom(codigo){
+    if(!confirm("Remover o cupom " + codigo + "?")) return;
+    try {
+        await api("/api/admin/cupons/" + encodeURIComponent(codigo), { method: "DELETE" });
+        carregarCupons();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+function esc(s){
+    return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+if(token){
+    entrar();
+} else {
+    document.getElementById("login").style.display = "block";
+}
+</script>
+
+</body>
+</html>

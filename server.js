@@ -7,6 +7,8 @@ const rateLimit = require("express-rate-limit");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
+const jwt = require("jsonwebtoken");
+const pdfkit = require("pdfkit");
 const { Pool } = require("pg");
 
 const app = express();
@@ -40,7 +42,7 @@ const limiterGlobal = rateLimit({
 
 const limiterSensivel = rateLimit({
     windowMs: 60 * 1000,
-    limit: 15,
+    limit: ALLOW_TEST_MODE ? 200 : 15,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -91,9 +93,49 @@ const COUPONS_FILE = path.join(DATA_DIR, "coupons.json");
 const PIXKEYS_FILE = path.join(DATA_DIR, "pixkeys.json");
 const CHAT_FILE = path.join(DATA_DIR, "chat.json");
 const CHAT_NEGOC_FILE = path.join(DATA_DIR, "chat-negociacao.json");
+const LOGS_FILE = path.join(DATA_DIR, "logs.jsonl");
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+/* =========================
+   SEGREDO DO JWT
+   Usa JWT_SECRET do ambiente se existir;
+   senão, gera e persiste um segredo local.
+========================= */
+
+let JWT_SECRET = process.env.JWT_SECRET || "";
+
+if (!JWT_SECRET) {
+    const f = path.join(DATA_DIR, ".jwt-secret");
+
+    if (fs.existsSync(f)) {
+        JWT_SECRET = fs.readFileSync(f, "utf8").trim();
+    } else {
+        JWT_SECRET = crypto.randomBytes(32).toString("hex");
+        fs.writeFileSync(f, JWT_SECRET, "utf8");
+    }
+}
+
+/* =========================
+   LOG DO SITE
+   Registra eventos em um arquivo JSONL
+   (visíveis no painel do admin).
+========================= */
+
+function registrarLog(evento, detalhes = {}) {
+    const linha = JSON.stringify({
+        ts: new Date().toISOString(),
+        evento,
+        ...detalhes
+    });
+
+    try {
+        fs.appendFileSync(LOGS_FILE, linha + "\n", "utf8");
+    } catch (error) {
+        console.error("ERRO ao gravar log:", error.message);
+    }
+}
 
 /* =========================
    SEMEAR DADOS INICIAIS
@@ -236,6 +278,7 @@ async function initBanco() {
                 order_id    VARCHAR(60) NOT NULL,
                 customer_id VARCHAR(60),
                 payment_id  VARCHAR(60),
+                usuario_id  INTEGER,
                 nome        VARCHAR(200),
                 email       VARCHAR(200),
                 espacos     INTEGER[] NOT NULL,
@@ -249,6 +292,29 @@ async function initBanco() {
             )
         `);
 
+        await pgPool.query(`
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id          SERIAL PRIMARY KEY,
+                nome        VARCHAR(200) NOT NULL,
+                email       VARCHAR(200) NOT NULL UNIQUE,
+                senha_hash  VARCHAR(300) NOT NULL,
+                criado_em   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                ultimo_login TIMESTAMPTZ
+            )
+        `);
+
+        await pgPool.query(`
+            CREATE TABLE IF NOT EXISTS usuario_chaves (
+                id          SERIAL PRIMARY KEY,
+                usuario_id  INTEGER NOT NULL
+                            REFERENCES usuarios(id)
+                            ON DELETE CASCADE,
+                tipo        VARCHAR(10) NOT NULL,
+                valor       VARCHAR(64) NOT NULL,
+                criado_em   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        `);
+
         await pgPool.query(
             "CREATE INDEX IF NOT EXISTS " +
             "idx_transacoes_token ON transacoes(token)"
@@ -257,6 +323,21 @@ async function initBanco() {
         await pgPool.query(
             "CREATE INDEX IF NOT EXISTS " +
             "idx_transacoes_access ON transacoes(access_code)"
+        );
+
+        await pgPool.query(
+            "CREATE INDEX IF NOT EXISTS " +
+            "idx_transacoes_usuario ON transacoes(usuario_id)"
+        );
+
+        await pgPool.query(
+            "CREATE INDEX IF NOT EXISTS " +
+            "idx_uchaves_usuario ON usuario_chaves(usuario_id)"
+        );
+
+        await pgPool.query(
+            "CREATE UNIQUE INDEX IF NOT EXISTS " +
+            "idx_uchaves_valor ON usuario_chaves(tipo, valor)"
         );
 
         pgDisponivel = true;
@@ -285,6 +366,7 @@ function registrarTransacao({
     orderId,
     customerId,
     paymentId,
+    usuarioId,
     nome,
     email,
     espacos,
@@ -301,10 +383,10 @@ function registrarTransacao({
     return pgPool.query(
         `INSERT INTO transacoes
             (tipo, access_code, token, order_id,
-             customer_id, payment_id, nome, email,
+             customer_id, payment_id, usuario_id, nome, email,
              espacos, quantidade, valor_total,
              comissao, status, test)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
         [
             tipo,
             accessCode,
@@ -312,6 +394,7 @@ function registrarTransacao({
             orderId,
             customerId || null,
             paymentId || null,
+            usuarioId || null,
             nome || null,
             email || null,
             espacos,
@@ -346,7 +429,7 @@ function pgPagamentoPago(paymentId) {
     });
 }
 
-initBanco();
+/* initBanco() é chamado antes do app.listen, no final. */
 
 app.use(helmet({
     contentSecurityPolicy: false,
@@ -361,6 +444,9 @@ app.use("/api", limiterGlobal);
 app.use("/api/checkout", limiterSensivel);
 app.use("/api/restore", limiterSensivel);
 app.use("/api/historico", limiterSensivel);
+app.use("/api/auth", limiterSensivel);
+app.use("/api/admin", limiterSensivel);
+app.use("/api/extrato", limiterSensivel);
 app.use("/api/test", limiterSensivel);
 app.use("/api/offers", limiterOfertas);
 app.use("/api/pix-key", limiterSensivel);
@@ -535,6 +621,184 @@ function gerarAccessCode() {
         .toUpperCase();
 
     return `MEGA-${h.slice(0, 4)}-${h.slice(4, 8)}-${h.slice(8, 12)}-${h.slice(12)}`;
+}
+
+/* =========================
+   CONTAS DE USUÁRIO
+   Cadastro/login com e-mail e senha.
+   Cada conta administra seus blocos,
+   compras e extratos.
+========================= */
+
+function hashSenha(senha) {
+    const salt = crypto.randomBytes(16).toString("hex");
+    const hash = crypto.scryptSync(senha, salt, 64).toString("hex");
+    return `${salt}:${hash}`;
+}
+
+function verificarSenha(senha, armazenada) {
+    const [salt, hash] = String(armazenada || "").split(":");
+
+    if (!salt || !hash) {
+        return false;
+    }
+
+    try {
+        const calculado = crypto.scryptSync(senha, salt, 64);
+        const esperado = Buffer.from(hash, "hex");
+        return (
+            calculado.length === esperado.length &&
+            crypto.timingSafeEqual(calculado, esperado)
+        );
+    } catch {
+        return false;
+    }
+}
+
+function gerarTokenJwt(payload) {
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: "30d" });
+}
+
+function extrairBearer(req) {
+    const auth = req.headers.authorization || "";
+
+    if (!auth.startsWith("Bearer ")) {
+        return null;
+    }
+
+    return auth.slice(7).trim();
+}
+
+function authUsuario(req, res, next) {
+    const token = extrairBearer(req);
+
+    if (!token) {
+        return res.status(401).json({
+            error: "Faça login para continuar."
+        });
+    }
+
+    try {
+        const payload = jwt.verify(token, JWT_SECRET);
+
+        if (!payload.usuarioId) {
+            throw new Error("Token inválido.");
+        }
+
+        req.usuario = {
+            id: payload.usuarioId,
+            nome: payload.nome,
+            email: payload.email
+        };
+
+        return next();
+    } catch {
+        return res.status(401).json({
+            error: "Sessão inválida ou expirada. Entre novamente."
+        });
+    }
+}
+
+function authOpcional(req, res, next) {
+    const token = extrairBearer(req);
+
+    if (token) {
+        try {
+            const payload = jwt.verify(token, JWT_SECRET);
+
+            if (payload.usuarioId) {
+                req.usuario = {
+                    id: payload.usuarioId,
+                    nome: payload.nome,
+                    email: payload.email
+                };
+            }
+        } catch {
+            /* ignora sessão inválida */
+        }
+    }
+
+    return next();
+}
+
+function authAdmin(req, res, next) {
+    const token = extrairBearer(req);
+
+    if (!token) {
+        return res.status(401).json({
+            error: "Acesso restrito ao administrador."
+        });
+    }
+
+    try {
+        const payload = jwt.verify(token, JWT_SECRET);
+
+        const adminUser = process.env.ADMIN_USER || "";
+        const adminPass = process.env.ADMIN_PASSWORD || "";
+
+        if (
+            payload.role !== "admin" ||
+            !adminUser ||
+            !adminPass ||
+            payload.fp !==
+                crypto.createHash("sha256")
+                    .update(adminPass)
+                    .digest("hex")
+        ) {
+            throw new Error("Credenciais de admin alteradas.");
+        }
+
+        req.admin = { usuario: adminUser };
+
+        return next();
+    } catch {
+        return res.status(401).json({
+            error: "Sessão de administrador inválida."
+        });
+    }
+}
+
+function usuarioSemSenha(u) {
+    return {
+        id: u.id,
+        nome: u.nome,
+        email: u.email,
+        criadoEm: u.criado_em,
+        ultimoLogin: u.ultimo_login
+    };
+}
+
+async function criarUsuario(nome, email, senha) {
+    const result = await pgPool.query(
+        `INSERT INTO usuarios (nome, email, senha_hash)
+         VALUES ($1, $2, $3)
+         RETURNING id, nome, email, criado_em`,
+        [nome, email.toLowerCase(), hashSenha(senha)]
+    );
+
+    return result.rows[0];
+}
+
+async function salvarChaveUsuario(usuarioId, tipo, valor) {
+    return pgPool.query(
+        `INSERT INTO usuario_chaves (usuario_id, tipo, valor)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (tipo, valor) DO NOTHING`,
+        [usuarioId, tipo, valor]
+    ).catch((err) => {
+        console.error("ERRO ao anexar chave:", err.message);
+        return null;
+    });
+}
+
+async function chavesDoUsuario(usuarioId) {
+    const result = await pgPool.query(
+        `SELECT tipo, valor FROM usuario_chaves
+          WHERE usuario_id = $1`,
+        [usuarioId]
+    );
+
+    return result.rows;
 }
 
 /* =========================
@@ -932,6 +1196,363 @@ async function asaasRequest(endpoint, options = {}) {
    ESPAÇOS
 ========================= */
 
+/* =========================
+   CONTAS — CADASTRO, LOGIN E MINHA CONTA
+========================= */
+
+const EMAIL_REGEX =
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+app.post("/api/auth/registrar", async (req, res) => {
+
+    if (!pgDisponivel) {
+        return res.status(503).json({
+            error:
+                "Cadastro indisponível no momento " +
+                "(banco de dados não configurado)."
+        });
+    }
+
+    const { nome, email, senha } = req.body;
+
+    if (
+        typeof nome !== "string" ||
+        nome.trim().length < 2
+    ) {
+        return res.status(400).json({
+            error: "Informe seu nome ou empresa (mínimo 2 letras)."
+        });
+    }
+
+    if (
+        typeof email !== "string" ||
+        !EMAIL_REGEX.test(email.trim())
+    ) {
+        return res.status(400).json({
+            error: "Informe um e-mail válido."
+        });
+    }
+
+    if (
+        typeof senha !== "string" ||
+        senha.length < 6
+    ) {
+        return res.status(400).json({
+            error: "A senha deve ter ao menos 6 caracteres."
+        });
+    }
+
+    try {
+
+        const existente = await pgPool.query(
+            "SELECT id FROM usuarios WHERE email = $1",
+            [email.trim().toLowerCase()]
+        );
+
+        if (existente.rowCount > 0) {
+            return res.status(409).json({
+                error: "Já existe uma conta com este e-mail."
+            });
+        }
+
+        const usuario = await criarUsuario(
+            nome.trim(),
+            email.trim(),
+            senha
+        );
+
+        registrarLog("usuario_cadastrado", {
+            usuarioId: usuario.id,
+            email: usuario.email
+        });
+
+        res.json({
+            ok: true,
+            token: gerarTokenJwt({
+                usuarioId: usuario.id,
+                nome: usuario.nome,
+                email: usuario.email
+            }),
+            usuario: usuarioSemSenha(usuario)
+        });
+
+    } catch (error) {
+        console.error("ERRO ao cadastrar usuário:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post("/api/auth/login", async (req, res) => {
+
+    if (!pgDisponivel) {
+        return res.status(503).json({
+            error:
+                "Login indisponível no momento " +
+                "(banco de dados não configurado)."
+        });
+    }
+
+    const { email, senha } = req.body;
+
+    if (
+        typeof email !== "string" ||
+        !EMAIL_REGEX.test(email.trim())
+    ) {
+        return res.status(400).json({
+            error: "Informe um e-mail válido."
+        });
+    }
+
+    if (typeof senha !== "string" || !senha) {
+        return res.status(400).json({
+            error: "Informe sua senha."
+        });
+    }
+
+    try {
+
+        const result = await pgPool.query(
+            `SELECT id, nome, email, senha_hash,
+                    criado_em, ultimo_login
+               FROM usuarios
+              WHERE email = $1`,
+            [email.trim().toLowerCase()]
+        );
+
+        const usuario = result.rows[0];
+
+        if (
+            !usuario ||
+            !verificarSenha(senha, usuario.senha_hash)
+        ) {
+            return res.status(401).json({
+                error: "E-mail ou senha incorretos."
+            });
+        }
+
+        await pgPool.query(
+            "UPDATE usuarios SET ultimo_login = NOW() WHERE id = $1",
+            [usuario.id]
+        ).catch(() => {});
+
+        registrarLog("usuario_login", {
+            usuarioId: usuario.id,
+            email: usuario.email
+        });
+
+        res.json({
+            ok: true,
+            token: gerarTokenJwt({
+                usuarioId: usuario.id,
+                nome: usuario.nome,
+                email: usuario.email
+            }),
+            usuario: usuarioSemSenha(usuario)
+        });
+
+    } catch (error) {
+        console.error("ERRO no login:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get("/api/auth/me", authUsuario, async (req, res) => {
+
+    try {
+
+        const result = await pgPool.query(
+            `SELECT id, nome, email, criado_em, ultimo_login
+               FROM usuarios WHERE id = $1`,
+            [req.usuario.id]
+        );
+
+        const usuario = result.rows[0];
+
+        if (!usuario) {
+            return res.status(404).json({
+                error: "Conta não encontrada."
+            });
+        }
+
+        const chaves = await chavesDoUsuario(usuario.id);
+
+        const tokens = new Set();
+        const codigos = new Set();
+
+        for (const c of chaves) {
+            if (c.tipo === "token") {
+                tokens.add(c.valor);
+            } else {
+                codigos.add(c.valor);
+            }
+        }
+
+        const db = readDB();
+
+        const meusEspacos = [];
+
+        for (const s of Object.values(db)) {
+            const meu =
+                tokens.has(s.orderToken) ||
+                codigos.has(s.accessCode);
+
+            if (!meu) {
+                continue;
+            }
+
+            meusEspacos.push({
+                id: s.id,
+                status: s.status,
+                title: s.title || "",
+                image: s.image || "",
+                link: s.link || "",
+                test: s.test === true,
+                publishedAt: s.publishedAt || null
+            });
+        }
+
+        const transacoes = await pgPool.query(
+            "SELECT COUNT(*) AS total FROM transacoes " +
+            "WHERE usuario_id = $1",
+            [usuario.id]
+        ).catch(() => null);
+
+        res.json({
+            ok: true,
+            usuario: usuarioSemSenha(usuario),
+            chaves: chaves.map(c => ({
+                tipo: c.tipo,
+                valor: c.valor
+            })),
+            espacos: meusEspacos,
+            totalTransacoes:
+                Number(transacoes?.rows?.[0]?.total || 0)
+        });
+
+    } catch (error) {
+        console.error("ERRO ao carregar conta:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post("/api/auth/anexar", authUsuario, async (req, res) => {
+
+    const { accessCode, token } = req.body;
+
+    const valor = String(
+        accessCode || token || ""
+    ).trim();
+
+    if (!valor) {
+        return res.status(400).json({
+            error: "Informe o código de acesso ou token do bloco."
+        });
+    }
+
+    const codigo = valor.toUpperCase();
+    const db = readDB();
+
+    let achou = null;
+
+    for (const s of Object.values(db)) {
+        if (
+            s.accessCode === codigo ||
+            s.orderToken === valor
+        ) {
+            achou = s;
+            break;
+        }
+    }
+
+    if (!achou) {
+        return res.status(404).json({
+            error:
+                "Nenhum bloco encontrado com esta identificação. " +
+                "Confira o código de acesso (ex.: MEGA-XXXX-XXXX-XXXX-XXXX)."
+        });
+    }
+
+    const ehToken =
+        achou.orderToken === valor &&
+        achou.accessCode !== codigo;
+
+    const tipo = ehToken ? "token" : "access";
+
+    await salvarChaveUsuario(
+        req.usuario.id,
+        tipo,
+        tipo === "access" ? codigo : valor
+    );
+
+    if (!ehToken && achou.orderToken) {
+        await salvarChaveUsuario(
+            req.usuario.id,
+            "token",
+            achou.orderToken
+        );
+    }
+
+    registrarLog("bloco_anexado", {
+        usuarioId: req.usuario.id,
+        espaco: achou.id,
+        tipo
+    });
+
+    res.json({
+        ok: true,
+        espacos: [achou.id],
+        mensagem: "Bloco anexado à sua conta com sucesso."
+    });
+});
+
+app.post("/api/auth/senha", authUsuario, async (req, res) => {
+
+    const { senhaAtual, novaSenha } = req.body;
+
+    if (
+        typeof novaSenha !== "string" ||
+        novaSenha.length < 6
+    ) {
+        return res.status(400).json({
+            error: "A nova senha deve ter ao menos 6 caracteres."
+        });
+    }
+
+    try {
+
+        const result = await pgPool.query(
+            "SELECT senha_hash FROM usuarios WHERE id = $1",
+            [req.usuario.id]
+        );
+
+        const atual = result.rows[0];
+
+        if (
+            !atual ||
+            !verificarSenha(senhaAtual || "", atual.senha_hash)
+        ) {
+            return res.status(400).json({
+                error: "Senha atual incorreta."
+            });
+        }
+
+        await pgPool.query(
+            "UPDATE usuarios SET senha_hash = $1 WHERE id = $2",
+            [hashSenha(novaSenha), req.usuario.id]
+        );
+
+        registrarLog("senha_alterada", {
+            usuarioId: req.usuario.id
+        });
+
+        res.json({ ok: true });
+
+    } catch (error) {
+        console.error("ERRO ao alterar senha:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.get("/api/spaces", (req, res) => {
 
     const db = readDB();
@@ -1011,7 +1632,7 @@ app.get("/api/status", (req, res) => {
    CRIAR PEDIDO + PIX
 ========================= */
 
-app.post("/api/checkout", async (req, res) => {
+app.post("/api/checkout", authUsuario, async (req, res) => {
 
     try {
 
@@ -1236,6 +1857,7 @@ app.post("/api/checkout", async (req, res) => {
             orderId,
             customerId: customer.id,
             paymentId: payment.id,
+            usuarioId: req.usuario.id,
             nome: name.trim(),
             email: email.trim(),
             espacos: ids,
@@ -1243,6 +1865,25 @@ app.post("/api/checkout", async (req, res) => {
             comissao: 0,
             status: "pendente",
             test: false
+        });
+
+        await salvarChaveUsuario(
+            req.usuario.id,
+            "token",
+            orderToken
+        );
+
+        await salvarChaveUsuario(
+            req.usuario.id,
+            "access",
+            accessCode
+        );
+
+        registrarLog("pedido_criado", {
+            usuarioId: req.usuario.id,
+            orderId,
+            espacos: ids.length,
+            valor: valorCobrado
         });
 
         if (cupom) {
@@ -1312,7 +1953,7 @@ app.post("/api/checkout", async (req, res) => {
    USADO PELO BOTÃO "TESTAR SEM PAGAMENTO"
 ========================= */
 
-app.post("/api/test/reserve", (req, res) => {
+app.post("/api/test/reserve", authUsuario, async (req, res) => {
 
     if (PRODUCAO && !ALLOW_TEST_MODE) {
         return res.status(403).json({
@@ -1410,6 +2051,7 @@ app.post("/api/test/reserve", (req, res) => {
             accessCode,
             token: orderToken,
             orderId,
+            usuarioId: req.usuario.id,
             nome: name || "Anunciante",
             email: email || "",
             espacos: spaces,
@@ -1417,6 +2059,24 @@ app.post("/api/test/reserve", (req, res) => {
             comissao: 0,
             status: "pago",
             test: true
+        });
+
+        await salvarChaveUsuario(
+            req.usuario.id,
+            "token",
+            orderToken
+        );
+
+        await salvarChaveUsuario(
+            req.usuario.id,
+            "access",
+            accessCode
+        );
+
+        registrarLog("pedido_teste_criado", {
+            usuarioId: req.usuario.id,
+            orderId,
+            espacos: spaces.length
         });
 
         const meuCupom =
@@ -1561,6 +2221,11 @@ app.get(
 
                 pgPagamentoPago(payment.id);
 
+                registrarLog("pagamento_confirmado", {
+                    paymentId: payment.id,
+                    status: payment.status
+                });
+
                 for (const id of Object.keys(db)) {
 
                     if (
@@ -1681,19 +2346,129 @@ app.post("/api/restore", (req, res) => {
    de acesso (query accessCode).
 ========================= */
 
-app.get("/api/historico", async (req, res) => {
+async function resolverCredenciais(req) {
 
-    const tokens =
+    const tokens = new Set(
         (req.headers["x-owner-tokens"] || "")
             .split(",")
             .map(t => t.trim())
-            .filter(Boolean);
+            .filter(Boolean)
+    );
 
-    const codigosHeader =
+    const codigos = new Set(
         (req.headers["x-owner-access-code"] || "")
             .split(",")
             .map(t => t.trim().toUpperCase())
-            .filter(Boolean);
+            .filter(Boolean)
+    );
+
+    if (req.usuario && pgDisponivel) {
+
+        const chaves = await chavesDoUsuario(req.usuario.id);
+
+        for (const c of chaves) {
+            if (c.tipo === "token") {
+                tokens.add(c.valor);
+            } else {
+                codigos.add(c.valor);
+            }
+        }
+    }
+
+    const db = readDB();
+
+    for (const s of Object.values(db)) {
+        if (
+            tokens.has(s.orderToken) &&
+            s.accessCode
+        ) {
+            codigos.add(s.accessCode);
+        }
+    }
+
+    return {
+        tokens: [...tokens],
+        codigos: [...codigos]
+    };
+}
+
+async function buscarTransacoes(tokens, codigos) {
+
+    const conds = [];
+    const params = [];
+
+    for (const t of tokens) {
+        conds.push("token = $" + (params.length + 1));
+        params.push(t);
+    }
+
+    for (const c of codigos) {
+        conds.push("access_code = $" + (params.length + 1));
+        params.push(c);
+    }
+
+    if (!conds.length) {
+        return [];
+    }
+
+    const result = await pgPool.query(
+        `SELECT id, tipo, access_code, order_id,
+                nome, email, espacos, quantidade,
+                valor_total, comissao, status,
+                test, criado_em, pago_em
+           FROM transacoes
+          WHERE ${conds.join(" OR ")}
+          ORDER BY criado_em DESC`,
+        params
+    );
+
+    return result.rows.map(r => ({
+        id: r.id,
+        tipo: r.tipo,
+        accessCode: r.access_code,
+        orderId: r.order_id,
+        nome: r.nome,
+        email: r.email,
+        espacos: r.espacos,
+        quantidade: r.quantidade,
+        valorTotal: Number(r.valor_total),
+        comissao: Number(r.comissao),
+        status: r.status,
+        test: r.test,
+        criadoEm: r.criado_em,
+        pagoEm: r.pago_em
+    }));
+}
+
+function resumirTransacoes(transacoes) {
+
+    let gastoTotal = 0;
+    let recebidoTotal = 0;
+    let comprados = 0;
+    let vendidos = 0;
+
+    for (const t of transacoes) {
+
+        if (t.status !== "pago") continue;
+
+        if (t.tipo === "compra") {
+            gastoTotal += t.valorTotal;
+            comprados += t.quantidade;
+        } else {
+            recebidoTotal += t.valorTotal - t.comissao;
+            vendidos += t.quantidade;
+        }
+    }
+
+    return {
+        gastoTotal: Math.round(gastoTotal * 100) / 100,
+        recebidoTotal: Math.round(recebidoTotal * 100) / 100,
+        comprados,
+        vendidos
+    };
+}
+
+app.get("/api/historico", authOpcional, async (req, res) => {
 
     if (!pgDisponivel) {
         return res.status(503).json({
@@ -1703,90 +2478,38 @@ app.get("/api/historico", async (req, res) => {
         });
     }
 
-    if (!tokens.length && !codigosHeader.length) {
-        return res.status(400).json({
-            error:
-                "Nenhuma identificação de proprietário enviada."
-        });
-    }
-
-    const db = readDB();
-
-    const meusCodigos = new Set(codigosHeader);
-
-    for (const s of Object.values(db)) {
-
-        if (
-            tokens.includes(s.orderToken) &&
-            s.accessCode
-        ) {
-            meusCodigos.add(s.accessCode);
-        }
-    }
-
     try {
 
-        const result = await pgPool.query(
-            `SELECT id, tipo, access_code, order_id,
-                    nome, email, espacos, quantidade,
-                    valor_total, comissao, status,
-                    test, criado_em, pago_em
-               FROM transacoes
-              WHERE token = ANY($1::text[])
-                 OR access_code = ANY($2::text[])
-              ORDER BY criado_em DESC`,
-            [
-                tokens,
-                [...meusCodigos]
-            ]
-        );
+        const { tokens, codigos } =
+            await resolverCredenciais(req);
+
+        if (!tokens.length && !codigos.length) {
+
+            if (req.usuario) {
+                return res.json({
+                    ok: true,
+                    total: 0,
+                    gastoTotal: 0,
+                    recebidoTotal: 0,
+                    comprados: 0,
+                    vendidos: 0,
+                    transacoes: []
+                });
+            }
+
+            return res.status(400).json({
+                error:
+                    "Nenhuma identificação de proprietário enviada."
+            });
+        }
 
         const transacoes =
-            result.rows.map(r => ({
-                id: r.id,
-                tipo: r.tipo,
-                accessCode: r.access_code,
-                orderId: r.order_id,
-                nome: r.nome,
-                email: r.email,
-                espacos: r.espacos,
-                quantidade: r.quantidade,
-                valorTotal: Number(r.valor_total),
-                comissao: Number(r.comissao),
-                status: r.status,
-                test: r.test,
-                criadoEm: r.criado_em,
-                pagoEm: r.pago_em
-            }));
-
-        let gastoTotal = 0;
-        let recebidoTotal = 0;
-        let comprados = 0;
-        let vendidos = 0;
-
-        for (const t of transacoes) {
-
-            if (t.status !== "pago") continue;
-
-            if (t.tipo === "compra") {
-                gastoTotal += t.valorTotal;
-                comprados += t.quantidade;
-            } else {
-                recebidoTotal +=
-                    t.valorTotal - t.comissao;
-                vendidos += t.quantidade;
-            }
-        }
+            await buscarTransacoes(tokens, codigos);
 
         res.json({
             ok: true,
             total: transacoes.length,
-            gastoTotal:
-                Math.round(gastoTotal * 100) / 100,
-            recebidoTotal:
-                Math.round(recebidoTotal * 100) / 100,
-            comprados,
-            vendidos,
+            ...resumirTransacoes(transacoes),
             transacoes
         });
 
@@ -1802,6 +2525,324 @@ app.get("/api/historico", async (req, res) => {
         });
     }
 });
+
+/* =========================
+   EXTRATO — EXPORTAÇÃO PDF / CSV
+========================= */
+
+app.get("/api/extrato/export", authOpcional, async (req, res) => {
+
+    const formato =
+        String(req.query.formato || "csv")
+            .toLowerCase() === "pdf"
+        ? "pdf"
+        : "csv";
+
+    if (!pgDisponivel) {
+        return res.status(503).json({
+            error:
+                "Banco de dados ainda não configurado. " +
+                "Defina DATABASE_URL para ativar o extrato."
+        });
+    }
+
+    try {
+
+        const { tokens, codigos } =
+            await resolverCredenciais(req);
+
+        if (!tokens.length && !codigos.length) {
+
+            if (req.usuario) {
+
+                const transacoes = [];
+                const resumo = resumirTransacoes([]);
+                const nomeArquivo =
+                    "extrato-milhao-door-" +
+                    new Date().toISOString().slice(0, 10);
+
+                if (formato === "pdf") {
+                    return gerarExtratoPdf(res, {
+                        transacoes,
+                        resumo,
+                        nomeArquivo
+                    });
+                }
+
+                gerarExtratoCsv(res, {
+                    transacoes,
+                    resumo,
+                    nomeArquivo
+                });
+                return;
+            }
+
+            return res.status(400).json({
+                error:
+                    "Nenhuma identificação de proprietário enviada."
+            });
+        }
+
+        const transacoes =
+            await buscarTransacoes(tokens, codigos);
+
+        const resumo = resumirTransacoes(transacoes);
+
+        const nomeArquivo =
+            "extrato-milhao-door-" +
+            new Date().toISOString().slice(0, 10);
+
+        if (formato === "pdf") {
+            return gerarExtratoPdf(res, {
+                transacoes,
+                resumo,
+                nomeArquivo
+            });
+        }
+
+        gerarExtratoCsv(res, {
+            transacoes,
+            resumo,
+            nomeArquivo
+        });
+
+    } catch (error) {
+
+        console.error("ERRO ao exportar extrato:", error.message);
+
+        res.status(500).json({
+            error: error.message
+        });
+    }
+});
+
+function gerarExtratoCsv(res, { transacoes, resumo, nomeArquivo }) {
+
+    const fmt = (n) =>
+        String(Math.round(Number(n || 0) * 100) / 100)
+            .replace(".", ",");
+
+    const linhas = [];
+
+    linhas.push(
+        "Extrato Milhão Door;" +
+        "gerado em;" +
+        new Date().toLocaleString("pt-BR")
+    );
+    linhas.push("");
+    linhas.push(
+        "Total gasto;" + fmt(resumo.gastoTotal)
+    );
+    linhas.push(
+        "Total recebido;" + fmt(resumo.recebidoTotal)
+    );
+    linhas.push(
+        "Espacos comprados;" + resumo.comprados
+    );
+    linhas.push(
+        "Espacos vendidos;" + resumo.vendidos
+    );
+    linhas.push("");
+    linhas.push(
+        "Data;Tipo;Espacos;Quantidade;Status;" +
+        "Valor total;Comissao;Valor recebido"
+    );
+
+    for (const t of transacoes) {
+
+        const data =
+            new Date(t.criadoEm || Date.now())
+                .toLocaleString("pt-BR");
+
+        const espacos = (t.espacos || []).join(" ");
+
+        linhas.push(
+            [
+                data,
+                t.tipo,
+                espacos,
+                t.quantidade,
+                t.status + (t.test ? " (teste)" : ""),
+                fmt(t.valorTotal),
+                fmt(t.comissao),
+                t.tipo === "compra"
+                    ? fmt(t.valorTotal)
+                    : fmt(t.valorTotal - t.comissao)
+            ].join(";")
+        );
+    }
+
+    const csv =
+        "\ufeff" + linhas.join("\r\n");
+
+    res.setHeader(
+        "Content-Type",
+        "text/csv; charset=utf-8"
+    );
+
+    res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${nomeArquivo}.csv"`
+    );
+
+    res.send(csv);
+}
+
+function gerarExtratoPdf(res, { transacoes, resumo, nomeArquivo }) {
+
+    const doc = new pdfkit({
+        size: "A4",
+        margin: 36,
+        info: {
+            Title: "Extrato Milhão Door",
+            Author: "Milhão Door"
+        }
+    });
+
+    const chunks = [];
+
+    doc.on("data", c => chunks.push(c));
+
+    doc.on("end", () => {
+        res.setHeader(
+            "Content-Type",
+            "application/pdf"
+        );
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="${nomeArquivo}.pdf"`
+        );
+        res.send(Buffer.concat(chunks));
+    });
+
+    doc.fontSize(18).fillColor("#111111").font("Helvetica-Bold");
+    doc.text("MILHÃO DOOR", { align: "center" });
+
+    doc.moveDown(0.2);
+    doc.fontSize(11).fillColor("#666666").font("Helvetica");
+    doc.text("Extrato do proprietário", { align: "center" });
+    doc.text(
+        "Gerado em " +
+        new Date().toLocaleString("pt-BR"),
+        { align: "center" }
+    );
+
+    doc.moveDown(1);
+
+    const fmt = (n) =>
+        "R$ " +
+        Number(n || 0).toLocaleString("pt-BR", {
+            minimumFractionDigits: 2
+        });
+
+    const resumoLinhas = [
+        ["Total gasto", fmt(resumo.gastoTotal)],
+        ["Total recebido", fmt(resumo.recebidoTotal)],
+        ["Espaços comprados", String(resumo.comprados)],
+        ["Espaços vendidos", String(resumo.vendidos)]
+    ];
+
+    for (const [label, valor] of resumoLinhas) {
+        doc.fontSize(11).fillColor("#111111").font("Helvetica-Bold");
+        doc.text(label);
+        doc.font("Helvetica").fillColor("#333333");
+        doc.text(valor, { align: "right" });
+        doc.moveDown(0.15);
+    }
+
+    doc.moveDown(0.5);
+    doc.fontSize(12).fillColor("#111111").font("Helvetica-Bold");
+    doc.text("Transações");
+
+    doc.moveDown(0.3);
+
+    doc.fontSize(9);
+    doc.font("Helvetica-Bold");
+    doc.fillColor("#ffffff");
+    doc.rect(36, doc.y, 518, 16).fill("#111111");
+    doc.fillColor("#ffd400");
+    doc.text("Data", 42, doc.y + 4, { width: 95 });
+    doc.text("Tipo", 137, doc.y + 4, { width: 60 });
+    doc.text("Espaços", 197, doc.y + 4, { width: 120 });
+    doc.text("Qtd", 317, doc.y + 4, { width: 30 });
+    doc.text("Status", 347, doc.y + 4, { width: 70 });
+    doc.text("Valor", 417, doc.y + 4, { width: 70, align: "right" });
+    doc.text("Recebido", 487, doc.y + 4, { width: 67, align: "right" });
+
+    doc.moveDown(0.4);
+
+    doc.font("Helvetica").fillColor("#333333");
+
+    let alterna = false;
+
+    for (const t of transacoes) {
+
+        if (doc.y > 720) {
+            doc.addPage();
+        }
+
+        const y = doc.y;
+
+        const data =
+            new Date(t.criadoEm || Date.now())
+                .toLocaleString("pt-BR");
+
+        const espacos =
+            (t.espacos || []).length > 3
+            ? "#" + t.espacos[0].toLocaleString("pt-BR") +
+              " … #" + t.espacos[t.espacos.length - 1]
+                .toLocaleString("pt-BR")
+            : (t.espacos || [])
+                .map(n => "#" + n.toLocaleString("pt-BR"))
+                .join(" ");
+
+        const recebido =
+            t.tipo === "compra"
+            ? t.valorTotal
+            : t.valorTotal - t.comissao;
+
+        if (alterna) {
+            doc.rect(36, y, 518, 14).fill("#f2f2f2");
+        }
+
+        doc.fillColor("#333333");
+        doc.text(data, 42, y + 2, { width: 95 });
+        doc.text(
+            (t.tipo === "compra" ? "Compra" : "Venda") +
+            (t.test ? " (teste)" : ""),
+            137, y + 2, { width: 60 }
+        );
+        doc.text(espacos, 197, y + 2, { width: 120 });
+        doc.text(String(t.quantidade), 317, y + 2, { width: 30 });
+        doc.text(
+            t.status === "pago" ? "pago" : "pendente",
+            347, y + 2, { width: 70 }
+        );
+        doc.text(fmt(t.valorTotal), 417, y + 2, {
+            width: 70,
+            align: "right"
+        });
+        doc.text(fmt(recebido), 487, y + 2, {
+            width: 67,
+            align: "right"
+        });
+
+        doc.moveDown(0.9);
+        alterna = !alterna;
+    }
+
+    doc.moveDown(0.8);
+    doc.fontSize(8).fillColor("#999999").font("Helvetica");
+    doc.text(
+        "Este extrato é um demonstrativo das transações " +
+        "vinculadas às suas identificações de proprietário " +
+        "do Milhão Door. Vendas: o valor recebido é o valor " +
+        "negociado menos a comissão do site.",
+        { align: "center" }
+    );
+
+    doc.end();
+}
 
 /* =========================
    OFERTAS (COMPRAR ESPAÇO VENDIDO)
@@ -1918,6 +2959,13 @@ function confirmarPagamentoOferta(paymentId) {
         comissao: 0,
         status: "pago",
         test: false
+    });
+
+    registrarLog("transferencia_concluida", {
+        offerId: oferta.id,
+        espacos: alvos.length,
+        valor: valorVenda,
+        comissao: comissaoVenda
     });
 
     const resumoEspacos =
@@ -3688,6 +4736,11 @@ app.post(
 
         writeDB(db);
 
+        registrarLog("espaco_publicado", {
+            ids,
+            title: title || ""
+        });
+
         res.json({
             ok: true,
             spaces: ids,
@@ -3845,6 +4898,10 @@ app.post("/webhooks/asaas", (req, res) => {
 
             pgPagamentoPago(paymentId);
 
+            registrarLog("pagamento_confirmado_webhook", {
+                paymentId
+            });
+
             const db = readDB();
             let alterado = false;
 
@@ -3901,6 +4958,527 @@ function validarTokenWebhook(recebido) {
 }
 
 /* =========================
+   PAINEL DO ADMINISTRADOR
+   Controle total do site.
+========================= */
+
+app.post("/api/admin/login", (req, res) => {
+
+    const adminUser = process.env.ADMIN_USER || "";
+    const adminPass = process.env.ADMIN_PASSWORD || "";
+
+    if (!adminUser || !adminPass) {
+        return res.status(503).json({
+            error:
+                "Admin não configurado. Defina ADMIN_USER e " +
+                "ADMIN_PASSWORD nas variáveis de ambiente."
+        });
+    }
+
+    const { usuario, senha } = req.body;
+
+    const a = Buffer.from(String(usuario || ""), "utf8");
+    const b = Buffer.from(adminUser, "utf8");
+
+    const c = Buffer.from(String(senha || ""), "utf8");
+    const d = Buffer.from(adminPass, "utf8");
+
+    const okUser =
+        a.length === b.length &&
+        crypto.timingSafeEqual(a, b);
+
+    const okPass =
+        c.length === d.length &&
+        crypto.timingSafeEqual(c, d);
+
+    if (!okUser || !okPass) {
+        registrarLog("admin_login_negado");
+        return res.status(401).json({
+            error: "Credenciais de administrador inválidas."
+        });
+    }
+
+    const fp = crypto.createHash("sha256")
+        .update(adminPass)
+        .digest("hex");
+
+    registrarLog("admin_login");
+
+    res.json({
+        ok: true,
+        token: gerarTokenJwt({
+            role: "admin",
+            usuario: adminUser,
+            fp
+        })
+    });
+});
+
+app.get("/api/admin/resumo", authAdmin, (req, res) => {
+
+    const db = readDB();
+
+    const espacos = Object.values(db);
+
+    const porStatus = {};
+
+    let sold = 0;
+    let reserved = 0;
+    let revenue = 0;
+
+    for (const s of espacos) {
+        porStatus[s.status] = (porStatus[s.status] || 0) + 1;
+
+        if (
+            s.status === "published" ||
+            s.status === "paid"
+        ) {
+            sold++;
+        }
+
+        if (s.status === "reserved") {
+            reserved++;
+        }
+    }
+
+    res.json({
+        ok: true,
+        espacosTotal: espacos.length,
+        disponiveis: 1000000 - espacos.length,
+        sold,
+        reserved,
+        porStatus,
+        valorEspaco: 1,
+        receitaPotencial: sold
+    });
+});
+
+app.get("/api/admin/spaces", authAdmin, (req, res) => {
+
+    const db = readDB();
+
+    const busca =
+        String(req.query.busca || "")
+            .trim()
+            .toLowerCase();
+
+    const status =
+        String(req.query.status || "")
+            .trim();
+
+    const limite =
+        Math.min(
+            500,
+            Number(req.query.limite || 200)
+        );
+
+    let lista = Object.values(db);
+
+    if (status) {
+        lista = lista.filter(s => s.status === status);
+    }
+
+    if (busca) {
+        lista = lista.filter(s =>
+            String(s.id).includes(busca) ||
+            String(s.name || "").toLowerCase().includes(busca) ||
+            String(s.email || "").toLowerCase().includes(busca) ||
+            String(s.title || "").toLowerCase().includes(busca) ||
+            String(s.orderId || "").toLowerCase().includes(busca) ||
+            String(s.orderToken || "").toLowerCase().includes(busca) ||
+            String(s.accessCode || "").toLowerCase().includes(busca)
+        );
+    }
+
+    lista.sort((a, b) => Number(a.id) - Number(b.id));
+
+    const total = lista.length;
+
+    lista = lista.slice(0, limite);
+
+    res.json({
+        ok: true,
+        total,
+        espacos: lista
+    });
+});
+
+app.post("/api/admin/spaces/:id", authAdmin, (req, res) => {
+
+    const id = String(req.params.id || "")
+        .replace(/\D/g, "");
+
+    if (!id) {
+        return res.status(400).json({
+            error: "Espaço inválido."
+        });
+    }
+
+    const db = readDB();
+
+    const espaco = db[id];
+
+    if (!espaco) {
+        return res.status(404).json({
+            error: "Espaço não encontrado."
+        });
+    }
+
+    const campos = [
+        "status",
+        "title",
+        "link",
+        "image",
+        "name",
+        "email"
+    ];
+
+    let alterado = false;
+
+    for (const campo of campos) {
+        if (req.body[campo] !== undefined) {
+            espaco[campo] = req.body[campo];
+            alterado = true;
+        }
+    }
+
+    if (!alterado) {
+        return res.status(400).json({
+            error: "Nenhum campo enviado para edição."
+        });
+    }
+
+    writeDB(db);
+
+    registrarLog("admin_space_editado", {
+        id: Number(id),
+        campos: campos.filter(c => req.body[c] !== undefined)
+    });
+
+    res.json({ ok: true, espaco });
+});
+
+app.delete("/api/admin/spaces/:id", authAdmin, (req, res) => {
+
+    const id = String(req.params.id || "")
+        .replace(/\D/g, "");
+
+    const db = readDB();
+
+    if (!db[id]) {
+        return res.status(404).json({
+            error: "Espaço não encontrado."
+        });
+    }
+
+    delete db[id];
+
+    writeDB(db);
+
+    registrarLog("admin_space_removido", { id: Number(id) });
+
+    res.json({ ok: true });
+});
+
+app.get("/api/admin/transacoes", authAdmin, async (req, res) => {
+
+    if (!pgDisponivel) {
+        return res.status(503).json({
+            error: "Banco de dados não configurado."
+        });
+    }
+
+    try {
+
+        const busca =
+            String(req.query.busca || "").trim();
+
+        const tipo =
+            String(req.query.tipo || "").trim();
+
+        const status =
+            String(req.query.status || "").trim();
+
+        const limite = Math.min(500, Number(req.query.limite || 200));
+
+        const params = [];
+        const clausulas = [];
+
+        if (tipo) {
+            params.push(tipo);
+            clausulas.push(`tipo = $${params.length}`);
+        }
+
+        if (status) {
+            params.push(status);
+            clausulas.push(`status = $${params.length}`);
+        }
+
+        if (busca) {
+            params.push(`%${busca}%`);
+            const p = params.length;
+            clausulas.push(
+                `(order_id ILIKE $${p} OR nome ILIKE $${p} ` +
+                `OR email ILIKE $${p} OR access_code ILIKE $${p} ` +
+                `OR CAST(espacos AS TEXT) ILIKE $${p})`
+            );
+        }
+
+        const where =
+            clausulas.length
+            ? "WHERE " + clausulas.join(" AND ")
+            : "";
+
+        const result = await pgPool.query(
+            `SELECT id, tipo, access_code, token, order_id,
+                    customer_id, payment_id, usuario_id,
+                    nome, email, espacos, quantidade,
+                    valor_total, comissao, status, test,
+                    criado_em, pago_em
+               FROM transacoes
+              ${where}
+              ORDER BY criado_em DESC
+              LIMIT ${limite}`,
+            params
+        );
+
+        res.json({
+            ok: true,
+            total: result.rows.length,
+            transacoes: result.rows.map(r => ({
+                id: r.id,
+                tipo: r.tipo,
+                accessCode: r.access_code,
+                orderId: r.order_id,
+                customerId: r.customer_id,
+                paymentId: r.payment_id,
+                usuarioId: r.usuario_id,
+                nome: r.nome,
+                email: r.email,
+                espacos: r.espacos,
+                quantidade: r.quantidade,
+                valorTotal: Number(r.valor_total),
+                comissao: Number(r.comissao),
+                status: r.status,
+                test: r.test,
+                criadoEm: r.criado_em,
+                pagoEm: r.pago_em
+            }))
+        });
+
+    } catch (error) {
+        console.error("ERRO admin/transacoes:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get("/api/admin/usuarios", authAdmin, async (req, res) => {
+
+    if (!pgDisponivel) {
+        return res.status(503).json({
+            error: "Banco de dados não configurado."
+        });
+    }
+
+    try {
+
+        const result = await pgPool.query(
+            `SELECT u.id, u.nome, u.email, u.criado_em,
+                    u.ultimo_login,
+                    (SELECT COUNT(*) FROM usuario_chaves c
+                      WHERE c.usuario_id = u.id) AS chaves,
+                    (SELECT COUNT(*) FROM transacoes t
+                      WHERE t.usuario_id = u.id) AS transacoes
+               FROM usuarios u
+              ORDER BY u.id DESC
+              LIMIT 500`
+        );
+
+        res.json({
+            ok: true,
+            total: result.rows.length,
+            usuarios: result.rows.map(u => ({
+                id: u.id,
+                nome: u.nome,
+                email: u.email,
+                criadoEm: u.criado_em,
+                ultimoLogin: u.ultimo_login,
+                chaves: Number(u.chaves),
+                transacoes: Number(u.transacoes)
+            }))
+        });
+
+    } catch (error) {
+        console.error("ERRO admin/usuarios:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get("/api/admin/logs", authAdmin, (req, res) => {
+
+    const evento =
+        String(req.query.evento || "").trim();
+
+    const busca =
+        String(req.query.busca || "")
+            .trim()
+            .toLowerCase();
+
+    const limite = Math.min(500, Number(req.query.limite || 200));
+    const offset = Math.max(0, Number(req.query.offset || 0));
+
+    let linhas = [];
+
+    try {
+        if (fs.existsSync(LOGS_FILE)) {
+            const conteudo = fs.readFileSync(LOGS_FILE, "utf8");
+
+            linhas = conteudo
+                .split("\n")
+                .filter(Boolean)
+                .map(l => {
+                    try {
+                        return JSON.parse(l);
+                    } catch {
+                        return null;
+                    }
+                })
+                .filter(Boolean);
+        }
+    } catch (error) {
+        console.error("ERRO ao ler logs:", error.message);
+    }
+
+    linhas.reverse();
+
+    if (evento) {
+        linhas = linhas.filter(l => l.evento === evento);
+    }
+
+    if (busca) {
+        linhas = linhas.filter(l =>
+            JSON.stringify(l).toLowerCase().includes(busca)
+        );
+    }
+
+    const total = linhas.length;
+
+    linhas = linhas.slice(offset, offset + limite);
+
+    res.json({
+        ok: true,
+        total,
+        logs: linhas
+    });
+});
+
+app.delete("/api/admin/logs", authAdmin, (req, res) => {
+
+    try {
+        fs.writeFileSync(LOGS_FILE, "", "utf8");
+        registrarLog("admin_logs_limpos");
+        res.json({ ok: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get("/api/admin/cupons", authAdmin, (req, res) => {
+
+    const cupons = readCoupons();
+
+    res.json({
+        ok: true,
+        total: Object.keys(cupons).length,
+        cupons: Object.values(cupons)
+            .sort((a, b) =>
+                String(b.createdAt || "")
+                    .localeCompare(String(a.createdAt || ""))
+            )
+    });
+});
+
+app.post("/api/admin/cupons", authAdmin, (req, res) => {
+
+    const {
+        codigo,
+        discountPercent,
+        maxUses,
+        active
+    } = req.body;
+
+    const nome = String(codigo || "")
+        .trim()
+        .toUpperCase();
+
+    if (!nome) {
+        return res.status(400).json({
+            error: "Informe o código do cupom."
+        });
+    }
+
+    const pct = Number(discountPercent);
+
+    if (
+        !Number.isFinite(pct) ||
+        pct <= 0 ||
+        pct >= 100
+    ) {
+        return res.status(400).json({
+            error: "Desconto deve estar entre 1% e 99%."
+        });
+    }
+
+    const cupons = readCoupons();
+
+    const existente = cupons[nome] || {};
+
+    cupons[nome] = {
+        codigo: nome,
+        ownerName: existente.ownerName || "Admin",
+        ownerOrderId: existente.ownerOrderId || "ADMIN",
+        discountPercent: pct,
+        used: existente.used || 0,
+        maxUses:
+            maxUses !== undefined
+            ? Math.max(1, Number(maxUses))
+            : (existente.maxUses || 100),
+        active: active !== undefined ? !!active : true,
+        createdAt: existente.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+
+    writeCoupons(cupons);
+
+    registrarLog("admin_cupom_salvo", { codigo: nome, pct });
+
+    res.json({ ok: true, cupom: cupons[nome] });
+});
+
+app.delete("/api/admin/cupons/:codigo", authAdmin, (req, res) => {
+
+    const nome = String(req.params.codigo || "")
+        .trim()
+        .toUpperCase();
+
+    const cupons = readCoupons();
+
+    if (!cupons[nome]) {
+        return res.status(404).json({
+            error: "Cupom não encontrado."
+        });
+    }
+
+    delete cupons[nome];
+
+    writeCoupons(cupons);
+
+    registrarLog("admin_cupom_removido", { codigo: nome });
+
+    res.json({ ok: true });
+});
+
+/* =========================
    404 JSON PARA /api
 ========================= */
 
@@ -3941,11 +5519,16 @@ app.use((err, req, res, next) => {
     res.status(err.status || 500).send("Erro interno do servidor.");
 });
 
-app.listen(
-    PORT,
-    () => {
-        console.log(
-            `Milhão Door funcionando em http://localhost:${PORT}`
-        );
-    }
-);
+initBanco().then(() => {
+    app.listen(
+        PORT,
+        () => {
+            console.log(
+                `Milhão Door funcionando em http://localhost:${PORT}`
+            );
+        }
+    );
+}).catch((error) => {
+    console.error("Falha ao iniciar:", error.message);
+    process.exit(1);
+});

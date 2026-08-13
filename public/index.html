@@ -1041,6 +1041,20 @@ html,body{
 
 </div>
 
+<button
+id="btnEntrar"
+class="btn"
+onclick="abrirLogin()"
+style="
+    margin:0;
+    padding:9px 14px;
+    font-size:12px;
+    white-space:nowrap;
+    box-shadow:0 4px 14px rgba(0,0,0,.5);
+">
+👤 ENTRAR
+</button>
+
 </header>
 
 
@@ -1781,6 +1795,97 @@ ENVIAR OFERTA
 </div>
 
 
+<!-- CONTA (LOGIN / CADASTRO) -->
+
+<div class="modal" id="authModal" style="display:none;">
+
+<div class="box" style="max-width:380px;">
+
+<button
+class="close"
+onclick="fecharLogin()">
+×
+</button>
+
+<h2 style="color:#ffd400;">Minha conta</h2>
+
+<div style="display:flex;gap:6px;margin-bottom:12px;">
+  <button
+    id="authTabEntrar"
+    class="btn"
+    onclick="authTab('entrar')"
+    style="flex:1;margin:0;padding:8px;font-size:12px;">
+    ENTRAR
+  </button>
+  <button
+    id="authTabCadastrar"
+    class="btn sec"
+    onclick="authTab('cadastrar')"
+    style="flex:1;margin:0;padding:8px;font-size:12px;">
+    CRIAR CONTA
+  </button>
+</div>
+
+<div id="authEntrar">
+  <input
+    id="loginEmail"
+    class="copia"
+    type="email"
+    placeholder="Seu e-mail"
+    autocomplete="email">
+  <input
+    id="loginSenha"
+    class="copia"
+    type="password"
+    placeholder="Sua senha"
+    autocomplete="current-password"
+    style="margin-top:8px;"
+    onkeydown="if(event.key==='Enter')fazerLogin()">
+  <button
+    class="btn"
+    onclick="fazerLogin()"
+    style="margin-top:10px;width:100%;">
+    ▶ ENTRAR
+  </button>
+</div>
+
+<div id="authCadastrar" style="display:none;">
+  <input
+    id="cadNome"
+    class="copia"
+    placeholder="Seu nome ou empresa">
+  <input
+    id="cadEmail"
+    class="copia"
+    type="email"
+    placeholder="Seu e-mail"
+    autocomplete="email"
+    style="margin-top:8px;">
+  <input
+    id="cadSenha"
+    class="copia"
+    type="password"
+    placeholder="Crie uma senha (mínimo 6 caracteres)"
+    autocomplete="new-password"
+    style="margin-top:8px;"
+    onkeydown="if(event.key==='Enter')fazerCadastro()">
+  <button
+    class="btn"
+    onclick="fazerCadastro()"
+    style="margin-top:10px;width:100%;">
+    ✔ CRIAR MINHA CONTA
+  </button>
+</div>
+
+<div
+id="authMsg"
+style="margin-top:10px;font-size:12px;color:#aaa;min-height:14px;"></div>
+
+</div>
+
+</div>
+
+
 <!-- PAINEL DE COMANDO -->
 
 <div class="modal" id="ownerModal" style="display:none;">
@@ -1830,6 +1935,13 @@ onclick="closeOwner()">
     onclick="abaExtrato()"
     style="flex:1;margin:0;padding:8px;font-size:12px;">
     📊 EXTRATO
+  </button>
+  <button
+    class="btn sec"
+    id="tabConta"
+    onclick="abaConta()"
+    style="flex:1;margin:0;padding:8px;font-size:12px;">
+    👤 CONTA
   </button>
 </div>
 
@@ -1991,6 +2103,229 @@ localStorage.getItem(
 "mega_orderTokens"
 ) || "{}"
 );
+
+/* =========================
+   CONTA DO USUÁRIO (LOGIN)
+========================= */
+
+let minhaConta =
+JSON.parse(
+localStorage.getItem(
+"mega_conta"
+) || "null"
+);
+
+function getAuth(){
+    return minhaConta;
+}
+
+function setAuth(dados){
+    minhaConta = dados;
+    localStorage.setItem(
+        "mega_conta",
+        JSON.stringify(dados)
+    );
+    updateBtnConta();
+}
+
+function clearAuth(){
+    minhaConta = null;
+    localStorage.removeItem("mega_conta");
+    updateBtnConta();
+}
+
+function authHeaders(extra){
+    const h = extra || {};
+    if(minhaConta && minhaConta.token){
+        h["Authorization"] =
+            "Bearer " + minhaConta.token;
+    }
+    return h;
+}
+
+function updateBtnConta(){
+    const b = document.getElementById("btnEntrar");
+    if(!b)return;
+    b.textContent = minhaConta
+        ? "👤 MINHA CONTA"
+        : "👤 ENTRAR";
+}
+
+function abrirLogin(){
+
+    if(minhaConta){
+        abrirPainelComando();
+        abaConta();
+        return;
+    }
+
+    document.getElementById("authModal").style.display = "flex";
+    authTab("entrar");
+    setTimeout(() => {
+        const e = document.getElementById("loginEmail");
+        if(e)e.focus();
+    }, 100);
+}
+
+function fecharLogin(){
+    document.getElementById("authModal").style.display = "none";
+}
+
+function authTab(modo){
+    const entrar =
+        document.getElementById("authEntrar");
+    const cadastrar =
+        document.getElementById("authCadastrar");
+    const bt =
+        document.getElementById("authTabEntrar");
+    const bc =
+        document.getElementById("authTabCadastrar");
+
+    if(modo === "cadastrar"){
+        entrar.style.display = "none";
+        cadastrar.style.display = "block";
+        bt.classList.add("sec");
+        bc.classList.remove("sec");
+    } else {
+        entrar.style.display = "block";
+        cadastrar.style.display = "none";
+        bt.classList.remove("sec");
+        bc.classList.add("sec");
+    }
+
+    document.getElementById("authMsg").textContent = "";
+}
+
+async function fazerLogin(){
+    const msg = document.getElementById("authMsg");
+    const email =
+        document.getElementById("loginEmail").value.trim();
+    const senha =
+        document.getElementById("loginSenha").value;
+
+    if(!email.includes("@")){
+        msg.textContent = "Informe um e-mail válido.";
+        return;
+    }
+
+    if(!senha){
+        msg.textContent = "Informe sua senha.";
+        return;
+    }
+
+    msg.textContent = "Entrando...";
+
+    try {
+
+        const resp = await fetch(
+            "/api/auth/login",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ email, senha })
+            }
+        );
+
+        const data = await reqJSON(resp);
+
+        if(!resp.ok){
+            msg.textContent =
+                data.error || "Erro ao entrar.";
+            return;
+        }
+
+        setAuth({
+            token: data.token,
+            nome: data.usuario.nome,
+            email: data.usuario.email
+        });
+
+        msg.textContent =
+            "✔ Bem-vindo(a), " +
+            data.usuario.nome + "!";
+
+        setTimeout(fecharLogin, 600);
+
+    } catch(err){
+        msg.textContent =
+            "Erro de conexão. Tente novamente.";
+    }
+}
+
+async function fazerCadastro(){
+    const msg = document.getElementById("authMsg");
+    const nome =
+        document.getElementById("cadNome").value.trim();
+    const email =
+        document.getElementById("cadEmail").value.trim();
+    const senha =
+        document.getElementById("cadSenha").value;
+
+    if(nome.length < 2){
+        msg.textContent =
+            "Informe seu nome ou empresa.";
+        return;
+    }
+
+    if(!email.includes("@")){
+        msg.textContent = "Informe um e-mail válido.";
+        return;
+    }
+
+    if(senha.length < 6){
+        msg.textContent =
+            "A senha deve ter ao menos 6 caracteres.";
+        return;
+    }
+
+    msg.textContent = "Criando sua conta...";
+
+    try {
+
+        const resp = await fetch(
+            "/api/auth/registrar",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ nome, email, senha })
+            }
+        );
+
+        const data = await reqJSON(resp);
+
+        if(!resp.ok){
+            msg.textContent =
+                data.error || "Erro ao criar conta.";
+            return;
+        }
+
+        setAuth({
+            token: data.token,
+            nome: data.usuario.nome,
+            email: data.usuario.email
+        });
+
+        msg.textContent =
+            "✔ Conta criada! Bem-vindo(a), " +
+            data.usuario.nome + "!";
+
+        setTimeout(fecharLogin, 800);
+
+    } catch(err){
+        msg.textContent =
+            "Erro de conexão. Tente novamente.";
+    }
+}
+
+function sairConta(){
+    clearAuth();
+    fecharLogin();
+    alert("Você saiu da sua conta.");
+}
 
 function escStr(s){
     return String(s == null ? "" : s)
@@ -4275,6 +4610,12 @@ function checkout(){
 
 if(!sel.size)return;
 
+if(!minhaConta){
+  alert("Para comprar, crie sua conta (grátis) e faça login. Você terá acesso às suas compras, blocos e extrato.");
+  abrirLogin();
+  return;
+}
+
 if(sel.size < 5){
   alert("O valor mínimo para compra é de R$ 5,00. Selecione pelo menos 5 espaços.");
   return;
@@ -4308,6 +4649,20 @@ document.getElementById(
 "modal"
 ).style.display =
 "flex";
+
+
+/* Pré-preenche com os dados da conta */
+
+const nomeInput = document.getElementById("name");
+const emailInput = document.getElementById("email");
+
+if(nomeInput && !nomeInput.value.trim() && minhaConta){
+  nomeInput.value = minhaConta.nome || "";
+}
+
+if(emailInput && !emailInput.value.trim() && minhaConta){
+  emailInput.value = minhaConta.email || "";
+}
 
 }
 
@@ -4400,10 +4755,10 @@ await fetch(
 {
 method:"POST",
 
-headers:{
+headers:authHeaders({
 "Content-Type":
 "application/json"
-},
+}),
 
 body:JSON.stringify({
 
@@ -6556,6 +6911,14 @@ function setAbaAtiva(){
 
     tabE.className =
         abaAtual === "extrato" ? "btn" : "btn sec";
+
+    const tabC =
+        document.getElementById("tabConta");
+
+    if(tabC){
+        tabC.className =
+            abaAtual === "conta" ? "btn" : "btn sec";
+    }
 }
 
 function abrirPainelComando(){
@@ -6657,13 +7020,17 @@ async function carregarExtrato(){
 
     try{
 
+        const headers = {};
+
+        if(meusTokens){
+            headers["x-owner-tokens"] = meusTokens;
+        }
+
         const response =
             await fetch(
                 "/api/historico",
                 {
-                    headers: meusTokens
-                        ? { "x-owner-tokens": meusTokens }
-                        : {}
+                    headers: authHeaders(headers)
                 }
             );
 
@@ -6693,6 +7060,14 @@ async function carregarExtrato(){
 
         let html =
             "<h3 style='margin:0 0 8px;color:#ffd400;'>📊 Meu extrato</h3>" +
+            "<div style='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;'>" +
+            "<button class='btn' onclick='baixarExtrato(\"pdf\")' " +
+            "style='margin:0;padding:8px 12px;font-size:11px;'>" +
+            "📄 BAIXAR PDF</button>" +
+            "<button class='btn sec' onclick='baixarExtrato(\"csv\")' " +
+            "style='margin:0;padding:8px 12px;font-size:11px;'>" +
+            "📊 BAIXAR PLANILHA</button>" +
+            "</div>" +
             "<div style='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;'>" +
             "<div style='flex:1;min-width:120px;background:#1b3a2a;" +
             "border-radius:8px;padding:10px;'>" +
@@ -6800,6 +7175,252 @@ async function carregarExtrato(){
             "<div style='font-size:13px;color:#aaa;'>" +
             "Erro ao carregar o extrato. Tente novamente.</div>";
     }
+}
+
+async function baixarExtrato(formato){
+
+    const meusTokens =
+        [...new Set(
+            Object.values(orderTokens)
+        )]
+        .filter(Boolean)
+        .join(",");
+
+    const url =
+        "/api/extrato/export?formato=" +
+        (formato === "pdf" ? "pdf" : "csv");
+
+    try {
+
+        const headers = {};
+
+        if(meusTokens){
+            headers["x-owner-tokens"] = meusTokens;
+        }
+
+        const resp = await fetch(url, {
+            headers: authHeaders(headers)
+        });
+
+        if(!resp.ok){
+            const data = await reqJSON(resp);
+            alert(data.error || "Não foi possível gerar o arquivo.");
+            return;
+        }
+
+        const blob = await resp.blob();
+
+        const ext = formato === "pdf" ? "pdf" : "csv";
+
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "extrato-milhao-door-" +
+            new Date().toISOString().slice(0, 10) +
+            "." + ext;
+        document.body.appendChild(a);
+        a.click();
+        URL.revokeObjectURL(a.href);
+        a.remove();
+
+    } catch(err){
+        alert("Erro de conexão ao gerar o arquivo.");
+    }
+}
+
+/* =========================
+   ABA CONTA (PAINEL DE COMANDO)
+========================= */
+
+function abaConta(){
+
+    abaAtual = "conta";
+
+    setAbaAtiva();
+
+    carregarConta();
+}
+
+function carregarConta(){
+
+    const list =
+        document.getElementById("ownerList");
+
+    if(!minhaConta){
+
+        list.innerHTML =
+            "<h3 style='margin:0 0 8px;color:#ffd400;'>👤 Minha conta</h3>" +
+            "<div style='font-size:13px;color:#aaa;line-height:1.5;'>" +
+            "Crie sua conta grátis para comprar espaços e administrar " +
+            "seus blocos, compras e extrato.<br><br></div>" +
+            "<button class='btn' onclick='abrirLogin()' " +
+            "style='width:100%;'>👤 ENTRAR / CRIAR CONTA</button>";
+
+        return;
+    }
+
+    list.innerHTML =
+        "<div style='color:#aaa;padding:10px 0;'>" +
+        "Carregando sua conta...</div>";
+
+    fetch("/api/auth/me", {
+        headers: authHeaders({})
+    }).then(reqJSON).then(async (data) => {
+
+        if(!data.ok){
+
+            if(data.error &&
+               data.error.indexOf("login") > -1){
+                clearAuth();
+            }
+
+            list.innerHTML =
+                "<h3 style='margin:0 0 8px;color:#ffd400;'>👤 Minha conta</h3>" +
+                "<div style='font-size:13px;color:#aaa;'>" +
+                (data.error || "Erro ao carregar a conta.") +
+                "</div>";
+            return;
+        }
+
+        const u = data.usuario;
+
+        let blocos =
+            data.espacos && data.espacos.length
+            ? data.espacos.map(e =>
+                "#" + Number(e.id).toLocaleString("pt-BR") +
+                " · " + (e.status === "published" ? "publicado" : "vendido")
+              ).join(", ")
+            : "Nenhum bloco anexado ainda.";
+
+        list.innerHTML =
+            "<h3 style='margin:0 0 8px;color:#ffd400;'>👤 Minha conta</h3>" +
+            "<div style='background:#161616;border:1px solid #2a2a2a;" +
+            "border-radius:8px;padding:10px;margin-bottom:8px;font-size:12px;'>" +
+            "<b style='color:#fff;'>" + escStr(u.nome) + "</b><br>" +
+            "<span style='color:#888;'>" + escStr(u.email) + "</span><br>" +
+            "<span style='color:#45d66f;'>" +
+            Number(data.totalTransacoes || 0).toLocaleString("pt-BR") +
+            " transação(ões)</span></div>" +
+            "<div style='font-size:12px;color:#ddd;margin-bottom:10px;'>" +
+            "<b>Seus blocos:</b><br>" +
+            "<span style='color:#aaa;font-size:11px;'>" +
+            escStr(blocos) + "</span></div>" +
+
+            "<div style='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;'>" +
+            "<button class='btn' onclick='abaExtrato()' " +
+            "style='margin:0;padding:8px;font-size:11px;flex:1;'>" +
+            "📊 MEU EXTRATO</button>" +
+            "<button class='btn sec' onclick='baixarExtrato(\"pdf\")' " +
+            "style='margin:0;padding:8px;font-size:11px;'>📄 PDF</button>" +
+            "<button class='btn sec' onclick='baixarExtrato(\"csv\")' " +
+            "style='margin:0;padding:8px;font-size:11px;'>📊 CSV</button>" +
+            "</div>" +
+
+            "<div style='font-size:12px;color:#aaa;margin-bottom:6px;'>" +
+            "<b>Anexar um bloco que você já comprou</b> " +
+            "(código de acesso recebido na compra):</div>" +
+            "<input id='anexarInput' class='copia' " +
+            "placeholder='MEGA-XXXX-XXXX-XXXX-XXXX' " +
+            "style='text-transform:uppercase;' " +
+            "onkeydown=\"if(event.key==='Enter')anexarBloco()\">" +
+            "<button class='btn' onclick='anexarBloco()' " +
+            "style='margin-top:8px;width:100%;'>➕ ANEXAR BLOCOS</button>" +
+            "<div id='anexarMsg' style='margin-top:6px;font-size:12px;color:#aaa;'></div>" +
+
+            "<div style='border-top:1px solid #2a2a2a;margin:14px 0 8px;padding-top:10px;'>" +
+            "<button class='btn sec' onclick='abrirAlterarSenha()' " +
+            "style='margin:0;width:100%;padding:8px;font-size:11px;'>" +
+            "🔒 ALTERAR SENHA</button>" +
+            "<button class='btn sec' onclick='sairConta()' " +
+            "style='margin-top:8px;width:100%;padding:8px;font-size:11px;'>" +
+            "🚪 SAIR DA CONTA</button>" +
+            "</div>";
+
+    }).catch(() => {
+        list.innerHTML =
+            "<h3 style='margin:0 0 8px;color:#ffd400;'>👤 Minha conta</h3>" +
+            "<div style='font-size:13px;color:#aaa;'>" +
+            "Erro de conexão. Tente novamente.</div>";
+    });
+}
+
+async function anexarBloco(){
+
+    const input =
+        document.getElementById("anexarInput");
+
+    const msg =
+        document.getElementById("anexarMsg");
+
+    if(!input || !msg)return;
+
+    const valor = input.value.trim();
+
+    if(!valor){
+        msg.textContent = "Informe o código de acesso.";
+        return;
+    }
+
+    msg.textContent = "Verificando...";
+
+    const resp = await fetch("/api/auth/anexar", {
+        method: "POST",
+        headers: authHeaders({
+            "Content-Type": "application/json"
+        }),
+        body: JSON.stringify({
+            accessCode: valor.toUpperCase(),
+            token: valor
+        })
+    });
+
+    const data = await reqJSON(resp);
+
+    if(!resp.ok){
+        msg.textContent = data.error || "Não foi possível anexar.";
+        return;
+    }
+
+    msg.textContent =
+        "✔ " + (data.mensagem || "Blocos anexados!");
+
+    input.value = "";
+
+    setTimeout(carregarConta, 700);
+}
+
+function abrirAlterarSenha(){
+
+    const atual = prompt("Digite sua senha atual:");
+
+    if(atual === null)return;
+
+    const nova = prompt(
+        "Digite a nova senha (mínimo 6 caracteres):"
+    );
+
+    if(!nova)return;
+
+    if(nova.length < 6){
+        alert("A nova senha deve ter ao menos 6 caracteres.");
+        return;
+    }
+
+    fetch("/api/auth/senha", {
+        method: "POST",
+        headers: authHeaders({
+            "Content-Type": "application/json"
+        }),
+        body: JSON.stringify({
+            senhaAtual: atual,
+            novaSenha: nova
+        })
+    }).then(reqJSON).then((data) => {
+        alert(data.ok
+            ? "✔ Senha alterada com sucesso."
+            : (data.error || "Erro ao alterar a senha."));
+    }).catch(() => {
+        alert("Erro de conexão.");
+    });
 }
 
 async function restaurarAcesso(){
@@ -8818,6 +9439,12 @@ async function salvarMinhaChavePix(){
         : '<span style="color:#ff4d4d;">' +
           'Erro: ' + falhas.join("; ") + '</span>';
 }
+
+/* =========================
+   INICIALIZAÇÃO
+========================= */
+
+updateBtnConta();
 
 </script>
 

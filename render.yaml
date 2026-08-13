@@ -18,6 +18,14 @@ services:
         sync: false
       - key: RESEND_API_KEY
         sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_USER
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: DATABASE_URL
+        sync: false
     disk:
       name: megaoutdoor-data
       mountPath: /var/lib/megaoutdoor

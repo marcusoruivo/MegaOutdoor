@@ -21,6 +21,7 @@ html,body{
 
 .topo{
     height:82px;
+    min-height:82px;
     position:fixed;
     z-index:10;
     inset:0 0 auto;
@@ -28,7 +29,13 @@ html,body{
     border-bottom:1px solid #292929;
     display:flex;
     align-items:center;
-    padding:0 28px
+    gap:12px;
+    padding:0 28px;
+    overflow:hidden
+}
+
+.logo{
+    flex:0 0 auto;
 }
 
 .logo img{
@@ -51,10 +58,21 @@ html,body{
 
 .info{
     flex:1;
+    min-width:0;
     display:flex;
     justify-content:center;
     gap:65px;
-    text-align:center
+    text-align:center;
+    align-items:center
+}
+
+.info > div{
+    min-width:0;
+    white-space:nowrap;
+}
+
+.topo .btn{
+    flex:0 0 auto;
 }
 
 .info small{
@@ -135,7 +153,10 @@ html,body{
     z-index:20;
     top:103px;
     left:22px;
-    width:300px;
+    width:340px;
+    max-height:calc(100vh - 126px);
+    overflow-y:auto;
+    overflow-x:hidden;
     padding:18px;
     background:rgba(5,5,5,.94);
     border:1px solid #292929;
@@ -274,6 +295,7 @@ html,body{
     margin:0;
     padding:13px 20px;
     font-size:13px;
+    white-space:nowrap;
     background:linear-gradient(180deg,#1f4733,#17301f 60%,#122a1b);
     color:#45d66f;
     border:1px solid #2f5c42;
@@ -310,12 +332,13 @@ html,body{
 .chatFixo{
     position:fixed;
     left:22px;
-    bottom:76px;
+    bottom:84px;
     z-index:45;
     width:auto;
     margin:0;
     padding:13px 20px;
     font-size:13px;
+    white-space:nowrap;
     background:linear-gradient(180deg,#1b3557,#132640 60%,#0f2036);
     color:#5aa2ff;
     border:1px solid #2c4f7c;
@@ -556,38 +579,89 @@ html,body{
    RESPONSIVO
 ========================= */
 
-@media(max-width:900px){
+@media(max-width:1180px){
 
     .topo{
-        height:auto;
-        min-height:75px;
-        padding:8px 15px;
+        padding:0 18px;
         gap:10px;
     }
 
-    .logo{
-        min-width:0;
-        width:42%;
-    }
-
     .logo img{
-        width:230px;
+        width:220px;
     }
 
     .info{
-        gap:12px;
-    }
-
-    .info > div{
-        min-width:65px;
+        gap:30px;
     }
 
     .info strong{
-        font-size:14px;
+        font-size:15px;
+    }
+
+    .info small{
+        font-size:9px;
+    }
+
+    #btnEntrar{
+        padding:8px 12px;
+        font-size:11px;
+    }
+}
+
+@media(max-width:980px){
+
+    .topo{
+        padding:0 14px;
+        gap:8px;
+    }
+
+    .logo img{
+        width:160px;
+    }
+
+    .info{
+        gap:16px;
+    }
+
+    .info strong{
+        font-size:13px;
     }
 
     .info small{
         font-size:8px;
+    }
+
+    #btnEntrar{
+        padding:7px 10px;
+        font-size:11px;
+    }
+}
+
+@media(max-width:760px){
+
+    .logo img{
+        width:100px;
+    }
+
+    .info{
+        gap:8px;
+    }
+
+    .info > div{
+        padding:0 2px;
+    }
+
+    .info strong{
+        font-size:12px;
+    }
+
+    .info small{
+        font-size:7px;
+    }
+
+    #btnEntrar{
+        padding:6px 9px;
+        font-size:10px;
     }
 }
 /* MILHÃO DOOR - MELHORIA VISUAL DO PAINEL */
@@ -842,6 +916,7 @@ html,body{
         min-width:0;
         flex:1 1 0;
         padding:0 2px;
+        white-space:normal;
     }
 
     .info small{
@@ -872,6 +947,10 @@ html,body{
         max-height:calc(100vh - 190px);
         overflow-y:auto;
         border-radius:14px;
+    }
+
+    #painelTabs{
+        grid-template-columns:repeat(2,1fr);
     }
 
     .zoom{
@@ -1932,7 +2011,7 @@ style="margin-top:10px;font-size:12px;color:#aaa;min-height:14px;"></div>
 
 <div class="modal" id="ownerModal" style="display:none;">
 
-<div class="box">
+<div class="box" style="width:660px;max-width:94%;">
 
 <button
 class="close"
@@ -1942,47 +2021,47 @@ onclick="closeOwner()">
 
 <h2 style="color:#ffd400;">Painel de comando</h2>
 
-<div id="painelTabs" style="display:flex;gap:6px;margin-bottom:10px;">
+<div id="painelTabs" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
   <button
     class="btn"
     id="tabOfertas"
     onclick="abaOfertas()"
-    style="flex:1;margin:0;padding:8px;font-size:12px;">
+    style="margin:0;padding:10px 8px;font-size:12px;white-space:nowrap;">
     📨 OFERTAS
   </button>
   <button
     class="btn sec"
     id="tabBlocos"
     onclick="abaBlocos()"
-    style="flex:1;margin:0;padding:8px;font-size:12px;">
+    style="margin:0;padding:10px 8px;font-size:12px;white-space:nowrap;">
     🧩 MEUS BLOCOS
   </button>
   <button
     class="btn sec"
     id="tabPix"
     onclick="abaPix()"
-    style="flex:1;margin:0;padding:8px;font-size:12px;">
+    style="margin:0;padding:10px 8px;font-size:12px;white-space:nowrap;">
     🔑 CHAVE PIX
   </button>
   <button
     class="btn sec"
     id="tabAcesso"
     onclick="abaAcesso()"
-    style="flex:1;margin:0;padding:8px;font-size:12px;">
+    style="margin:0;padding:10px 8px;font-size:12px;white-space:nowrap;">
     🎟️ ACESSO
   </button>
   <button
     class="btn sec"
     id="tabExtrato"
     onclick="abaExtrato()"
-    style="flex:1;margin:0;padding:8px;font-size:12px;">
+    style="margin:0;padding:10px 8px;font-size:12px;white-space:nowrap;">
     📊 EXTRATO
   </button>
   <button
     class="btn sec"
     id="tabConta"
     onclick="abaConta()"
-    style="flex:1;margin:0;padding:8px;font-size:12px;">
+    style="margin:0;padding:10px 8px;font-size:12px;white-space:nowrap;">
     👤 CONTA
   </button>
 </div>

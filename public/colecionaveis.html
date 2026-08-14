@@ -682,6 +682,11 @@ async function api(url, opts = {}) {
     const texto = await res.text();
     try { data = JSON.parse(texto); } catch(e){ data = { raw: texto }; }
     if (!res.ok) {
+        if (res.status === 401 && /sess[aã]o|expir|entrar novamente|login/i.test((data && data.error) || "")) {
+            minhaConta = null;
+            localStorage.removeItem("mega_conta");
+            atualizarHeader();
+        }
         const err = new Error((data && data.error) || "Erro na requisição");
         err.status = res.status;
         throw err;

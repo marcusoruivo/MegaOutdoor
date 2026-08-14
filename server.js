@@ -1151,7 +1151,11 @@ function verificarSenha(senha, armazenada) {
 }
 
 function gerarTokenJwt(payload) {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: "30d" });
+    return jwt.sign(
+        { ...payload, jti: crypto.randomUUID() },
+        JWT_SECRET,
+        { expiresIn: "30d" }
+    );
 }
 
 function extrairBearer(req) {
@@ -1164,7 +1168,38 @@ function extrairBearer(req) {
     return auth.slice(7).trim();
 }
 
-function authUsuario(req, res, next) {
+function hashToken(token) {
+    return crypto
+        .createHash("sha256")
+        .update(token)
+        .digest("hex");
+}
+
+async function tokenFoiRevogado(token) {
+    if (!pgPool) return false;
+    try {
+        const payload = jwt.decode(token);
+        const jti = payload && payload.jti;
+
+        if (jti) {
+            const r = await pgPool.query(
+                "SELECT 1 FROM usuario_chaves WHERE tipo = $1 AND valor = $2 LIMIT 1",
+                ["logout", jti]
+            );
+            if (r.rows.length > 0) return true;
+        }
+
+        const r2 = await pgPool.query(
+            "SELECT 1 FROM usuario_chaves WHERE tipo = $1 AND valor = $2 LIMIT 1",
+            ["logout", hashToken(token)]
+        );
+        return r2.rows.length > 0;
+    } catch {
+        return false;
+    }
+}
+
+async function authUsuario(req, res, next) {
     const token = extrairBearer(req);
 
     if (!token) {
@@ -1178,6 +1213,12 @@ function authUsuario(req, res, next) {
 
         if (!payload.usuarioId) {
             throw new Error("Token inválido.");
+        }
+
+        if (await tokenFoiRevogado(token)) {
+            return res.status(401).json({
+                error: "Sessão encerrada. Entre novamente."
+            });
         }
 
         req.usuario = {
@@ -2116,6 +2157,34 @@ app.post("/api/auth/login", async (req, res) => {
 
     } catch (error) {
         console.error("ERRO no login:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post("/api/auth/logout", authUsuario, async (req, res) => {
+
+    try {
+
+        const token = extrairBearer(req);
+
+        if (token && pgPool) {
+            const payload = jwt.decode(token);
+            const chaveRevogacao = payload && payload.jti
+                ? payload.jti
+                : hashToken(token);
+
+            await pgPool.query(
+                `INSERT INTO usuario_chaves (usuario_id, tipo, valor)
+                 VALUES ($1, $2, $3)
+                 ON CONFLICT (tipo, valor) DO NOTHING`,
+                [req.usuario.id, "logout", chaveRevogacao]
+            );
+        }
+
+        res.json({ ok: true });
+
+    } catch (error) {
+        console.error("ERRO no logout:", error.message);
         res.status(500).json({ error: error.message });
     }
 });

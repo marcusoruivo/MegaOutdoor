@@ -2299,10 +2299,11 @@ body.has-benefits{
     }
     .main-layout{
         grid-template-columns:1fr;
-        grid-template-rows:auto 1fr;
-        gap:12px;
-        padding:12px;
-        overflow-y:auto
+        grid-template-rows:auto minmax(55vh,1fr);
+        gap:10px;
+        padding:10px;
+        height:calc(100vh - var(--header-height) - var(--benefits-height));
+        overflow:hidden
     }
     .sidebar-left{
         grid-column:1;
@@ -2312,16 +2313,33 @@ body.has-benefits{
         overflow-y:hidden;
         gap:10px;
         padding-right:0;
-        padding-bottom:4px
+        padding-bottom:4px;
+        max-height:34vh
     }
     .sidebar-left .card{
-        min-width:300px;
-        flex:0 0 auto
+        min-width:280px;
+        flex:0 0 auto;
+        padding:12px
+    }
+    .sidebar-left .card-title{
+        font-size:11px
+    }
+    .sidebar-left .card-value{
+        font-size:18px
+    }
+    .mode-btn{
+        padding:9px 10px
+    }
+    .mode-text b{
+        font-size:12px
+    }
+    .mode-text span{
+        font-size:10px
     }
     #area{
         grid-column:1;
         grid-row:2;
-        min-height:60vh
+        min-height:55vh
     }
     .sidebar-right{
         display:none
@@ -2349,6 +2367,10 @@ body.has-benefits{
     .footer-content{
         grid-template-columns:1fr 1fr;
         gap:24px
+    }
+    #chatMensagens{
+        min-height:260px !important;
+        max-height:45vh !important;
     }
 }
 
@@ -3353,7 +3375,6 @@ LIMPAR
     </div>
 
     <!-- SIDEBAR DIREITA -->
-    <a id="como-funciona" style="position:relative;top:-20px;display:block;height:0;"></a>
     <aside class="sidebar-right" id="comoFuncionaSection">
 
         <div class="card how-it-works">
@@ -3538,8 +3559,10 @@ onclick="fecharChatModal()">
 </button>
 
 <h2 id="chatTitulo" style="color:#ffd400;margin-top:0;">
-💬 Chat
+💬 Chat geral
 </h2>
+
+<div id="chatOnlineStatus" style="font-size:12px;color:#4ade80;margin-top:-6px;margin-bottom:8px;display:none;">🟢 Online</div>
 
 <div
 id="chatMsgErro"
@@ -3548,13 +3571,23 @@ style="color:#ff4d4d;font-size:12px;margin-bottom:6px;">
 
 <div
 id="chatMensagens"
-style="flex:1;overflow-y:auto;border:1px solid #2a2a2a;border-radius:10px;background:#111;padding:10px;font-size:13px;margin-bottom:10px;">
+style="flex:1;overflow-y:auto;border:1px solid #2a2a2a;border-radius:10px;background:#111;padding:10px;font-size:13px;margin-bottom:10px;min-height:320px;max-height:55vh;">
 Carregando...
 </div>
 
 <div style="display:flex;flex-direction:column;gap:8px;">
 
-<div id="chatMsgRapidas" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+<div style="border:1px solid #2a2a2a;border-radius:10px;background:#161616;overflow:hidden;">
+<button
+id="chatMsgRapidasToggle"
+type="button"
+onclick="toggleMensagensRapidas()"
+style="width:100%;text-align:left;background:transparent;border:none;color:#ffd400;font-size:12px;font-weight:800;padding:8px 10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+<span>💬 MENSAGENS RÁPIDAS</span>
+<span id="chatMsgRapidasIcon">▼</span>
+</button>
+<div id="chatMsgRapidas" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;border-top:1px solid #2a2a2a;"></div>
+</div>
 
 <div style="display:flex;align-items:center;gap:6px;">
 <button
@@ -4840,6 +4873,7 @@ document.addEventListener("DOMContentLoaded", async function(){
     atualizarHeaderScroll();
     await carregarConfigMercadoPago();
     carregarKits();
+    resize();
 });
 
 let x = 0;
@@ -5037,13 +5071,22 @@ function updateBtnConta(){
     });
 }
 
-function abrirLogin(){
-
-    if(minhaConta){
-        abrirPainelComando();
-        abaConta();
-        return;
+function validarSessao(){
+    if(!minhaConta || !minhaConta.token){
+        clearAuth();
+        return Promise.resolve(false);
     }
+    return fetch("/api/auth/me", {
+        headers: authHeaders({})
+    }).then((resp) => {
+        if(!resp.ok) return false;
+        return reqJSON(resp)
+            .then((data) => !!(data && data.ok))
+            .catch(() => false);
+    }).catch(() => true);
+}
+
+function abrirModalLogin(){
 
     /* Fecha o menu mobile, caso esteja aberto, para evitar
        que ele fique interceptando toques/cliques. */
@@ -5063,6 +5106,24 @@ function abrirLogin(){
         e.focus();
         e.scrollIntoView({block:"nearest", behavior:"smooth"});
     }, 100);
+}
+
+function abrirLogin(){
+
+    if(minhaConta && minhaConta.token){
+        validarSessao().then((valida) => {
+            if(!valida){
+                clearAuth();
+                abrirModalLogin();
+                return;
+            }
+            abrirPainelComando();
+            abaConta();
+        });
+        return;
+    }
+
+    abrirModalLogin();
 }
 
 function fecharLogin(){
@@ -5226,7 +5287,19 @@ async function fazerCadastro(){
     }
 }
 
-function sairConta(){
+async function sairConta(){
+
+    try {
+        const headers = authHeaders({});
+        await fetch("/api/auth/logout", {
+            method: "POST",
+            headers
+        });
+    } catch (e) {
+        /* falha de rede não deve travar o usuário */
+        console.error("logout remoto:", e);
+    }
+
     clearAuth();
     fecharLogin();
     alert("Você saiu da sua conta.");
@@ -9805,6 +9878,9 @@ function abrirChatGeral(){
     document.getElementById("chatTitulo").textContent =
         "💬 Chat geral";
 
+    const badge = document.getElementById("chatOnlineStatus");
+    if(badge) badge.style.display = "block";
+
     document.getElementById("chatInput").placeholder =
         "Escreva sua mensagem...";
 
@@ -9826,6 +9902,9 @@ function abrirChatNegociacao(offerId, email, token){
 
     document.getElementById("chatTitulo").textContent =
         "💬 Negociação";
+
+    const badge = document.getElementById("chatOnlineStatus");
+    if(badge) badge.style.display = "none";
 
     document.getElementById("chatInput").placeholder =
         "Escreva para a outra parte...";
@@ -10284,10 +10363,27 @@ function montarMensagensRapidas(){
     box.innerHTML = CHAT_MSG_RAPIDAS.map(t =>
         '<button type="button" onclick="usarMensagemRapida(\'' +
         t.replace(/'/g, "\\'") + '\')" ' +
-        'style="font-size:12px;background:#161616;border:1px solid #333;' +
-        'border-radius:14px;padding:5px 10px;color:#ddd;cursor:pointer;">' +
+        'style="font-size:12px;background:#1e1e1e;border:1px solid #333;' +
+        'border-radius:14px;padding:5px 10px;color:#ddd;cursor:pointer;' +
+        'transition:border-color .15s ease,color .15s ease;">' +
         escapeHtml(t) + '</button>'
     ).join("");
+    expandirMensagensRapidas(false);
+}
+
+let chatMsgRapidasAberto = true;
+
+function expandirMensagensRapidas(aberto){
+    const box = document.getElementById("chatMsgRapidas");
+    const icon = document.getElementById("chatMsgRapidasIcon");
+    if(!box || !icon)return;
+    chatMsgRapidasAberto = aberto;
+    box.style.display = aberto ? "flex" : "none";
+    icon.textContent = aberto ? "▼" : "▲";
+}
+
+function toggleMensagensRapidas(){
+    expandirMensagensRapidas(!chatMsgRapidasAberto);
 }
 
 function usarMensagemRapida(texto){
@@ -10726,20 +10822,33 @@ function carregarConta(){
 
     fetch("/api/auth/me", {
         headers: authHeaders({})
-    }).then(reqJSON).then(async (data) => {
+    }).then(async (resp) => {
 
-        if(!data.ok){
+        const data = await reqJSON(resp);
 
-            if(data.error &&
-               data.error.indexOf("login") > -1){
+        if(!resp.ok || !data.ok){
+
+            const sessaoInvalida =
+                resp.status === 401 ||
+                /sess[aã]o|expir|entrar novamente|login/i.test(
+                    data.error || ""
+                );
+
+            if(sessaoInvalida){
                 clearAuth();
             }
 
             list.innerHTML =
                 "<h3 style='margin:0 0 8px;color:#ffd400;'>👤 Minha conta</h3>" +
-                "<div style='font-size:13px;color:#aaa;'>" +
-                (data.error || "Erro ao carregar a conta.") +
-                "</div>";
+                "<div style='font-size:13px;color:#aaa;line-height:1.5;'>" +
+                (sessaoInvalida
+                    ? "Sua sessão expirou ou não é mais válida. " +
+                      "Entre novamente para continuar.<br><br>"
+                    : (data.error || "Erro ao carregar a conta.") +
+                      "<br><br>") +
+                "</div>" +
+                "<button class='btn' onclick='abrirLogin()' " +
+                "style='width:100%;'>👤 ENTRAR NOVAMENTE</button>";
             return;
         }
 
@@ -10838,6 +10947,13 @@ async function anexarBloco(){
     const data = await reqJSON(resp);
 
     if(!resp.ok){
+        if(resp.status === 401){
+            clearAuth();
+            msg.textContent =
+                "Sua sessão expirou. Entre novamente.";
+            carregarConta();
+            return;
+        }
         msg.textContent = data.error || "Não foi possível anexar.";
         return;
     }
@@ -10876,7 +10992,17 @@ function abrirAlterarSenha(){
             senhaAtual: atual,
             novaSenha: nova
         })
-    }).then(reqJSON).then((data) => {
+    }).then(async (resp) => {
+        const data = await reqJSON(resp);
+        if(!resp.ok && resp.status === 401){
+            clearAuth();
+            carregarConta();
+            alert(
+                "Sua sessão expirou. " +
+                "Entre novamente para alterar a senha."
+            );
+            return;
+        }
         alert(data.ok
             ? "✔ Senha alterada com sucesso."
             : (data.error || "Erro ao alterar a senha."));

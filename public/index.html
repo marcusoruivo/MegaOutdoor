@@ -550,6 +550,22 @@ html,body{
     cursor:pointer
 }
 
+/* Garante que os campos do modal de login sejam totalmente
+   interativos em qualquer dispositivo/browser. */
+#authModal .box input,
+#authModal .box input:focus{
+    -webkit-user-select:text;
+    user-select:text;
+    pointer-events:auto;
+    touch-action:auto;
+    cursor:text;
+    outline:none;
+}
+
+#authModal{
+    z-index:9999;
+}
+
 .pix{
     display:none;
     text-align:center
@@ -1126,6 +1142,46 @@ html,body{
         max-height:94vh !important;
         width:100% !important;
         max-width:100% !important;
+    }
+
+    #chatModal .box .btn.sec{
+        width:auto;
+        margin-top:0;
+        background:linear-gradient(135deg,#292929,#1d1d1d);
+        color:#fff;
+        border:1px solid #444;
+        font-weight:800;
+        transition:transform .15s ease,filter .15s ease,border-color .15s ease;
+    }
+
+    #chatModal .box .btn.sec:hover{
+        filter:brightness(1.15);
+        border-color:#666;
+        transform:translateY(-1px);
+    }
+
+    #chatModal .box .btn.sec:active{
+        transform:translateY(0);
+    }
+
+    #chatMsgRapidas button{
+        font-size:12px;
+        background:#161616;
+        border:1px solid #333;
+        border-radius:14px;
+        padding:5px 10px;
+        color:#ddd;
+        cursor:pointer;
+        transition:border-color .15s ease,color .15s ease;
+    }
+
+    #chatMsgRapidas button:hover{
+        border-color:#ffd400;
+        color:#ffd400;
+    }
+
+    #chatInput{
+        font-family:inherit;
     }
 
     .box h2{
@@ -2700,15 +2756,15 @@ LIMPAR
                 <div class="step">
                     <div class="step-num">3</div>
                     <div>
-                        <b>Revise e pague</b>
-                        <span>Confira seus dados e escolha o pagamento.</span>
+                        <b>Revise e aceite as regras</b>
+                        <span>Confira seus dados, leia e aceite as regras da licença e de conteúdo, e escolha o pagamento.</span>
                     </div>
                 </div>
                 <div class="step">
                     <div class="step-num">4</div>
                     <div>
                         <b>Seu espaço será exibido!</b>
-                        <span>Após a confirmação, seu bloco aparecerá para todos.</span>
+                        <span>Após a confirmação do pagamento, seu bloco aparecerá para todos.</span>
                     </div>
                 </div>
             </div>
@@ -2815,14 +2871,48 @@ Carregando...
 </div>
 
 <div style="display:flex;flex-direction:column;gap:8px;">
-<input
-class="copia"
+
+<div id="chatMsgRapidas" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+
+<div style="display:flex;align-items:center;gap:6px;">
+<button
+class="btn sec"
+id="btnEmojiChat"
+type="button"
+onclick="alternarEmojiPicker()"
+title="Emojis"
+style="margin:0;padding:8px 10px;font-size:14px;line-height:1;">
+😊
+</button>
+<button
+class="btn sec"
+id="btnLimparChat"
+type="button"
+onclick="limparCampoChat()"
+title="Limpar campo"
+style="margin:0;padding:8px 10px;font-size:14px;line-height:1;">
+🗑️
+</button>
+</div>
+
+<div id="emojiPicker" style="display:none;flex-wrap:wrap;gap:4px;max-height:140px;overflow-y:auto;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:8px;margin-bottom:4px;"></div>
+
+<textarea
 id="chatInput"
+class="copia"
+rows="2"
 placeholder="Escreva sua mensagem..."
-style="width:100%;box-sizing:border-box;margin:0;"
-onkeydown="if(event.key==='Enter')enviarMensagemChat()">
+style="width:100%;box-sizing:border-box;margin:0;resize:vertical;min-height:48px;font-family:inherit;"
+oninput="atualizarContadorChat()"></textarea>
+
+<div style="display:flex;justify-content:space-between;align-items:center;">
+<span id="chatCharCount" style="font-size:11px;color:#777;">0 / 500</span>
+<span style="font-size:11px;color:#777;">Enter envia · Shift+Enter nova linha</span>
+</div>
+
 <button
 class="btn"
+id="btnEnviarChat"
 onclick="enviarMensagemChat()"
 style="margin:0;padding:12px;width:100%;box-sizing:border-box;">
 ENVIAR
@@ -2910,12 +3000,16 @@ placeholder="Cupom de indicação (opcional)">
 
 <div style="margin:12px 0 16px 0;padding:12px;border:1px solid #2a2a2a;border-radius:10px;background:#111;">
   <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
-    <input type="checkbox" id="aceiteLicenca" style="margin-top:3px;cursor:pointer;">
+    <input type="checkbox" id="aceiteLicenca" style="margin-top:3px;cursor:pointer;"
+      onchange="atualizarBotaoPagar()">
     <span style="font-size:12px;color:#aaa;line-height:1.5;">
       Li e concordo com as
-      <a href="#" onclick="abrirRegrasLicenca(event)" style="color:#ffd400;text-decoration:underline;">regras da licença, validade e renovação</a>.
+      <a href="/regras.html" target="_blank" onclick="marcarRegrasVisualizadas(event)" style="color:#ffd400;text-decoration:underline;">regras da licença, validade e renovação</a>.
+      Também estou ciente das
+      <a href="/regras.html#conteudo-publicado" target="_blank" onclick="marcarRegrasVisualizadas(event)" style="color:#ffd400;text-decoration:underline;">regras de conteúdo e imagens</a>.
     </span>
   </label>
+  <input type="hidden" id="regrasVisualizadas" value="false">
 </div>
 
 <div style="margin:16px 0 8px 0;">
@@ -2950,8 +3044,11 @@ placeholder="Cupom de indicação (opcional)">
 </div>
 
 <button
+id="btnPagar"
 class="btn"
-onclick="gerarPix()">
+onclick="gerarPix()"
+disabled
+style="opacity:.5;cursor:not-allowed;">
 PAGAR
 </button>
 
@@ -3636,6 +3733,24 @@ style="font-size:13px;color:#ccc;">
       </p>
     </div>
 
+    <div style="background:#111;border:1px solid #333;border-radius:12px;padding:16px;margin:18px 0;">
+      <h3 style="margin:0 0 12px;color:#ffd400;font-size:16px;">📜 REGRAS E CONTEÚDO PUBLICADO</h3>
+      <p style="margin:0 0 12px;font-size:13px;color:#aaa;line-height:1.5;">
+        Ao comprar, você deve aceitar as regras da licença, validade, renovação e conteúdo publicado.
+      </p>
+      <ul style="margin:0 0 12px;padding-left:18px;font-size:12px;color:#aaa;line-height:1.6;">
+        <li>Você é integralmente responsável pelas imagens, textos, links e demais conteúdos publicados.</li>
+        <li>É proibido conteúdo que incentive crimes, seja discriminatório, ameaçador, difamatório ou viole direitos de terceiros.</li>
+        <li>É proibido conteúdo que viole direitos autorais, marcas, imagem, privacidade ou outros direitos.</li>
+        <li>Você deve possuir autorização e/ou direitos necessários para publicar qualquer conteúdo.</li>
+        <li>O Milhão Door poderá remover ou bloquear conteúdo que viole estas regras ou a legislação, sem aviso prévio quando necessário.</li>
+        <li>Em caso de remoção por violação das regras, não haverá direito a reembolso, salvo disposição legal em contrário.</li>
+      </ul>
+      <p style="margin:0;font-size:12px;color:#ffd400;font-weight:700;">
+        O checkout só é liberado após o aceite das regras.
+      </p>
+    </div>
+
     <div class="tutCards">
 
       <div class="tutCard gold">
@@ -3873,6 +3988,16 @@ function abrirRegras(event){
             <li>A renovação somente será efetivada após confirmação do pagamento.</li>
             <li>Você é responsável por acompanhar a validade dos seus espaços.</li>
         </ul>
+        <p style="margin-top:14px;"><b>Conteúdo publicado:</b></p>
+        <ul style="padding-left:18px;line-height:1.7;font-size:13px;color:#aaa;">
+            <li>Você é integralmente responsável pelas imagens, textos, links e demais conteúdos que publicar.</li>
+            <li>É proibido publicar conteúdo que incentive, apoie ou faça apologia a crimes ou atividades ilícitas.</li>
+            <li>É proibido conteúdo racista, discriminatório, ameaçador, difamatório ou que viole direitos de terceiros.</li>
+            <li>É proibido conteúdo que viole direitos autorais, marcas, imagem, privacidade ou outros direitos.</li>
+            <li>Você deve possuir autorização/direitos necessários para publicar qualquer imagem ou conteúdo.</li>
+            <li>O Milhão Door poderá remover ou bloquear conteúdo que viole estas regras, a legislação ou os Termos de Uso.</li>
+            <li>Em caso de remoção por violação das regras, não haverá direito a reembolso, salvo disposição legal em contrário.</li>
+        </ul>
     `);
 }
 
@@ -3880,13 +4005,20 @@ function abrirFaq(event){
     if(event) event.preventDefault();
     abrirInfoModal("PERGUNTAS FREQUENTES", `
         <p><b>Como funciona o Milhão Door?</b><br>Você compra espaços no maior painel digital do Brasil e publica imagem, título e link.</p>
+        <p><b>Posso comprar apenas 1 espaço?</b><br>Sim. Não há quantidade mínima: você pode comprar 1, 2, 5, 100 ou até 1.000 espaços por pedido.</p>
         <p><b>Quanto custa?</b><br>Cada espaço custa R$ 1,00, com desconto progressivo na compra de blocos.</p>
-        <p><b>Qual o tempo da licença?</b><br>Você escolhe entre 1 ano, 3 anos ou 5 anos. A taxa de R$20 (3 anos) ou R$40 (5 anos) é cobrada uma única vez por pedido, não por bloco.</p>
+        <p><b>Quais são os períodos de licença?</b><br>Você escolhe entre 1 ano, 3 anos ou 5 anos. A taxa de R$20 (3 anos) ou R$40 (5 anos) é cobrada uma única vez por pedido, não por bloco.</p>
         <p><b>Quando começa a validade?</b><br>A validade começa somente após a confirmação do pagamento.</p>
+        <p><b>Como funciona a renovação?</b><br>A renovação fica disponível 30 dias antes do vencimento. Você tem 7 dias de tolerância após o vencimento. Depois disso, o espaço pode voltar ao estoque público.</p>
         <p><b>Posso renovar?</b><br>Sim! A renovação fica disponível 30 dias antes do vencimento. Após o vencimento você tem 7 dias de tolerância.</p>
         <p><b>Como pago?</b><br>Aceitamos pagamento via Pix e cartão de crédito, com confirmação em poucos minutos.</p>
+        <p><b>Como funciona o pagamento?</b><br>Após escolher os espaços e aceitar as regras, você gera um QR Code Pix ou paga com cartão. Assim que o pagamento for confirmado, seus espaços são liberados para publicação.</p>
+        <p><b>Preciso aceitar as regras para comprar?</b><br>Sim. O checkout só é liberado após o aceite das regras da licença, validade, renovação e conteúdo publicado.</p>
+        <p><b>Quem é responsável pela imagem publicada?</b><br>Você é o único responsável pelo conteúdo publicado. Deve possuir os direitos necessários e respeitar a legislação.</p>
+        <p><b>O que acontece se eu publicar conteúdo proibido?</b><br>O conteúdo poderá ser removido ou bloqueado sem aviso prévio, e não haverá direito a reembolso, salvo disposição legal em contrário.</p>
+        <p><b>Como faço para renovar?</b><br>Acesse a aba "Meus Espaços", localize o espaço com a licença próxima do vencimento e clique em "Renovar".</p>
+        <p><b>Como falar com o suporte?</b><br>Use o chat ao vivo no canto inferior direito ou envie um e-mail para group.holding@outlook.com. No chat você pode usar emojis e mensagens rápidas.</p>
         <p><b>Posso revender meus espaços?</b><br>Sim! Ative o modo "Oferta em Blocos" para anunciar seus espaços para outros usuários.</p>
-        <p><b>E se eu tiver dúvidas?</b><br>Use o chat ao vivo ou envie um e-mail para group.holding@outlook.com.</p>
     `);
 }
 
@@ -4100,17 +4232,36 @@ function abrirLogin(){
         return;
     }
 
-    document.getElementById("authModal").style.display = "flex";
+    /* Fecha o menu mobile, caso esteja aberto, para evitar
+       que ele fique interceptando toques/cliques. */
+    fecharMenuMobile();
+
+    const modal = document.getElementById("authModal");
+    modal.style.display = "flex";
+
     authTab("entrar");
+
+    /* Força o foco no campo de e-mail após a renderização do modal.
+       O fallback para touch garante que o teclado virtual apareça
+       em dispositivos móveis. */
     setTimeout(() => {
         const e = document.getElementById("loginEmail");
-        if(e)e.focus();
+        if(!e)return;
+        e.focus();
+        e.scrollIntoView({block:"nearest", behavior:"smooth"});
     }, 100);
 }
 
 function fecharLogin(){
     document.getElementById("authModal").style.display = "none";
 }
+
+/* Fecha o modal de login ao clicar fora da caixa. */
+document.getElementById("authModal").addEventListener("click", function(e){
+    if(e.target === this){
+        fecharLogin();
+    }
+});
 
 function authTab(modo){
     const entrar =
@@ -6668,7 +6819,33 @@ function atualizarPlanoLicenca() {
 
 function abrirRegrasLicenca(event) {
     if (event) event.preventDefault();
+    marcarRegrasVisualizadas();
     abrirRegras();
+}
+
+function marcarRegrasVisualizadas(event){
+    if(event) event.preventDefault();
+    const h = document.getElementById("regrasVisualizadas");
+    if(h) h.value = "true";
+    atualizarBotaoPagar();
+}
+
+function atualizarBotaoPagar(){
+    const chk = document.getElementById("aceiteLicenca");
+    const btn = document.getElementById("btnPagar");
+    if(!btn)return;
+    const ok = chk && chk.checked;
+    btn.disabled = !ok;
+    btn.style.opacity = ok ? "1" : ".5";
+    btn.style.cursor = ok ? "pointer" : "not-allowed";
+}
+
+/* Restaura o botão PAGAR após falha, voltando a exigir aceite. */
+function restaurarBotaoPagar(){
+    const btn = document.getElementById("btnPagar");
+    if(!btn)return;
+    btn.textContent = "PAGAR";
+    atualizarBotaoPagar();
 }
 
 /* =========================
@@ -6682,11 +6859,6 @@ if(!sel.size)return;
 if(!minhaConta){
   alert("Para comprar, crie sua conta (grátis) e faça login. Você terá acesso às suas compras, blocos e extrato.");
   abrirLogin();
-  return;
-}
-
-if(sel.size < 5){
-  alert("O valor mínimo para compra é de R$ 5,00. Selecione pelo menos 5 espaços.");
   return;
 }
 
@@ -6764,6 +6936,17 @@ if(emailInput && !emailInput.value.trim() && minhaConta){
   emailInput.value = minhaConta.email || "";
 }
 
+/* Reseta aceite das regras e estado do botão PAGAR */
+const aceite = document.getElementById("aceiteLicenca");
+const regrasVistas = document.getElementById("regrasVisualizadas");
+if(aceite){
+    aceite.checked = false;
+}
+if(regrasVistas){
+    regrasVistas.value = "false";
+}
+atualizarBotaoPagar();
+
 }
 
 
@@ -6777,6 +6960,13 @@ document.getElementById(
 "modal"
 ).style.display =
 "none";
+
+/* Interrompe o polling de status do pagamento, se houver.
+   Evita requisições em background após fechar o checkout. */
+if(typeof monitorTimer !== "undefined" && monitorTimer){
+    clearInterval(monitorTimer);
+    monitorTimer = null;
+}
 
 }
 
@@ -6824,10 +7014,25 @@ document.getElementById("aceiteLicenca");
 if(!aceiteLicenca || !aceiteLicenca.checked){
 
 msg.textContent =
-"Você deve concordar com as regras da licença, validade e renovação.";
+"Você precisa ler e aceitar as regras da licença para continuar.";
+
+const btn = document.getElementById("btnPagar");
+if(btn){
+    btn.disabled = false;
+    btn.style.opacity = "1";
+    btn.style.cursor = "pointer";
+}
 
 return;
 
+}
+
+
+const btnPagar = document.getElementById("btnPagar");
+if(btnPagar){
+btnPagar.disabled = true;
+btnPagar.style.opacity = ".6";
+btnPagar.textContent = "Processando...";
 }
 
 
@@ -6835,6 +7040,8 @@ if(name.length<3){
 
 msg.textContent =
 "Informe seu nome ou empresa.";
+
+restaurarBotaoPagar();
 
 return;
 
@@ -6846,6 +7053,8 @@ if(!email.includes("@")){
 msg.textContent =
 "Informe um e-mail válido.";
 
+restaurarBotaoPagar();
+
 return;
 
 }
@@ -6855,6 +7064,8 @@ if(!cpf){
 
 msg.textContent =
 "Informe CPF ou CNPJ.";
+
+restaurarBotaoPagar();
 
 return;
 
@@ -6876,9 +7087,13 @@ if(method === "credit_card"){
         installments = parseInt(document.getElementById("installments").value, 10) || 1;
     }catch(e){
         msg.textContent = e.message;
+        restaurarBotaoPagar();
         return;
     }
 }
+
+const regrasVistas =
+document.getElementById("regrasVisualizadas");
 
 const response =
 await fetch(
@@ -6912,7 +7127,11 @@ licensePlan,
 
 cardToken,
 
-installments
+installments,
+
+aceiteRegras: true,
+
+regrasVisualizadas: regrasVistas && regrasVistas.value === "true"
 
 })
 
@@ -6928,6 +7147,8 @@ if(!response.ok){
 msg.textContent =
 data.error ||
 "Não foi possível criar a cobrança.";
+
+restaurarBotaoPagar();
 
 return;
 
@@ -7076,6 +7297,8 @@ monitorarPagamento();
         "Erro de comunicação com o servidor.";
 
     console.error(error);
+
+    restaurarBotaoPagar();
 
 }
 }  /* =========================
@@ -8832,6 +9055,15 @@ function iniciarChat(){
 
     chatMsgs = [];
 
+    montarMensagensRapidas();
+    montarEmojiPicker();
+
+    const input = document.getElementById("chatInput");
+    if(input && !input.getAttribute("data-chat-keydown")){
+        input.setAttribute("data-chat-keydown", "1");
+        input.addEventListener("keydown", chatInputKeydown);
+    }
+
     carregarChat();
 
     try{
@@ -9033,6 +9265,8 @@ async function carregarChat(){
 
 async function enviarMensagemChat(){
 
+    if(chatEnviando)return;
+
     const input =
         document.getElementById("chatInput");
 
@@ -9040,6 +9274,20 @@ async function enviarMensagemChat(){
         input.value.trim();
 
     if(!texto)return;
+
+    if(texto.length > 500){
+        const erro = document.getElementById("chatMsgErro");
+        if(erro)erro.textContent = "A mensagem deve ter no máximo 500 caracteres.";
+        return;
+    }
+
+    chatEnviando = true;
+
+    const btnEnviar = document.getElementById("btnEnviarChat");
+    if(btnEnviar){
+        btnEnviar.disabled = true;
+        btnEnviar.style.opacity = ".6";
+    }
 
     const erro =
         document.getElementById("chatMsgErro");
@@ -9116,10 +9364,18 @@ async function enviarMensagemChat(){
                     "Não foi possível enviar a mensagem.";
             }
 
+            chatEnviando = false;
+
+            if(btnEnviar){
+                btnEnviar.disabled = false;
+                btnEnviar.style.opacity = "1";
+            }
+
             return;
         }
 
         input.value = "";
+        atualizarContadorChat();
 
         if(erro)erro.textContent = "";
 
@@ -9128,8 +9384,127 @@ async function enviarMensagemChat(){
             renderChatLista();
         }
 
+        chatEnviando = false;
+
+        if(btnEnviar){
+            btnEnviar.disabled = false;
+            btnEnviar.style.opacity = "1";
+        }
+
     }catch(error){
         console.error(error);
+        chatEnviando = false;
+        if(btnEnviar){
+            btnEnviar.disabled = false;
+            btnEnviar.style.opacity = "1";
+        }
+    }
+}
+
+/* =========================
+   CHAT — EMOJIS, MENSAGENS RÁPIDAS E UX
+========================= */
+
+const CHAT_EMOJIS = [
+    "😀","😄","😁","😅","😂","🤣","😊","😉","😍","🥰",
+    "😎","🤩","😢","😭","😡","🤔","😴","👍","👎","👏",
+    "🙌","🙏","🤝","💪","❤️","💛","💚","💙","🔥","✨",
+    "🎉","🎊","💰","🛒","🏆","⚽","🎧","📦","🚀","💬",
+    "👋","✔️","✅","❌","⚠️","⭐","🌟","💯","🔒","🔓"
+];
+
+let chatEnviando = false;
+
+function montarEmojiPicker(){
+    const box = document.getElementById("emojiPicker");
+    if(!box || box.childElementCount > 0)return;
+    box.innerHTML = CHAT_EMOJIS.map(e =>
+        '<button type="button" onclick="inserirEmojiChat(\'' + e + '\')" ' +
+        'style="font-size:18px;background:none;border:none;cursor:pointer;padding:2px;">' +
+        e + '</button>'
+    ).join("");
+}
+
+function alternarEmojiPicker(){
+    montarEmojiPicker();
+    const box = document.getElementById("emojiPicker");
+    if(!box)return;
+    box.style.display =
+        box.style.display === "flex" ? "none" : "flex";
+}
+
+function inserirEmojiChat(emoji){
+    const input = document.getElementById("chatInput");
+    if(!input)return;
+    const inicio = input.selectionStart || input.value.length;
+    const fim = input.selectionEnd || input.value.length;
+    const novo =
+        input.value.slice(0, inicio) +
+        emoji +
+        input.value.slice(fim);
+    if(novo.length > 500)return;
+    input.value = novo;
+    const pos = inicio + emoji.length;
+    input.focus();
+    input.setSelectionRange(pos, pos);
+    atualizarContadorChat();
+    document.getElementById("emojiPicker").style.display = "none";
+}
+
+const CHAT_MSG_RAPIDAS = [
+    "Olá! 👋",
+    "Olá, preciso de ajuda.",
+    "Como funciona?",
+    "Como faço uma compra?",
+    "Como faço para publicar meu espaço?",
+    "Preciso de ajuda com meu pagamento.",
+    "Meu PIX não foi gerado.",
+    "Meu pagamento ainda não foi confirmado.",
+    "Quero renovar meu espaço.",
+    "Quero saber sobre minha licença.",
+    "Obrigado pelo atendimento! 👍"
+];
+
+function montarMensagensRapidas(){
+    const box = document.getElementById("chatMsgRapidas");
+    if(!box || box.childElementCount > 0)return;
+    box.innerHTML = CHAT_MSG_RAPIDAS.map(t =>
+        '<button type="button" onclick="usarMensagemRapida(\'' +
+        t.replace(/'/g, "\\'") + '\')" ' +
+        'style="font-size:12px;background:#161616;border:1px solid #333;' +
+        'border-radius:14px;padding:5px 10px;color:#ddd;cursor:pointer;">' +
+        escapeHtml(t) + '</button>'
+    ).join("");
+}
+
+function usarMensagemRapida(texto){
+    const input = document.getElementById("chatInput");
+    if(!input)return;
+    input.value = texto;
+    input.focus();
+    atualizarContadorChat();
+}
+
+function limparCampoChat(){
+    const input = document.getElementById("chatInput");
+    if(!input)return;
+    input.value = "";
+    atualizarContadorChat();
+    input.focus();
+}
+
+function atualizarContadorChat(){
+    const input = document.getElementById("chatInput");
+    const count = document.getElementById("chatCharCount");
+    if(!input || !count)return;
+    count.textContent = input.value.length + " / 500";
+}
+
+/* Chat: Enter envia, Shift+Enter nova linha, sem envio duplicado */
+function chatInputKeydown(e){
+    if(e.key === "Enter" && !e.shiftKey){
+        e.preventDefault();
+        enviarMensagemChat();
     }
 }
 

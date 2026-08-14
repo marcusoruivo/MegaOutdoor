@@ -44,11 +44,35 @@ const limiterGlobal = rateLimit({
 
 const limiterSensivel = rateLimit({
     windowMs: 60 * 1000,
-    limit: ALLOW_TEST_MODE ? 200 : 15,
+    limit: ALLOW_TEST_MODE ? 300 : 40,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
         error: "Muitas tentativas. Aguarde um pouco e tente novamente."
+    }
+});
+
+/* Login/cadastro: limite menor, proteção contra força bruta.
+   O uso legítimo faz poucas tentativas por minuto. */
+const limiterLogin = rateLimit({
+    windowMs: 60 * 1000,
+    limit: ALLOW_TEST_MODE ? 100 : 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        error: "Muitas tentativas de login. Aguarde um pouco e tente novamente."
+    }
+});
+
+/* Leituras da conta (auth/me, extrato): limite maior, pois a
+   navegação no painel faz várias consultas legítimas. */
+const limiterLeitura = rateLimit({
+    windowMs: 60 * 1000,
+    limit: ALLOW_TEST_MODE ? 500 : 120,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        error: "Muitas requisições. Aguarde um instante e tente novamente."
     }
 });
 
@@ -501,6 +525,11 @@ async function initBanco() {
         );
 
         await pgPool.query(
+            "ALTER TABLE transacoes " +
+            "ADD COLUMN IF NOT EXISTS aceite_regras BOOLEAN NOT NULL DEFAULT FALSE"
+        );
+
+        await pgPool.query(
             "CREATE INDEX IF NOT EXISTS " +
             "idx_transacoes_token ON transacoes(token)"
         );
@@ -572,7 +601,8 @@ function registrarTransacao({
     originalLicenseDurationMonths,
     originalBasePricePerBlock,
     originalLicenseFee,
-    operationType
+    operationType,
+    aceiteRegras = false
 }) {
 
     if (!pgDisponivel) {
@@ -590,9 +620,9 @@ function registrarTransacao({
              purchased_at, expires_at,
              original_license_plan, original_license_duration_months,
              original_base_price_per_block, original_license_fee,
-             operation_type)
+             operation_type, aceite_regras)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,
-                 $18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)`,
+                 $18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30)`,
         [
             tipo,
             accessCode,
@@ -622,7 +652,8 @@ function registrarTransacao({
             originalLicenseDurationMonths || null,
             originalBasePricePerBlock || null,
             originalLicenseFee || null,
-            operationType || "purchase"
+            operationType || "purchase",
+            aceiteRegras === true || aceiteRegras === "true"
         ]
     ).catch((err) => {
         console.error("ERRO ao registrar transação:", err.message);
@@ -717,6 +748,14 @@ app.use("/api/pix-key", limiterSensivel);
 app.use("/api/upload", limiterUpload);
 app.use("/api/chat", limiterChat);
 app.use("/webhooks/mercadopago", limiterSensivel);
+
+/* Limites específicos por rota (após o rate limit geral).
+   Login/cadastro têm limite mais rígido contra força bruta;
+   leituras da conta têm limite maior para uso legítimo. */
+app.use("/api/auth/login", limiterLogin);
+app.use("/api/auth/registrar", limiterLogin);
+app.use("/api/auth/me", limiterLeitura);
+app.use("/api/extrato", limiterLeitura);
 
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/uploads", express.static(UPLOAD_DIR, {
@@ -1266,9 +1305,38 @@ const EMAIL_FROM =
     process.env.EMAIL_FROM ||
     "MegaOutdoor <onboarding@resend.dev>";
 
+/* Domínio público principal e alternativo.
+   O principal (milhaodoor.com.br) é usado como preferência;
+   o alternativo (Render) continua funcionando. */
 const SITE_URL =
     process.env.SITE_URL ||
-    "https://megaoutdoor.onrender.com";
+    "https://milhaodoor.com.br";
+
+const DOMINIOS_PUBLICOS = [
+    "milhaodoor.com.br",
+    "www.milhaodoor.com.br",
+    "megaoutdoor.onrender.com"
+];
+
+/* Retorna o domínio público da requisição (Host header),
+   priorizando milhaodoor.com.br. Serve para gerar links
+   absolutos (e-mail, webhook) sem hardcodar o domínio. */
+function urlBase(req) {
+    const host =
+        (req && req.get && req.get("host")) || "";
+
+    const ehConhecido =
+        DOMINIOS_PUBLICOS.some(d =>
+            host === d ||
+            host.endsWith("." + d)
+        );
+
+    if (ehConhecido) {
+        return "https://" + host;
+    }
+
+    return SITE_URL;
+}
 
 async function enviarEmail(to, subject, html) {
 
@@ -2315,8 +2383,18 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             coupon,
             paymentMethod,
             cardToken,
-            installments
+            installments,
+            aceiteRegras
         } = req.body;
+
+        /* Obrigatoriedade de aceite das regras da licença */
+        if (aceiteRegras !== true && aceiteRegras !== "true") {
+            return res.status(400).json({
+                error:
+                    "Você precisa ler e aceitar as regras da licença " +
+                    "para continuar."
+            });
+        }
 
         const ids = [
             ...new Set(
@@ -2460,18 +2538,6 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
                 dueDateLimitDays: 0,
                 type: "PERCENTAGE"
             };
-
-            const minimo =
-                Math.ceil(5 / (1 - cupom.discountPercent / 100));
-
-            if (total < minimo) {
-                return res.status(400).json({
-                    error:
-                        `Com o cupom de ${cupom.discountPercent}% de ` +
-                        `desconto, selecione ao menos ${minimo} espaços ` +
-                        `(o valor após o desconto não pode ser menor que R$ 5,00).`
-                });
-            }
         }
 
         if (!desconto && req.usuario) {
@@ -2655,7 +2721,8 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             originalLicenseDurationMonths: licenca.months,
             originalBasePricePerBlock: licenca.basePricePerBlock,
             originalLicenseFee: licenca.fee,
-            operationType: "purchase"
+            operationType: "purchase",
+            aceiteRegras
         });
 
         await salvarChaveUsuario(

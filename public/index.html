@@ -118,7 +118,7 @@ html,body{
 }
 
 .logo img{
-    width:280px;
+    width:auto;
     max-width:100%;
     height:auto;
     display:block;
@@ -601,14 +601,14 @@ html,body{
 }
 
 .logo{
-    width:300px;
-    min-width:300px;
-        display:flex;
+    display:flex;
     align-items:center;
+    flex:0 0 auto;
+    min-width:0;
 }
 
 .logo img{
-    width:280px;
+    width:auto;
     max-width:100%;
     height:auto;
     display:block;
@@ -667,8 +667,10 @@ html,body{
         gap:10px;
     }
 
-    .logo img{
-        width:220px;
+    .topo .logo img{
+        height:72px;
+        max-height:72px;
+        max-width:340px;
     }
 
     .info{
@@ -696,8 +698,10 @@ html,body{
         gap:8px;
     }
 
-    .logo img{
-        width:160px;
+    .topo .logo img{
+        height:64px;
+        max-height:64px;
+        max-width:300px;
     }
 
     .info{
@@ -728,8 +732,10 @@ html,body{
 
 @media(max-width:760px){
 
-    .logo img{
-        width:100px;
+    .topo .logo img{
+        height:52px;
+        max-height:52px;
+        max-width:220px;
     }
 
     .info{
@@ -890,8 +896,10 @@ html,body{
         gap:8px;
     }
 
-    .logo img{
-        width:150px;
+    .topo .logo img{
+        height:48px;
+        max-height:48px;
+        max-width:200px;
     }
 
     .info{
@@ -996,9 +1004,10 @@ html,body{
         flex:0 0 auto;
     }
 
-    .logo img{
-        width:80px;
-        height:53px;
+    .topo .logo img{
+        height:44px;
+        max-height:44px;
+        max-width:180px;
     }
 
     .info{
@@ -1173,9 +1182,10 @@ html,body{
         font-size:12px;
     }
 
-    .logo img{
-        width:64px;
-        height:43px;
+    .topo .logo img{
+        height:40px;
+        max-height:40px;
+        max-width:160px;
     }
 }
 
@@ -1403,6 +1413,9 @@ body.has-benefits{
     justify-content:space-between;
     gap:24px;
     padding:0 28px;
+    overflow:hidden;
+    user-select:none;
+    -webkit-user-select:none;
     transition:var(--transition)
 }
 
@@ -1424,9 +1437,9 @@ body.has-benefits{
 
 .topo .logo img{
     width:auto;
-    height:58px;
-    max-width:280px;
-    max-height:58px;
+    height:80px;
+    max-width:380px;
+    max-height:80px;
     object-fit:contain;
     display:block
 }
@@ -1570,6 +1583,7 @@ body.has-benefits{
     grid-template-columns:340px 1fr 300px;
     gap:14px;
     padding:14px;
+    background:var(--bg-primary);
     overflow:hidden
 }
 
@@ -2057,9 +2071,12 @@ body.has-benefits{
 
 /* --- FOOTER --- */
 .site-footer{
+    position:relative;
     background:var(--bg-tertiary);
     border-top:1px solid var(--border-color);
-    padding:40px 28px 24px
+    padding:40px 28px 24px;
+    user-select:none;
+    -webkit-user-select:none
 }
 
 .footer-content{
@@ -2203,7 +2220,9 @@ body.has-benefits{
         gap:12px
     }
     .topo .logo img{
-        height:48px
+        height:56px;
+        max-height:56px;
+        max-width:260px
     }
     .benefits-bar{
         gap:20px;
@@ -2279,7 +2298,9 @@ body.has-benefits{
 
 @media(max-width:480px){
     .topo .logo img{
-        height:40px
+        height:44px;
+        max-height:44px;
+        max-width:180px
     }
     .btn-entrar{
         padding:8px 14px;
@@ -2848,6 +2869,55 @@ placeholder="CPF ou CNPJ">
 id="coupon"
 placeholder="Cupom de indicação (opcional)">
 
+<!-- ESCOLHA DO PLANO DE LICENÇA -->
+<div style="margin:16px 0 12px 0;">
+  <label style="display:block;font-weight:700;margin-bottom:10px;">ESCOLHA O TEMPO DA SUA LICENÇA</label>
+
+  <label id="plan-1_year" class="license-plan" style="display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid #333;border-radius:10px;margin-bottom:8px;cursor:pointer;background:#111;transition:all .2s;"
+         onmouseover="this.style.borderColor='#ffd400'" onmouseout="if(!document.querySelector('input[name=licensePlan][value=1_year]').checked)this.style.borderColor='#333'">
+    <input type="radio" name="licensePlan" value="1_year" checked onchange="atualizarPlanoLicenca()" style="margin-top:3px;cursor:pointer;">
+    <div style="flex:1;">
+      <div style="font-weight:700;color:#fff;">1 ANO</div>
+      <div style="font-size:12px;color:#aaa;">R$1 por bloco</div>
+    </div>
+    <div id="planPrice-1_year" style="font-weight:800;color:#45d66f;white-space:nowrap;">R$ 0,00</div>
+  </label>
+
+  <label id="plan-3_years" class="license-plan" style="display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid #333;border-radius:10px;margin-bottom:8px;cursor:pointer;background:#111;transition:all .2s;"
+         onmouseover="this.style.borderColor='#ffd400'" onmouseout="if(!document.querySelector('input[name=licensePlan][value=3_years]').checked)this.style.borderColor='#333'">
+    <input type="radio" name="licensePlan" value="3_years" onchange="atualizarPlanoLicenca()" style="margin-top:3px;cursor:pointer;">
+    <div style="flex:1;">
+      <div style="font-weight:700;color:#fff;">3 ANOS — <span style="color:#ffd400;font-size:11px;">RECOMENDADO</span></div>
+      <div style="font-size:12px;color:#aaa;">R$1 por bloco + R$20 por pedido</div>
+    </div>
+    <div id="planPrice-3_years" style="font-weight:800;color:#45d66f;white-space:nowrap;">R$ 0,00</div>
+  </label>
+
+  <label id="plan-5_years" class="license-plan" style="display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid #333;border-radius:10px;margin-bottom:8px;cursor:pointer;background:#111;transition:all .2s;"
+         onmouseover="this.style.borderColor='#ffd400'" onmouseout="if(!document.querySelector('input[name=licensePlan][value=5_years]').checked)this.style.borderColor='#333'">
+    <input type="radio" name="licensePlan" value="5_years" onchange="atualizarPlanoLicenca()" style="margin-top:3px;cursor:pointer;">
+    <div style="flex:1;">
+      <div style="font-weight:700;color:#fff;">5 ANOS — <span style="color:#ffd400;font-size:11px;">MELHOR CUSTO-BENEFÍCIO</span></div>
+      <div style="font-size:12px;color:#aaa;">R$1 por bloco + R$40 por pedido</div>
+    </div>
+    <div id="planPrice-5_years" style="font-weight:800;color:#45d66f;white-space:nowrap;">R$ 0,00</div>
+  </label>
+
+  <div id="licenseSummary" style="font-size:12px;color:#aaa;margin-top:8px;line-height:1.5;">
+    Validade prevista: <span id="licenseExpiry" style="color:#fff;">-</span>
+  </div>
+</div>
+
+<div style="margin:12px 0 16px 0;padding:12px;border:1px solid #2a2a2a;border-radius:10px;background:#111;">
+  <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+    <input type="checkbox" id="aceiteLicenca" style="margin-top:3px;cursor:pointer;">
+    <span style="font-size:12px;color:#aaa;line-height:1.5;">
+      Li e concordo com as
+      <a href="#" onclick="abrirRegrasLicenca(event)" style="color:#ffd400;text-decoration:underline;">regras da licença, validade e renovação</a>.
+    </span>
+  </label>
+</div>
+
 <div style="margin:16px 0 8px 0;">
   <label style="display:block;font-weight:700;margin-bottom:8px;">Forma de pagamento</label>
   <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;">
@@ -3409,6 +3479,13 @@ onclick="closeOwner()">
   </button>
   <button
     class="btn sec"
+    id="tabEspacos"
+    onclick="abaEspacos()"
+    style="margin:0;padding:10px 8px;font-size:12px;white-space:nowrap;">
+    🏠 MEUS ESPAÇOS
+  </button>
+  <button
+    class="btn sec"
     id="tabPix"
     onclick="abaPix()"
     style="margin:0;padding:10px 8px;font-size:12px;white-space:nowrap;">
@@ -3517,6 +3594,46 @@ style="font-size:13px;color:#ccc;">
         </div>
       </div>
 
+    </div>
+
+    <div style="background:#111;border:1px solid #333;border-radius:12px;padding:16px;margin:18px 0;">
+      <h3 style="margin:0 0 12px;color:#ffd400;font-size:16px;">🕒 ESCOLHA O TEMPO DA SUA LICENÇA</h3>
+      <p style="margin:0 0 12px;font-size:13px;color:#aaa;line-height:1.5;">
+        Cada espaço possui uma licença pelo período escolhido. A validade começa <b>após a confirmação do pagamento</b>.
+      </p>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px;">
+        <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-weight:800;color:#fff;">1 ANO</div>
+          <div style="font-size:12px;color:#aaa;margin-top:4px;">R$1 por bloco</div>
+          <div style="font-size:12px;color:#45d66f;margin-top:4px;">Sem taxa extra</div>
+        </div>
+        <div style="background:#161616;border:1px solid #ffd400;border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-weight:800;color:#fff;">3 ANOS</div>
+          <div style="font-size:12px;color:#aaa;margin-top:4px;">R$1 por bloco</div>
+          <div style="font-size:12px;color:#45d66f;margin-top:4px;">+ R$20 por pedido</div>
+        </div>
+        <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-weight:800;color:#fff;">5 ANOS</div>
+          <div style="font-size:12px;color:#aaa;margin-top:4px;">R$1 por bloco</div>
+          <div style="font-size:12px;color:#45d66f;margin-top:4px;">+ R$40 por pedido</div>
+        </div>
+      </div>
+
+      <p style="margin:0 0 8px;font-size:12px;color:#ffd400;font-weight:700;">
+        A taxa de R$20 (3 anos) e R$40 (5 anos) é cobrada UMA ÚNICA VEZ por pedido, não por bloco.
+      </p>
+
+      <div style="background:#0d0d0d;border-radius:8px;padding:10px;font-size:12px;color:#aaa;line-height:1.6;">
+        <b>Exemplos:</b><br>
+        1 bloco — 1 ano = R$1 &nbsp;|&nbsp; 3 anos = R$21 &nbsp;|&nbsp; 5 anos = R$41<br>
+        100 blocos — 1 ano = R$100 &nbsp;|&nbsp; 3 anos = R$120 &nbsp;|&nbsp; 5 anos = R$140
+      </div>
+
+      <p style="margin:10px 0 0;font-size:12px;color:#aaa;line-height:1.5;">
+        <b>Validade e renovação:</b> a licença expira ao final do prazo. Você pode renovar a partir de 30 dias antes do vencimento.
+        Após o vencimento, há 7 dias de tolerância. Depois disso, o espaço poderá voltar ao estoque público.
+      </p>
     </div>
 
     <div class="tutCards">
@@ -3740,12 +3857,34 @@ function abrirPrecos(event){
     `);
 }
 
+function abrirRegras(event){
+    if(event) event.preventDefault();
+    abrirInfoModal("REGRAS DA LICENÇA", `
+        <p>Ao adquirir espaços no Milhão Door, você concorda com as seguintes regras:</p>
+        <ul style="padding-left:18px;line-height:1.7;font-size:13px;color:#aaa;">
+            <li>Cada espaço possui uma licença pelo período escolhido: 1 ano, 3 anos ou 5 anos.</li>
+            <li>O preço base é de R$ 1,00 por espaço.</li>
+            <li>A taxa adicional de R$20 (3 anos) ou R$40 (5 anos) é cobrada uma única vez por pedido, não multiplicada pela quantidade de blocos.</li>
+            <li>A validade da licença começa somente após a confirmação do pagamento.</li>
+            <li>Você pode renovar sua licença a partir de 30 dias antes do vencimento.</li>
+            <li>7 dias antes do vencimento a renovação será marcada como urgente.</li>
+            <li>Após o vencimento, há 7 dias de tolerância para renovação.</li>
+            <li>Depois da tolerância, o espaço poderá voltar ao estoque público.</li>
+            <li>A renovação somente será efetivada após confirmação do pagamento.</li>
+            <li>Você é responsável por acompanhar a validade dos seus espaços.</li>
+        </ul>
+    `);
+}
+
 function abrirFaq(event){
     if(event) event.preventDefault();
     abrirInfoModal("PERGUNTAS FREQUENTES", `
         <p><b>Como funciona o Milhão Door?</b><br>Você compra espaços no maior painel digital do Brasil e publica imagem, título e link.</p>
         <p><b>Quanto custa?</b><br>Cada espaço custa R$ 1,00, com desconto progressivo na compra de blocos.</p>
-        <p><b>Como pago?</b><br>Aceitamos pagamento via Pix, com confirmação em poucos minutos.</p>
+        <p><b>Qual o tempo da licença?</b><br>Você escolhe entre 1 ano, 3 anos ou 5 anos. A taxa de R$20 (3 anos) ou R$40 (5 anos) é cobrada uma única vez por pedido, não por bloco.</p>
+        <p><b>Quando começa a validade?</b><br>A validade começa somente após a confirmação do pagamento.</p>
+        <p><b>Posso renovar?</b><br>Sim! A renovação fica disponível 30 dias antes do vencimento. Após o vencimento você tem 7 dias de tolerância.</p>
+        <p><b>Como pago?</b><br>Aceitamos pagamento via Pix e cartão de crédito, com confirmação em poucos minutos.</p>
         <p><b>Posso revender meus espaços?</b><br>Sim! Ative o modo "Oferta em Blocos" para anunciar seus espaços para outros usuários.</p>
         <p><b>E se eu tiver dúvidas?</b><br>Use o chat ao vivo ou envie um e-mail para group.holding@outlook.com.</p>
     `);
@@ -6447,6 +6586,92 @@ function qrCodeUrl(qrCode){
 }
 
 /* =========================
+   PLANOS DE LICENÇA (FRONTEND)
+========================= */
+
+const LICENSE_PLANS_FRONT = {
+    "1_year": { label: "1 ANO", months: 12, fee: 0 },
+    "3_years": { label: "3 ANOS", months: 36, fee: 20 },
+    "5_years": { label: "5 ANOS", months: 60, fee: 40 }
+};
+
+function calcularLicencaFront(quantidade, planoKey) {
+
+    const plano = LICENSE_PLANS_FRONT[planoKey] || LICENSE_PLANS_FRONT["1_year"];
+    const baseAmount = quantidade * 1.00;
+    const totalAmount = baseAmount + plano.fee;
+
+    return {
+        plan: planoKey,
+        label: plano.label,
+        months: plano.months,
+        fee: plano.fee,
+        baseAmount,
+        totalAmount,
+        basePricePerBlock: 1.00
+    };
+}
+
+function formatarMoeda(valor) {
+    return "R$ " + Number(valor || 0).toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+function adicionarMesesFront(data, meses) {
+
+    const d = new Date(data);
+    const diaOriginal = d.getDate();
+
+    d.setMonth(d.getMonth() + meses);
+
+    if (d.getDate() !== diaOriginal) {
+        d.setDate(0);
+    }
+
+    return d;
+}
+
+function atualizarPlanoLicenca() {
+
+    const quantidade = sel ? sel.size : 0;
+    const planoKey =
+        (document.querySelector('input[name="licensePlan"]:checked') || {}).value ||
+        "1_year";
+
+    for (const key of Object.keys(LICENSE_PLANS_FRONT)) {
+        const el = document.getElementById("plan-" + key);
+        const priceEl = document.getElementById("planPrice-" + key);
+        const radio = document.querySelector('input[name="licensePlan"][value="' + key + '"]');
+
+        if (el) {
+            el.style.borderColor = radio && radio.checked ? "#ffd400" : "#333";
+            el.style.background = radio && radio.checked ? "#1a1a00" : "#111";
+        }
+
+        if (priceEl) {
+            const lic = calcularLicencaFront(quantidade, key);
+            priceEl.textContent = formatarMoeda(lic.totalAmount);
+        }
+    }
+
+    const expiryEl = document.getElementById("licenseExpiry");
+    if (expiryEl) {
+        const lic = calcularLicencaFront(quantidade, planoKey);
+        const dataExpiracao = adicionarMesesFront(new Date(), lic.months);
+        expiryEl.textContent =
+            dataExpiracao.toLocaleDateString("pt-BR") +
+            " (" + lic.label.toLowerCase() + ")";
+    }
+}
+
+function abrirRegrasLicenca(event) {
+    if (event) event.preventDefault();
+    abrirRegras();
+}
+
+/* =========================
    ABRIR CHECKOUT
 ========================= */
 
@@ -6473,15 +6698,19 @@ if(sel.size > 1000){
 
 const resumo = calcularValorComDesconto(sel.size);
 const pct = resumo.pct;
-const valor = resumo.valor.toLocaleString("pt-BR") + ",00";
+const licencaInicial = calcularLicencaFront(sel.size, "1_year");
+const valorBaseInicial = resumo.valor;
+const taxaInicial = licencaInicial.fee;
+const valorTotalInicial = valorBaseInicial + taxaInicial;
+const valorStr = valorTotalInicial.toLocaleString("pt-BR") + ",00";
 
 document.getElementById("ci").innerHTML =
     `<b>${sel.size.toLocaleString("pt-BR")} espaço(s) selecionado(s)</b><br>` +
     (pct > 0
         ? `<span style="color:#ffd400">Desconto progressivo de ${pct}% aplicado!</span><br>` +
-          `<span style="font-size:13px;color:#aaa;text-decoration:line-through;">R$ ${sel.size.toLocaleString("pt-BR")},00</span> ` +
-          `<span style="font-size:18px;color:#45df6f;font-weight:800;">R$ ${valor}</span>`
-        : `<span style="font-size:18px;color:#45df6f;font-weight:800;">R$ ${valor}</span>`);
+          `<span style="font-size:13px;color:#aaa;text-decoration:line-through;">R$ ${licencaInicial.baseAmount.toLocaleString("pt-BR")},00</span> ` +
+          `<span style="font-size:18px;color:#45df6f;font-weight:800;">R$ ${valorStr}</span>`
+        : `<span style="font-size:18px;color:#45df6f;font-weight:800;">R$ ${valorStr}</span>`);
 
 
 document.getElementById(
@@ -6500,6 +6729,11 @@ document.getElementById(
 "modal"
 ).style.display =
 "flex";
+
+/* Reseta plano de licença para 1 ano */
+const plan1Year = document.querySelector('input[name="licensePlan"][value="1_year"]');
+if(plan1Year) plan1Year.checked = true;
+atualizarPlanoLicenca();
 
 /* Reseta forma de pagamento para PIX e monta campos de cartão */
 const pixRadio = document.querySelector('input[name="paymentMethod"][value="pix"]');
@@ -6581,6 +6815,21 @@ document.getElementById(
 const method =
 (document.querySelector('input[name="paymentMethod"]:checked') || {}).value || "pix";
 
+const licensePlan =
+(document.querySelector('input[name="licensePlan"]:checked') || {}).value || "1_year";
+
+const aceiteLicenca =
+document.getElementById("aceiteLicenca");
+
+if(!aceiteLicenca || !aceiteLicenca.checked){
+
+msg.textContent =
+"Você deve concordar com as regras da licença, validade e renovação.";
+
+return;
+
+}
+
 
 if(name.length<3){
 
@@ -6658,6 +6907,8 @@ coupon,
 paymentMethod: method,
 
 paymentMethodId: mpPaymentMethodId,
+
+licensePlan,
 
 cardToken,
 
@@ -6744,11 +6995,13 @@ data.creditos || 0;
 const totalValor = data.total.toLocaleString("pt-BR") + ",00";
 const cobradoValor = Number(data.value || 0).toLocaleString("pt-BR") + ",00";
 const pct = data.discountPercent || 0;
+const lic = data.license || { label: "1 ANO" };
 
 const pixResumo = document.getElementById("pixResumo");
 if(pixResumo){
     pixResumo.innerHTML =
         `<b>${data.total.toLocaleString("pt-BR")} espaço(s)</b><br>` +
+        `<span style="font-size:12px;color:#aaa;">Licença: ${escapeHtml(lic.label)}</span><br>` +
         (pct > 0
             ? `<span style="color:#ffd400">${pct}% de desconto aplicado</span><br>` +
               `<span style="font-size:13px;color:#aaa;text-decoration:line-through;">R$ ${totalValor}</span> ` +
@@ -8903,11 +9156,17 @@ function setAbaAtiva(){
     const tabE =
         document.getElementById("tabExtrato");
 
+    const tabS =
+        document.getElementById("tabEspacos");
+
     tabO.className =
         abaAtual === "ofertas" ? "btn" : "btn sec";
 
     tabB.className =
         abaAtual === "blocos" ? "btn" : "btn sec";
+
+    tabS.className =
+        abaAtual === "espacos" ? "btn" : "btn sec";
 
     tabP.className =
         abaAtual === "pix" ? "btn" : "btn sec";
@@ -8950,6 +9209,15 @@ function abaBlocos(){
     setAbaAtiva();
 
     carregarMeusBlocos();
+}
+
+function abaEspacos(){
+
+    abaAtual = "espacos";
+
+    setAbaAtiva();
+
+    carregarMeusEspacos();
 }
 
 function abaPix(){
@@ -11375,6 +11643,340 @@ async function carregarAbaPix(){
 
       <div id="pixKeyMsg" style="margin-top:8px;font-size:13px;"></div>
     `;
+}
+
+/* =========================
+   MEUS ESPAÇOS / LICENÇAS
+========================= */
+
+function statusRenovacao(expiresAt) {
+
+    if (!expiresAt) {
+        return { label: "", classe: "" };
+    }
+
+    const agora = new Date();
+    const exp = new Date(expiresAt);
+    const diffMs = exp.getTime() - agora.getTime();
+    const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDias < 0) {
+        const tolerancia = 7;
+        if (Math.abs(diffDias) <= tolerancia) {
+            return {
+                label: "LICENÇA EXPIRADA",
+                classe: "#ff4d4d",
+                podeRenovar: true
+            };
+        }
+        return {
+            label: "DISPONÍVEL AO PÚBLICO",
+            classe: "#888",
+            podeRenovar: false
+        };
+    }
+
+    if (diffDias <= 7) {
+        return {
+            label: "RENOVAÇÃO URGENTE",
+            classe: "#ff4d4d",
+            podeRenovar: true
+        };
+    }
+
+    if (diffDias <= 30) {
+        return {
+            label: "RENOVAÇÃO DISPONÍVEL",
+            classe: "#ffd400",
+            podeRenovar: true
+        };
+    }
+
+    return {
+        label: "ATIVA",
+        classe: "#45d66f",
+        podeRenovar: false
+    };
+}
+
+function diasRestantes(expiresAt) {
+
+    if (!expiresAt) return "—";
+
+    const agora = new Date();
+    const exp = new Date(expiresAt);
+    const diff = Math.ceil(
+        (exp.getTime() - agora.getTime()) /
+        (1000 * 60 * 60 * 24)
+    );
+
+    if (diff < 0) {
+        const tolerancia = 7;
+        if (Math.abs(diff) <= tolerancia) {
+            return "Tolerância: " + (tolerancia - Math.abs(diff)) + " dias";
+        }
+        return "Expirado";
+    }
+
+    return diff + " dias";
+}
+
+function carregarMeusEspacos() {
+
+    const list = document.getElementById("ownerList");
+
+    list.innerHTML = "Carregando seus espaços...";
+
+    const meus = [];
+
+    for (const id in db) {
+
+        const n = Number(id);
+        const s = db[n];
+
+        if (!s) continue;
+
+        const meuToken =
+            s.orderToken && orderTokens[n] === s.orderToken;
+
+        const meuUsuario =
+            minhaConta && s.usuarioId === minhaConta.id;
+
+        if (!meuToken && !meuUsuario) continue;
+
+        meus.push(s);
+    }
+
+    renderMeusEspacos(list, meus);
+}
+
+function renderMeusEspacos(list, espacos) {
+
+    if (!espacos.length) {
+        list.innerHTML =
+            "Você ainda não possui espaços.<br>" +
+            "<span style='font-size:12px;color:#888;'>" +
+            "Compre espaços para gerenciar suas licenças aqui." +
+            "</span>";
+        return;
+    }
+
+    let html =
+        '<div style="font-weight:800;margin:8px 0 6px;' +
+        'color:#ffd400;">MEUS ESPAÇOS E LICENÇAS</div>';
+
+    const planosLabel = {
+        "1_year": "1 ano",
+        "3_years": "3 anos",
+        "5_years": "5 anos"
+    };
+
+    for (const s of espacos) {
+
+        const status = statusRenovacao(s.expiresAt);
+        const numero = "#" + s.id.toLocaleString("pt-BR");
+        const plano = planosLabel[s.licensePlan] || (s.licensePlan || "—");
+        const compra = s.purchasedAt
+            ? new Date(s.purchasedAt).toLocaleDateString("pt-BR")
+            : "—";
+        const vencimento = s.expiresAt
+            ? new Date(s.expiresAt).toLocaleDateString("pt-BR")
+            : "—";
+        const dias = diasRestantes(s.expiresAt);
+
+        html += `
+          <div style="border:1px solid #333;border-radius:12px;
+                      padding:12px 14px;margin-bottom:10px;
+                      background:#161616;">
+            <div style="display:flex;justify-content:space-between;
+                        align-items:center;">
+              <b style="color:#fff;">${numero}</b>
+              <span style="font-size:11px;font-weight:700;
+                           color:${status.classe};">
+                ${status.label}
+              </span>
+            </div>
+            <div style="color:#aaa;margin-top:6px;font-size:12px;
+                        line-height:1.6;">
+              <div><b>Status:</b> ${s.status === "published" ? "publicado" : s.status === "paid" ? "ativo" : s.status}</div>
+              <div><b>Plano:</b> ${plano}</div>
+              <div><b>Compra:</b> ${compra}</div>
+              <div><b>Vencimento:</b> ${vencimento}</div>
+              <div><b>Dias restantes:</b> ${dias}</div>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px;">
+              <button class="btn"
+                      onclick="verBlocoNoMapa(${s.id})"
+                      style="margin:0;padding:8px 12px;font-size:12px;">
+                👁 VER
+              </button>
+              <button class="btn"
+                      onclick="abrirRenovacao(${s.id})"
+                      style="margin:0;padding:8px 12px;font-size:12px;${status.podeRenovar ? '' : 'display:none;'}">
+                🔄 RENOVAR ESPAÇO
+              </button>
+            </div>
+          </div>`;
+    }
+
+    html +=
+        '<div style="font-size:12px;color:#888;margin-top:8px;">' +
+        'Total: ' + espacos.length.toLocaleString("pt-BR") +
+        ' espaço(s)</div>';
+
+    list.innerHTML = html;
+}
+
+async function abrirRenovacao(spaceId) {
+
+    if (!minhaConta) {
+        alert("Faça login para renovar seu espaço.");
+        abrirLogin();
+        return;
+    }
+
+    const s = db[spaceId];
+
+    if (!s) {
+        alert("Espaço não encontrado.");
+        return;
+    }
+
+    const planoEscolhido = prompt(
+        "Escolha o tempo da renovação:\n" +
+        "1) 1 ano - R$1,00\n" +
+        "2) 3 anos - R$21,00\n" +
+        "3) 5 anos - R$41,00\n\n" +
+        "Digite 1, 2 ou 3:"
+    );
+
+    const mapa = {
+        "1": "1_year",
+        "2": "3_years",
+        "3": "5_years"
+    };
+
+    const licensePlan = mapa[planoEscolhido];
+
+    if (!licensePlan) {
+        alert("Opção inválida.");
+        return;
+    }
+
+    const nomeInput = document.getElementById("name");
+    const emailInput = document.getElementById("email");
+    const cpfInput = document.getElementById("cpf");
+
+    const nome = (nomeInput && nomeInput.value.trim()) || minhaConta.nome || "";
+    const email = (emailInput && emailInput.value.trim()) || minhaConta.email || "";
+    const cpf = (cpfInput && cpfInput.value.trim()) || "";
+
+    if (!nome || !email || !cpf) {
+        alert("Preencha nome, e-mail e CPF/CNPJ no checkout primeiro.");
+        return;
+    }
+
+    try {
+
+        const response = await fetch("/api/renew", {
+            method: "POST",
+            headers: authHeaders({
+                "Content-Type": "application/json"
+            }),
+            body: JSON.stringify({
+                spaceId,
+                licensePlan,
+                name: nome,
+                email: email,
+                cpfCnpj: cpf,
+                paymentMethod: "pix"
+            })
+        });
+
+        const data = await reqJSON(response);
+
+        if (!response.ok) {
+            alert(data.error || "Não foi possível iniciar a renovação.");
+            return;
+        }
+
+        salvarTokens([spaceId], data.orderToken);
+
+        if (data.accessCode) {
+            salvarAccessCodes([spaceId], data.accessCode);
+        }
+
+        await recarregarDB();
+
+        currentPayment = data.mpOrderId || data.paymentId;
+
+        alert(
+            "Renovação iniciada!\n\n" +
+            "Espaço: #" + spaceId.toLocaleString("pt-BR") + "\n" +
+            "Plano: " + (data.license && data.license.label) + "\n" +
+            "Valor: R$ " + Number(data.value || 0).toLocaleString("pt-BR") + "\n\n" +
+            "Use o QR Code ou copie o Pix para pagar."
+        );
+
+        mostrarPagamentoRenovacao(data);
+
+    } catch (error) {
+        console.error(error);
+        alert("Erro ao iniciar renovação.");
+    }
+}
+
+function mostrarPagamentoRenovacao(data) {
+
+    const pixResumo = document.getElementById("pixResumo");
+    if (pixResumo) {
+        pixResumo.innerHTML =
+            `<b>Renovação do espaço #${data.spaceId.toLocaleString("pt-BR")}</b><br>` +
+            `<span style="font-size:12px;color:#aaa;">Licença: ${escapeHtml(data.license && data.license.label || "")}</span><br>` +
+            `<span style="font-size:20px;color:#45df6f;font-weight:900;">R$ ${Number(data.value || 0).toLocaleString("pt-BR")},00</span>`;
+    }
+
+    const qr = document.getElementById("qr");
+    if (qr && data.qrCode) {
+        qr.src = qrCodeUrl(data.qrCode);
+    }
+
+    const payload = document.getElementById("payload");
+    if (payload) {
+        payload.value = data.payload || "";
+    }
+
+    const statusPix = document.getElementById("statusPix");
+    if (statusPix) {
+        statusPix.textContent = "Aguardando pagamento...";
+    }
+
+    document.getElementById("formulario").style.display = "none";
+    document.getElementById("pix").style.display = "block";
+    document.getElementById("modal").style.display = "flex";
+
+    if (data.mpOrderId) {
+        iniciarPollingPagamento(data.mpOrderId);
+    }
+}
+
+async function recarregarDB() {
+
+    try {
+        const response = await fetch("/api/spaces", {
+            headers: {
+                "x-owner-tokens": Object.values(orderTokens).join(",")
+            }
+        });
+
+        if (!response.ok) return;
+
+        db = await reqJSON(response);
+        draw();
+
+    } catch (error) {
+        console.error(error);
+    }
 }
 
 async function salvarMinhaChavePix(){

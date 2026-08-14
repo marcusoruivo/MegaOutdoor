@@ -128,6 +128,81 @@ const RESERVA_TTL_MINUTOS =
 const RESERVA_TTL_MS =
     RESERVA_TTL_MINUTOS * 60 * 1000;
 
+/* =========================
+   PLANOS DE LICENÇA
+   Preço base: R$1,00 por bloco.
+   Taxa adicional cobrada UMA ÚNICA VEZ por pedido.
+========================= */
+
+const BASE_PRICE_PER_BLOCK = 1.00;
+
+const LICENSE_PLANS = {
+    "1_year": {
+        label: "1 ANO",
+        months: 12,
+        fee: 0,
+        recommended: false,
+        tagline: ""
+    },
+    "3_years": {
+        label: "3 ANOS",
+        months: 36,
+        fee: 20,
+        recommended: true,
+        tagline: "RECOMENDADO"
+    },
+    "5_years": {
+        label: "5 ANOS",
+        months: 60,
+        fee: 40,
+        recommended: false,
+        tagline: "MELHOR CUSTO-BENEFÍCIO"
+    }
+};
+
+function calcularLicenca(quantidade, planoKey) {
+
+    const plano =
+        LICENSE_PLANS[planoKey] ||
+        LICENSE_PLANS["1_year"];
+
+    const baseAmount =
+        Math.round(
+            quantidade * BASE_PRICE_PER_BLOCK * 100
+        ) / 100;
+
+    const totalAmount =
+        Math.round(
+            (baseAmount + plano.fee) * 100
+        ) / 100;
+
+    return {
+        plan: planoKey,
+        label: plano.label,
+        months: plano.months,
+        fee: plano.fee,
+        baseAmount,
+        totalAmount,
+        basePricePerBlock: BASE_PRICE_PER_BLOCK
+    };
+}
+
+function adicionarMeses(data, meses) {
+
+    const d = new Date(data);
+    const diaOriginal = d.getDate();
+
+    d.setMonth(d.getMonth() + meses);
+
+    /* Se o dia mudou (ex: 31/01 + 1 mês = 28/02),
+       mantemos o último dia do mês de destino. */
+    if (d.getDate() !== diaOriginal) {
+        d.setDate(0);
+    }
+
+    return d;
+}
+
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
@@ -366,6 +441,66 @@ async function initBanco() {
         );
 
         await pgPool.query(
+            "ALTER TABLE transacoes " +
+            "ADD COLUMN IF NOT EXISTS license_plan VARCHAR(20)"
+        );
+
+        await pgPool.query(
+            "ALTER TABLE transacoes " +
+            "ADD COLUMN IF NOT EXISTS license_duration_months INTEGER"
+        );
+
+        await pgPool.query(
+            "ALTER TABLE transacoes " +
+            "ADD COLUMN IF NOT EXISTS license_fee NUMERIC(12,2)"
+        );
+
+        await pgPool.query(
+            "ALTER TABLE transacoes " +
+            "ADD COLUMN IF NOT EXISTS base_amount NUMERIC(12,2)"
+        );
+
+        await pgPool.query(
+            "ALTER TABLE transacoes " +
+            "ADD COLUMN IF NOT EXISTS total_amount NUMERIC(12,2)"
+        );
+
+        await pgPool.query(
+            "ALTER TABLE transacoes " +
+            "ADD COLUMN IF NOT EXISTS purchased_at TIMESTAMPTZ"
+        );
+
+        await pgPool.query(
+            "ALTER TABLE transacoes " +
+            "ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ"
+        );
+
+        await pgPool.query(
+            "ALTER TABLE transacoes " +
+            "ADD COLUMN IF NOT EXISTS original_license_plan VARCHAR(20)"
+        );
+
+        await pgPool.query(
+            "ALTER TABLE transacoes " +
+            "ADD COLUMN IF NOT EXISTS original_license_duration_months INTEGER"
+        );
+
+        await pgPool.query(
+            "ALTER TABLE transacoes " +
+            "ADD COLUMN IF NOT EXISTS original_base_price_per_block NUMERIC(12,2)"
+        );
+
+        await pgPool.query(
+            "ALTER TABLE transacoes " +
+            "ADD COLUMN IF NOT EXISTS original_license_fee NUMERIC(12,2)"
+        );
+
+        await pgPool.query(
+            "ALTER TABLE transacoes " +
+            "ADD COLUMN IF NOT EXISTS operation_type VARCHAR(20)"
+        );
+
+        await pgPool.query(
             "CREATE INDEX IF NOT EXISTS " +
             "idx_transacoes_token ON transacoes(token)"
         );
@@ -425,7 +560,19 @@ function registrarTransacao({
     valorTotal,
     comissao = 0,
     status,
-    test = false
+    test = false,
+    licensePlan,
+    licenseDurationMonths,
+    licenseFee,
+    baseAmount,
+    totalAmount,
+    purchasedAt,
+    expiresAt,
+    originalLicensePlan,
+    originalLicenseDurationMonths,
+    originalBasePricePerBlock,
+    originalLicenseFee,
+    operationType
 }) {
 
     if (!pgDisponivel) {
@@ -437,8 +584,15 @@ function registrarTransacao({
             (tipo, access_code, token, order_id, mp_order_id,
              customer_id, payment_id, metodo_pagamento, usuario_id, nome, email,
              espacos, quantidade, valor_total,
-             comissao, status, test)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+             comissao, status, test,
+             license_plan, license_duration_months, license_fee,
+             base_amount, total_amount,
+             purchased_at, expires_at,
+             original_license_plan, original_license_duration_months,
+             original_base_price_per_block, original_license_fee,
+             operation_type)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,
+                 $18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)`,
         [
             tipo,
             accessCode,
@@ -456,7 +610,19 @@ function registrarTransacao({
             valorTotal,
             comissao,
             status,
-            test
+            test,
+            licensePlan || null,
+            licenseDurationMonths || null,
+            licenseFee || 0,
+            baseAmount || valorTotal,
+            totalAmount || valorTotal,
+            purchasedAt || null,
+            expiresAt || null,
+            originalLicensePlan || null,
+            originalLicenseDurationMonths || null,
+            originalBasePricePerBlock || null,
+            originalLicenseFee || null,
+            operationType || "purchase"
         ]
     ).catch((err) => {
         console.error("ERRO ao registrar transação:", err.message);
@@ -470,35 +636,33 @@ function pgPagamentoPago({ paymentId, mpOrderId } = {}) {
         return Promise.resolve(false);
     }
 
-    if (paymentId) {
-        return pgPool.query(
-            `UPDATE transacoes
-                SET status = 'pago',
-                    pago_em = NOW()
-              WHERE payment_id = $1
-                AND status = 'pendente'`,
-            [paymentId]
-        ).catch((err) => {
-            console.error("ERRO ao atualizar transação:", err.message);
-            return false;
-        });
+    const whereClause = paymentId
+        ? "payment_id = $1"
+        : "mp_order_id = $1";
+
+    const param = paymentId || mpOrderId;
+
+    if (!param) {
+        return Promise.resolve(false);
     }
 
-    if (mpOrderId) {
-        return pgPool.query(
-            `UPDATE transacoes
-                SET status = 'pago',
-                    pago_em = NOW()
-              WHERE mp_order_id = $1
-                AND status = 'pendente'`,
-            [mpOrderId]
-        ).catch((err) => {
-            console.error("ERRO ao atualizar transação:", err.message);
-            return false;
-        });
-    }
-
-    return Promise.resolve(false);
+    return pgPool.query(
+        `UPDATE transacoes
+            SET status = 'pago',
+                pago_em = NOW(),
+                purchased_at = COALESCE(purchased_at, NOW()),
+                expires_at = CASE
+                    WHEN license_duration_months IS NOT NULL
+                    THEN NOW() + (license_duration_months || ' months')::INTERVAL
+                    ELSE NULL
+                END
+          WHERE ${whereClause}
+            AND status = 'pendente'`,
+        [param]
+    ).catch((err) => {
+        console.error("ERRO ao atualizar transação:", err.message);
+        return false;
+    });
 }
 
 async function usuarioPossuiOrder(usuarioId, orderId) {
@@ -2047,7 +2211,16 @@ app.get("/api/spaces", (req, res) => {
             test: s.test === true,
             publishedAt: s.publishedAt,
             paidAt: s.paidAt,
-            transferredAt: s.transferredAt
+            transferredAt: s.transferredAt,
+            licensePlan: s.licensePlan,
+            licenseDurationMonths: s.licenseDurationMonths,
+            licenseFee: s.licenseFee,
+            baseAmount: s.baseAmount,
+            totalAmount: s.totalAmount,
+            purchasedAt: s.purchasedAt,
+            expiresAt: s.expiresAt,
+            operationType: s.operationType,
+            usuarioId: s.usuarioId
         };
 
         if (
@@ -2200,6 +2373,19 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             });
         }
 
+        /* =========================
+           PLANO DE LICENÇA
+        ========================= */
+
+        const licensePlanKey =
+            req.body.licensePlan || "1_year";
+
+        if (!LICENSE_PLANS[licensePlanKey]) {
+            return res.status(400).json({
+                error: "Plano de licença inválido."
+            });
+        }
+
         /* Libera reservas expiradas antes de checar
            disponibilidade, para que o comprador possa
            reusar os próprios espaços da compra anterior. */
@@ -2315,13 +2501,24 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
                     ? cupom.discountPercent
                     : 0;
 
-        /* O cliente ganha o melhor desconto: progressivo ou cupom. */
+        /* O cliente ganha o melhor desconto: progressivo ou cupom.
+           O desconto é aplicado apenas sobre o valor base dos blocos;
+           a taxa de licença é cobrada uma única vez por pedido. */
         const descontoPct =
             Math.max(descontoProgressivoPct, descontoCupomPct);
 
+        const licenca = calcularLicenca(total, licensePlanKey);
+
+        const baseComDesconto =
+            Math.round(
+                licenca.baseAmount *
+                (1 - descontoPct / 100) *
+                100
+            ) / 100;
+
         const valorCobrado =
             Math.round(
-                total * (1 - descontoPct / 100) * 100
+                (baseComDesconto + licenca.fee) * 100
             ) / 100;
 
         /* =========================
@@ -2413,7 +2610,18 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
                 name: name.trim(),
                 email: email.trim(),
                 createdAt:
-                    new Date().toISOString()
+                    new Date().toISOString(),
+                licensePlan: licenca.plan,
+                licenseDurationMonths: licenca.months,
+                licenseFee: licenca.fee,
+                baseAmount: licenca.baseAmount,
+                totalAmount: licenca.totalAmount,
+                basePricePerBlock: licenca.basePricePerBlock,
+                operationType: "purchase",
+                originalLicensePlan: licenca.plan,
+                originalLicenseDurationMonths: licenca.months,
+                originalBasePricePerBlock: licenca.basePricePerBlock,
+                originalLicenseFee: licenca.fee
             };
         }
 
@@ -2437,7 +2645,17 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             valorTotal: valorCobrado,
             comissao: 0,
             status: metodo === "credit_card" && mp.paymentStatus === "approved" ? "pago" : "pendente",
-            test: false
+            test: false,
+            licensePlan: licenca.plan,
+            licenseDurationMonths: licenca.months,
+            licenseFee: licenca.fee,
+            baseAmount: licenca.baseAmount,
+            totalAmount: licenca.totalAmount,
+            originalLicensePlan: licenca.plan,
+            originalLicenseDurationMonths: licenca.months,
+            originalBasePricePerBlock: licenca.basePricePerBlock,
+            originalLicenseFee: licenca.fee,
+            operationType: "purchase"
         });
 
         await salvarChaveUsuario(
@@ -2526,10 +2744,17 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             statusOrderPago(mp.paymentStatus);
 
         if (pagoInstantaneo) {
+            const paidAt = new Date();
             for (const id of ids) {
                 if (db[id] && db[id].status === "reserved") {
                     db[id].status = "paid";
-                    db[id].paidAt = new Date().toISOString();
+                    db[id].paidAt = paidAt.toISOString();
+                    db[id].purchasedAt = paidAt.toISOString();
+                    db[id].expiresAt =
+                        adicionarMeses(
+                            paidAt,
+                            db[id].licenseDurationMonths || 12
+                        ).toISOString();
                 }
             }
             writeDB(db);
@@ -2548,6 +2773,7 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             spaces: ids,
             total,
             value: valorCobrado,
+            license: licenca,
             discountPercent: descontoPct,
             paymentMethod: metodo,
             paymentStatus: mp.paymentStatus,
@@ -2575,6 +2801,245 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
     } catch (error) {
 
         console.error("ERRO CHECKOUT:", error.message);
+
+        res.status(500).json({
+            error: error.message
+        });
+    }
+});
+
+/* =========================
+   RENOVAÇÃO DE LICENÇA
+   O proprietário pode renovar seus espaços
+   por 1, 3 ou 5 anos. A renovação só é
+   efetivada após confirmação do pagamento.
+========================= */
+
+app.post("/api/renew", authUsuario, async (req, res) => {
+
+    try {
+
+        if (!MERCADOPAGO_ACCESS_TOKEN) {
+            return res.status(503).json({
+                error:
+                    "Pagamento temporariamente indisponível. " +
+                    "MERCADOPAGO_ACCESS_TOKEN não configurado."
+            });
+        }
+
+        const {
+            spaceId,
+            licensePlan,
+            name,
+            email,
+            cpfCnpj,
+            paymentMethod,
+            cardToken,
+            installments
+        } = req.body;
+
+        const id = Number(spaceId);
+
+        if (!Number.isInteger(id) || id < 1 || id > 1000000) {
+            return res.status(400).json({
+                error: "Espaço inválido."
+            });
+        }
+
+        if (!LICENSE_PLANS[licensePlan]) {
+            return res.status(400).json({
+                error: "Plano de licença inválido."
+            });
+        }
+
+        if (!name || name.trim().length < 3) {
+            return res.status(400).json({
+                error: "Informe o nome."
+            });
+        }
+
+        if (!email || !email.includes("@")) {
+            return res.status(400).json({
+                error: "Informe um e-mail válido."
+            });
+        }
+
+        if (!cpfCnpj) {
+            return res.status(400).json({
+                error: "Informe CPF ou CNPJ."
+            });
+        }
+
+        const document = cpfCnpj.replace(/\D/g, "");
+
+        if (!validarDocumento(document)) {
+            return res.status(400).json({
+                error: "CPF ou CNPJ inválido."
+            });
+        }
+
+        const metodo =
+            paymentMethod === "card" || paymentMethod === "credit_card"
+            ? "credit_card"
+            : "pix";
+
+        if (metodo === "credit_card" && !cardToken) {
+            return res.status(400).json({
+                error: "Token do cartão não informado."
+            });
+        }
+
+        const db = readDB();
+        const space = db[id];
+
+        if (!space) {
+            return res.status(404).json({
+                error: "Espaço não encontrado."
+            });
+        }
+
+        /* Validação de propriedade: só permite renovar
+           espaços que pertencem ao usuário autenticado. */
+        const chaves = await chavesDoUsuario(req.usuario.id);
+        const tokensDoUsuario = new Set(
+            chaves
+                .filter(c => c.tipo === "token")
+                .map(c => c.valor)
+        );
+
+        const ehProprietario =
+            space.usuarioId === req.usuario.id ||
+            (space.orderToken && tokensDoUsuario.has(space.orderToken));
+
+        if (!ehProprietario) {
+            return res.status(403).json({
+                error: "Você não é o proprietário deste espaço."
+            });
+        }
+
+        const licenca = calcularLicenca(1, licensePlan);
+
+        const orderId =
+            `MEGA-RENEW-${Date.now()}-${Math.random()
+                .toString(36)
+                .substring(2, 7)}`;
+
+        const orderToken = gerarToken();
+        const accessCode = gerarAccessCode();
+        const paymentId = crypto.randomUUID();
+
+        const mp = await criarOrderMercadoPago({
+            idempotencyKey: orderId,
+            externalReference: orderId,
+            value: licenca.totalAmount,
+            description: `Milhão Door - Renovação espaço #${id.toLocaleString("pt-BR")} (${licenca.label})`,
+            customer: {
+                name: name.trim(),
+                taxID: document,
+                email: email.trim()
+            },
+            paymentMethod: metodo,
+            paymentMethodId: req.body.paymentMethodId,
+            cardToken: metodo === "credit_card" ? cardToken : undefined,
+            installments: metodo === "credit_card" ? installments : undefined
+        });
+
+        const qrCodeBase64 = mp.qrCodeBase64;
+        const brCode = mp.payload;
+        const expiresDate = mp.expirationDate;
+
+        registrarTransacao({
+            tipo: "renovacao",
+            accessCode,
+            token: orderToken,
+            orderId,
+            mpOrderId: mp.orderId,
+            customerId: "",
+            paymentId: mp.paymentId || paymentId,
+            metodoPagamento: metodo,
+            usuarioId: req.usuario.id,
+            nome: name.trim(),
+            email: email.trim(),
+            espacos: [id],
+            valorTotal: licenca.totalAmount,
+            comissao: 0,
+            status: metodo === "credit_card" && mp.paymentStatus === "approved" ? "pago" : "pendente",
+            test: false,
+            licensePlan: licenca.plan,
+            licenseDurationMonths: licenca.months,
+            licenseFee: licenca.fee,
+            baseAmount: licenca.baseAmount,
+            totalAmount: licenca.totalAmount,
+            originalLicensePlan: space.licensePlan,
+            originalLicenseDurationMonths: space.licenseDurationMonths,
+            originalBasePricePerBlock: space.basePricePerBlock,
+            originalLicenseFee: space.licenseFee,
+            operationType: "renewal"
+        });
+
+        await salvarChaveUsuario(req.usuario.id, "token", orderToken);
+        await salvarChaveUsuario(req.usuario.id, "access", accessCode);
+
+        registrarLog("renovacao_criada", {
+            usuarioId: req.usuario.id,
+            orderId,
+            spaceId: id,
+            valor: licenca.totalAmount
+        });
+
+        const pagoInstantaneo =
+            metodo === "credit_card" &&
+            statusOrderPago(mp.paymentStatus);
+
+        if (pagoInstantaneo) {
+            const paidAt = new Date();
+            const mesesAnteriores =
+                space.licenseDurationMonths || 12;
+            const dataBase =
+                space.expiresAt && new Date(space.expiresAt) > paidAt
+                    ? new Date(space.expiresAt)
+                    : paidAt;
+
+            db[id].licensePlan = licenca.plan;
+            db[id].licenseDurationMonths = licenca.months;
+            db[id].licenseFee = licenca.fee;
+            db[id].baseAmount = licenca.baseAmount;
+            db[id].totalAmount = licenca.totalAmount;
+            db[id].basePricePerBlock = licenca.basePricePerBlock;
+            db[id].operationType = "renewal";
+            db[id].purchasedAt = paidAt.toISOString();
+            db[id].expiresAt =
+                adicionarMeses(dataBase, licenca.months).toISOString();
+            db[id].paidAt = paidAt.toISOString();
+            db[id].renewalOrderId = orderId;
+            db[id].renewalMpOrderId = mp.orderId;
+
+            writeDB(db);
+            pgPagamentoPago({ mpOrderId: mp.orderId });
+        }
+
+        res.json({
+            ok: true,
+            orderId,
+            mpOrderId: mp.orderId,
+            orderToken,
+            accessCode,
+            paymentId: mp.paymentId || paymentId,
+            spaceId: id,
+            value: licenca.totalAmount,
+            license: licenca,
+            paymentMethod: metodo,
+            paymentStatus: mp.paymentStatus,
+            paid: pagoInstantaneo,
+            qrCode: qrCodeBase64 || "",
+            payload: brCode,
+            ticketUrl: mp.ticketUrl || "",
+            expirationDate: expiresDate
+        });
+
+    } catch (error) {
+
+        console.error("ERRO RENOVAÇÃO:", error.message);
 
         res.status(500).json({
             error: error.message
@@ -2700,6 +3165,9 @@ app.post("/api/test/reserve", authUsuario, async (req, res) => {
         const accessCode =
             gerarAccessCode();
 
+        const licencaTeste = calcularLicenca(spaces.length, "1_year");
+        const paidAt = new Date();
+
         for (const id of spaces) {
 
             db[id] = {
@@ -2711,7 +3179,18 @@ app.post("/api/test/reserve", authUsuario, async (req, res) => {
                 accessCode,
                 name: name || "Anunciante",
                 email: email || "",
-                createdAt: now
+                createdAt: now,
+                licensePlan: licencaTeste.plan,
+                licenseDurationMonths: licencaTeste.months,
+                licenseFee: licencaTeste.fee,
+                baseAmount: licencaTeste.baseAmount,
+                totalAmount: licencaTeste.totalAmount,
+                basePricePerBlock: licencaTeste.basePricePerBlock,
+                operationType: "purchase",
+                purchasedAt: paidAt.toISOString(),
+                expiresAt:
+                    adicionarMeses(paidAt, licencaTeste.months)
+                        .toISOString()
             };
         }
 
@@ -2742,7 +3221,21 @@ app.post("/api/test/reserve", authUsuario, async (req, res) => {
             valorTotal,
             comissao: 0,
             status: "pago",
-            test: true
+            test: true,
+            licensePlan: licencaTeste.plan,
+            licenseDurationMonths: licencaTeste.months,
+            licenseFee: licencaTeste.fee,
+            baseAmount: licencaTeste.baseAmount,
+            totalAmount: licencaTeste.totalAmount,
+            purchasedAt: paidAt.toISOString(),
+            expiresAt:
+                adicionarMeses(paidAt, licencaTeste.months)
+                    .toISOString(),
+            originalLicensePlan: licencaTeste.plan,
+            originalLicenseDurationMonths: licencaTeste.months,
+            originalBasePricePerBlock: licencaTeste.basePricePerBlock,
+            originalLicenseFee: licencaTeste.fee,
+            operationType: "purchase"
         });
 
         await salvarChaveUsuario(
@@ -2960,6 +3453,8 @@ app.get(
                     status: chargeStatus
                 });
 
+                const paidAt = new Date();
+
                 for (const id of Object.keys(db)) {
 
                     if (
@@ -2972,8 +3467,15 @@ app.get(
                             "reserved"
                         ) {
 
-                            db[id].status =
-                                "paid";
+                            const months =
+                                db[id].licenseDurationMonths || 12;
+
+                            db[id].status = "paid";
+                            db[id].paidAt = paidAt.toISOString();
+                            db[id].purchasedAt = paidAt.toISOString();
+                            db[id].expiresAt =
+                                adicionarMeses(paidAt, months)
+                                    .toISOString();
                         }
                     }
                 }
@@ -5605,6 +6107,95 @@ app.post("/api/link", (req, res) => {
 });
 
 /* =========================
+   PROCESSAR RENOVAÇÃO VIA WEBHOOK
+   Quando uma Order de renovação é paga,
+   estende a validade do espaço original.
+========================= */
+
+async function processarRenovacaoPagamento(mpOrderId) {
+
+    if (!pgDisponivel) {
+        return false;
+    }
+
+    try {
+
+        const result = await pgPool.query(
+            `SELECT * FROM transacoes
+              WHERE mp_order_id = $1
+                AND operation_type = 'renewal'
+                AND status = 'pendente'
+              LIMIT 1`,
+            [mpOrderId]
+        );
+
+        const transacao = result.rows[0];
+
+        if (!transacao) {
+            return false;
+        }
+
+        const spaceId = Number(transacao.espacos[0]);
+
+        if (!spaceId) {
+            return false;
+        }
+
+        const db = readDB();
+        const space = db[spaceId];
+
+        if (!space) {
+            return false;
+        }
+
+        const paidAt = new Date();
+        const meses =
+            transacao.license_duration_months || 12;
+
+        const dataBase =
+            space.expiresAt && new Date(space.expiresAt) > paidAt
+                ? new Date(space.expiresAt)
+                : paidAt;
+
+        db[spaceId] = {
+            ...space,
+            licensePlan: transacao.license_plan,
+            licenseDurationMonths: meses,
+            licenseFee: Number(transacao.license_fee) || 0,
+            baseAmount: Number(transacao.base_amount) || 0,
+            totalAmount: Number(transacao.total_amount) || 0,
+            basePricePerBlock:
+                Number(transacao.original_base_price_per_block) ||
+                BASE_PRICE_PER_BLOCK,
+            operationType: "renewal",
+            purchasedAt: paidAt.toISOString(),
+            expiresAt:
+                adicionarMeses(dataBase, meses).toISOString(),
+            paidAt: paidAt.toISOString(),
+            renewalOrderId: transacao.order_id,
+            renewalMpOrderId: mpOrderId
+        };
+
+        writeDB(db);
+
+        registrarLog("renovacao_confirmada", {
+            mpOrderId,
+            spaceId,
+            usuarioId: transacao.usuario_id
+        });
+
+        return true;
+
+    } catch (error) {
+        console.error(
+            "ERRO ao processar renovação no webhook:",
+            error.message
+        );
+        return false;
+    }
+}
+
+/* =========================
    INICIAR SERVIDOR
 ========================= */
 
@@ -5650,6 +6241,7 @@ app.post("/webhooks/mercadopago", async (req, res) => {
         /* Liberação idempotente: só altera espaços reservados. */
         const db = readDB();
         let alterado = false;
+        const paidAt = new Date();
 
         for (const id of Object.keys(db)) {
             const space = db[id];
@@ -5658,10 +6250,17 @@ app.post("/webhooks/mercadopago", async (req, res) => {
                 space.mpOrderId === orderId &&
                 space.status === "reserved"
             ) {
+                const months =
+                    space.licenseDurationMonths || 12;
+
                 db[id] = {
                     ...space,
                     status: "paid",
-                    paidAt: new Date().toISOString()
+                    paidAt: paidAt.toISOString(),
+                    purchasedAt: paidAt.toISOString(),
+                    expiresAt:
+                        adicionarMeses(paidAt, months)
+                            .toISOString()
                 };
 
                 alterado = true;
@@ -5670,6 +6269,7 @@ app.post("/webhooks/mercadopago", async (req, res) => {
 
         confirmarPagamentoOferta(orderId);
         pgPagamentoPago({ mpOrderId: orderId });
+        await processarRenovacaoPagamento(orderId);
 
         registrarLog("pagamento_confirmado_webhook", {
             mpOrderId: orderId,

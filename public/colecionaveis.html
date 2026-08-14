@@ -472,6 +472,10 @@ body{overflow-x:hidden}
     .card-nome{font-size:11px}
     .aba-btn{padding:7px 8px;font-size:10px}
 }
+.produto-resumo{background:linear-gradient(135deg,#1a1a1a,#111);border:1px solid var(--borda);border-radius:12px;padding:14px;margin:10px 0;text-align:center}
+.produto-nome{font-size:16px;font-weight:800;color:#fff;text-transform:uppercase}
+.produto-preco{font-size:24px;font-weight:900;color:var(--amarelo);margin:4px 0}
+.produto-detalhe{font-size:12px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -486,10 +490,7 @@ body{overflow-x:hidden}
         </div>
     </div>
     <div class="topo-actions">
-        <div class="badge-user hidden" id="badgeUsuario">
-            <span>👤</span><span class="nome" id="badgeNome">Conta</span>
-        </div>
-        <button class="btn btn-amarelo" id="btnConta" onclick="abrirConta()">ENTRAR</button>
+        <button class="btn btn-amarelo" id="btnConta" onclick="abrirConta()">👤 ENTRAR</button>
         <a class="btn btn-ghost" href="/" style="text-decoration:none">← Voltar</a>
     </div>
 </header>
@@ -671,7 +672,7 @@ let estado = {
 function authHeaders(extra){
     const h = extra || {};
     if (minhaConta && minhaConta.token) h["Authorization"] = "Bearer " + minhaConta.token;
-    if (extra && extra["Content-Type"]) {} else if (extra === undefined) { h["Content-Type"] = "application/json"; }
+    if (!h["Content-Type"]) { h["Content-Type"] = "application/json"; }
     return h;
 }
 
@@ -719,16 +720,46 @@ function cardModalArte(card){
 }
 
 function atualizarHeader(){
-    const b = document.getElementById("badgeUsuario");
     const bt = document.getElementById("btnConta");
     if (minhaConta && minhaConta.token) {
-        b.classList.remove("hidden");
-        document.getElementById("badgeNome").textContent = (minhaConta.usuario && minhaConta.usuario.nome) || "Conta";
-        bt.textContent = "👤 CONTA";
+        bt.textContent = "👤 MINHA CONTA";
     } else {
-        b.classList.add("hidden");
-        bt.textContent = "ENTRAR";
+        bt.textContent = "👤 ENTRAR";
     }
+}
+
+/* ===== VALIDAÇÃO DE CPF/CNPJ (espelho do backend) ===== */
+function _validarCpf(cpf){
+    cpf = String(cpf).replace(/\D/g, "");
+    if (cpf.length !== 11) return false;
+    if (/^(\d)\1{10}$/.test(cpf)) return false;
+    let soma = 0;
+    for (let i = 0; i < 9; i++) soma += Number(cpf[i]) * (10 - i);
+    let digito = (soma * 10) % 11 % 10;
+    if (digito !== Number(cpf[9])) return false;
+    soma = 0;
+    for (let i = 0; i < 10; i++) soma += Number(cpf[i]) * (11 - i);
+    digito = (soma * 10) % 11 % 10;
+    return digito === Number(cpf[10]);
+}
+function _validarCnpj(cnpj){
+    cnpj = String(cnpj).replace(/\D/g, "");
+    if (cnpj.length !== 14) return false;
+    if (/^(\d)\1{13}$/.test(cnpj)) return false;
+    const pesos1 = [5,4,3,2,9,8,7,6,5,4,3,2];
+    let soma = 0;
+    for (let i = 0; i < 12; i++) soma += Number(cnpj[i]) * pesos1[i];
+    let digito = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    if (digito !== Number(cnpj[12])) return false;
+    const pesos2 = [6,5,4,3,2,9,8,7,6,5,4,3,2];
+    soma = 0;
+    for (let i = 0; i < 13; i++) soma += Number(cnpj[i]) * pesos2[i];
+    digito = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    return digito === Number(cnpj[13]);
+}
+function validarCpfCnpj(v){
+    const d = String(v).replace(/\D/g, "");
+    return d.length === 11 ? _validarCpf(d) : (d.length === 14 ? _validarCnpj(d) : false);
 }
 
 function exigirLogin(){
@@ -940,7 +971,15 @@ async function carregarPacks(){
 
 async function comprarPacote(packId){
     if (!exigirLogin()) return;
-    abrirModalPagamento("pack", { packId });
+    const d = INFO || await apiGet("/api/colecionaveis/info");
+    INFO = d;
+    const pack = (d.packs || []).find(p => p.id === packId);
+    abrirModalPagamento("pack", {
+        packId,
+        nome: pack ? pack.name : "Pacote",
+        preco: pack ? pack.price : 0,
+        figurinhas: pack ? pack.sticker_quantity : 0
+    });
 }
 
 /* =========================================================
@@ -1287,13 +1326,33 @@ async function confirmarContraproposta(tradeId){
 async function abrirModalPagamento(tipo, dados){
     document.getElementById("modalOverlay").classList.remove("hidden");
     const corpo = document.getElementById("modalBody");
+    const titulo = tipo === "pack" ? "Abrir Pacote" : tipo === "mercado" ? "Comprar no Mercado" : "Diferença de Troca";
     let html = '<div class="num">💳 CONFIRMAR PAGAMENTO</div>';
-    html += '<h2>' + (tipo === "pack" ? "Abrir Pacote" : tipo === "mercado" ? "Comprar no Mercado" : "Diferença de Troca") + '</h2>';
+    html += '<h2>' + esc(titulo) + '</h2>';
+
+    if (tipo === "pack") {
+        html += '<div class="produto-resumo">' +
+            '<div class="produto-nome">' + esc(dados.nome || "Pacote") + '</div>' +
+            '<div class="produto-preco">' + fmtR$(dados.preco) + '</div>' +
+            '<div class="produto-detalhe">' + (dados.figurinhas || 0) + ' figurinha(s)</div>' +
+        '</div>';
+    } else if (tipo === "mercado") {
+        html += '<div class="produto-resumo">' +
+            '<div class="produto-preco">' + fmtR$(dados.preco) + '</div>' +
+            '<div class="produto-detalhe">Quantidade: ' + (dados.qtdDisp || 1) + '</div>' +
+        '</div>';
+    } else if (tipo === "trade") {
+        html += '<div class="produto-resumo">' +
+            '<div class="produto-preco">' + fmtR$(dados.valor) + '</div>' +
+            '<div class="produto-detalhe">Diferença a pagar</div>' +
+        '</div>';
+    }
+
     html += '<div class="desc">Escolha como deseja pagar. O pagamento é processado com segurança pelo Mercado Pago.</div>';
     html += '<div class="modal-form">' +
         '<label>Forma de pagamento</label>' +
         '<select id="pgMetodo"><option value="pix">💠 Pix</option><option value="credit_card">💳 Cartão de crédito</option></select>' +
-        '<label>CPF/CNPJ</label><input id="pgCpf" placeholder="Somente números" maxlength="14">' +
+        '<label>CPF/CNPJ</label><input id="pgCpf" placeholder="Somente números" maxlength="18">' +
         '<button class="btn btn-amarelo" onclick="iniciarPagamento(\'' + tipo + '\',' + JSON.stringify(dados).replace(/"/g,"&quot;") + ')">Gerar pagamento</button>' +
         '<button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>' +
     '</div>';
@@ -1303,7 +1362,8 @@ async function abrirModalPagamento(tipo, dados){
 async function iniciarPagamento(tipo, dados){
     const metodo = document.getElementById("pgMetodo").value;
     const cpf = document.getElementById("pgCpf").value.replace(/\D/g, "");
-    if (cpf.length < 11) { toast("Informe um CPF válido.", "erro"); return; }
+    if (!cpf) { toast("Informe CPF ou CNPJ.", "erro"); return; }
+    if (!validarCpfCnpj(cpf)) { toast("CPF/CNPJ inválido. Verifique os números.", "erro"); return; }
     let url, body;
     if (tipo === "pack") {
         url = "/api/colecionaveis/packs/" + dados.packId + "/checkout";
@@ -1325,6 +1385,9 @@ function mostrarQr(d, tipo){
     const corpo = document.getElementById("modalBody");
     let html = '<div class="num">✅ PEDIDO CRIADO</div>';
     html += '<h2>' + (tipo === "pack" ? "Pacote reservado" : tipo === "mercado" ? "Compra reservada" : "Diferença de troca") + '</h2>';
+    html += '<div class="desc" style="text-align:center;margin-bottom:10px;">' +
+        '⏳ Aguardando confirmação do pagamento. Não entregamos o produto antes do pagamento ser confirmado.' +
+    '</div>';
     if (d.qrCodeBase64) {
         html += '<div style="text-align:center;margin:14px 0">' +
             '<img src="data:image/png;base64,' + d.qrCodeBase64 + '" alt="QR Code Pix" style="width:200px;height:200px;border-radius:12px">' +

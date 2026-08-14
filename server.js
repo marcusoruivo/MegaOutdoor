@@ -1761,6 +1761,50 @@ function identificacaoMercadoPago(document) {
     return null;
 }
 
+/* Normaliza os dados do comprador independentemente do nome dos campos
+   usados em cada fluxo (spaces, kits, pacotes, trocas, mercado). */
+function normalizarDadosComprador(body = {}) {
+    const nome =
+        body.name ||
+        body.nome ||
+        body.customerName ||
+        "";
+    const email =
+        body.email ||
+        body.customerEmail ||
+        body.mail ||
+        "";
+    const cpfCnpj =
+        body.cpfCnpj ||
+        body.cpf_cnpj ||
+        body.taxID ||
+        body.taxId ||
+        body.document ||
+        body.documento ||
+        "";
+    return {
+        nome: String(nome).trim(),
+        email: String(email).trim().toLowerCase(),
+        cpfCnpj: String(cpfCnpj).trim(),
+        documento: String(cpfCnpj).replace(/\D/g, "")
+    };
+}
+
+/* Converte erros técnicos do Mercado Pago (ou internos) em mensagens
+   amigáveis para o usuário final, preservando o log técnico. */
+function formatarErroPagamento(erro) {
+    const msg = (erro && erro.message) || String(erro);
+    const tecnicas = [
+        { re: /properties? not supported/i, msg: "Não foi possível gerar o PIX agora. Tente novamente em alguns segundos." },
+        { re: /X-Idempotency-Key/i, msg: "Erro de segurança na requisição. Tente novamente." },
+        { re: /MERCADOPAGO_ACCESS_TOKEN/i, msg: "Pagamento temporariamente indisponível. Tente mais tarde." },
+        { re: /token do cartão/i, msg: "Dados do cartão inválidos. Verifique e tente novamente." },
+        { re: /NetworkError|fetch|ECONNREFUSED/i, msg: "Erro de conexão com a operadora de pagamento. Tente novamente." }
+    ];
+    const mapeada = tecnicas.find(t => t.re.test(msg));
+    return mapeada ? mapeada.msg : msg;
+}
+
 async function mercadoPagoRequest(endpoint, options = {}) {
 
     if (!MERCADOPAGO_ACCESS_TOKEN) {
@@ -1838,7 +1882,8 @@ async function criarOrderMercadoPago({
         throw new Error("X-Idempotency-Key inválido");
     }
 
-    const identificacao = identificacaoMercadoPago(customer.taxID);
+    const taxID = customer && customer.taxID ? String(customer.taxID).trim() : "";
+    const identificacao = identificacaoMercadoPago(taxID);
 
     const isPix = paymentMethod === "pix";
 
@@ -1860,25 +1905,29 @@ async function criarOrderMercadoPago({
         paymentBody.payment_method.installments = Number(installments) || 1;
     }
 
+    /* O Orders API do Mercado Pago aceita apenas email e identification
+       dentro do objeto payer. first_name/last_name geram
+       "Properties not supported". */
+    const payer = { email: customer && customer.email ? String(customer.email).trim() : "" };
+    if (identificacao) {
+        payer.identification = identificacao;
+    }
+
     const body = {
         type: "online",
         processing_mode: "automatic",
         total_amount: String(Number(value).toFixed(2)),
         external_reference: id,
         description: description || `Pedido ${id}`,
-        notification_url: process.env.MERCADOPAGO_WEBHOOK_URL || "",
-        payer: {
-            email: customer.email,
-            first_name: customer.name.split(" ")[0] || customer.name,
-            last_name: customer.name.split(" ").slice(1).join(" ") || ""
-        },
+        payer,
         transactions: {
             payments: [paymentBody]
         }
     };
 
-    if (identificacao) {
-        body.payer.identification = identificacao;
+    const webhookUrl = process.env.MERCADOPAGO_WEBHOOK_URL || "";
+    if (webhookUrl) {
+        body.notification_url = webhookUrl;
     }
 
     const order = await mercadoPagoRequest("/v1/orders", {
@@ -7549,7 +7598,10 @@ const colecionaveis = criarColecionaveis({
     registrarLog,
     obterPool: () => pgPool,
     obterPgDisponivel: () => pgDisponivel,
-    obterAuthUsuario: () => authUsuario
+    obterAuthUsuario: () => authUsuario,
+    normalizarDadosComprador,
+    validarDocumento,
+    formatarErroPagamento
 });
 
 app.use("/api/colecionaveis", limiterLeitura);
@@ -7582,7 +7634,10 @@ const combos = criarCombos({
     salvarChaveUsuario,
     gerarToken,
     gerarAccessCode,
-    obterColecionaveis: () => colecionaveis
+    obterColecionaveis: () => colecionaveis,
+    normalizarDadosComprador,
+    validarDocumento,
+    formatarErroPagamento
 });
 
 app.use("/api/combos", limiterLeitura);

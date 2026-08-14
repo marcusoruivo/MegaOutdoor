@@ -246,7 +246,10 @@ module.exports = function criarModuloColecionaveis(deps) {
         consultarOrderMercadoPago,
         extrairDadosPagamento,
         statusOrderPago,
-        registrarLog
+        registrarLog,
+        normalizarDadosComprador,
+        validarDocumento,
+        formatarErroPagamento
     } = deps;
 
     const router = express.Router();
@@ -259,6 +262,19 @@ module.exports = function criarModuloColecionaveis(deps) {
 
     const pg = () => obterPool();
     const pgOk = () => !!obterPgDisponivel();
+
+    /* Validação unificada dos dados do comprador para todos os
+       checkouts de colecionáveis (pacotes, mercado e trocas). */
+    function validarComprador(req) {
+        const comprador = normalizarDadosComprador(req.body);
+        if (!comprador.documento) {
+            return { ok: false, error: "Informe CPF ou CNPJ." };
+        }
+        if (!validarDocumento(comprador.documento)) {
+            return { ok: false, error: "CPF ou CNPJ inválido." };
+        }
+        return { ok: true, comprador };
+    }
 
     /* =========================================================
        MIGRAÇÃO DO BANCO
@@ -1466,6 +1482,12 @@ module.exports = function criarModuloColecionaveis(deps) {
             return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
         }
         try {
+            const validacao = validarComprador(req);
+            if (!validacao.ok) {
+                return res.status(400).json({ error: validacao.error });
+            }
+            const comprador = validacao.comprador;
+
             const packQ = await pg().query(
                 `SELECT * FROM sticker_packs
                   WHERE id = $1 AND is_active = TRUE`,
@@ -1492,9 +1514,9 @@ module.exports = function criarModuloColecionaveis(deps) {
                 value: valor,
                 description: `MegaOutdoor Colecionáveis — Pacote ${pack.name}`,
                 customer: {
-                    name: usuario.nome,
-                    taxID: (req.body.cpfCnpj || "").trim(),
-                    email: usuario.email
+                    name: comprador.nome || usuario.nome,
+                    taxID: comprador.documento,
+                    email: comprador.email || usuario.email
                 },
                 paymentMethod: req.body.paymentMethod || "pix",
                 paymentMethodId: req.body.paymentMethodId,
@@ -1538,7 +1560,12 @@ module.exports = function criarModuloColecionaveis(deps) {
                 valor: valor
             });
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            registrarLog("colecionavel_pacote_erro", {
+                erro: error.message,
+                packId: req.params.id,
+                usuarioId: req.usuario && req.usuario.id
+            });
+            res.status(500).json({ error: formatarErroPagamento(error) });
         }
     });
 
@@ -1711,12 +1738,14 @@ module.exports = function criarModuloColecionaveis(deps) {
                 });
             }
 
-            await pg().query(
+            const insert = await pg().query(
                 `INSERT INTO sticker_listings
                     (seller_id, card_id, unit_price, quantity, status)
-                 VALUES ($1,$2,$3,$4,'active')`,
+                 VALUES ($1,$2,$3,$4,'active')
+                 RETURNING id`,
                 [req.usuario.id, card.id, precoUnit, qtd]
             );
+            const listingId = insert.rows[0].id;
 
             await registrarTransacaoCol(
                 req.usuario.id,
@@ -1732,7 +1761,7 @@ module.exports = function criarModuloColecionaveis(deps) {
                 preco: precoUnit
             });
 
-            res.json({ ok: true });
+            res.json({ ok: true, id: listingId });
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
@@ -1819,6 +1848,12 @@ module.exports = function criarModuloColecionaveis(deps) {
             return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
         }
         try {
+            const validacao = validarComprador(req);
+            if (!validacao.ok) {
+                return res.status(400).json({ error: validacao.error });
+            }
+            const comprador = validacao.comprador;
+
             const q = await pg().query(
                 `SELECT * FROM sticker_listings WHERE id = $1`,
                 [req.params.id]
@@ -1852,9 +1887,9 @@ module.exports = function criarModuloColecionaveis(deps) {
                 value: total,
                 description: `MegaOutdoor Colecionáveis — Compra no mercado`,
                 customer: {
-                    name: usuario.nome,
-                    taxID: (req.body.cpfCnpj || "").trim(),
-                    email: usuario.email
+                    name: comprador.nome || usuario.nome,
+                    taxID: comprador.documento,
+                    email: comprador.email || usuario.email
                 },
                 paymentMethod: req.body.paymentMethod || "pix",
                 paymentMethodId: req.body.paymentMethodId,
@@ -1902,13 +1937,18 @@ module.exports = function criarModuloColecionaveis(deps) {
                 netSeller
             });
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            registrarLog("colecionavel_mercado_erro", {
+                erro: error.message,
+                listingId: req.params.id,
+                usuarioId: req.usuario && req.usuario.id
+            });
+            res.status(500).json({ error: formatarErroPagamento(error) });
         }
     });
 
     /* =========================================================
        NEGOCIAÇÕES (TROCAS)
-    ========================================================= */
+       ========================================================= */
 
     async function validarItemsTroca(items) {
         if (!Array.isArray(items) || !items.length) {
@@ -2265,6 +2305,12 @@ module.exports = function criarModuloColecionaveis(deps) {
             }
 
             if (Number(trade.cash_amount) > 0) {
+                const validacao = validarComprador(req);
+                if (!validacao.ok) {
+                    return res.status(400).json({ error: validacao.error });
+                }
+                const comprador = validacao.comprador;
+
                 /* Cobrança da diferença. Quem paga = cash_direction */
                 const paganteId = trade.cash_direction === "proposer_pays"
                     ? trade.proposer_id : trade.receiver_id;
@@ -2278,9 +2324,9 @@ module.exports = function criarModuloColecionaveis(deps) {
                     value: Number(trade.cash_amount),
                     description: `MegaOutdoor Colecionáveis — Diferença de troca`,
                     customer: {
-                        name: pagante.nome,
-                        taxID: (req.body.cpfCnpj || "").trim(),
-                        email: pagante.email
+                        name: comprador.nome || pagante.nome,
+                        taxID: comprador.documento,
+                        email: comprador.email || pagante.email
                     },
                     paymentMethod: req.body.paymentMethod || "pix",
                     paymentMethodId: req.body.paymentMethodId,
@@ -2351,7 +2397,12 @@ module.exports = function criarModuloColecionaveis(deps) {
 
             res.json({ ok: true, status: "COMPLETED" });
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            registrarLog("colecionavel_troca_erro", {
+                erro: error.message,
+                tradeId: req.params.id,
+                usuarioId: req.usuario && req.usuario.id
+            });
+            res.status(500).json({ error: formatarErroPagamento(error) });
         }
     });
 
@@ -2772,9 +2823,9 @@ module.exports = function criarModuloColecionaveis(deps) {
             const dono = await pg().query(
                 `SELECT usuario_id FROM sticker_pack_purchases WHERE order_id = $1
                  UNION ALL
-                 SELECT buyer_id FROM sticker_orders WHERE order_id = $1
+                 SELECT buyer_id AS usuario_id FROM sticker_orders WHERE order_id = $1
                  UNION ALL
-                 SELECT proposer_id FROM sticker_trades WHERE order_id = $1 AND status = 'WAITING_PAYMENT'`,
+                 SELECT proposer_id AS usuario_id FROM sticker_trades WHERE (order_id = $1 OR mp_order_id = $1) AND status = 'WAITING_PAYMENT'`,
                 [orderId]
             );
             if (!dono.rows.length) {

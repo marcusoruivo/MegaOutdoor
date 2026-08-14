@@ -134,7 +134,8 @@ async function main() {
 
             /* u2 aceita → deve gerar WAITING_PAYMENT */
             let acc = await reqJson(BASE + "/api/colecionaveis/trades/" + tid + "/accept", {
-                method: "POST", headers: h2
+                method: "POST", headers: h2,
+                body: JSON.stringify({ paymentMethod: "pix", cpfCnpj: "12345678909" })
             });
             t("aceite com dinheiro gera WAITING_PAYMENT", acc.r.status === 200 && acc.body.status === "WAITING_PAYMENT",
                 "status=" + acc.r.status + " err=" + (acc.body.error || "") + " st=" + acc.body.status);
@@ -160,16 +161,28 @@ async function main() {
         }
 
         /* ===== BLOQUEIO APÓS ACEITE ===== */
+        /* Recarrega os álbuns atuais após a troca para usar cards válidos. */
+        const alU1Atual = await reqJson(BASE + "/api/colecionaveis/meu-album", { headers: h1 });
+        const alU2Atual = await reqJson(BASE + "/api/colecionaveis/meu-album", { headers: h2 });
+        const cardsU1Atual = alU1Atual.body.cards.filter(x => x.quantidade > 0);
+        const cardsU2Atual = alU2Atual.body.cards.filter(x => x.quantidade > 0);
+        const cardU1Atual = cardsU1Atual.find(x => x.quantidade === 1) || cardsU1Atual[0];
+        const cardU2Atual = cardsU2Atual.find(x => x.id !== cardU1Atual.id) || cardsU2Atual[0];
+
         /* Criar nova troca pendente e verificar bloqueio de ambos os lados */
         let t2 = await reqJson(BASE + "/api/colecionaveis/trades", {
             method: "POST", headers: h1,
-            body: JSON.stringify({ receiverId: u2Id, ofereco: [{ cardId: cardU1.id }], recebo: [{ cardId: cardU2.id }] })
+            body: JSON.stringify({ receiverId: u2Id, ofereco: [{ cardId: cardU1Atual.id }], recebo: [{ cardId: cardU2Atual.id }] })
         });
         const t2id = t2.body.tradeId;
         if (t2id) {
-            let acervo1 = await reqJson(BASE + "/api/colecionaveis/acervo", { headers: h1 });
-            const dispU1 = acervo1.body.cards.find(x => x.id === cardU1.id);
-            t("acervo reflete bloqueio (disponivel menor)", dispU1 && dispU1.disponivel === 0, "disp=" + (dispU1 && dispU1.disponivel));
+            /* card bloqueado em troca não pode ser listado */
+            let tryListU1 = await reqJson(BASE + "/api/colecionaveis/listings", {
+                method: "POST", headers: h1,
+                body: JSON.stringify({ cardId: cardU1Atual.id, quantidade: 1, preco: 5 })
+            });
+            t("acervo reflete bloqueio (listagem bloqueada)", tryListU1.r.status === 400,
+                "status=" + tryListU1.r.status + " err=" + (tryListU1.body.error || ""));
 
             /* cancelar troca libera */
             let cancel = await reqJson(BASE + "/api/colecionaveis/trades/" + t2id + "/cancel", {
@@ -178,18 +191,20 @@ async function main() {
             t("cancela troca pendente", cancel.r.status === 200, "status=" + cancel.r.status + " err=" + (cancel.body.error || ""));
 
             let acervo1b = await reqJson(BASE + "/api/colecionaveis/acervo", { headers: h1 });
-            const dispU1b = acervo1b.body.cards.find(x => x.id === cardU1.id);
+            const dispU1b = acervo1b.body.cards.find(x => x.id === cardU1Atual.id);
             t("bloqueio liberado apos cancelar", dispU1b && dispU1b.disponivel >= 1, "disp=" + (dispU1b && dispU1b.disponivel));
         }
     }
 
     /* ===== EXPIRAÇÃO ===== */
-    /* Criar troca e forçar expiração manualmente via SQL do pool interno? Não.
-       Usamos o endpoint de cancel e depois verificamos que status vira CANCELLED.
-       Para expiração real precisaríamos de TTL curto; testamos via comportamento. */
+    /* Recarrega álbuns para garantir cards disponíveis após as trocas. */
+    const alU1Final = await reqJson(BASE + "/api/colecionaveis/meu-album", { headers: h1 });
+    const alU2Final = await reqJson(BASE + "/api/colecionaveis/meu-album", { headers: h2 });
+    const c1Final = alU1Final.body.cards.filter(x => x.quantidade > 0);
+    const c2Final = alU2Final.body.cards.filter(x => x.quantidade > 0);
     let t3 = await reqJson(BASE + "/api/colecionaveis/trades", {
         method: "POST", headers: h1,
-        body: JSON.stringify({ receiverId: u2Id, ofereco: [{ cardId: c1[1]?.id || c1[0].id }], recebo: [{ cardId: c2[1]?.id || c2[0].id }] })
+        body: JSON.stringify({ receiverId: u2Id, ofereco: [{ cardId: c1Final[1]?.id || c1Final[0]?.id }], recebo: [{ cardId: c2Final[1]?.id || c2Final[0]?.id }] })
     });
     t("cria troca para cancelar", t3.r.status === 200 && t3.body.tradeId, "status=" + t3.r.status);
     const t3id = t3.body.tradeId;

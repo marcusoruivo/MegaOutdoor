@@ -16,12 +16,26 @@
 
 const crypto = require("crypto");
 
+/* Preço unitário de um espaço avulso. Deve ser igual ao
+   BASE_PRICE_PER_BLOCK definido em server.js. */
+const PRECO_ESPACO_KIT = 1.00;
+
 /* Licença: taxa adicionada UMA ÚNICA VEZ por pedido
    (nunca multiplicada pela quantidade de espaços). */
 const LICENCAS_KIT = {
     "1_year": { label: "1 ANO", months: 12, fee: 0 },
     "3_years": { label: "3 ANOS", months: 36, fee: 20 },
     "5_years": { label: "5 ANOS", months: 60, fee: 40 }
+};
+
+/* Desconto real aplicado sobre o preço dos itens comprados separadamente.
+   Quanto maior o kit, maior a economia. */
+const DESCONTO_KIT = {
+    starter: 0.10,
+    colecionador: 0.12,
+    premium: 0.15,
+    mega: 0.15,
+    lendario: 0.18
 };
 
 function gerarOrderId(prefixo) {
@@ -64,7 +78,10 @@ module.exports = function criarModuloCombos(deps) {
         salvarChaveUsuario,
         gerarToken,
         gerarAccessCode,
-        obterColecionaveis
+        obterColecionaveis,
+        normalizarDadosComprador,
+        validarDocumento,
+        formatarErroPagamento
     } = deps;
 
     const router = express.Router();
@@ -138,14 +155,18 @@ module.exports = function criarModuloCombos(deps) {
     }
 
     /* Seed idempotente dos kits padrão. Os pacotes são referenciados
-       por slug (estável) e resolvidos para id na hora do seed. */
+       por slug (estável) e resolvidos para id/preço na hora do seed.
+       O preço normal é o valor real de cada item comprado separadamente;
+       o preço do combo aplica o desconto real correspondente. */
     async function semearKits(pool) {
         const packQ = await pool.query(
-            `SELECT id, slug FROM sticker_packs`
+            `SELECT id, slug, price FROM sticker_packs`
         );
         const packId = {};
+        const packPrice = {};
         for (const p of packQ.rows) {
             packId[p.slug] = p.id;
+            packPrice[p.slug] = Number(p.price);
         }
 
         const KITS_PADRAO = [
@@ -154,8 +175,6 @@ module.exports = function criarModuloCombos(deps) {
                 nome: "KIT STARTER",
                 descricao: "O jeito mais barato de começar: espaços + figurinhas + licença de 1 ano.",
                 destaque: null,
-                precoNormal: 16.00,
-                preco: 14.90,
                 espacos: 3,
                 pacotes: [
                     { pack_slug: "bronze", quantidade: 1 }
@@ -167,8 +186,6 @@ module.exports = function criarModuloCombos(deps) {
                 nome: "KIT COLECIONADOR",
                 descricao: "Para quem quer mais espaços e figurinhas com ótimo custo-benefício.",
                 destaque: null,
-                precoNormal: 74.00,
-                preco: 64.90,
                 espacos: 10,
                 pacotes: [
                     { pack_slug: "prata", quantidade: 1 },
@@ -181,8 +198,6 @@ module.exports = function criarModuloCombos(deps) {
                 nome: "KIT PREMIUM",
                 descricao: "O favorito da galera: muitos espaços, pacotes especiais e licença turbinada.",
                 destaque: "MAIS VENDIDO",
-                precoNormal: 171.00,
-                preco: 149.90,
                 espacos: 25,
                 pacotes: [
                     { pack_slug: "ouro", quantidade: 1 },
@@ -195,8 +210,6 @@ module.exports = function criarModuloCombos(deps) {
                 nome: "KIT MEGA",
                 descricao: "Destaque em grande estilo: dezenas de espaços e pacotes em abundância.",
                 destaque: null,
-                precoNormal: 415.00,
-                preco: 349.90,
                 espacos: 60,
                 pacotes: [
                     { pack_slug: "especial", quantidade: 1 },
@@ -210,8 +223,6 @@ module.exports = function criarModuloCombos(deps) {
                 nome: "KIT LENDÁRIO",
                 descricao: "A maior economia: um verdadeiro outdoor inteiro para chamar de seu.",
                 destaque: "MAIOR ECONOMIA",
-                precoNormal: 720.00,
-                preco: 599.90,
                 espacos: 100,
                 pacotes: [
                     { pack_slug: "especial", quantidade: 2 },
@@ -220,6 +231,15 @@ module.exports = function criarModuloCombos(deps) {
                 bonus: "Licença de 1 ano incluída nos espaços."
             }
         ];
+
+        function precoSeparado(kit) {
+            const espacos = Number(kit.espacos || 0) * PRECO_ESPACO_KIT;
+            const pacotes = (kit.pacotes || []).reduce((acc, p) => {
+                const preco = packPrice[p.pack_slug] || 0;
+                return acc + (preco * Number(p.quantidade || 1));
+            }, 0);
+            return Math.round((espacos + pacotes) * 100) / 100;
+        }
 
         let ordem = 10;
         for (const k of KITS_PADRAO) {
@@ -230,15 +250,29 @@ module.exports = function criarModuloCombos(deps) {
                 }))
                 .filter(p => p.pack_id);
 
+            const separado = precoSeparado(k);
+            const desconto = DESCONTO_KIT[k.slug] || 0.10;
+            const combo = Math.round(separado * (1 - desconto) * 100) / 100;
+
             await pool.query(
                 `INSERT INTO kits
                     (slug, nome, descricao, destaque,
                      preco_normal, preco, espacos, pacotes, bonus,
                      is_active, sort_order)
                  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,TRUE,$10)
-                 ON CONFLICT (slug) DO NOTHING`,
+                 ON CONFLICT (slug) DO UPDATE SET
+                     nome = EXCLUDED.nome,
+                     descricao = EXCLUDED.descricao,
+                     destaque = EXCLUDED.destaque,
+                     preco_normal = EXCLUDED.preco_normal,
+                     preco = EXCLUDED.preco,
+                     espacos = EXCLUDED.espacos,
+                     pacotes = EXCLUDED.pacotes,
+                     bonus = EXCLUDED.bonus,
+                     updated_at = NOW()
+                `,
                 [k.slug, k.nome, k.descricao, k.destaque,
-                 k.precoNormal, k.preco, k.espacos,
+                 separado, combo, k.espacos,
                  JSON.stringify(pacotes), k.bonus, ordem]
             );
             ordem += 10;
@@ -545,20 +579,33 @@ module.exports = function criarModuloCombos(deps) {
             );
             res.json({
                 ok: true,
-                kits: q.rows.map(k => ({
-                    id: k.id,
-                    slug: k.slug,
-                    nome: k.nome,
-                    descricao: k.descricao,
-                    destaque: k.destaque,
-                    precoNormal: Number(k.preco_normal),
-                    preco: Number(k.preco),
-                    economia: Math.round((Number(k.preco_normal) - Number(k.preco)) * 100) / 100,
-                    espacos: k.espacos,
-                    pacotes: Array.isArray(k.pacotes) ? k.pacotes : [],
-                    bonus: k.bonus,
-                    licencas: LICENCAS_KIT
-                }))
+                kits: q.rows.map(k => {
+                    const precoNormal = Number(k.preco_normal);
+                    const preco = Number(k.preco);
+                    const economia = Math.round((precoNormal - preco) * 100) / 100;
+                    const pctDesconto = precoNormal > 0
+                        ? Math.round((economia / precoNormal) * 1000) / 10
+                        : 0;
+                    return {
+                        id: k.id,
+                        slug: k.slug,
+                        nome: k.nome,
+                        descricao: k.descricao,
+                        destaque: k.destaque,
+                        precoNormal,
+                        preco,
+                        precoSeparado: precoNormal,
+                        economia,
+                        pctDesconto,
+                        espacos: k.espacos,
+                        pacotes: Array.isArray(k.pacotes) ? k.pacotes : [],
+                        totalPacotes: (Array.isArray(k.pacotes) ? k.pacotes : [])
+                            .reduce((acc, p) => acc + (Number(p.quantidade) || 1), 0),
+                        bonus: k.bonus,
+                        licencaIncluida: true,
+                        licencas: LICENCAS_KIT
+                    };
+                })
             });
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -566,7 +613,7 @@ module.exports = function criarModuloCombos(deps) {
     });
 
     /* Checkout de um kit. Preço vem do banco; o frontend envia
-       apenas kitId + plano de licença. */
+       apenas kitId + plano de licença + dados do comprador. */
     router.post("/kits/:id/checkout", obterAuthUsuario(), async (req, res) => {
         if (!pgOk()) {
             return res.status(503).json({ error: "Sistema de Combos & Kits indisponível no momento." });
@@ -580,6 +627,20 @@ module.exports = function criarModuloCombos(deps) {
             const usuario = await usuarioPorId(req.usuario.id);
             if (!usuario) {
                 return res.status(401).json({ error: "Conta não encontrada." });
+            }
+
+            const comprador = normalizarDadosComprador(req.body);
+            if (!comprador.documento) {
+                return res.status(400).json({ error: "Informe CPF ou CNPJ." });
+            }
+            if (!validarDocumento(comprador.documento)) {
+                return res.status(400).json({ error: "CPF ou CNPJ inválido." });
+            }
+
+            if (req.body.aceiteRegras !== true && req.body.aceiteRegras !== "true") {
+                return res.status(400).json({
+                    error: "Você precisa ler e aceitar as regras da licença para continuar."
+                });
             }
 
             const planoKey = req.body.licensePlan || "1_year";
@@ -603,9 +664,9 @@ module.exports = function criarModuloCombos(deps) {
                 value: total,
                 description: `MegaOutdoor — Kit ${kit.nome} (${licenca.label})`,
                 customer: {
-                    name: usuario.nome,
-                    taxID: (req.body.cpfCnpj || "").trim(),
-                    email: usuario.email
+                    name: comprador.nome || usuario.nome,
+                    taxID: comprador.documento,
+                    email: comprador.email || usuario.email
                 },
                 paymentMethod: req.body.paymentMethod || "pix",
                 paymentMethodId: req.body.paymentMethodId,
@@ -651,7 +712,12 @@ module.exports = function criarModuloCombos(deps) {
                 kitNome: kit.nome
             });
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            registrarLog("combo_checkout_erro", {
+                erro: error.message,
+                kitId: req.params.id,
+                usuarioId: req.usuario && req.usuario.id
+            });
+            res.status(500).json({ error: formatarErroPagamento(error) });
         }
     });
 

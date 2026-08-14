@@ -2657,6 +2657,18 @@ body.footer-visible #area{
     border-radius:20px
 }
 
+.kit-card .kit-preco-linha{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    width:100%
+}
+.kit-card .kit-de,.kit-card .kit-por{
+    font-size:11px;
+    font-weight:700;
+    color:var(--text-muted);
+    min-width:28px
+}
 .kit-card .kit-conteudo{
     display:flex;
     flex-wrap:wrap;
@@ -2844,6 +2856,14 @@ body.footer-visible #area{
     line-height:1.5;
     margin-top:8px
 }
+
+.kitFormGroup{margin:10px 0}
+.kitFormGroup label{display:block;font-size:12px;font-weight:700;margin-bottom:5px;color:var(--text-secondary)}
+.kitFormGroup input,.kitFormGroup select{width:100%;padding:10px;border-radius:8px;border:1px solid var(--borda);background:#111;color:#fff;font-size:14px}
+.kitFormGroup input:focus,.kitFormGroup select:focus{outline:2px solid var(--accent);border-color:var(--accent)}
+.kitRegrasWrap{display:flex;align-items:flex-start;gap:8px;margin:12px 0;font-size:12px;color:var(--text-muted);line-height:1.4}
+.kitRegrasWrap input{margin-top:2px}
+.kitRegrasWrap a{color:var(--accent);text-decoration:underline}
 
 .kitModal input[type="text"],
 .kitModal input[type="email"]{
@@ -7710,10 +7730,10 @@ function abrirRegrasLicenca(event) {
 }
 
 function marcarRegrasVisualizadas(event){
-    if(event) event.preventDefault();
     const h = document.getElementById("regrasVisualizadas");
     if(h) h.value = "true";
     atualizarBotaoPagar();
+    /* Não chama preventDefault: o link deve abrir /regras.html em nova aba. */
 }
 
 function atualizarBotaoPagar(){
@@ -7724,6 +7744,40 @@ function atualizarBotaoPagar(){
     btn.disabled = !ok;
     btn.style.opacity = ok ? "1" : ".5";
     btn.style.cursor = ok ? "pointer" : "not-allowed";
+}
+
+/* ===== Validação de CPF/CNPJ no frontend (espelho do backend) ===== */
+function _validarCpfIdx(cpf){
+    cpf = String(cpf).replace(/\D/g, "");
+    if (cpf.length !== 11) return false;
+    if (/^(\d)\1{10}$/.test(cpf)) return false;
+    let soma = 0;
+    for (let i = 0; i < 9; i++) soma += Number(cpf[i]) * (10 - i);
+    let digito = (soma * 10) % 11 % 10;
+    if (digito !== Number(cpf[9])) return false;
+    soma = 0;
+    for (let i = 0; i < 10; i++) soma += Number(cpf[i]) * (11 - i);
+    digito = (soma * 10) % 11 % 10;
+    return digito === Number(cpf[10]);
+}
+function _validarCnpjIdx(cnpj){
+    cnpj = String(cnpj).replace(/\D/g, "");
+    if (cnpj.length !== 14) return false;
+    if (/^(\d)\1{13}$/.test(cnpj)) return false;
+    const pesos1 = [5,4,3,2,9,8,7,6,5,4,3,2];
+    let soma = 0;
+    for (let i = 0; i < 12; i++) soma += Number(cnpj[i]) * pesos1[i];
+    let digito = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    if (digito !== Number(cnpj[12])) return false;
+    const pesos2 = [6,5,4,3,2,9,8,7,6,5,4,3,2];
+    soma = 0;
+    for (let i = 0; i < 13; i++) soma += Number(cnpj[i]) * pesos2[i];
+    digito = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    return digito === Number(cnpj[13]);
+}
+function validarCpfCnpjIdx(v){
+    const d = String(v).replace(/\D/g, "");
+    return d.length === 11 ? _validarCpfIdx(d) : (d.length === 14 ? _validarCnpjIdx(d) : false);
 }
 
 /* Restaura o botão PAGAR após falha, voltando a exigir aceite. */
@@ -7950,6 +8004,17 @@ if(!cpf){
 
 msg.textContent =
 "Informe CPF ou CNPJ.";
+
+restaurarBotaoPagar();
+
+return;
+
+}
+
+if(!validarCpfCnpjIdx(cpf)){
+
+msg.textContent =
+"CPF ou CNPJ inválido.";
 
 restaurarBotaoPagar();
 
@@ -13476,8 +13541,12 @@ async function carregarKits(){
 function kitChips(kit){
     const chips = [];
     chips.push('<span class="kit-chip"><b>' + kit.espacos + "</b> espaço(s)</span>");
-    if(kit.pacotes && kit.pacotes.length){
-        chips.push('<span class="kit-chip">🎴 <b>' + kit.pacotes.length + "</b> pacote(s)</span>");
+    const totalPacotes = kit.totalPacotes || (kit.pacotes || []).length;
+    if(totalPacotes){
+        chips.push('<span class="kit-chip">🎴 <b>' + totalPacotes + "</b> pacote(s)</span>");
+    }
+    if(kit.licencaIncluida){
+        chips.push('<span class="kit-chip">📜 licença</span>');
     }
     if(kit.bonus){
         chips.push('<span class="kit-chip">🎁 bônus</span>');
@@ -13503,15 +13572,16 @@ function renderizarKits(kits){
               (kit.destaque === "MAIOR ECONOMIA" ? "lendario" : "") +
               '">' + escHtml(kit.destaque) + "</span>"
             : "";
+        const pct = kit.pctDesconto ? Math.round(kit.pctDesconto) : 0;
         return (
             '<div class="kit-card' + destaque + '" onclick="abrirKit(' + kit.id + ')">' +
                 badge +
                 '<div class="kit-nome">🔥 ' + escHtml(kit.nome) + "</div>" +
                 '<div class="kit-desc">' + escHtml(kit.descricao || "") + "</div>" +
                 '<div class="kit-precos">' +
-                    '<span class="kit-preco-antigo">' + fmtMoeda(kit.precoNormal) + "</span>" +
-                    '<span class="kit-preco-novo">' + fmtMoeda(kit.preco) + "</span>" +
-                    '<span class="kit-economia">💚 economize ' + fmtMoeda(kit.economia) + "</span>" +
+                    '<div class="kit-preco-linha"><span class="kit-de">De:</span> <span class="kit-preco-antigo">' + fmtMoeda(kit.precoNormal) + "</span></div>" +
+                    '<div class="kit-preco-linha"><span class="kit-por">Por:</span> <span class="kit-preco-novo">' + fmtMoeda(kit.preco) + "</span></div>" +
+                    '<span class="kit-economia">💚 ECONOMIZE ' + fmtMoeda(kit.economia) + " (-" + pct + "%)</span>" +
                 "</div>" +
                 '<div class="kit-conteudo">' + kitChips(kit) + "</div>" +
             "</div>"
@@ -13539,15 +13609,16 @@ function verTodosKits(event){
                   'padding:2px 8px;border-radius:20px;margin-bottom:6px;">' +
                   escHtml(kit.destaque) + "</span>"
                 : "";
+            const pct2 = kit.pctDesconto ? Math.round(kit.pctDesconto) : 0;
             html +=
                 '<div class="kit-card" style="margin-bottom:10px;" onclick="abrirKit(' + kit.id + ')">' +
                     badge +
                     '<div class="kit-nome">🔥 ' + escHtml(kit.nome) + "</div>" +
                     '<div class="kit-desc">' + escHtml(kit.descricao || "") + "</div>" +
                     '<div class="kit-precos">' +
-                        '<span class="kit-preco-antigo">' + fmtMoeda(kit.precoNormal) + "</span>" +
-                        '<span class="kit-preco-novo">' + fmtMoeda(kit.preco) + "</span>" +
-                        '<span class="kit-economia">💚 economize ' + fmtMoeda(kit.economia) + "</span>" +
+                        '<div class="kit-preco-linha"><span class="kit-de">De:</span> <span class="kit-preco-antigo">' + fmtMoeda(kit.precoNormal) + "</span></div>" +
+                        '<div class="kit-preco-linha"><span class="kit-por">Por:</span> <span class="kit-preco-novo">' + fmtMoeda(kit.preco) + "</span></div>" +
+                        '<span class="kit-economia">💚 ECONOMIZE ' + fmtMoeda(kit.economia) + " (-" + pct2 + "%)</span>" +
                     "</div>" +
                     '<div class="kit-conteudo">' + kitChips(kit) + "</div>" +
                 "</div>";
@@ -13616,7 +13687,29 @@ function abrirKit(kitId){
         html += '<p style="font-size:12px;color:var(--offer);font-weight:700;margin:8px 0;">' +
             "🔐 Faça login para continuar a compra.</p>";
     } else {
-        html += '<button class="btn" style="width:100%;margin:0;padding:14px;" onclick="comprarKit(' + kit.id + ')">' +
+        html += '<div class="kitFormGroup">' +
+            '<label for="kitCpfCnpj">CPF/CNPJ</label>' +
+            '<input type="text" id="kitCpfCnpj" placeholder="Somente números" maxlength="18" value="">' +
+        '</div>';
+        html += '<div class="kitFormGroup">' +
+            '<label for="kitMetodo">Forma de pagamento</label>' +
+            '<select id="kitMetodo" onchange="alternarMetodoKit()">' +
+                '<option value="pix">💠 Pix</option>' +
+                '<option value="credit_card">💳 Cartão de crédito</option>' +
+            '</select>' +
+        '</div>';
+        html += '<div id="kitCardFields" style="display:none;">' +
+            '<p style="font-size:12px;color:var(--text-muted);margin:8px 0;">' +
+            'Pagamento com cartão será habilitado em breve. Por enquanto, use Pix.</p>' +
+        '</div>';
+        html += '<label class="kitRegrasWrap">' +
+            '<input type="checkbox" id="kitAceiteRegras" onchange="atualizarBotaoComprarKit()">' +
+            '<span>Li e concordo com as ' +
+            '<a href="/regras.html" target="_blank" onclick="marcarRegrasVisualizadas()">regras da licença, validade e renovação</a> ' +
+            'e as <a href="/regras.html#conteudo-publicado" target="_blank" onclick="marcarRegrasVisualizadas()">regras de conteúdo e imagens</a>.' +
+            '</span>' +
+        '</label>';
+        html += '<button class="btn" id="btnComprarKit" style="width:100%;margin:0;padding:14px;opacity:.5;cursor:not-allowed;" disabled onclick="comprarKit(' + kit.id + ')">' +
             "🛒 COMPRAR KIT</button>";
     }
 
@@ -13628,6 +13721,22 @@ function abrirKit(kitId){
     document.getElementById("kitModalConteudo").innerHTML = html;
     document.getElementById("kitModal").style.display = "flex";
     document.getElementById("kitModalLicencas").dataset.kitId = kit.id;
+}
+
+function alternarMetodoKit(){
+    const metodo = document.getElementById("kitMetodo") ? document.getElementById("kitMetodo").value : "pix";
+    const cardFields = document.getElementById("kitCardFields");
+    if(cardFields) cardFields.style.display = metodo === "credit_card" ? "block" : "none";
+}
+
+function atualizarBotaoComprarKit(){
+    const chk = document.getElementById("kitAceiteRegras");
+    const btn = document.getElementById("btnComprarKit");
+    if(!btn) return;
+    const ok = chk && chk.checked;
+    btn.disabled = !ok;
+    btn.style.opacity = ok ? "1" : ".5";
+    btn.style.cursor = ok ? "pointer" : "not-allowed";
 }
 
 function fecharKitModal(){
@@ -13656,11 +13765,38 @@ async function comprarKit(kitId){
     const licEl = document.querySelector("#kitLicencas .kitLicenca.sel");
     const licensePlan = licEl ? licEl.dataset.licenca : "1_year";
 
+    const cpfCnpj = document.getElementById("kitCpfCnpj") ? document.getElementById("kitCpfCnpj").value.trim() : "";
+    if(!cpfCnpj){
+        moToast("Informe CPF ou CNPJ.", "err");
+        return;
+    }
+    if(!validarCpfCnpjIdx(cpfCnpj)){
+        moToast("CPF/CNPJ inválido. Verifique os números.", "err");
+        return;
+    }
+
+    const metodo = document.getElementById("kitMetodo") ? document.getElementById("kitMetodo").value : "pix";
+    if(metodo === "credit_card"){
+        moToast("Pagamento com cartão para kits será habilitado em breve. Use Pix.", "err");
+        return;
+    }
+
+    const aceite = document.getElementById("kitAceiteRegras");
+    if(!aceite || !aceite.checked){
+        moToast("Você precisa aceitar as regras para continuar.", "err");
+        return;
+    }
+
     try{
         const resp = await fetch("/api/combos/kits/" + kitId + "/checkout", {
             method: "POST",
             headers: authHeaders({ "Content-Type": "application/json" }),
-            body: JSON.stringify({ licensePlan })
+            body: JSON.stringify({
+                licensePlan,
+                cpfCnpj,
+                paymentMethod: metodo,
+                aceiteRegras: true
+            })
         });
         const data = await resp.json();
         if(!data.ok){

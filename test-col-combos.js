@@ -98,10 +98,10 @@ async function main() {
         "n=" + lista.length);
     const premium = lista.find(k => k.slug === "premium");
     t("kit premium destaque e preço", !!premium && premium.destaque === "MAIS VENDIDO" &&
-        premium.preco === 149.9 && premium.precoNormal === 171,
+        premium.preco === 38.25 && premium.precoNormal === 45,
         "preco=" + (premium && premium.preco) + " normal=" + (premium && premium.precoNormal));
     const lendario = lista.find(k => k.slug === "lendario");
-    t("kit lendário preço", !!lendario && lendario.preco === 599.9,
+    t("kit lendário preço", !!lendario && lendario.preco === 131.2,
         "preco=" + (lendario && lendario.preco));
     t("kits expõem licenças", lista.every(k => typeof k.licencas === "object" &&
         k.licencas && Object.keys(k.licencas).length === 3),
@@ -109,28 +109,49 @@ async function main() {
     t("kits expõem pacotes com id", lista.every(k => Array.isArray(k.pacotes) &&
         k.pacotes.every(p => typeof p.pack_id === "number" && p.pack_id > 0)),
         "packs de premium=" + JSON.stringify(premium && premium.pacotes));
+    t("todos os kits são mais baratos que a compra separada",
+        lista.every(k => k.preco < k.precoSeparado),
+        "ex=" + JSON.stringify(lista.map(k => ({ slug: k.slug, preco: k.preco, separado: k.precoSeparado }))));
+
+    const cpfValido = "12345678909";
+    const checkoutBody = (plano) => ({
+        licensePlan: plano,
+        cpfCnpj: cpfValido,
+        paymentMethod: "pix",
+        aceiteRegras: true
+    });
 
     /* ===== Checkout sem token -> 401 ===== */
     const ckSemToken = await reqJson(BASE + "/api/combos/kits/" + premium.id + "/checkout", json("POST", null, { licensePlan: 1 }));
     t("checkout sem token -> 401", ckSemToken.r.status === 401, "status=" + ckSemToken.r.status);
 
+    /* ===== Checkout sem CPF -> 400 ===== */
+    const ckSemCpf = await reqJson(BASE + "/api/combos/kits/" + premium.id + "/checkout",
+        json("POST", userTok, { licensePlan: "1_year", aceiteRegras: true }));
+    t("checkout sem CPF -> 400", ckSemCpf.r.status === 400, "status=" + ckSemCpf.r.status);
+
+    /* ===== Checkout sem aceite -> 400 ===== */
+    const ckSemRegras = await reqJson(BASE + "/api/combos/kits/" + premium.id + "/checkout",
+        json("POST", userTok, { licensePlan: "1_year", cpfCnpj: cpfValido }));
+    t("checkout sem aceite -> 400", ckSemRegras.r.status === 400, "status=" + ckSemRegras.r.status);
+
     /* ===== Checkout ===== */
     const ck = await reqJson(BASE + "/api/combos/kits/" + premium.id + "/checkout",
-        json("POST", userTok, { licensePlan: "1_year" }));
+        json("POST", userTok, checkoutBody("1_year")));
     const compra = ck.body;
-    t("checkout kit ok", ck.r.status === 200 && compra.valor === 149.9 && compra.externalReference &&
+    t("checkout kit ok", ck.r.status === 200 && compra.valor === 38.25 && compra.externalReference &&
         compra.externalReference.startsWith("KIT-"), "valor=" + compra.valor);
     t("checkout retorna meios de pagamento", !!compra.paymentMethod && compra.paymentStatus === "pending" &&
         typeof compra.paid === "boolean", "method=" + compra.paymentMethod);
 
     /* ===== Checkout com licença (taxa única) ===== */
     const ck5 = await reqJson(BASE + "/api/combos/kits/" + premium.id + "/checkout",
-        json("POST", userTok, { licensePlan: "5_years" }));
-    t("checkout licença 5 anos soma taxa única", ck5.r.status === 200 && ck5.body.valor === 189.9,
+        json("POST", userTok, checkoutBody("5_years")));
+    t("checkout licença 5 anos soma taxa única", ck5.r.status === 200 && ck5.body.valor === 78.25,
         "valor=" + ck5.body.valor);
     const ck5b = await reqJson(BASE + "/api/combos/kits/" + premium.id + "/checkout",
-        json("POST", userTok2, { licensePlan: "5_years" }));
-    t("taxa única independe do usuário", ck5b.body.valor === 189.9, "valor=" + ck5b.body.valor);
+        json("POST", userTok2, checkoutBody("5_years")));
+    t("taxa única independe do usuário", ck5b.body.valor === 78.25, "valor=" + ck5b.body.valor);
 
     /* ===== Status antes de pagar ===== */
     const antes = await reqJson(BASE + "/api/combos/pagamento/" + ck.body.externalReference, json("GET", userTok));
@@ -211,7 +232,7 @@ async function main() {
     const vendas = await reqJson(BASE + "/api/combos/admin/vendas", json("GET", adminTok));
     const resumoVendas = vendas.body;
     t("vendas admin tem total e por kit", vendas.r.status === 200 &&
-        typeof resumoVendas.totalReceita === "number" && resumoVendas.totalReceita >= 149.9 &&
+        typeof resumoVendas.totalReceita === "number" && resumoVendas.totalReceita >= 38.25 &&
         Array.isArray(resumoVendas.porKit) && resumoVendas.porKit.length > 0,
         "receita=" + resumoVendas.totalReceita + " kits=" + resumoVendas.porKit.length);
 

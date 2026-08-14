@@ -83,19 +83,21 @@ const limiterUpload = rateLimit({
 });
 
 /* =========================
-   MERCADO PAGO (PIX)
+   MERCADO PAGO (Orders API)
    Documentação: https://www.mercadopago.com.br/developers
 ========================= */
 
 const MERCADOPAGO_ACCESS_TOKEN =
     process.env.MERCADOPAGO_ACCESS_TOKEN || "";
 
+const MERCADOPAGO_PUBLIC_KEY =
+    process.env.MERCADOPAGO_PUBLIC_KEY || "";
+
+const MERCADOPAGO_WEBHOOK_SECRET =
+    process.env.MERCADOPAGO_WEBHOOK_SECRET || "";
+
 const MERCADOPAGO_SANDBOX =
-    process.env.MERCADOPAGO_SANDBOX === "true" ||
-    (
-        process.env.NODE_ENV !== "production" &&
-        !process.env.RENDER
-    );
+    process.env.MERCADOPAGO_SANDBOX === "true";
 
 const MERCADOPAGO_API = "https://api.mercadopago.com";
 
@@ -120,7 +122,7 @@ const RESERVAS_LIBERADAS_FILE =
    o pagamento do PIX. Após isso, o espaço é liberado.
    Configurável via RESERVA_TTL_MINUTOS (padrão: 10).
    A reserva também expira no prazo do QR Code do PIX
-   (date_of_expiration do Mercado Pago), o que vier antes. */
+   (expiration_date da Order do Mercado Pago), o que vier antes. */
 const RESERVA_TTL_MINUTOS =
     Math.max(1, Number(process.env.RESERVA_TTL_MINUTOS) || 10);
 const RESERVA_TTL_MS =
@@ -302,24 +304,26 @@ async function initBanco() {
 
         await pgPool.query(`
             CREATE TABLE IF NOT EXISTS transacoes (
-                id          SERIAL PRIMARY KEY,
-                tipo        VARCHAR(10) NOT NULL,
-                access_code VARCHAR(30) NOT NULL,
-                token       VARCHAR(64),
-                order_id    VARCHAR(60) NOT NULL,
-                customer_id VARCHAR(60),
-                payment_id  VARCHAR(60),
-                usuario_id  INTEGER,
-                nome        VARCHAR(200),
-                email       VARCHAR(200),
-                espacos     INTEGER[] NOT NULL,
-                quantidade  INTEGER NOT NULL,
-                valor_total NUMERIC(12,2) NOT NULL,
-                comissao    NUMERIC(12,2) NOT NULL DEFAULT 0,
-                status      VARCHAR(20) NOT NULL DEFAULT 'pendente',
-                test        BOOLEAN NOT NULL DEFAULT FALSE,
-                criado_em   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                pago_em     TIMESTAMPTZ
+                id               SERIAL PRIMARY KEY,
+                tipo             VARCHAR(10) NOT NULL,
+                access_code      VARCHAR(30) NOT NULL,
+                token            VARCHAR(64),
+                order_id         VARCHAR(60) NOT NULL,
+                mp_order_id      VARCHAR(60),
+                customer_id      VARCHAR(60),
+                payment_id       VARCHAR(60),
+                metodo_pagamento VARCHAR(20),
+                usuario_id       INTEGER,
+                nome             VARCHAR(200),
+                email            VARCHAR(200),
+                espacos          INTEGER[] NOT NULL,
+                quantidade       INTEGER NOT NULL,
+                valor_total      NUMERIC(12,2) NOT NULL,
+                comissao         NUMERIC(12,2) NOT NULL DEFAULT 0,
+                status           VARCHAR(20) NOT NULL DEFAULT 'pendente',
+                test             BOOLEAN NOT NULL DEFAULT FALSE,
+                criado_em        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                pago_em          TIMESTAMPTZ
             )
         `);
 
@@ -349,6 +353,16 @@ async function initBanco() {
         await pgPool.query(
             "ALTER TABLE transacoes " +
             "ADD COLUMN IF NOT EXISTS usuario_id INTEGER"
+        );
+
+        await pgPool.query(
+            "ALTER TABLE transacoes " +
+            "ADD COLUMN IF NOT EXISTS mp_order_id VARCHAR(60)"
+        );
+
+        await pgPool.query(
+            "ALTER TABLE transacoes " +
+            "ADD COLUMN IF NOT EXISTS metodo_pagamento VARCHAR(20)"
         );
 
         await pgPool.query(
@@ -400,8 +414,10 @@ function registrarTransacao({
     accessCode,
     token,
     orderId,
+    mpOrderId,
     customerId,
     paymentId,
+    metodoPagamento,
     usuarioId,
     nome,
     email,
@@ -418,18 +434,20 @@ function registrarTransacao({
 
     return pgPool.query(
         `INSERT INTO transacoes
-            (tipo, access_code, token, order_id,
-             customer_id, payment_id, usuario_id, nome, email,
+            (tipo, access_code, token, order_id, mp_order_id,
+             customer_id, payment_id, metodo_pagamento, usuario_id, nome, email,
              espacos, quantidade, valor_total,
              comissao, status, test)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
         [
             tipo,
             accessCode,
             token || null,
             orderId,
+            mpOrderId || null,
             customerId || null,
             paymentId || null,
+            metodoPagamento || null,
             usuarioId || null,
             nome || null,
             email || null,
@@ -446,23 +464,69 @@ function registrarTransacao({
     });
 }
 
-function pgPagamentoPago(paymentId) {
+function pgPagamentoPago({ paymentId, mpOrderId } = {}) {
 
     if (!pgDisponivel) {
         return Promise.resolve(false);
     }
 
-    return pgPool.query(
-        `UPDATE transacoes
-            SET status = 'pago',
-                pago_em = NOW()
-          WHERE payment_id = $1
-            AND status = 'pendente'`,
-        [paymentId]
-    ).catch((err) => {
-        console.error("ERRO ao atualizar transação:", err.message);
+    if (paymentId) {
+        return pgPool.query(
+            `UPDATE transacoes
+                SET status = 'pago',
+                    pago_em = NOW()
+              WHERE payment_id = $1
+                AND status = 'pendente'`,
+            [paymentId]
+        ).catch((err) => {
+            console.error("ERRO ao atualizar transação:", err.message);
+            return false;
+        });
+    }
+
+    if (mpOrderId) {
+        return pgPool.query(
+            `UPDATE transacoes
+                SET status = 'pago',
+                    pago_em = NOW()
+              WHERE mp_order_id = $1
+                AND status = 'pendente'`,
+            [mpOrderId]
+        ).catch((err) => {
+            console.error("ERRO ao atualizar transação:", err.message);
+            return false;
+        });
+    }
+
+    return Promise.resolve(false);
+}
+
+async function usuarioPossuiOrder(usuarioId, orderId) {
+
+    if (!orderId) {
         return false;
+    }
+
+    if (!pgDisponivel) {
+        const db = readDB();
+        return Object.values(db).some(s =>
+            (s.mpOrderId === orderId || s.paymentId === orderId) &&
+            s.usuarioId === usuarioId
+        );
+    }
+
+    const result = await pgPool.query(
+        `SELECT 1 FROM transacoes
+          WHERE mp_order_id = $1
+            AND usuario_id = $2
+          LIMIT 1`,
+        [orderId, usuarioId]
+    ).catch((err) => {
+        console.error("ERRO ao verificar propriedade do pedido:", err.message);
+        return { rowCount: 0 };
     });
+
+    return result.rowCount > 0;
 }
 
 /* initBanco() é chamado antes do app.listen, no final. */
@@ -1387,69 +1451,208 @@ async function mercadoPagoRequest(endpoint, options = {}) {
     return data;
 }
 
-async function criarPagamentoPixMercadoPago({
+function extrairDadosPagamento(order) {
+
+    const payment =
+        order.transactions?.payments?.[0] ||
+        order.payments?.[0] ||
+        {};
+
+    const method = payment.payment_method || {};
+
+    const transactionData = method.transaction_data || {};
+
+    return {
+        paymentId: String(payment.id || ""),
+        status: payment.status || order.status || "",
+        statusDetail: payment.status_detail || "",
+        paymentMethodId: method.id || "",
+        paymentMethodType: method.type || "",
+        qrCodeBase64: transactionData.qr_code_base64 || "",
+        payload: transactionData.qr_code || "",
+        ticketUrl: transactionData.ticket_url || "",
+        installments: method.installments || 1
+    };
+}
+
+async function criarOrderMercadoPago({
+    idempotencyKey,
     externalReference,
     value,
     description,
     customer,
-    expiresIn
+    paymentMethod,
+    paymentMethodId,
+    cardToken,
+    installments = 1
 }) {
 
     const id = externalReference || crypto.randomUUID();
+
+    const finalIdempotencyKey =
+        String(idempotencyKey || id || crypto.randomUUID()).trim();
+
+    if (!finalIdempotencyKey) {
+        throw new Error("X-Idempotency-Key inválido");
+    }
+
     const identificacao = identificacaoMercadoPago(customer.taxID);
 
-    const dateOfExpiration = new Date(
-        Date.now() + Math.min(
-            Math.max(300, expiresIn || 600) * 1000,
-            24 * 60 * 60 * 1000
-        )
-    ).toISOString();
+    const isPix = paymentMethod === "pix";
+
+    const paymentBody = {
+        amount: String(Number(value).toFixed(2)),
+        payment_method: {
+            type: isPix ? "bank_transfer" : "credit_card"
+        }
+    };
+
+    if (isPix) {
+        paymentBody.payment_method.id = "pix";
+    } else {
+        paymentBody.payment_method.id = paymentMethodId || "credit_card";
+    }
+
+    if (!isPix && cardToken) {
+        paymentBody.payment_method.token = cardToken;
+        paymentBody.payment_method.installments = Number(installments) || 1;
+    }
 
     const body = {
-        transaction_amount: Number(value),
-        description: description || `Cobrança ${id}`,
-        payment_method_id: "pix",
+        type: "online",
+        processing_mode: "automatic",
+        total_amount: String(Number(value).toFixed(2)),
         external_reference: id,
-        date_of_expiration: dateOfExpiration,
+        description: description || `Pedido ${id}`,
         notification_url: process.env.MERCADOPAGO_WEBHOOK_URL || "",
         payer: {
             email: customer.email,
             first_name: customer.name.split(" ")[0] || customer.name,
-            last_name: customer.name.split(" ").slice(1).join(" ") || "",
-            identification: identificacao || undefined
+            last_name: customer.name.split(" ").slice(1).join(" ") || ""
+        },
+        transactions: {
+            payments: [paymentBody]
         }
     };
 
-    const payment = await mercadoPagoRequest("/v1/payments", {
+    if (identificacao) {
+        body.payer.identification = identificacao;
+    }
+
+    const order = await mercadoPagoRequest("/v1/orders", {
         method: "POST",
+        headers: {
+            "X-Idempotency-Key": finalIdempotencyKey
+        },
         body: JSON.stringify(body)
     });
 
-    const transactionData =
-        payment.point_of_interaction?.transaction_data || {};
+    const dados = extrairDadosPagamento(order);
 
     return {
-        id: String(payment.id),
+        orderId: String(order.id),
         externalReference: id,
-        status: payment.status,
-        statusDetail: payment.status_detail,
-        dateOfExpiration: payment.date_of_expiration,
-        qrCodeBase64: transactionData.qr_code_base64 || "",
-        payload: transactionData.qr_code || "",
-        ticketUrl: transactionData.ticket_url || "",
-        raw: payment
+        status: order.status,
+        paymentId: dados.paymentId,
+        paymentStatus: dados.status,
+        paymentMethodId: dados.paymentMethodId,
+        paymentMethodType: dados.paymentMethodType,
+        qrCodeBase64: dados.qrCodeBase64,
+        payload: dados.payload,
+        ticketUrl: dados.ticketUrl,
+        installments: dados.installments,
+        expirationDate: order.expiration_date || "",
+        raw: order
     };
 }
 
-async function consultarPagamentoMercadoPago(paymentId) {
+async function consultarOrderMercadoPago(orderId) {
 
-    return mercadoPagoRequest(`/v1/payments/${encodeURIComponent(paymentId)}`, {
+    return mercadoPagoRequest(`/v1/orders/${encodeURIComponent(orderId)}`, {
         method: "GET"
     });
 }
 
-function statusMercadoPagoPago(status) {
-    return status === "approved" || status === "authorized";
+function statusOrderPago(status) {
+    return status === "paid" || status === "approved";
+}
+
+function validarAssinaturaWebhook(req) {
+
+    if (!MERCADOPAGO_WEBHOOK_SECRET) {
+        console.warn("MERCADOPAGO_WEBHOOK_SECRET não configurado. Webhook não validado.");
+        return false;
+    }
+
+    const signatureHeader =
+        req.headers["x-signature"] ||
+        req.headers["X-Signature"] ||
+        "";
+
+    const requestId =
+        req.headers["x-request-id"] ||
+        req.headers["X-Request-Id"] ||
+        "";
+
+    const evento = req.body || {};
+    const dataId = evento.data?.id || "";
+
+    if (!signatureHeader) {
+        console.warn("Webhook Mercado Pago sem x-signature.");
+        return false;
+    }
+
+    const parts = signatureHeader.split(",").reduce((acc, part) => {
+        const idx = part.indexOf("=");
+        if (idx > 0) {
+            const key = part.substring(0, idx).trim();
+            const value = part.substring(idx + 1).trim();
+            acc[key] = value;
+        }
+        return acc;
+    }, {});
+
+    const ts = parts.ts;
+    const v1 = parts.v1;
+
+    if (!ts || !v1) {
+        console.warn("Webhook Mercado Pago: x-signature malformado.");
+        return false;
+    }
+
+    /* Mercado Pago envia a assinatura como HMAC-SHA256 do manifesto:
+       id:<data.id>;request-id:<x-request-id>;ts:<ts>;
+       Testamos variações conhecidas para robustez. */
+
+    const manifestBase = `id:${dataId};ts:${ts};`;
+    const manifestFull = `id:${dataId};request-id:${requestId};ts:${ts};`;
+
+    const candidatos = [
+        manifestBase,
+        manifestFull,
+        `${ts}:${dataId}`,
+        `${ts}:${requestId}:${dataId}`
+    ];
+
+    for (const payload of candidatos) {
+        const expected = crypto
+            .createHmac("sha256", MERCADOPAGO_WEBHOOK_SECRET)
+            .update(payload)
+            .digest("hex");
+
+        const a = Buffer.from(v1, "utf8");
+        const b = Buffer.from(expected, "utf8");
+
+        if (
+            a.length === b.length &&
+            crypto.timingSafeEqual(a, b)
+        ) {
+            return true;
+        }
+    }
+
+    console.warn("Webhook Mercado Pago: assinatura inválida.");
+    return false;
 }
 
 /* =========================
@@ -1893,6 +2096,29 @@ app.get("/api/status", (req, res) => {
 });
 
 /* =========================
+   CONFIGURAÇÃO PÚBLICA
+========================= */
+
+app.get("/api/config", (req, res) => {
+
+    res.setHeader(
+        "Cache-Control",
+        "no-store, no-cache, must-revalidate, proxy-revalidate"
+    );
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+
+    res.json({
+        mercadoPagoPublicKey:
+            MERCADOPAGO_PUBLIC_KEY || "",
+        sandbox:
+            MERCADOPAGO_SANDBOX === "true" ||
+            MERCADOPAGO_SANDBOX === true,
+        allowTestMode: ALLOW_TEST_MODE === true
+    });
+});
+
+/* =========================
    CRIAR PEDIDO + PIX
 ========================= */
 
@@ -1913,7 +2139,10 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             name,
             email,
             cpfCnpj,
-            coupon
+            coupon,
+            paymentMethod,
+            cardToken,
+            installments
         } = req.body;
 
         const ids = [
@@ -1957,6 +2186,17 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
         if (!validarDocumento(document)) {
             return res.status(400).json({
                 error: "CPF ou CNPJ inválido."
+            });
+        }
+
+        const metodo =
+            paymentMethod === "card" || paymentMethod === "credit_card"
+            ? "credit_card"
+            : "pix";
+
+        if (metodo === "credit_card" && !cardToken) {
+            return res.status(400).json({
+                error: "Token do cartão não informado."
             });
         }
 
@@ -2085,7 +2325,7 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             ) / 100;
 
         /* =========================
-           CRIA COBRANÇA PIX (Mercado Pago)
+           CRIA ORDER NO MERCADO PAGO
         ========================= */
 
         const orderId =
@@ -2101,8 +2341,11 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
 
         const paymentId = crypto.randomUUID();
 
-        const mp = await criarPagamentoPixMercadoPago({
-            externalReference: paymentId,
+        const metodoPagamento = metodo;
+
+        const mp = await criarOrderMercadoPago({
+            idempotencyKey: orderId,
+            externalReference: orderId,
             value: valorCobrado,
             description: `Milhão Door - ${total} espaço(s)`,
             customer: {
@@ -2110,12 +2353,15 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
                 taxID: document,
                 email: email.trim()
             },
-            expiresIn: Math.floor(RESERVA_TTL_MS / 1000)
+            paymentMethod: metodoPagamento,
+            paymentMethodId: req.body.paymentMethodId,
+            cardToken: metodo === "credit_card" ? cardToken : undefined,
+            installments: metodo === "credit_card" ? installments : undefined
         });
 
         const qrCodeBase64 = mp.qrCodeBase64;
         const brCode = mp.payload;
-        const expiresDate = mp.dateOfExpiration;
+        const expiresDate = mp.expirationDate;
 
         /* =========================
            RESERVA
@@ -2157,10 +2403,13 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
                         ? String(expiresDate)
                         : undefined,
                 orderId,
+                mpOrderId: mp.orderId,
                 orderToken,
                 accessCode,
                 customerId: "",
-                paymentId,
+                paymentId: mp.paymentId || paymentId,
+                paymentMethod: metodo,
+                usuarioId: req.usuario.id,
                 name: name.trim(),
                 email: email.trim(),
                 createdAt:
@@ -2177,15 +2426,17 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             accessCode,
             token: orderToken,
             orderId,
+            mpOrderId: mp.orderId,
             customerId: "",
-            paymentId,
+            paymentId: mp.paymentId || paymentId,
+            metodoPagamento: metodo,
             usuarioId: req.usuario.id,
             nome: name.trim(),
             email: email.trim(),
             espacos: ids,
             valorTotal: valorCobrado,
             comissao: 0,
-            status: "pendente",
+            status: metodo === "credit_card" && mp.paymentStatus === "approved" ? "pago" : "pendente",
             test: false
         });
 
@@ -2270,16 +2521,37 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             )
         );
 
+        const pagoInstantaneo =
+            metodo === "credit_card" &&
+            statusOrderPago(mp.paymentStatus);
+
+        if (pagoInstantaneo) {
+            for (const id of ids) {
+                if (db[id] && db[id].status === "reserved") {
+                    db[id].status = "paid";
+                    db[id].paidAt = new Date().toISOString();
+                }
+            }
+            writeDB(db);
+            confirmarPagamentoOferta(mp.orderId);
+            pgPagamentoPago({ mpOrderId: mp.orderId });
+            limparLiberadasOcupadas(ids);
+        }
+
         res.json({
             ok: true,
             orderId,
+            mpOrderId: mp.orderId,
             orderToken,
             accessCode,
-            paymentId,
+            paymentId: mp.paymentId || paymentId,
             spaces: ids,
             total,
             value: valorCobrado,
             discountPercent: descontoPct,
+            paymentMethod: metodo,
+            paymentStatus: mp.paymentStatus,
+            paid: pagoInstantaneo,
             creditoUsado: !!cupomCredito,
             indicacaoRegistrada:
                 !!(cupom && cupom.tipo === "indicacao"),
@@ -2294,6 +2566,7 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
                 ),
             qrCode: qrCodeBase64 || "",
             payload: brCode,
+            ticketUrl: mp.ticketUrl || "",
             meuCupom,
             expirationDate:
                 expiresDate
@@ -2652,36 +2925,46 @@ app.post("/api/test/confirm-offer", (req, res) => {
 ========================= */
 
 app.get(
-    "/api/payment-status/:paymentId",
+    "/api/payment-status/:orderId",
+    authUsuario,
     async (req, res) => {
 
         try {
 
-            const payment =
-                await consultarPagamentoMercadoPago(
-                    req.params.paymentId
-                );
+            const orderId = req.params.orderId;
+
+            const podeConsultar =
+                await usuarioPossuiOrder(req.usuario.id, orderId);
+
+            if (!podeConsultar) {
+                return res.status(403).json({
+                    error: "Acesso negado a este pedido."
+                });
+            }
+
+            const order =
+                await consultarOrderMercadoPago(orderId);
 
             const db = readDB();
-            const chargeStatus = payment.status || "unknown";
-            const pago = statusMercadoPagoPago(chargeStatus);
+            const chargeStatus = order.status || "unknown";
+            const pago = statusOrderPago(chargeStatus);
 
             if (pago) {
 
-                confirmarPagamentoOferta(req.params.paymentId);
+                confirmarPagamentoOferta(orderId);
 
-                pgPagamentoPago(req.params.paymentId);
+                pgPagamentoPago({ mpOrderId: orderId });
 
                 registrarLog("pagamento_confirmado", {
-                    paymentId: req.params.paymentId,
+                    mpOrderId: orderId,
                     status: chargeStatus
                 });
 
                 for (const id of Object.keys(db)) {
 
                     if (
-                        db[id].paymentId ===
-                        req.params.paymentId
+                        db[id].mpOrderId === orderId ||
+                        db[id].paymentId === orderId
                     ) {
 
                         if (
@@ -2700,7 +2983,7 @@ app.get(
 
             res.json({
                 status: pago ? "RECEIVED" : chargeStatus,
-                paymentId: req.params.paymentId
+                orderId: orderId
             });
 
         } catch (error) {
@@ -3299,12 +3582,12 @@ function gerarExtratoPdf(res, { transacoes, resumo, nomeArquivo }) {
    OFERTAS (COMPRAR ESPAÇO VENDIDO)
 ========================= */
 
-function confirmarPagamentoOferta(paymentId) {
+function confirmarPagamentoOferta(paymentIdOrOrderId) {
 
     const ofertas = readOffers();
 
     const oferta = Object.values(ofertas).find(o =>
-        o.paymentId === paymentId &&
+        (o.paymentId === paymentIdOrOrderId || o.mpOrderId === paymentIdOrOrderId) &&
         o.status === "accepted"
     );
 
@@ -3909,10 +4192,11 @@ async function gerarPixOferta(oferta, document, valor, descricao) {
         ? valor
         : oferta.value;
 
-    const paymentId = crypto.randomUUID();
+    const orderId = `OFFER-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
-    const mp = await criarPagamentoPixMercadoPago({
-        externalReference: paymentId,
+    const mp = await criarOrderMercadoPago({
+        idempotencyKey: orderId,
+        externalReference: orderId,
         value: montante,
         description:
             descricao ||
@@ -3923,13 +4207,14 @@ async function gerarPixOferta(oferta, document, valor, descricao) {
             taxID: document,
             email: oferta.email
         },
-        expiresIn: Math.floor(RESERVA_TTL_MS / 1000)
+        paymentMethod: "pix"
     });
 
     return {
         customer: null,
         payment: {
-            id: mp.id,
+            id: mp.paymentId,
+            orderId: mp.orderId,
             correlationID: mp.externalReference,
             paymentLinkID: mp.ticketUrl,
             value: montante,
@@ -3938,7 +4223,7 @@ async function gerarPixOferta(oferta, document, valor, descricao) {
         pix: {
             encodedImage: mp.qrCodeBase64,
             payload: mp.payload,
-            expirationDate: mp.dateOfExpiration
+            expirationDate: mp.expirationDate
         }
     };
 }
@@ -4036,6 +4321,7 @@ app.post("/api/offers/:id/accept", async (req, res) => {
 
         oferta.status = "accepted";
         oferta.paymentId = payment.id;
+        oferta.mpOrderId = payment.orderId;
         oferta.customerId = customer?.correlationID || "";
         oferta.feeValue = feeValue;
         oferta.ownerPixKey = minhaChave;
@@ -4080,6 +4366,7 @@ app.post("/api/offers/:id/accept", async (req, res) => {
             qrCode: pix.encodedImage,
             payload: pix.payload,
             paymentId: payment.id,
+            mpOrderId: payment.orderId,
             value: oferta.value,
             feeValue,
             ownerPixKey: minhaChave,
@@ -4165,6 +4452,7 @@ app.post("/api/offers/:id/buyer-accept", async (req, res) => {
 
         oferta.status = "accepted";
         oferta.paymentId = payment.id;
+        oferta.mpOrderId = payment.orderId;
         oferta.customerId = customer?.correlationID || "";
         oferta.feeValue = feeValue;
         oferta.ownerPixKey = chaveDono;
@@ -4208,6 +4496,7 @@ app.post("/api/offers/:id/buyer-accept", async (req, res) => {
             qrCode: pix.encodedImage,
             payload: pix.payload,
             paymentId: payment.id,
+            mpOrderId: payment.orderId,
             value: oferta.value,
             feeValue,
             ownerPixKey: chaveDono,
@@ -4488,7 +4777,7 @@ app.get("/api/offers/:id", (req, res) => {
    o comprador volta ao painel
 ========================= */
 
-app.get("/api/offers/:id/payment", async (req, res) => {
+app.get("/api/offers/:id/payment", authUsuario, async (req, res) => {
 
     try {
 
@@ -4511,19 +4800,14 @@ app.get("/api/offers/:id/payment", async (req, res) => {
             ? oferta.spaceIds
             : [oferta.spaceId];
 
-        const email =
-            (req.query.email || "")
-                .trim()
-                .toLowerCase();
-
         const token =
             (req.query.token || "").trim();
 
-        const ehComprador =
-            email ===
-            (oferta.email || "").trim().toLowerCase();
-
         const db = readDB();
+
+        const ehComprador =
+            req.usuario.email ===
+            (oferta.email || "").trim().toLowerCase();
 
         const ehDono =
             token &&
@@ -4557,18 +4841,18 @@ app.get("/api/offers/:id/payment", async (req, res) => {
             });
         }
 
-        const payment =
-            await consultarPagamentoMercadoPago(oferta.paymentId);
+        const order =
+            await consultarOrderMercadoPago(oferta.mpOrderId || oferta.paymentId);
 
-        const transactionData =
-            payment.point_of_interaction?.transaction_data || {};
+        const dados = extrairDadosPagamento(order);
 
         res.json({
             ok: true,
             offerId: oferta.id,
-            qrCode: transactionData.qr_code_base64 || "",
-            payload: transactionData.qr_code || "",
+            qrCode: dados.qrCodeBase64 || "",
+            payload: dados.payload || "",
             paymentId: oferta.paymentId,
+            mpOrderId: oferta.mpOrderId,
             value: oferta.value,
             feeValue: oferta.feeValue,
             ownerPixKey: chavePixDoProprietario(oferta),
@@ -5326,35 +5610,44 @@ app.post("/api/link", (req, res) => {
 
 app.post("/webhooks/mercadopago", async (req, res) => {
 
+    /* Validação obrigatória da assinatura do Mercado Pago. */
+    if (!validarAssinaturaWebhook(req)) {
+        console.warn("Webhook Mercado Pago rejeitado: assinatura inválida.");
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const evento = req.body || {};
 
-    console.log("Webhook Mercado Pago recebido:", evento.type, evento.data);
+    console.log("Webhook Mercado Pago recebido:", {
+        type: evento.type,
+        action: evento.action,
+        orderId: evento.data?.id
+    });
 
-    if (evento.type !== "payment" || !evento.data?.id) {
+    /* Processamos apenas notificações de Order. */
+    if (evento.type !== "order" || !evento.data?.id) {
         return res.status(200).json({ received: true });
     }
 
     try {
 
-        const paymentId = String(evento.data.id);
+        const orderId = String(evento.data.id);
 
-        const payment =
-            await consultarPagamentoMercadoPago(paymentId);
+        /* Sempre consultamos a Order na API do Mercado Pago.
+           Nunca confiamos apenas no payload recebido. */
+        const order = await consultarOrderMercadoPago(orderId);
 
-        if (!statusMercadoPagoPago(payment.status)) {
+        console.log("Order consultada:", order.id, order.status);
+
+        /* Só liberamos espaços se a Order estiver efetivamente paga. */
+        if (!statusOrderPago(order.status)) {
+            console.log(`Order ${orderId} não está paga. Status: ${order.status}`);
             return res.status(200).json({ received: true });
         }
 
-        const ofertaPaga =
-            confirmarPagamentoOferta(paymentId);
+        const dados = extrairDadosPagamento(order);
 
-        pgPagamentoPago(paymentId);
-
-        registrarLog("pagamento_confirmado_webhook", {
-            paymentId,
-            status: payment.status
-        });
-
+        /* Liberação idempotente: só altera espaços reservados. */
         const db = readDB();
         let alterado = false;
 
@@ -5362,7 +5655,7 @@ app.post("/webhooks/mercadopago", async (req, res) => {
             const space = db[id];
 
             if (
-                space.paymentId === paymentId &&
+                space.mpOrderId === orderId &&
                 space.status === "reserved"
             ) {
                 db[id] = {
@@ -5375,26 +5668,31 @@ app.post("/webhooks/mercadopago", async (req, res) => {
             }
         }
 
+        confirmarPagamentoOferta(orderId);
+        pgPagamentoPago({ mpOrderId: orderId });
+
+        registrarLog("pagamento_confirmado_webhook", {
+            mpOrderId: orderId,
+            paymentId: dados.paymentId,
+            status: order.status
+        });
+
         /* Pagamento tardio: o espaço foi liberado
            por tempo esgotado. Se ainda estiver livre,
            entrega ele ao pagante de qualquer forma. */
 
-        const liberadas =
-            readReservasLiberadas();
-
-        const antiga =
-            liberadas[paymentId];
+        const liberadas = readReservasLiberadas();
+        const antiga = liberadas[orderId];
 
         if (antiga && !db[antiga.id]) {
 
             db[antiga.id] = {
                 ...antiga,
                 status: "paid",
-                paidAt:
-                    new Date().toISOString()
+                paidAt: new Date().toISOString()
             };
 
-            delete liberadas[paymentId];
+            delete liberadas[orderId];
             writeReservasLiberadas(liberadas);
 
             alterado = true;
@@ -5402,21 +5700,21 @@ app.post("/webhooks/mercadopago", async (req, res) => {
             registrarLog(
                 "pagamento_tardio_restaurado",
                 {
-                    paymentId,
+                    mpOrderId: orderId,
                     bloco: antiga.id
                 }
             );
 
             console.log(
-                `Pagamento tardio ${paymentId}: ` +
+                `Pagamento tardio ${orderId}: ` +
                 `espaço #${antiga.id} entregue ao comprador.`
             );
         }
 
-        if (alterado || ofertaPaga) {
+        if (alterado) {
             writeDB(db);
             console.log(
-                `Pagamento ${paymentId} confirmado.`
+                `Order ${orderId} confirmada. Espaços liberados.`
             );
         }
 
@@ -5431,27 +5729,6 @@ app.post("/webhooks/mercadopago", async (req, res) => {
         received: true
     });
 });
-
-function validarTokenWebhook(recebido) {
-
-    const esperado = process.env.WEBHOOK_TOKEN;
-
-    if (
-        !esperado ||
-        typeof recebido !== "string"
-    ) {
-        return false;
-    }
-
-    const a = Buffer.from(recebido, "utf8");
-    const b = Buffer.from(esperado, "utf8");
-
-    if (a.length !== b.length) {
-        return false;
-    }
-
-    return crypto.timingSafeEqual(a, b);
-}
 
 /* =========================
    PAINEL DO ADMINISTRADOR
@@ -5784,9 +6061,9 @@ Preencha com as informações de cada serviço e salve.
 - Build: npm install | Start: node server.js
 - Disco persistente: /var/lib/megaoutdoor (DADOS, UPLOADS)
 - Variáveis: DATA_DIR, UPLOAD_DIR, MERCADOPAGO_ACCESS_TOKEN,
-  MERCADOPAGO_SANDBOX, MERCADOPAGO_WEBHOOK_URL, WEBHOOK_TOKEN,
-  RESEND_API_KEY, JWT_SECRET, ADMIN_USER, ADMIN_PASSWORD,
-  DATABASE_URL, RESERVA_TTL_MINUTOS
+  MERCADOPAGO_PUBLIC_KEY, MERCADOPAGO_SANDBOX, MERCADOPAGO_WEBHOOK_URL,
+  MERCADOPAGO_WEBHOOK_SECRET, RESEND_API_KEY, JWT_SECRET, ADMIN_USER,
+  ADMIN_PASSWORD, DATABASE_URL, RESERVA_TTL_MINUTOS
 
 ## 📧 Resend (e-mails)
 - Dashboard: https://resend.com
@@ -5794,12 +6071,13 @@ Preencha com as informações de cada serviço e salve.
 - Domínio verificado:
 - E-mails: compra, código de acesso, ofertas, sorteio, recuperação
 
-## 💳 Mercado Pago (pagamentos PIX)
+## 💳 Mercado Pago (pagamentos PIX e cartão)
 - Dashboard: https://www.mercadopago.com.br/developers
 - Access Token: configurar em MERCADOPAGO_ACCESS_TOKEN
-- Webhook: configurar URL /webhooks/mercadopago no dashboard
+- Public Key: configurar em MERCADOPAGO_PUBLIC_KEY (frontend)
+- Webhook Secret: configurar em MERCADOPAGO_WEBHOOK_SECRET
+- Webhook URL: configurar /webhooks/mercadopago no dashboard
 - AppID:
-- Chave PIX cadastrada:
 - Modo sandbox / produção:
 
 ## 🗄️ Banco de dados

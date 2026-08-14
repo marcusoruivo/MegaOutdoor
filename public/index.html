@@ -46,7 +46,7 @@
     --radius-lg:16px;
     --radius-xl:20px;
     --transition:all .2s cubic-bezier(.4,0,.2,1);
-    --header-height:80px;
+    --header-height:88px;
     --benefits-height:64px;
 }
 
@@ -1424,9 +1424,9 @@ body.has-benefits{
 
 .topo .logo img{
     width:auto;
-    height:46px;
-    max-width:220px;
-    max-height:46px;
+    height:58px;
+    max-width:280px;
+    max-height:58px;
     object-fit:contain;
     display:block
 }
@@ -1565,6 +1565,7 @@ body.has-benefits{
     left:0;
     right:0;
     bottom:0;
+    z-index:1;
     display:grid;
     grid-template-columns:340px 1fr 300px;
     gap:14px;
@@ -2202,7 +2203,7 @@ body.has-benefits{
         gap:12px
     }
     .topo .logo img{
-        height:38px
+        height:48px
     }
     .benefits-bar{
         gap:20px;
@@ -2278,7 +2279,7 @@ body.has-benefits{
 
 @media(max-width:480px){
     .topo .logo img{
-        height:32px
+        height:40px
     }
     .btn-entrar{
         padding:8px 14px;
@@ -2303,7 +2304,8 @@ body.footer-visible{
 body.footer-visible .main-layout{
     position:relative;
     height:auto;
-    min-height:calc(100vh - var(--header-height) - var(--benefits-height))
+    min-height:calc(100vh - var(--header-height) - var(--benefits-height));
+    z-index:auto
 }
 
 body.footer-visible #area{
@@ -2360,6 +2362,7 @@ body.footer-visible #area{
 }
 </style>
 
+<script src="https://sdk.mercadopago.com/js/v2"></script>
 </head>
 
 <body>
@@ -2845,17 +2848,49 @@ placeholder="CPF ou CNPJ">
 id="coupon"
 placeholder="Cupom de indicação (opcional)">
 
+<div style="margin:16px 0 8px 0;">
+  <label style="display:block;font-weight:700;margin-bottom:8px;">Forma de pagamento</label>
+  <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;">
+    <input type="radio" name="paymentMethod" value="pix" checked onchange="alternarFormaPagamento()">
+    <span>PIX</span>
+  </label>
+  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+    <input type="radio" name="paymentMethod" value="credit_card" onchange="alternarFormaPagamento()">
+    <span>Cartão de crédito</span>
+  </label>
+</div>
+
+<div id="cardFields" style="display:none;">
+  <div id="cardNumberContainer" style="width:100%;height:42px;margin-bottom:10px;"></div>
+  <div style="display:flex;gap:10px;margin-bottom:10px;">
+    <div id="cardExpiryContainer" style="flex:1;height:42px;"></div>
+    <div id="cardCvcContainer" style="flex:1;height:42px;"></div>
+  </div>
+  <input id="cardholderName" placeholder="Nome do titular do cartão" style="margin-bottom:10px;">
+  <div style="display:flex;gap:10px;margin-bottom:10px;">
+    <select id="cardDocType" style="flex:1;padding:10px;border-radius:6px;border:1px solid #333;background:#111;color:#fff;">
+      <option value="CPF">CPF</option>
+      <option value="CNPJ">CNPJ</option>
+    </select>
+    <input id="cardDocNumber" placeholder="CPF/CNPJ do titular" style="flex:2;margin-bottom:0;">
+  </div>
+  <select id="installments" style="width:100%;padding:10px;border-radius:6px;border:1px solid #333;background:#111;color:#fff;margin-bottom:10px;">
+    <option value="1">1x</option>
+  </select>
+</div>
+
 <button
 class="btn"
 onclick="gerarPix()">
-GERAR PIX
+PAGAR
 </button>
 
 <button
+id="btnTesteSemPagamento"
 class="btn sec"
 type="button"
 onclick="testeSemPagamento()"
-style="margin-top:10px;">
+style="display:none; margin-top:10px;">
 🧪 TESTAR SEM PAGAMENTO
 </button>
 
@@ -2873,7 +2908,7 @@ style="color:#aaa;font-size:12px">
 class="pix"
 id="pix">
 
-<h2>Pagamento Pix</h2>
+<h2 id="paymentTitle">Pagamento Pix</h2>
 
 <p id="pixResumo" style="text-align:center;margin-bottom:14px;"></p>
 
@@ -3716,10 +3751,11 @@ function abrirFaq(event){
     `);
 }
 
-document.addEventListener("DOMContentLoaded", function(){
+document.addEventListener("DOMContentLoaded", async function(){
     aplicarTema();
     document.body.classList.add("has-benefits");
     atualizarHeaderScroll();
+    await carregarConfigMercadoPago();
 });
 
 let x = 0;
@@ -3756,6 +3792,118 @@ localStorage.getItem(
 "mega_orderTokens"
 ) || "{}"
 );
+
+/* =========================
+   MERCADO PAGO SDK
+========================= */
+
+let MERCADOPAGO_PUBLIC_KEY = "";
+let mpSdk = null;
+let mpCardNumberField = null;
+let mpCardBin = "";
+let mpPaymentMethodId = "";
+let appConfig = { sandbox: false, allowTestMode: false };
+
+async function carregarConfigMercadoPago(){
+    try{
+        const response = await fetch("/api/config");
+        const data = await reqJSON(response);
+        appConfig = {
+            sandbox: !!data.sandbox,
+            allowTestMode: !!data.allowTestMode
+        };
+        if(data && data.mercadoPagoPublicKey){
+            MERCADOPAGO_PUBLIC_KEY = data.mercadoPagoPublicKey;
+        }
+    }catch(e){
+        console.error("Erro ao carregar configuração do Mercado Pago:", e);
+    }
+
+    if(MERCADOPAGO_PUBLIC_KEY && typeof MercadoPago !== "undefined"){
+        try{
+            mpSdk = new MercadoPago(MERCADOPAGO_PUBLIC_KEY, {
+                locale: "pt-BR"
+            });
+        }catch(e){
+            console.error("Erro ao inicializar MercadoPago.js:", e);
+        }
+    }
+}
+
+function limparCamposCartao(){
+    const c1 = document.getElementById("cardNumberContainer");
+    const c2 = document.getElementById("cardExpiryContainer");
+    const c3 = document.getElementById("cardCvcContainer");
+    if(c1) c1.innerHTML = "";
+    if(c2) c2.innerHTML = "";
+    if(c3) c3.innerHTML = "";
+    mpCardNumberField = null;
+    mpCardBin = "";
+    mpPaymentMethodId = "";
+}
+
+async function atualizarBandeiraCartao(bin){
+    if(!mpSdk || !bin || bin.length < 6) return;
+    try{
+        const methods = await mpSdk.getPaymentMethods({ bin });
+        if(methods && methods.results && methods.results.length){
+            mpPaymentMethodId = methods.results[0].id || "";
+        }
+    }catch(e){
+        console.error("Erro ao consultar bandeira do cartão:", e);
+    }
+}
+
+function inicializarFormularioCartao(){
+    if(!mpSdk) return;
+    const container = document.getElementById("cardNumberContainer");
+    if(!container) return;
+    if(container.children.length > 0) return;
+    try{
+        limparCamposCartao();
+        mpCardNumberField = mpSdk.fields.create("cardNumber", {placeholder: "Número do cartão"});
+        mpCardNumberField.mount("cardNumberContainer");
+        mpCardNumberField.on("binChange", (data) => {
+            mpCardBin = (data && data.bin) || "";
+            atualizarBandeiraCartao(mpCardBin);
+        });
+        mpSdk.fields.create("expirationDate", {placeholder: "MM/AA"}).mount("cardExpiryContainer");
+        mpSdk.fields.create("securityCode", {placeholder: "CVV"}).mount("cardCvcContainer");
+    }catch(e){
+        console.error("Erro ao montar campos do cartão:", e);
+    }
+}
+
+async function tokenizarCartao(){
+    if(!mpSdk) throw new Error("MercadoPago.js não inicializado.");
+    const cardholderName = document.getElementById("cardholderName").value.trim();
+    const docType = document.getElementById("cardDocType").value;
+    const docNumber = (document.getElementById("cardDocNumber").value || "").replace(/\D/g, "");
+    if(!cardholderName) throw new Error("Informe o nome do titular do cartão.");
+    if(!docNumber) throw new Error("Informe o CPF/CNPJ do titular.");
+    try{
+        const result = await mpSdk.fields.createCardToken({
+            cardholderName,
+            identificationType: docType,
+            identificationNumber: docNumber
+        });
+        if(!result || !result.id) throw new Error("Não foi possível tokenizar o cartão.");
+        return result.id;
+    }catch(e){
+        throw new Error("Tokenização do cartão falhou: " + (e.message || ""));
+    }
+}
+
+function alternarFormaPagamento(){
+    const method = (document.querySelector('input[name="paymentMethod"]:checked') || {}).value || "pix";
+    const cardFields = document.getElementById("cardFields");
+    if(cardFields){
+        cardFields.style.display = method === "credit_card" ? "block" : "none";
+    }
+    if(method === "credit_card" && mpSdk){
+        setTimeout(inicializarFormularioCartao, 50);
+    }
+}
 
 /* =========================
    CONTA DO USUÁRIO (LOGIN)
@@ -6353,6 +6501,21 @@ document.getElementById(
 ).style.display =
 "flex";
 
+/* Reseta forma de pagamento para PIX e monta campos de cartão */
+const pixRadio = document.querySelector('input[name="paymentMethod"][value="pix"]');
+if(pixRadio) pixRadio.checked = true;
+alternarFormaPagamento();
+inicializarFormularioCartao();
+
+/* Oculta botão de teste em produção */
+const btnTeste = document.getElementById("btnTesteSemPagamento");
+if(btnTeste){
+    btnTeste.style.display =
+        (appConfig.sandbox || appConfig.allowTestMode)
+        ? "block"
+        : "none";
+}
+
 
 /* Pré-preenche com os dados da conta */
 
@@ -6415,6 +6578,9 @@ document.getElementById(
 "msg"
 );
 
+const method =
+(document.querySelector('input[name="paymentMethod"]:checked') || {}).value || "pix";
+
 
 if(name.length<3){
 
@@ -6447,10 +6613,23 @@ return;
 
 
 msg.textContent =
-"Criando sua cobrança Pix...";
+"Processando pagamento...";
 
 
 try{
+
+let cardToken = null;
+let installments = 1;
+
+if(method === "credit_card"){
+    try{
+        cardToken = await tokenizarCartao();
+        installments = parseInt(document.getElementById("installments").value, 10) || 1;
+    }catch(e){
+        msg.textContent = e.message;
+        return;
+    }
+}
 
 const response =
 await fetch(
@@ -6474,7 +6653,15 @@ email:email,
 
 cpfCnpj:cpf,
 
-coupon
+coupon,
+
+paymentMethod: method,
+
+paymentMethodId: mpPaymentMethodId,
+
+cardToken,
+
+installments
 
 })
 
@@ -6497,7 +6684,7 @@ return;
 
 
 currentPayment =
-data.paymentId;
+data.mpOrderId || data.paymentId;
 
 salvarTokens(
 data.spaces,
@@ -6538,7 +6725,7 @@ data.accessCode
 
         !!data.indicacaoRegistrada;
 
-        ultimoCreditos =
+        ultimosCreditos =
 
         data.creditos || 0;
 ultimoCreditoUsado =
@@ -6547,24 +6734,12 @@ ultimoCreditoUsado =
 ultimoIndicacaoRegistrada =
 !!data.indicacaoRegistrada;
 
-ultimoCreditos =
+ultimosCreditos =
 data.creditos || 0;
 
 /*
-   QR CODE
+   EXIBE RESUMO
 */
-
-document.getElementById(
-"qr"
-).src =
-qrCodeUrl(data.qrCode);
-
-
-document.getElementById(
-"payload"
-).value =
-data.payload;
-
 
 const totalValor = data.total.toLocaleString("pt-BR") + ",00";
 const cobradoValor = Number(data.value || 0).toLocaleString("pt-BR") + ",00";
@@ -6592,6 +6767,42 @@ document.getElementById(
 "pix"
 ).style.display =
 "block";
+
+const titleEl = document.getElementById("paymentTitle");
+if(titleEl){
+    titleEl.textContent = method === "credit_card" ? "Pagamento com cartão" : "Pagamento Pix";
+}
+
+if(method === "credit_card"){
+    document.getElementById("qrArea").style.display = "none";
+    document.getElementById("statusPix").innerHTML =
+        data.paid
+        ? "<span class='sucesso'>✅ Pagamento aprovado!</span>"
+        : "Processando pagamento do cartão...";
+    if(data.paid){
+        exibirAreaPublicacao();
+    }else{
+        monitorarPagamento();
+    }
+    return;
+}
+
+/*
+   PIX: QR CODE
+*/
+
+document.getElementById("qrArea").style.display = "block";
+
+document.getElementById(
+"qr"
+).src =
+qrCodeUrl(data.qrCode);
+
+
+document.getElementById(
+"payload"
+).value =
+data.payload;
 
 
 document.getElementById(
@@ -6843,7 +7054,10 @@ try{
 const response =
 await fetch(
 "/api/payment-status/"+
-currentPayment
+currentPayment,
+{
+    headers: authHeaders({})
+}
 );
 
 
@@ -6902,11 +7116,28 @@ document.getElementById("publicacao").style.display = "block";
 
 await load();
 
+
 paidSpaces = [...sel];
 
 sel.clear();
 
 updateCart();
+}
+
+
+if(
+    data.status === "CANCELLED" ||
+    data.status === "DECLINED" ||
+    data.status === "REJECTED"
+){
+
+    clearInterval(monitorTimer);
+
+    document.getElementById(
+        "statusPix"
+    ).innerHTML =
+    '<span style="color:#ff4d4d;font-weight:800;">✗ PAGAMENTO RECUSADO</span><br><br>'+
+    'O pagamento não foi aprovado. Tente novamente ou use outro meio de pagamento.';
 }
 
 }catch(error){
@@ -6920,6 +7151,12 @@ console.error(error);
 );
 
 }
+
+function exibirAreaPublicacao(){
+    const pub = document.getElementById("publicacao");
+    if(pub) pub.style.display = "block";
+}
+
 // ==========================================
 // TESTE LOCAL - IMAGEM ESTENDIDA
 // NÃO ENVIA NADA PARA O SERVIDOR
@@ -9799,7 +10036,7 @@ function mostrarPixOferta(data, ehComprador){
         `;
 
         monitorarOferta(
-            data.paymentId,
+            data.mpOrderId || data.paymentId,
             carregarMinhasOfertasEnviadas
         );
 
@@ -9871,7 +10108,7 @@ src="${qrCodeUrl(data.qrCode)}"
       </div>
     `;
 
-    monitorarOferta(data.paymentId);
+    monitorarOferta(data.mpOrderId || data.paymentId);
 }
 
 async function copiarPixOferta(){
@@ -9890,7 +10127,7 @@ async function copiarPixOferta(){
     }
 }
 
-function monitorarOferta(paymentId, callback){
+function monitorarOferta(orderId, callback){
 
     clearInterval(offerMonitor);
 
@@ -9903,7 +10140,10 @@ function monitorarOferta(paymentId, callback){
                     const response =
                         await fetch(
                             "/api/payment-status/" +
-                            paymentId
+                            orderId,
+                            {
+                                headers: authHeaders({})
+                            }
                         );
 
                     const data =
@@ -10681,8 +10921,10 @@ async function abrirPagamentoOferta(offerId){
             await fetch(
                 "/api/offers/" +
                 encodeURIComponent(offerId) +
-                "/payment?email=" +
-                encodeURIComponent(emailPagamento)
+                "/payment",
+                {
+                    headers: authHeaders({})
+                }
             );
 
         const data =
@@ -10789,7 +11031,7 @@ async function abrirPagamentoOferta(offerId){
         `;
 
         monitorarOferta(
-            data.paymentId,
+            data.mpOrderId || data.paymentId,
             carregarMinhasOfertasEnviadas
         );
 

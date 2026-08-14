@@ -157,6 +157,7 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
         <button id="tabCupons" onclick="aba('cupons')">🎟️ CUPONS</button>
         <button id="tabSorteio" onclick="aba('sorteio')">🎲 SORTEIO</button>
         <button id="tabReferencia" onclick="aba('referencia')">📋 REFERÊNCIA</button>
+        <button id="tabColecionaveis" onclick="aba('colecionaveis')">🃏 COLECIONÁVEIS</button>
     </div>
 
     <main>
@@ -370,6 +371,200 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
             </div>
         </div>
 
+        <div id="viewColecionaveis" style="display:none;">
+            <div class="tabbar">
+                <button id="colTabResumo" class="ativa" onclick="colAba('resumo')">📊 RESUMO</button>
+                <button id="colTabCards" onclick="colAba('cards')">🃏 FIGURINHAS</button>
+                <button id="colTabPacks" onclick="colAba('packs')">🎁 PACOTES</button>
+                <button id="colTabUsuarios" onclick="colAba('usuarios')">👥 COLECIONADORES</button>
+                <button id="colTabCompras" onclick="colAba('compras')">🛒 COMPRAS</button>
+                <button id="colTabVendas" onclick="colAba('vendas')">💰 VENDAS</button>
+                <button id="colTabTrocas" onclick="colAba('trocas')">🤝 TROCAS</button>
+                <button id="colTabEstoque" onclick="colAba('estoque')">📦 ESTOQUE</button>
+                <button id="colTabTransacoes" onclick="colAba('transacoes')">💸 TRANSAÇÕES</button>
+                <button id="colTabConquistas" onclick="colAba('conquistas')">🏆 CONQUISTAS</button>
+            </div>
+
+            <div id="colViewResumo" style="padding-top:16px;">
+                <div class="grid" id="colResumoCards"></div>
+                <div class="card">
+                    <h3 style="color:#ffd400;margin-bottom:10px;">Figurinhas por raridade</h3>
+                    <div id="colResumoRaridade"></div>
+                </div>
+                <div class="card">
+                    <h3 style="color:#ffd400;margin-bottom:10px;">Negociações</h3>
+                    <div id="colResumoTrocas"></div>
+                </div>
+            </div>
+
+            <div id="colViewCards" style="display:none;padding-top:16px;">
+                <div class="card">
+                    <div class="toolbar">
+                        <input id="colCardBusca" placeholder="Buscar figurinha por nome ou número"
+                            onkeydown="if(event.key==='Enter')carregarColCards()">
+                        <select id="colCardRaridade" onchange="carregarColCards()">
+                            <option value="">Todas as raridades</option>
+                            <option value="COMUM">COMUM</option>
+                            <option value="INCOMUM">INCOMUM</option>
+                            <option value="RARA">RARA</option>
+                            <option value="EPICA">ÉPICA</option>
+                            <option value="LENDARIA">LENDÁRIA</option>
+                            <option value="MITICA">MÍTICA</option>
+                        </select>
+                        <select id="colCardStatus" onchange="carregarColCards()">
+                            <option value="">Todos os status</option>
+                            <option value="true">Ativo</option>
+                            <option value="false">Inativo</option>
+                        </select>
+                        <button onclick="carregarColCards()">BUSCAR</button>
+                    </div>
+                    <div style="overflow:auto;max-height:70vh;">
+                        <table id="colCardTabela">
+                            <thead>
+                                <tr>
+                                    <th>#</th><th>Nome</th><th>Raridade</th>
+                                    <th>Arte</th><th>Status</th><th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="paginacao" id="colCardPag"></div>
+                </div>
+            </div>
+
+            <div id="colViewPacks" style="display:none;padding-top:16px;">
+                <div class="card">
+                    <div style="overflow:auto;max-height:70vh;">
+                        <table id="colPackTabela">
+                            <thead>
+                                <tr>
+                                    <th>ID</th><th>Pacote</th><th>Preço</th>
+                                    <th>Figurinhas</th><th>Descrição</th><th>Status</th><th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="colViewUsuarios" style="display:none;padding-top:16px;">
+                <div class="card">
+                    <div style="overflow:auto;max-height:70vh;">
+                        <table id="colUsuarioTabela">
+                            <thead>
+                                <tr>
+                                    <th>ID</th><th>Nome</th><th>E-mail</th>
+                                    <th>Diferentes</th><th>Total</th><th>Repetidas</th>
+                                    <th>Conquistas</th><th>Álbum</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="colViewCompras" style="display:none;padding-top:16px;">
+                <div class="card">
+                    <div style="overflow:auto;max-height:70vh;">
+                        <table id="colCompraTabela">
+                            <thead>
+                                <tr>
+                                    <th>ID</th><th>Data</th><th>Usuário</th>
+                                    <th>Pacote</th><th>Valor</th><th>Qtd</th><th>Status</th><th>Pedido</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="colViewVendas" style="display:none;padding-top:16px;">
+                <div class="card">
+                    <div style="overflow:auto;max-height:70vh;">
+                        <table id="colVendaTabela">
+                            <thead>
+                                <tr>
+                                    <th>ID</th><th>Data</th><th>Figurinha</th>
+                                    <th>Comprador</th><th>Vendedor</th>
+                                    <th>Qtd</th><th>Total</th><th>Taxa</th><th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="colViewTrocas" style="display:none;padding-top:16px;">
+                <div class="card">
+                    <div style="overflow:auto;max-height:70vh;">
+                        <table id="colTrocaTabela">
+                            <thead>
+                                <tr>
+                                    <th>ID</th><th>Criada</th><th>Atualizada</th>
+                                    <th>Proponente</th><th>Recebedor</th>
+                                    <th>Dinheiro</th><th>Valor</th><th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="colViewEstoque" style="display:none;padding-top:16px;">
+                <div class="card">
+                    <div style="overflow:auto;max-height:70vh;">
+                        <table id="colEstoqueTabela">
+                            <thead>
+                                <tr>
+                                    <th>#</th><th>Nome</th><th>Raridade</th>
+                                    <th>Em circulação</th><th>Listado</th>
+                                    <th>Em troca</th><th>Disponível</th><th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="colViewTransacoes" style="display:none;padding-top:16px;">
+                <div class="card">
+                    <div style="overflow:auto;max-height:70vh;">
+                        <table id="colTransacaoTabela">
+                            <thead>
+                                <tr>
+                                    <th>ID</th><th>Data</th><th>Usuário</th>
+                                    <th>Tipo</th><th>Detalhe</th><th>Valor</th><th>Ref</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="colViewConquistas" style="display:none;padding-top:16px;">
+                <div class="card">
+                    <div style="overflow:auto;max-height:70vh;">
+                        <table id="colConquistaTabela">
+                            <thead>
+                                <tr>
+                                    <th>Ícone</th><th>Nome</th><th>Descrição</th><th>Desbloqueios</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </main>
 </div>
 
@@ -438,7 +633,7 @@ function sairAdmin(){
 
 function aba(nome){
     abaAtual = nome;
-    for(const n of ["resumo","espacos","transacoes","usuarios","logs","cupons","sorteio","referencia"]){
+    for(const n of ["resumo","espacos","transacoes","usuarios","logs","cupons","sorteio","referencia","colecionaveis"]){
         const bt = document.getElementById("tab" + n.charAt(0).toUpperCase() + n.slice(1));
         const vw = document.getElementById("view" + n.charAt(0).toUpperCase() + n.slice(1));
         if(bt) bt.className = n === nome ? "ativa" : "";
@@ -452,6 +647,7 @@ function aba(nome){
     if(nome === "cupons") carregarCupons();
     if(nome === "sorteio") carregarSorteio();
     if(nome === "referencia") carregarNotas();
+    if(nome === "colecionaveis") colAba("resumo");
 }
 
 const fmtDin = (n) => "R$ " + Number(n || 0).toLocaleString("pt-BR", {minimumFractionDigits: 2});
@@ -892,6 +1088,426 @@ async function removerAviso(){
     try {
         await api("/api/admin/sorteio/aviso", { method: "DELETE" });
         carregarSorteio();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+/* =========================================================
+   COLECIONÁVEIS (admin)
+   Consome /api/colecionaveis/admin/* — protegidas por authAdmin.
+========================================================= */
+
+function colAba(nome){
+    for(const n of ["resumo","cards","packs","usuarios","compras","vendas","trocas","estoque","transacoes","conquistas"]){
+        const bt = document.getElementById("colTab" + n.charAt(0).toUpperCase() + n.slice(1));
+        const vw = document.getElementById("colView" + n.charAt(0).toUpperCase() + n.slice(1));
+        if(bt) bt.className = n === nome ? "ativa" : "";
+        if(vw) vw.style.display = n === nome ? "block" : "none";
+    }
+    if(nome === "resumo") carregarColResumo();
+    if(nome === "cards") carregarColCards();
+    if(nome === "packs") carregarColPacks();
+    if(nome === "usuarios") carregarColUsuarios();
+    if(nome === "compras") carregarColCompras();
+    if(nome === "vendas") carregarColVendas();
+    if(nome === "trocas") carregarColTrocas();
+    if(nome === "estoque") carregarColEstoque();
+    if(nome === "transacoes") carregarColTransacoes();
+    if(nome === "conquistas") carregarColConquistas();
+}
+
+const fmtColDin = (n) => "R$ " + Number(n || 0).toLocaleString("pt-BR", {minimumFractionDigits: 2});
+
+const COL_RAR_COLORES = {
+    COMUM:"#9aa0a6", INCOMUM:"#2ecc71", RARA:"#3b82f6",
+    EPICA:"#a855f7", LENDARIA:"#ffbf40", MITICA:"#d7263d"
+};
+const COL_STATUS_PILL = {
+    pending:"pendente", paid:"pago", PENDING:"pendente", COMPLETED:"pago",
+    COUNTER_OFFER:"pendente", ACCEPTED:"pendente", WAITING_PAYMENT:"pendente",
+    PAID:"pago", PROCESSING:"pendente", active:"available", sold:"reserved",
+    cancelled:"available", CANCELLED:"pendente", DECLINED:"pendente",
+    EXPIRED:"pendente", DISPUTED:"pendente"
+};
+function colPill(status){
+    const cls = COL_STATUS_PILL[status] || "available";
+    return "<span class='pill " + cls + "'>" + esc(status) + "</span>";
+}
+function colRar(r){
+    const cor = COL_RAR_COLORES[r] || "#aaa";
+    return "<span style='color:" + cor + ";font-weight:800;'>" + esc(r) + "</span>";
+}
+
+async function carregarColResumo(){
+    try {
+        const d = await api("/api/colecionaveis/admin/resumo");
+        const cards = [
+            ["Coleção", esc(d.colecao.name || "")],
+            ["Figurinhas", fmtNum(d.colecao.cards)],
+            ["Em circulação", fmtNum(d.figurinhas_em_circulacao)],
+            ["Colecionadores", fmtNum(d.colecionadores)],
+            ["Compradores", fmtNum(d.compradores)],
+            ["Pacotes vendidos", fmtNum(d.pacotes.vendas_pacotes)],
+            ["Receita pacotes", fmtColDin(d.pacotes.receita_pacotes)],
+            ["Vendas mercado", fmtNum(d.mercado.vendas_mercado)],
+            ["Receita mercado", fmtColDin(d.mercado.receita_mercado)],
+            ["Conquistas", fmtNum(d.conquistas.desbloqueadas) + "/" + fmtNum(d.conquistas.total)]
+        ];
+        document.getElementById("colResumoCards").innerHTML =
+            cards.map(([l,v]) => "<div class='metric'><b>" + v + "</b><span>" + l + "</span></div>").join("");
+
+        const raridade = (d.cardsPorRaridade || [])
+            .slice()
+            .sort((a,b) => (["COMUM","INCOMUM","RARA","EPICA","LENDARIA","MITICA"].indexOf(a.rarity) - ["COMUM","INCOMUM","RARA","EPICA","LENDARIA","MITICA"].indexOf(b.rarity)));
+        document.getElementById("colResumoRaridade").innerHTML =
+            raridade.map(r =>
+                "<div style='display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e1e1e;'>" +
+                "<span>" + colRar(r.rarity) + "</span>" +
+                "<b>" + fmtNum(r.qtd) + " (ativos: " + fmtNum(r.ativos) + ")</b></div>"
+            ).join("") || "<div class='fade'>Sem figurinhas.</div>";
+
+        const tr = d.trocas || {};
+        document.getElementById("colResumoTrocas").innerHTML =
+            "<div style='display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e1e1e;'>" +
+            "<span class='fade'>Total</span><b>" + fmtNum(tr.total) + "</b></div>" +
+            "<div style='display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e1e1e;'>" +
+            "<span class='fade'>Em andamento</span><b>" + fmtNum(tr.em_andamento) + "</b></div>" +
+            "<div style='display:flex;justify-content:space-between;padding:6px 0;'>" +
+            "<span class='fade'>Concluídas</span><b>" + fmtNum(tr.concluidas) + "</b></div>";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+let colCardsCache = [];
+async function carregarColCards(){
+    const busca = (document.getElementById("colCardBusca").value || "").trim().toLowerCase();
+    const raridade = document.getElementById("colCardRaridade").value;
+    const status = document.getElementById("colCardStatus").value;
+    try {
+        if(!colCardsCache.length){
+            const d = await api("/api/colecionaveis/admin/cards");
+            colCardsCache = d.cards || [];
+        }
+        let lista = colCardsCache;
+        if(busca){
+            lista = lista.filter(c =>
+                String(c.name).toLowerCase().includes(busca) ||
+                String(c.number).includes(busca)
+            );
+        }
+        if(raridade) lista = lista.filter(c => c.rarity === raridade);
+        if(status !== "") lista = lista.filter(c => String(!!c.is_active) === status);
+
+        const tbody = document.querySelector("#colCardTabela tbody");
+        tbody.innerHTML = lista.map(c =>
+            "<tr>" +
+            "<td><b>#" + fmtNum(c.number) + "</b></td>" +
+            "<td>" + esc(c.name) + "</td>" +
+            "<td>" + colRar(c.rarity) + "</td>" +
+            "<td>" + (c.image_url ? "<a href='" + esc(c.image_url) + "' target='_blank' style='color:#4dc3ff;'>arte</a>" : "<span class='fade'>—</span>") + "</td>" +
+            "<td>" + (c.is_active ? "<span class='pill paid'>ativo</span>" : "<span class='pill available'>inativo</span>") + "</td>" +
+            "<td>" +
+              "<button class='sec' onclick='editarColCard(" + c.id + ")' style='margin-right:4px;'>✏️</button>" +
+              "<button class='sec' onclick='toggleColCard(" + c.id + ")'>" + (c.is_active ? "🔒" : "✅") + "</button>" +
+            "</td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='6' class='fade'>Nenhuma figurinha encontrada.</td></tr>";
+        document.getElementById("colCardPag").innerHTML =
+            "<span>" + fmtNum(lista.length) + " figurinha(s)</span>";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function editarColCard(id){
+    const c = colCardsCache.find(x => x.id === id);
+    if(!c) return;
+    const name = prompt("Nome da figurinha:", c.name);
+    if(name === null) return;
+    const number = prompt("Número:", c.number);
+    if(number === null) return;
+    const raridade = prompt("Raridade (COMUM, INCOMUM, RARA, EPICA, LENDARIA, MITICA):", c.rarity);
+    if(raridade === null) return;
+    const descricao = prompt("Descrição (Enter mantém, digite - para apagar):", c.description || "");
+    const imageUrl = prompt("URL da arte (opcional, https:// — Enter mantém, digite - para apagar):", c.image_url || "");
+    const body = { name: name.trim() };
+    const num = Number(number);
+    if(!Number.isInteger(num) || num < 1){ alert("Número inválido."); return; }
+    body.number = num;
+    body.rarity = raridade.trim().toUpperCase();
+    if(descricao !== null && descricao !== "") body.description = descricao === "-" ? null : descricao;
+    if(imageUrl !== null) body.image_url = imageUrl === "-" ? "" : imageUrl.trim();
+    try {
+        await api("/api/colecionaveis/admin/cards/" + id, {
+            method: "POST",
+            body: JSON.stringify(body)
+        });
+        colCardsCache = [];
+        carregarColCards();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function toggleColCard(id){
+    const c = colCardsCache.find(x => x.id === id);
+    if(!c) return;
+    if(!confirm("Mudar a figurinha #" + c.number + " para " + (c.is_active ? "INATIVA" : "ATIVA") + "?")) return;
+    try {
+        await api("/api/colecionaveis/admin/cards/" + id, {
+            method: "POST",
+            body: JSON.stringify({ is_active: !c.is_active })
+        });
+        colCardsCache = [];
+        carregarColCards();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+let colPacksCache = [];
+async function carregarColPacks(){
+    try {
+        if(!colPacksCache.length){
+            const d = await api("/api/colecionaveis/admin/packs");
+            colPacksCache = d.packs || [];
+        }
+        const tbody = document.querySelector("#colPackTabela tbody");
+        tbody.innerHTML = colPacksCache.map(p =>
+            "<tr>" +
+            "<td>" + p.id + "</td>" +
+            "<td><b>" + esc(p.name) + "</b></td>" +
+            "<td>" + fmtColDin(p.price) + "</td>" +
+            "<td>" + fmtNum(p.sticker_quantity) + "</td>" +
+            "<td>" + esc(p.description || "") + "</td>" +
+            "<td>" + (p.is_active ? "<span class='pill paid'>ativo</span>" : "<span class='pill available'>inativo</span>") + "</td>" +
+            "<td>" +
+              "<button class='sec' onclick='editarColPack(" + p.id + ")' style='margin-right:4px;'>✏️</button>" +
+              "<button class='sec' onclick='toggleColPack(" + p.id + ")'>" + (p.is_active ? "🔒" : "✅") + "</button>" +
+            "</td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='7' class='fade'>Nenhum pacote.</td></tr>";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function toggleColPack(id){
+    const p = colPacksCache.find(x => x.id === id);
+    if(!p) return;
+    if(!confirm("Mudar o pacote " + esc(p.name) + " para " + (p.is_active ? "INATIVO" : "ATIVO") + "?")) return;
+    try {
+        await api("/api/colecionaveis/admin/packs/" + id, {
+            method: "POST",
+            body: JSON.stringify({ is_active: !p.is_active })
+        });
+        colPacksCache = [];
+        carregarColPacks();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function editarColPack(id){
+    const p = colPacksCache.find(x => x.id === id);
+    if(!p) return;
+    const preco = prompt("Preço (R$):", p.price);
+    if(preco === null) return;
+    const qtd = prompt("Quantidade de figurinhas:", p.sticker_quantity);
+    if(qtd === null) return;
+    const nome = prompt("Nome do pacote:", p.name);
+    if(nome === null) return;
+    const desc = prompt("Descrição (Enter mantém, digite - para apagar):", p.description || "");
+    const body = {};
+    const price = Number(String(preco).replace(",", "."));
+    if(!isFinite(price) || price <= 0){ alert("Preço inválido."); return; }
+    body.price = Math.round(price * 100) / 100;
+    const quantidade = Number(qtd);
+    if(!Number.isInteger(quantidade) || quantidade < 1 || quantidade > 100){ alert("Quantidade inválida."); return; }
+    body.sticker_quantity = quantidade;
+    body.name = nome.trim();
+    if(!body.name){ alert("Nome inválido."); return; }
+    if(desc !== null && desc !== "") body.description = desc === "-" ? null : desc;
+    try {
+        await api("/api/colecionaveis/admin/packs/" + id, {
+            method: "POST",
+            body: JSON.stringify(body)
+        });
+        colPacksCache = [];
+        carregarColPacks();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function carregarColUsuarios(){
+    try {
+        const d = await api("/api/colecionaveis/admin/colecionadores");
+        const tbody = document.querySelector("#colUsuarioTabela tbody");
+        tbody.innerHTML = d.colecionadores.map(u =>
+            "<tr>" +
+            "<td>" + u.id + "</td>" +
+            "<td>" + esc(u.nome) + "</td>" +
+            "<td>" + esc(u.email) + "</td>" +
+            "<td><b>" + fmtNum(u.diferentes) + "</b></td>" +
+            "<td>" + fmtNum(u.total_figurinhas) + "</td>" +
+            "<td>" + fmtNum(u.repetidas) + "</td>" +
+            "<td>" + fmtNum(u.conquistas) + "</td>" +
+            "<td><button class='sec' onclick='verColAlbum(" + u.id + ")'>📖 ÁLBUM</button></td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='8' class='fade'>Nenhum colecionador ainda.</td></tr>";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function verColAlbum(id){
+    try {
+        const d = await api("/api/colecionaveis/admin/usuario/" + id);
+        const p = d.progresso;
+        const resumo =
+            "<div style='margin-bottom:12px;padding:12px;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:10px;'>" +
+            "<b>" + esc(d.usuario.nome) + "</b> <span class='fade'>(" + esc(d.usuario.email) + ")</span><br>" +
+            "Progresso: <b style='color:#ffd400;'>" + fmtNum(p.diferentes) + "/" + fmtNum(p.total) + "</b>" +
+            " • Repetidas: " + fmtNum(p.repetidas) +
+            (p.album_completo ? " • <span class='pill paid'>ÁLBUM COMPLETO</span>" : "") +
+            "</div>";
+        const cards = d.cards.map(c =>
+            "<div style='display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #1e1e1e;'>" +
+            "<b style='width:40px;'>#" + String(c.number).padStart(3,"0") + "</b>" +
+            "<span style='flex:1;'>" + esc(c.name) + "</span>" +
+            colRar(c.rarity) +
+            "<b>" + (c.quantidade > 0 ? c.quantidade + "x" : "<span class='fade'>—</span>") + "</b>" +
+            "</div>"
+        ).join("");
+        const conquistas = d.conquistas.length
+            ? d.conquistas.map(c => c.icon + " " + esc(c.name)).join(" • ")
+            : "Nenhuma conquista ainda.";
+        alert(resumo + "\n\nCONQUISTAS:\n" + conquistas);
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function carregarColCompras(){
+    try {
+        const d = await api("/api/colecionaveis/admin/compras");
+        const tbody = document.querySelector("#colCompraTabela tbody");
+        tbody.innerHTML = d.compras.map(c =>
+            "<tr>" +
+            "<td>" + c.id + "</td>" +
+            "<td class='fade'>" + fmtData(c.created_at) + "</td>" +
+            "<td>" + esc(c.nome) + "<br><span class='fade'>" + esc(c.email) + "</span></td>" +
+            "<td>" + esc(c.pack_name || "—") + "</td>" +
+            "<td>" + fmtColDin(c.price) + "</td>" +
+            "<td>" + fmtNum(c.quantity) + "</td>" +
+            "<td>" + colPill(c.status) + (c.test ? " <span class='pill available'>teste</span>" : "") + "</td>" +
+            "<td class='mono'>" + esc(c.order_id || "") + "</td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='8' class='fade'>Nenhuma compra.</td></tr>";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function carregarColVendas(){
+    try {
+        const d = await api("/api/colecionaveis/admin/vendas");
+        const tbody = document.querySelector("#colVendaTabela tbody");
+        tbody.innerHTML = d.vendas.map(v =>
+            "<tr>" +
+            "<td>" + v.id + "</td>" +
+            "<td class='fade'>" + fmtData(v.created_at) + "</td>" +
+            "<td>#" + fmtNum(v.number) + " " + esc(v.card_name) + "<br>" + colRar(v.rarity) + "</td>" +
+            "<td>" + esc(v.buyer_nome) + "<br><span class='fade'>" + esc(v.buyer_email) + "</span></td>" +
+            "<td>" + esc(v.seller_nome) + "<br><span class='fade'>" + esc(v.seller_email) + "</span></td>" +
+            "<td>" + fmtNum(v.quantity) + "</td>" +
+            "<td>" + fmtColDin(v.total) + "</td>" +
+            "<td>" + fmtColDin(v.fee) + "</td>" +
+            "<td>" + colPill(v.status) + (v.test ? " <span class='pill available'>teste</span>" : "") + "</td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='9' class='fade'>Nenhuma venda no mercado.</td></tr>";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function carregarColTrocas(){
+    try {
+        const d = await api("/api/colecionaveis/admin/trades");
+        const tbody = document.querySelector("#colTrocaTabela tbody");
+        tbody.innerHTML = d.trades.map(t =>
+            "<tr>" +
+            "<td>" + t.id + "</td>" +
+            "<td class='fade'>" + fmtData(t.created_at) + "</td>" +
+            "<td class='fade'>" + fmtData(t.updated_at) + "</td>" +
+            "<td>" + esc(t.proposer_nome) + "</td>" +
+            "<td>" + esc(t.receiver_nome) + "</td>" +
+            "<td>" + (t.cash_direction ? esc(t.cash_direction) : "<span class='fade'>—</span>") + "</td>" +
+            "<td>" + (Number(t.cash_amount) > 0 ? fmtColDin(t.cash_amount) : "<span class='fade'>—</span>") + "</td>" +
+            "<td>" + colPill(t.status) + "</td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='8' class='fade'>Nenhuma troca.</td></tr>";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function carregarColEstoque(){
+    try {
+        const d = await api("/api/colecionaveis/admin/estoque");
+        const tbody = document.querySelector("#colEstoqueTabela tbody");
+        tbody.innerHTML = d.cards.map(c =>
+            "<tr>" +
+            "<td><b>#" + fmtNum(c.number) + "</b></td>" +
+            "<td>" + esc(c.name) + "</td>" +
+            "<td>" + colRar(c.rarity) + "</td>" +
+            "<td>" + fmtNum(c.em_circulacao) + "</td>" +
+            "<td>" + fmtNum(c.listado) + "</td>" +
+            "<td>" + fmtNum(c.em_troca) + "</td>" +
+            "<td><b style='color:#ffd400;'>" + fmtNum(c.disponivel) + "</b></td>" +
+            "<td>" + (c.is_active ? "<span class='pill paid'>ativo</span>" : "<span class='pill available'>inativo</span>") + "</td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='8' class='fade'>Sem dados de estoque.</td></tr>";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function carregarColTransacoes(){
+    try {
+        const d = await api("/api/colecionaveis/admin/transacoes");
+        const tbody = document.querySelector("#colTransacaoTabela tbody");
+        tbody.innerHTML = d.transacoes.map(t =>
+            "<tr>" +
+            "<td>" + t.id + "</td>" +
+            "<td class='fade'>" + fmtData(t.created_at) + "</td>" +
+            "<td>" + esc(t.nome) + "<br><span class='fade'>" + esc(t.email) + "</span></td>" +
+            "<td><span class='pill available'>" + esc(t.tipo) + "</span></td>" +
+            "<td>" + esc(t.detalhe || "") + "</td>" +
+            "<td>" + fmtColDin(t.valor) + "</td>" +
+            "<td class='mono'>" + esc(t.ref_id || "") + "</td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='7' class='fade'>Nenhuma transação.</td></tr>";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function carregarColConquistas(){
+    try {
+        const d = await api("/api/colecionaveis/admin/conquistas");
+        const tbody = document.querySelector("#colConquistaTabela tbody");
+        tbody.innerHTML = d.conquistas.map(c =>
+            "<tr>" +
+            "<td style='font-size:20px;'>" + esc(c.icon || "🏅") + "</td>" +
+            "<td><b>" + esc(c.name) + "</b></td>" +
+            "<td>" + esc(c.description || "") + "</td>" +
+            "<td><b style='color:#ffd400;'>" + fmtNum(c.desbloqueios) + "</b></td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='4' class='fade'>Nenhuma conquista.</td></tr>";
     } catch(err){
         alert("Erro: " + err.message);
     }

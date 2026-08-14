@@ -1,0 +1,1501 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MegaOutdoor Colecionáveis — Colha. Complete. Negocie.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+    --fundo:#0b0b0f;
+    --painel:#14141c;
+    --painel2:#1a1a26;
+    --borda:#262633;
+    --texto:#e8e8ee;
+    --muted:#8a8a9a;
+    --amarelo:#ffd400;
+    --laranja:#ff7a00;
+    --vermelho:#d7263d;
+    --verde:#2ecc71;
+    --azul:#3b82f6;
+    --roxo:#a855f7;
+    --ouro:#ffbf40;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+    background:var(--fundo);
+    color:var(--texto);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    background-image:
+        radial-gradient(1000px 500px at 80% -10%, rgba(255,122,0,.10), transparent 60%),
+        radial-gradient(800px 400px at 10% -10%, rgba(255,212,0,.08), transparent 60%);
+}
+a{color:var(--amarelo);text-decoration:none}
+button{font-family:'Inter',sans-serif;cursor:pointer}
+input,select,textarea{
+    font-family:'Inter',sans-serif;
+    background:#0f0f16;
+    border:1px solid var(--borda);
+    color:var(--texto);
+    border-radius:10px;
+    padding:10px 12px;
+    font-size:14px;
+    width:100%;
+}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--laranja)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#2a2a3a;border-radius:6px}
+.hidden{display:none!important}
+
+/* ===== HEADER ===== */
+.topo{
+    position:sticky;top:0;z-index:60;
+    display:flex;align-items:center;justify-content:space-between;
+    gap:16px;
+    background:rgba(11,11,15,.92);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--borda);
+    padding:12px 22px;
+}
+.topo .logo{display:flex;align-items:center;gap:10px;font-weight:800}
+.topo .logo .marca{
+    font-family:'Orbitron',sans-serif;
+    font-size:17px;letter-spacing:1px;
+    background:linear-gradient(90deg,var(--amarelo),var(--laranja));
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;
+}
+.topo .logo .sub{font-size:11px;color:var(--muted);font-weight:500}
+.topo-actions{display:flex;align-items:center;gap:10px}
+.btn{
+    border:none;border-radius:10px;padding:10px 16px;
+    font-weight:700;font-size:13px;
+    transition:transform .12s,box-shadow .12s,opacity .12s;
+}
+.btn:hover{transform:translateY(-1px)}
+.btn-amarelo{background:linear-gradient(90deg,var(--amarelo),var(--laranja));color:#141414}
+.btn-laranja{background:linear-gradient(90deg,var(--laranja),var(--vermelho));color:#fff}
+.btn-ghost{background:transparent;border:1px solid var(--borda);color:var(--texto)}
+.btn-ghost:hover{border-color:var(--amarelo)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.badge-user{
+    background:var(--painel);border:1px solid var(--borda);
+    border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;
+    display:flex;align-items:center;gap:8px;max-width:220px;
+}
+.badge-user .nome{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ===== HERO ===== */
+.hero{
+    text-align:center;padding:56px 20px 40px;
+    background:
+        radial-gradient(500px 200px at 50% 0%, rgba(255,212,0,.14), transparent 70%);
+}
+.hero h1{
+    font-family:'Orbitron',sans-serif;
+    font-size:clamp(30px,5vw,54px);
+    font-weight:900;letter-spacing:2px;line-height:1.1;
+    background:linear-gradient(90deg,#fff,var(--amarelo) 40%,var(--laranja));
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;
+}
+.hero p{color:var(--muted);font-size:16px;margin-top:14px;max-width:620px;margin-inline:auto;line-height:1.6}
+.hero .chips{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:22px}
+.chip{
+    background:var(--painel);border:1px solid var(--borda);
+    border-radius:999px;padding:8px 16px;font-size:13px;font-weight:600;color:var(--texto);
+}
+.chip b{color:var(--amarelo)}
+
+/* ===== PROGRESSO ===== */
+.progresso-wrap{max-width:860px;margin:0 auto;padding:0 20px 10px}
+.progresso-card{
+    background:var(--painel);border:1px solid var(--borda);
+    border-radius:16px;padding:18px 22px;
+}
+.progresso-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.progresso-top h3{font-size:15px}
+.progresso-top .num{font-family:'Orbitron',sans-serif;font-weight:800;color:var(--amarelo);font-size:20px}
+.barra{height:12px;background:#0f0f16;border:1px solid var(--borda);border-radius:999px;margin-top:12px;overflow:hidden}
+.barra-fill{
+    height:100%;width:0%;
+    background:linear-gradient(90deg,var(--amarelo),var(--laranja));
+    border-radius:999px;transition:width .5s ease;
+}
+.legenda{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--muted)}
+.legenda span b{color:var(--texto)}
+
+/* ===== NAV ABAS ===== */
+.nav-abas{
+    display:flex;gap:6px;justify-content:center;flex-wrap:wrap;
+    padding:18px 16px;position:sticky;top:58px;z-index:40;
+    background:rgba(11,11,15,.9);backdrop-filter:blur(8px);
+}
+.aba-btn{
+    border:1px solid var(--borda);background:var(--painel);
+    color:var(--muted);border-radius:999px;padding:9px 18px;
+    font-size:13px;font-weight:700;transition:all .12s;
+}
+.aba-btn:hover{color:var(--texto);border-color:var(--amarelo)}
+.aba-btn.ativa{
+    background:linear-gradient(90deg,var(--amarelo),var(--laranja));
+    color:#141414;border-color:transparent;
+}
+.aba-btn .contador{
+    background:rgba(255,255,255,.25);border-radius:999px;
+    padding:1px 8px;margin-left:6px;font-size:11px;
+}
+
+/* ===== CONTEUDO ===== */
+body{overflow-x:hidden}
+.conteudo{max-width:1100px;margin:0 auto;padding:10px 18px 80px;overflow-x:hidden}
+.secao{display:none;animation:fadeIn .25s ease}
+.secao.ativa{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.secao-titulo{font-size:20px;font-weight:800;margin:22px 0 6px}
+.secao-sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+
+.grid-cards{
+    display:grid;gap:12px;
+    grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+}
+.card-col{
+    background:var(--painel);border:1px solid var(--borda);
+    border-radius:14px;overflow:hidden;cursor:pointer;
+    transition:transform .15s,border-color .15s,box-shadow .15s;
+    display:flex;flex-direction:column;
+    position:relative;
+}
+.card-col:hover{transform:translateY(-3px);border-color:var(--amarelo);box-shadow:0 10px 24px rgba(0,0,0,.45)}
+.card-arte{
+    aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+    font-size:38px;position:relative;overflow:hidden;
+}
+.card-arte::before{
+    content:"";position:absolute;inset:0;
+    background:radial-gradient(circle at 30% 20%, rgba(255,255,255,.28), transparent 55%);
+    pointer-events:none;
+}
+.card-arte::after{
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.16) 50%,transparent 70%);
+    transform:translateX(-100%);
+    animation:shimmer 3.2s ease-in-out infinite;
+    pointer-events:none;
+}
+@keyframes shimmer{0%{transform:translateX(-100%)}55%,100%{transform:translateX(100%)}}
+.card-info{padding:10px 12px;display:flex;flex-direction:column;gap:4px;background:var(--painel)}
+.card-numero{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px}
+.card-nome{font-size:13px;font-weight:700;line-height:1.25;min-height:32px}
+.card-qtd{font-size:11px;color:var(--muted)}
+.card-qtd b{color:var(--amarelo)}
+
+.card-vazia{
+    background:var(--painel);border:1px dashed var(--borda);
+    border-radius:14px;aspect-ratio:1;display:flex;
+    flex-direction:column;align-items:center;justify-content:center;
+    gap:6px;color:var(--muted);font-size:26px;
+    transition:border-color .15s,color .15s;
+}
+.card-vazia:hover{border-color:var(--laranja);color:var(--texto)}
+.card-vazia span{font-size:10px;font-weight:700;letter-spacing:1px}
+
+/* raridades — visual de item colecionável */
+.r-COMUM .card-arte{background:linear-gradient(145deg,#2b2b3a,#232330);border-bottom:3px solid #9aa0a6}
+.r-INCOMUM .card-arte{background:linear-gradient(145deg,#1d3a34,#142824);border-bottom:3px solid var(--verde);box-shadow:inset 0 0 22px rgba(46,204,113,.18)}
+.r-RARA .card-arte{background:linear-gradient(145deg,#17305c,#112240);border-bottom:3px solid var(--azul);box-shadow:inset 0 0 22px rgba(59,130,246,.22)}
+.r-EPICA .card-arte{background:linear-gradient(145deg,#3b1d5e,#2a1444);border-bottom:3px solid var(--roxo);box-shadow:inset 0 0 24px rgba(168,85,247,.25)}
+.r-LENDARIA .card-arte{background:linear-gradient(145deg,#4a3200,#332200);border-bottom:3px solid var(--ouro);box-shadow:0 0 18px rgba(255,191,64,.35),inset 0 0 26px rgba(255,191,64,.2)}
+.r-MITICA .card-arte{background:linear-gradient(145deg,#4d0f1c,#2e0711);border-bottom:3px solid var(--vermelho);box-shadow:0 0 24px rgba(215,38,61,.5),inset 0 0 26px rgba(215,38,61,.25)}
+.r-LENDARIA,.r-MITICA{animation:brilho 2.6s ease-in-out infinite}
+@keyframes brilho{0%,100%{filter:brightness(1)}50%{filter:brightness(1.14)}}
+.pill-raridade{
+    font-size:10px;font-weight:800;letter-spacing:.8px;
+    padding:2px 8px;border-radius:999px;align-self:flex-start;
+}
+.pill-COMUM{background:#3a3a48;color:#cfd2d6}
+.pill-INCOMUM{background:rgba(46,204,113,.18);color:var(--verde)}
+.pill-RARA{background:rgba(59,130,246,.18);color:#7cb3ff}
+.pill-EPICA{background:rgba(168,85,247,.18);color:#c89bff}
+.pill-LENDARIA{background:rgba(255,191,64,.18);color:var(--ouro)}
+.pill-MITICA{background:rgba(215,38,61,.22);color:#ff7d8d}
+
+/* ===== FILTROS ===== */
+.filtros{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;align-items:center}
+.filtros input{width:200px}
+.filtros select{width:160px}
+.filtros .spacer{flex:1}
+.filtros .resultado{font-size:12px;color:var(--muted)}
+
+/* ===== PACOTES ===== */
+.grid-packs{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.pack-card{
+    background:var(--painel);border:1px solid var(--borda);
+    border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:10px;
+    position:relative;overflow:hidden;
+    transition:transform .15s,border-color .15s,box-shadow .15s;
+}
+.pack-card:hover{transform:translateY(-3px);border-color:var(--laranja);box-shadow:0 12px 28px rgba(0,0,0,.4)}
+.pack-card::before{
+    content:"";position:absolute;inset:0;pointer-events:none;opacity:.55;
+    background:
+        radial-gradient(300px 120px at 85% -10%, rgba(255,122,0,.22), transparent 60%),
+        linear-gradient(160deg, rgba(255,255,255,.06), transparent 40%);
+}
+.pack-card .icone{font-size:40px}
+.pack-card h3{font-family:'Orbitron',sans-serif;font-size:17px;letter-spacing:1px}
+.pack-card .preco{font-size:26px;font-weight:900;color:var(--amarelo)}
+.pack-card .preco small{font-size:13px;color:var(--muted);font-weight:600}
+.pack-card .desc{font-size:12px;color:var(--muted);line-height:1.5;flex:1}
+.pack-card .qtd{font-size:12px;font-weight:700;color:var(--texto)}
+.pack-card .qtd b{color:var(--laranja)}
+.pack-card .btn{position:relative;z-index:1}
+.pack-bronze{border-color:#8a6d3b}
+.pack-bronze h3,.pack-bronze .preco{color:#c9a86a}
+.pack-prata{border-color:#7a8a99}
+.pack-prata h3,.pack-prata .preco{color:#c0d0dd}
+.pack-ouro{border-color:#b8860b}
+.pack-ouro h3,.pack-ouro .preco{color:#ffd700}
+.pack-especial{border-color:#7b3ff2}
+.pack-especial h3,.pack-especial .preco{color:#c39bff}
+.pack-especial{box-shadow:0 0 22px rgba(123,63,242,.25)}
+
+.prob-wrap{
+    background:var(--painel);border:1px solid var(--borda);
+    border-radius:16px;padding:20px;margin-top:26px;
+}
+.prob-wrap h4{font-size:15px;margin-bottom:14px}
+.prob-linha{display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:13px}
+.prob-linha .nome{width:110px;font-weight:700}
+.prob-barra{flex:1;height:10px;background:#0f0f16;border:1px solid var(--borda);border-radius:999px;overflow:hidden}
+.prob-barra .fill{height:100%;border-radius:999px}
+.prob-linha .pct{width:52px;text-align:right;font-weight:700;color:var(--muted)}
+.prob-aviso{font-size:11px;color:var(--muted);margin-top:14px;line-height:1.5}
+
+/* ===== LISTAGEM MERCADO ===== */
+.grid-listing{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.listing-card{
+    background:var(--painel);border:1px solid var(--borda);
+    border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;
+    transition:border-color .15s;
+}
+.listing-card:hover{border-color:var(--amarelo)}
+.listing-top{display:flex;gap:12px;align-items:center}
+.listing-mini-arte{
+    width:52px;height:52px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;
+}
+.listing-top .info{flex:1;min-width:0}
+.listing-top .info .n{font-weight:700;font-size:14px;line-height:1.2}
+.listing-top .info .muted{font-size:11px;color:var(--muted)}
+.listing-preco{font-size:19px;font-weight:900;color:var(--amarelo)}
+.listing-preco small{font-size:11px;color:var(--muted);font-weight:600}
+.listing-vendedor{font-size:12px;color:var(--muted)}
+.paginacao{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:22px;font-size:13px}
+.paginacao .btn{padding:8px 14px}
+
+/* ===== MINHAS VENDAS ===== */
+.minhas-vendas{background:var(--painel);border:1px solid var(--borda);border-radius:16px;padding:18px;margin-top:20px}
+.minhas-vendas h4{font-size:14px;margin-bottom:14px}
+.venda-item{
+    display:flex;align-items:center;gap:12px;
+    border-top:1px solid var(--borda);padding:12px 0;
+    flex-wrap:wrap;
+}
+.venda-item:first-of-type{border-top:none;padding-top:4px}
+.venda-item .info{flex:1;min-width:180px}
+.venda-item .info .n{font-weight:600;font-size:13px}
+.venda-item .info .muted{font-size:11px;color:var(--muted)}
+.venda-item .status-pill{font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px}
+.status-ativo{background:rgba(46,204,113,.15);color:var(--verde)}
+.status-sold{background:rgba(59,130,246,.15);color:#7cb3ff}
+.status-cancelled{background:rgba(255,255,255,.08);color:var(--muted)}
+
+/* ===== TROCAS ===== */
+.grid-trades{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(330px,1fr))}
+.trade-card{
+    background:var(--painel);border:1px solid var(--borda);
+    border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:12px;
+}
+.trade-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.trade-top .vs{font-weight:800;font-size:12px;color:var(--muted)}
+.trade-status{font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px}
+.ts-PENDING{background:rgba(255,122,0,.15);color:var(--laranja)}
+.ts-COUNTER_OFFER{background:rgba(168,85,247,.15);color:#c89bff}
+.ts-ACCEPTED,.ts-WAITING_PAYMENT,.ts-PAID,.ts-PROCESSING{background:rgba(59,130,246,.15);color:#7cb3ff}
+.ts-COMPLETED{background:rgba(46,204,113,.15);color:var(--verde)}
+.ts-DECLINED,.ts-CANCELLED,.ts-EXPIRED,.ts-DISPUTED{background:rgba(255,255,255,.08);color:var(--muted)}
+.trade-lado{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.trade-lado .label{font-size:10px;color:var(--muted);font-weight:700;width:100%}
+.mini-fig{
+    background:var(--painel2);border:1px solid var(--borda);
+    border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;
+    display:flex;align-items:center;gap:5px;
+}
+.mini-fig .emoji{font-size:15px}
+.trade-dinheiro{font-size:12px;color:var(--amarelo);font-weight:700}
+.trade-acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.trade-acoes .btn{padding:8px 12px;font-size:12px}
+.trade-exp{font-size:11px;color:var(--muted)}
+
+/* chat */
+.chat-box{
+    background:#0f0f16;border:1px solid var(--borda);
+    border-radius:12px;padding:12px;max-height:220px;overflow-y:auto;
+    display:flex;flex-direction:column;gap:8px;
+}
+.chat-msg{max-width:80%;border-radius:10px;padding:8px 12px;font-size:12px;line-height:1.4}
+.chat-msg.minha{background:linear-gradient(90deg,var(--laranja),var(--vermelho));color:#fff;align-self:flex-end}
+.chat-msg.deles{background:var(--painel2);color:var(--texto);align-self:flex-start}
+.chat-msg .quem{font-size:10px;font-weight:700;opacity:.8}
+.chat-input{display:flex;gap:8px;margin-top:8px}
+.chat-input input{flex:1}
+
+/* ===== MODAL ===== */
+.modal-overlay{
+    position:fixed;inset:0;z-index:100;
+    background:rgba(0,0,0,.7);backdrop-filter:blur(4px);
+    display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.modal{
+    background:var(--painel);border:1px solid var(--borda);
+    border-radius:18px;max-width:460px;width:100%;
+    overflow:hidden;animation:pop .18s ease;
+}
+@keyframes pop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+.modal-arte{
+    height:230px;display:flex;align-items:center;justify-content:center;
+    font-size:90px;position:relative;
+}
+.modal-arte::after{
+    content:"";position:absolute;inset:0;
+    background:radial-gradient(circle at 30% 20%, rgba(255,255,255,.3), transparent 55%);
+    pointer-events:none;
+}
+.modal-body{padding:22px}
+.modal-body h2{font-size:22px;margin:10px 0 4px}
+.modal-body .num{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:1px}
+.modal-body .desc{font-size:13px;color:var(--muted);line-height:1.6;margin:10px 0}
+.modal-body .qtd-linha{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+.modal-acoes{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.modal-fechar{
+    position:absolute;top:12px;right:12px;z-index:2;
+    background:rgba(0,0,0,.4);border:none;color:#fff;
+    width:32px;height:32px;border-radius:50%;font-size:16px;
+}
+.modal-form{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.modal-form label{font-size:12px;font-weight:700;color:var(--muted)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* ===== TOAST ===== */
+.toast-wrap{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;align-items:center}
+.toast{
+    background:var(--painel2);border:1px solid var(--borda);
+    border-radius:12px;padding:12px 18px;font-size:13px;font-weight:600;
+    box-shadow:0 8px 30px rgba(0,0,0,.5);animation:toastIn .2s ease;
+    max-width:90vw;text-align:center;
+}
+.toast.ok{border-color:var(--verde)}
+.toast.erro{border-color:var(--vermelho);color:#ffb3bd}
+.toast.info{border-color:var(--azul)}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ===== LOGIN ===== */
+.login-panel{text-align:center;padding:24px}
+.login-panel h2{font-size:20px;margin-bottom:6px}
+.login-panel .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+.login-tabs{display:flex;gap:6px;margin-bottom:16px;justify-content:center}
+.login-tabs button{
+    background:var(--painel2);border:1px solid var(--borda);
+    color:var(--muted);border-radius:999px;padding:7px 16px;font-size:12px;font-weight:700;
+}
+.login-tabs button.ativa{background:linear-gradient(90deg,var(--amarelo),var(--laranja));color:#141414;border-color:transparent}
+.login-form{display:flex;flex-direction:column;gap:12px;text-align:left}
+.login-form label{font-size:12px;font-weight:700;color:var(--muted)}
+.login-erro{color:#ffb3bd;font-size:12px;min-height:16px}
+
+/* ===== PERFIL ===== */
+.perfil-wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.perfil-card{background:var(--painel);border:1px solid var(--borda);border-radius:16px;padding:20px}
+.perfil-card h4{font-size:14px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.perfil-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat-box{background:var(--painel2);border:1px solid var(--borda);border-radius:10px;padding:12px;text-align:center}
+.stat-box .v{font-family:'Orbitron',sans-serif;font-size:20px;font-weight:800;color:var(--amarelo)}
+.stat-box .l{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.5px;margin-top:2px}
+.conquista{
+    display:flex;gap:12px;align-items:center;
+    background:var(--painel2);border:1px solid var(--borda);
+    border-radius:12px;padding:12px;margin-bottom:10px;
+}
+.conquista .icone{font-size:26px}
+.conquista .info{flex:1}
+.conquista .info .n{font-weight:700;font-size:13px}
+.conquista .info .d{font-size:11px;color:var(--muted);margin-top:2px}
+.conquista.lock{opacity:.45}
+.conquista.lock .icone{filter:grayscale(1)}
+.hist-linha{
+    display:flex;justify-content:space-between;gap:10px;align-items:center;
+    border-top:1px solid var(--borda);padding:10px 0;font-size:12px;
+}
+.hist-linha:first-of-type{border-top:none}
+.hist-linha .detalhe{color:var(--texto);line-height:1.4}
+.hist-linha .quando{color:var(--muted);font-size:11px;white-space:nowrap}
+.hist-linha .valor{font-weight:800;color:var(--amarelo)}
+
+/* ===== RESPONSIVO ===== */
+@media (max-width:640px){
+    .topo{padding:10px 12px;gap:8px;flex-wrap:wrap}
+    .topo .logo .marca{font-size:15px}
+    .topo .btn{padding:8px 11px;font-size:12px}
+    .topo-actions{flex-wrap:wrap}
+    .nav-abas{top:0;padding:12px 8px}
+    .aba-btn{font-size:11px;padding:8px 11px}
+    .filtros input,.filtros select{width:100%;min-width:0}
+    .grid-cards{grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px}
+    .grid-listing{grid-template-columns:1fr}
+    .grid-trades{grid-template-columns:1fr}
+    .grid-packs{grid-template-columns:1fr}
+    .hero{padding:34px 14px 24px}
+    .badge-user .nome{display:none}
+    .row2{grid-template-columns:1fr}
+    .progresso-wrap{padding:0 12px}
+    .conteudo{padding:8px 12px 80px}
+    .hist-linha .quando{white-space:normal}
+    .prob-linha .nome{width:auto}
+    .trade-top{flex-wrap:wrap}
+}
+@media (max-width:380px){
+    .grid-cards{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
+    .card-nome{font-size:11px}
+    .aba-btn{padding:7px 8px;font-size:10px}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<header class="topo">
+    <div class="logo">
+        <span style="font-size:24px">🃏</span>
+        <div>
+            <div class="marca">MEGAOUTDOOR</div>
+            <div class="sub">COLECIONÁVEIS</div>
+        </div>
+    </div>
+    <div class="topo-actions">
+        <div class="badge-user hidden" id="badgeUsuario">
+            <span>👤</span><span class="nome" id="badgeNome">Conta</span>
+        </div>
+        <button class="btn btn-amarelo" id="btnConta" onclick="abrirConta()">ENTRAR</button>
+        <a class="btn btn-ghost" href="/" style="text-decoration:none">← Voltar</a>
+    </div>
+</header>
+
+<!-- ===== HERO ===== -->
+<section class="hero">
+    <h1>COLETE. COMPLETE. NEGOCIE.</h1>
+    <p>O álbum de figurinhas digitais do universo <b style="color:var(--amarelo)">MegaOutdoor</b>.
+    Abra pacotes, monte sua coleção de <b>100 figurinhas</b>, venda repetidas no mercado
+    e troque com outros colecionadores.</p>
+    <div class="chips">
+        <span class="chip">🎁 Pacotes a partir de <b>R$ 2,00</b></span>
+        <span class="chip">🔄 Troque figurinhas</span>
+        <span class="chip">💰 Venda repetidas</span>
+        <span class="chip">🏆 Desbloqueie conquistas</span>
+    </div>
+    <a class="btn btn-ghost" href="/#como-funciona" style="margin-top:20px;text-decoration:none;display:inline-block;">📖 COMO FUNCIONA</a>
+</section>
+
+<!-- ===== PROGRESSO ===== -->
+<section class="progresso-wrap">
+    <div class="progresso-card">
+        <div class="progresso-top">
+            <h3>📖 <span id="colecaoNome">Minha coleção</span></h3>
+            <div class="num"><span id="progressoNum">0/100</span></div>
+        </div>
+        <div class="barra"><div class="barra-fill" id="progressoFill"></div></div>
+        <div class="legenda">
+            <span>🆕 Diferentes: <b id="legendaDiferentes">0</b></span>
+            <span>🔁 Repetidas: <b id="legendaRepetidas">0</b></span>
+            <span>⭐ Raras: <b id="legendaRaras">0</b></span>
+        </div>
+        <div id="albumStatus" class="hidden" style="margin-top:12px;"></div>
+    </div>
+</section>
+
+<!-- ===== NAV ABAS ===== -->
+<nav class="nav-abas" id="navAbas">
+    <button class="aba-btn ativa" data-aba="album" onclick="mudarAba('album')">📖 ÁLBUM</button>
+    <button class="aba-btn" data-aba="acervo" onclick="mudarAba('acervo')">🗂️ ACERVO</button>
+    <button class="aba-btn" data-aba="packs" onclick="mudarAba('packs')">🎁 PACOTES</button>
+    <button class="aba-btn" data-aba="mercado" onclick="mudarAba('mercado')">🏪 MERCADO</button>
+    <button class="aba-btn" data-aba="trocas" onclick="mudarAba('trocas')">🤝 TROCAS</button>
+    <button class="aba-btn" data-aba="perfil" onclick="mudarAba('perfil')">👤 PERFIL</button>
+</nav>
+
+<!-- ===== CONTEUDO ===== -->
+<div class="conteudo">
+
+    <!-- ÁLBUM -->
+    <section class="secao ativa" id="secao-album">
+        <div class="secao-titulo">Meu Álbum</div>
+        <div class="secao-sub">Toque numa figurinha para ver detalhes.</div>
+        <div class="grid-cards" id="albumGrid"></div>
+    </section>
+
+    <!-- ACERVO -->
+    <section class="secao" id="secao-acervo">
+        <div class="secao-titulo">Meu Acervo</div>
+        <div class="secao-sub">Sua coleção de repetidas. Venda ou troque as que tiver em excesso.</div>
+        <div class="filtros">
+            <input id="acervoBusca" placeholder="🔎 Buscar figurinha..." oninput="carregarAcervo()">
+            <select id="acervoRaridade" onchange="carregarAcervo()">
+                <option value="">Todas as raridades</option>
+                <option value="COMUM">COMUM</option>
+                <option value="INCOMUM">INCOMUM</option>
+                <option value="RARA">RARA</option>
+                <option value="EPICA">ÉPICA</option>
+                <option value="LENDARIA">LENDÁRIA</option>
+                <option value="MITICA">MÍTICA</option>
+            </select>
+            <select id="acervoOrdenar" onchange="carregarAcervo()">
+                <option value="numero">Número</option>
+                <option value="raridade">Raridade</option>
+                <option value="recentes">Recentes</option>
+            </select>
+            <div class="spacer"></div>
+            <div class="resultado" id="acervoResultado"></div>
+        </div>
+        <div class="grid-cards" id="acervoGrid"></div>
+        <div class="paginacao" id="acervoPag"></div>
+
+        <div class="minhas-vendas" id="minhasVendas">
+            <h4>📦 Meus anúncios ativos</h4>
+            <div id="minhasVendasLista"></div>
+        </div>
+    </section>
+
+    <!-- PACOTES -->
+    <section class="secao" id="secao-packs">
+        <div class="secao-titulo">Pacotes de Figurinhas</div>
+        <div class="secao-sub">Escolha um pacote e abra na hora. Cada figurinha é revelada automaticamente ao confirmar o pagamento.</div>
+        <div class="grid-packs" id="packsGrid"></div>
+        <div class="prob-wrap" id="probWrap"></div>
+    </section>
+
+    <!-- MERCADO -->
+    <section class="secao" id="secao-mercado">
+        <div class="secao-titulo">Mercado de Figurinhas</div>
+        <div class="secao-sub">Compre repetidas de outros colecionadores. Anúncios ativos com pagamento seguro.</div>
+        <div class="filtros">
+            <input id="mkBusca" placeholder="🔎 Buscar figurinha..." oninput="carregarMercado(1)">
+            <select id="mkRaridade" onchange="carregarMercado(1)">
+                <option value="">Todas as raridades</option>
+                <option value="COMUM">COMUM</option>
+                <option value="INCOMUM">INCOMUM</option>
+                <option value="RARA">RARA</option>
+                <option value="EPICA">ÉPICA</option>
+                <option value="LENDARIA">LENDÁRIA</option>
+                <option value="MITICA">MÍTICA</option>
+            </select>
+            <div class="spacer"></div>
+            <div class="resultado" id="mkResultado"></div>
+        </div>
+        <div class="grid-listing" id="mkGrid"></div>
+        <div class="paginacao" id="mkPag"></div>
+    </section>
+
+    <!-- TROCAS -->
+    <section class="secao" id="secao-trocas">
+        <div class="secao-titulo">Negociações</div>
+        <div class="secao-sub">Proponha trocas com outros colecionadores, converse e feche negócios.</div>
+        <button class="btn btn-laranja" id="btnNovaTroca" onclick="abrirModalTroca()">+ Propor troca</button>
+        <div style="height:14px"></div>
+        <div class="grid-trades" id="tradesGrid"></div>
+    </section>
+
+    <!-- PERFIL -->
+    <section class="secao" id="secao-perfil">
+        <div class="secao-titulo">Meu Perfil</div>
+        <div class="secao-sub">Estatísticas, conquistas e histórico completo da sua jornada.</div>
+        <div class="perfil-wrap">
+            <div class="perfil-card" id="perfilStatsCard"></div>
+            <div class="perfil-card">
+                <h4>🏆 Conquistas</h4>
+                <div id="conquistasLista"></div>
+            </div>
+            <div class="perfil-card" style="grid-column:1/-1">
+                <h4>📜 Histórico</h4>
+                <div id="historicoLista"></div>
+            </div>
+        </div>
+    </section>
+
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- ===== MODAL ===== -->
+<div class="modal-overlay hidden" id="modalOverlay" onclick="fecharModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-arte" id="modalArte"></div>
+        <button class="modal-fechar" onclick="fecharModal()">✕</button>
+        <div class="modal-body" id="modalBody"></div>
+    </div>
+</div>
+
+<script>
+/* =========================================================
+   MEGAOUTDOOR COLECIONÁVEIS — FRONTEND
+   Lê o token de /api/auth (localStorage "mega_conta").
+========================================================= */
+
+let minhaConta = null;
+try {
+    minhaConta = JSON.parse(localStorage.getItem("mega_conta") || "null");
+} catch(e){ minhaConta = null; }
+
+let INFO = null;
+let MEU_ALBUM = null;
+let estado = {
+    aba: "album",
+    acervo: { pagina: 1 },
+    mercado: { pagina: 1 },
+    cartModal: null,
+    modoTroca: null
+};
+
+function authHeaders(extra){
+    const h = extra || {};
+    if (minhaConta && minhaConta.token) h["Authorization"] = "Bearer " + minhaConta.token;
+    if (extra && extra["Content-Type"]) {} else if (extra === undefined) { h["Content-Type"] = "application/json"; }
+    return h;
+}
+
+/* ===== API ===== */
+async function api(url, opts = {}) {
+    const res = await fetch(url, opts);
+    let data = null;
+    const texto = await res.text();
+    try { data = JSON.parse(texto); } catch(e){ data = { raw: texto }; }
+    if (!res.ok) {
+        const err = new Error((data && data.error) || "Erro na requisição");
+        err.status = res.status;
+        throw err;
+    }
+    return data;
+}
+function apiGet(url){ return api(url, { headers: authHeaders({}) }); }
+function apiPost(url, body){ return api(url, { method:"POST", headers: authHeaders({}), body: JSON.stringify(body||{}) }); }
+function apiDelete(url){ return api(url, { method:"DELETE", headers: authHeaders({}) }); }
+
+/* ===== UI HELPERS ===== */
+function toast(msg, tipo){
+    const el = document.createElement("div");
+    el.className = "toast " + (tipo || "info");
+    el.textContent = msg;
+    document.getElementById("toastWrap").appendChild(el);
+    setTimeout(()=>{ el.style.opacity = "0"; el.style.transition="opacity .3s"; setTimeout(()=>el.remove(),300); }, 3200);
+}
+function fmtR$(v){ return "R$ " + Number(v||0).toFixed(2).replace(".", ","); }
+function emojiRaridade(r){
+    return { COMUM:"🟤", INCOMUM:"🟢", RARA:"🔵", EPICA:"🟣", LENDARIA:"🟡", MITICA:"🔴" }[r] || "🃏";
+}
+function nomeRaridade(r){
+    return { COMUM:"COMUM", INCOMUM:"INCOMUM", RARA:"RARA", EPICA:"ÉPICA", LENDARIA:"LENDÁRIA", MITICA:"MÍTICA" }[r] || r;
+}
+function cardModalArte(card){
+    const r = card.rarity;
+    const e = emojiRaridade(r);
+    return '<div class="modal-arte r-' + r + '"><span style="font-size:90px">' + e + '</span></div>';
+}
+
+function atualizarHeader(){
+    const b = document.getElementById("badgeUsuario");
+    const bt = document.getElementById("btnConta");
+    if (minhaConta && minhaConta.token) {
+        b.classList.remove("hidden");
+        document.getElementById("badgeNome").textContent = (minhaConta.usuario && minhaConta.usuario.nome) || "Conta";
+        bt.textContent = "👤 CONTA";
+    } else {
+        b.classList.add("hidden");
+        bt.textContent = "ENTRAR";
+    }
+}
+
+function exigirLogin(){
+    if (minhaConta && minhaConta.token) return true;
+    abrirModalLogin();
+    return false;
+}
+
+function mudarAba(aba){
+    estado.aba = aba;
+    document.querySelectorAll(".aba-btn").forEach(b => b.classList.toggle("ativa", b.dataset.aba === aba));
+    document.querySelectorAll(".secao").forEach(s => s.classList.remove("ativa"));
+    document.getElementById("secao-" + aba).classList.add("ativa");
+    if (aba === "album") carregarAlbum();
+    if (aba === "acervo") carregarAcervo();
+    if (aba === "packs") carregarPacks();
+    if (aba === "mercado") carregarMercado(1);
+    if (aba === "trocas") carregarTrocas();
+    if (aba === "perfil") carregarPerfil();
+}
+
+/* =========================================================
+   INFO + ÁLBUM
+========================================================= */
+async function carregarInfo(){
+    try {
+        INFO = await apiGet("/api/colecionaveis/info");
+        document.getElementById("colecaoNome").textContent = INFO.colecao ? INFO.colecao.name : "Minha coleção";
+    } catch(e){
+        document.getElementById("colecaoNome").textContent = "Coleção indisponível";
+    }
+}
+
+async function carregarAlbum(){
+    const grid = document.getElementById("albumGrid");
+    if (!exigirLogin()) { grid.innerHTML = ""; return; }
+    try {
+        const d = await apiGet("/api/colecionaveis/meu-album");
+        MEU_ALBUM = d;
+        const cards = d.cards || [];
+        const total = d.colecao ? d.colecao.total : 100;
+        const diferentes = cards.filter(c => c.quantidade > 0).length;
+        const repetidas = cards.reduce((a,c) => a + Math.max(0, c.quantidade - 1), 0);
+        const raras = cards.filter(c => c.quantidade > 0 && ["RARA","EPICA","LENDARIA","MITICA"].includes(c.rarity)).length;
+        document.getElementById("progressoNum").textContent = diferentes + "/" + total;
+        document.getElementById("progressoFill").style.width = Math.round(diferentes/total*100) + "%";
+        document.getElementById("legendaDiferentes").textContent = diferentes;
+        document.getElementById("legendaRepetidas").textContent = repetidas;
+        document.getElementById("legendaRaras").textContent = raras;
+        const statusEl = document.getElementById("albumStatus");
+        if (diferentes >= total) {
+            statusEl.classList.remove("hidden");
+            statusEl.innerHTML = '<div style="background:linear-gradient(90deg,rgba(46,204,113,.18),rgba(255,212,0,.12));' +
+                'border:1px solid rgba(46,204,113,.5);border-radius:12px;padding:12px 16px;text-align:center;">' +
+                '<b style="color:var(--verde);font-size:15px;">🏆 ÁLBUM COMPLETO!</b>' +
+                '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
+                'Você completou todas as ' + total + ' figurinhas. Parabéns, colecionador! 🎉</div></div>';
+        } else {
+            statusEl.classList.remove("hidden");
+            statusEl.innerHTML = '<div style="background:rgba(255,122,0,.08);border:1px solid rgba(255,122,0,.35);' +
+                'border-radius:12px;padding:10px 16px;text-align:center;font-size:12px;color:var(--muted);">' +
+                '🎯 Faltam <b style="color:var(--laranja);">' + (total - diferentes) + '</b> figurinha(s) para completar o álbum. ' +
+                'Abra pacotes, compre no mercado ou troque para acelerar!</div>';
+        }
+        grid.innerHTML = cards.map(cardHtml).join("");
+    } catch(e){
+        grid.innerHTML = '<div style="color:var(--muted);padding:20px">' + (e.message || "Erro") + '</div>';
+    }
+}
+
+function cardHtml(card){
+    const tem = card.quantidade > 0;
+    const r = card.rarity;
+    if (!tem) {
+        return '<div class="card-vazia" onclick="abrirModalFigurinha(' + card.id + ')"><span>?</span><span>#' + String(card.number).padStart(3,"0") + '</span></div>';
+    }
+    return '<div class="card-col r-' + r + '" onclick="abrirModalFigurinha(' + card.id + ')">' +
+        '<div class="card-arte">' + emojiRaridade(r) + '</div>' +
+        '<div class="card-info">' +
+            '<div class="pill-raridade pill-' + r + '">' + nomeRaridade(r) + '</div>' +
+            '<div class="card-numero">#' + String(card.number).padStart(3,"0") + '</div>' +
+            '<div class="card-nome">' + esc(card.name) + '</div>' +
+            '<div class="card-qtd">Possui: <b>' + card.quantidade + 'x</b></div>' +
+        '</div></div>';
+}
+function esc(s){
+    return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+/* =========================================================
+   ACERVO
+========================================================= */
+async function carregarAcervo(){
+    if (!exigirLogin()) return;
+    const busca = document.getElementById("acervoBusca").value.trim();
+    const raridade = document.getElementById("acervoRaridade").value;
+    const ordenar = document.getElementById("acervoOrdenar").value;
+    const p = estado.acervo.pagina;
+    const q = new URLSearchParams({ pagina:p });
+    if (busca) q.set("busca", busca);
+    if (raridade) q.set("raridade", raridade);
+    if (ordenar !== "numero") q.set("ordenar", ordenar);
+    try {
+        const d = await apiGet("/api/colecionaveis/acervo?" + q.toString());
+        document.getElementById("acervoGrid").innerHTML = d.cards.length
+            ? d.cards.map(c => acervoCardHtml(c)).join("")
+            : '<div style="color:var(--muted);padding:16px">Nenhuma figurinha em estoque ainda. Abra pacotes para começar!</div>';
+        document.getElementById("acervoResultado").textContent = d.totalItems + " figurinha(s) em estoque";
+        renderPag(d, "acervo");
+        carregarMinhasVendas();
+    } catch(e){
+        document.getElementById("acervoGrid").innerHTML = '<div style="color:var(--muted);padding:16px">' + esc(e.message) + '</div>';
+    }
+}
+
+function acervoCardHtml(c){
+    const r = c.rarity;
+    return '<div class="card-col r-' + r + '" onclick="abrirModalFigurinha(' + c.id + ')">' +
+        '<div class="card-arte">' + emojiRaridade(r) + '</div>' +
+        '<div class="card-info">' +
+            '<div class="pill-raridade pill-' + r + '">' + nomeRaridade(r) + '</div>' +
+            '<div class="card-numero">#' + String(c.number).padStart(3,"0") + '</div>' +
+            '<div class="card-nome">' + esc(c.name) + '</div>' +
+            '<div class="card-qtd">Tenho: <b>' + c.quantidade + 'x</b> • Disponível: <b>' + c.disponivel + '</b></div>' +
+        '</div></div>';
+}
+
+async function carregarMinhasVendas(){
+    try {
+        const d = await apiGet("/api/colecionaveis/listings/mine");
+        const lista = d.listings || [];
+        document.getElementById("minhasVendasLista").innerHTML = lista.length
+            ? lista.map(l => {
+                const st = l.status;
+                const stCls = st === "active" ? "status-ativo" : (st === "sold" ? "status-sold" : "status-cancelled");
+                const stTxt = st === "active" ? "ATIVO" : (st === "sold" ? "VENDIDO" : "CANCELADO");
+                return '<div class="venda-item">' +
+                    '<div class="listing-mini-arte r-' + l.rarity + '">' + emojiRaridade(l.rarity) + '</div>' +
+                    '<div class="info"><div class="n">#' + String(l.number).padStart(3,"0") + ' — ' + esc(l.name) + '</div>' +
+                    '<div class="muted">' + l.quantity + 'x • ' + fmtR$((l.unit_price||0)) + ' cada</div></div>' +
+                    '<div class="status-pill ' + stCls + '">' + stTxt + '</div>' +
+                    (st === "active" ? '<button class="btn btn-ghost" style="font-size:11px;padding:6px 10px" onclick="cancelarVenda(' + l.id + ')">Cancelar</button>' : '') +
+                '</div>';
+            }).join("")
+            : '<div style="color:var(--muted);font-size:12px">Você ainda não tem anúncios ativos.</div>';
+    } catch(e){}
+}
+
+async function cancelarVenda(id){
+    try {
+        await apiDelete("/api/colecionaveis/listings/" + id);
+        toast("Anúncio cancelado. Figurinhas liberadas.", "ok");
+        carregarAcervo();
+    } catch(e){ toast(e.message, "erro"); }
+}
+
+function renderPag(d, alvo){
+    const el = document.getElementById(alvo + "Pag");
+    if (!d.totalPaginas || d.totalPaginas <= 1) { el.innerHTML = ""; return; }
+    const cur = d.pagina || 1;
+    let html = '<button class="btn btn-ghost" ' + (cur<=1?'disabled':'') + ' onclick="' + alvo + 'PagGo(' + (cur-1) + ')">←</button>';
+    html += '<span>Página ' + cur + ' de ' + d.totalPaginas + '</span>';
+    html += '<button class="btn btn-ghost" ' + (cur>=d.totalPaginas?'disabled':'') + ' onclick="' + alvo + 'PagGo(' + (cur+1) + ')">→</button>';
+    el.innerHTML = html;
+}
+function acervoPagGo(p){
+    estado.acervo.pagina = p;
+    carregarAcervo();
+    window.scrollTo({top:0, behavior:"smooth"});
+}
+
+/* =========================================================
+   PACOTES
+========================================================= */
+async function carregarPacks(){
+    try {
+        const d = INFO || await apiGet("/api/colecionaveis/info");
+        INFO = d;
+        const packs = d.packs || [];
+        document.getElementById("packsGrid").innerHTML = packs.map(p =>
+            '<div class="pack-card pack-' + esc(p.slug) + '">' +
+                '<div class="icone">' + (p.slug==="especial"?"💎":p.slug==="ouro"?"🏆":p.slug==="prata"?"🥈":"🥉") + '</div>' +
+                '<h3>' + esc(p.name) + '</h3>' +
+                '<div class="preco">' + fmtR$(p.price) + ' <small>por pacote</small></div>' +
+                '<div class="desc">' + esc(p.description) + '</div>' +
+                '<div class="qtd">Contém <b>' + p.sticker_quantity + '</b> figurinhas</div>' +
+                '<button class="btn btn-amarelo" onclick="comprarPacote(' + p.id + ')">ABRIR PACOTE</button>' +
+            '</div>'
+        ).join("");
+        /* probabilidades */
+        const prob = d.probabilidades || {};
+        const rarids = d.raridades || [];
+        const ordem = ["COMUM","INCOMUM","RARA","EPICA","LENDARIA","MITICA"];
+        const cores = { COMUM:"#9aa0a6", INCOMUM:"#2ecc71", RARA:"#3b82f6", EPICA:"#a855f7", LENDARIA:"#ffbf40", MITICA:"#d7263d" };
+        document.getElementById("probWrap").innerHTML =
+            '<h4>🎲 Probabilidades por raridade</h4>' +
+            rarids.sort((a,b)=>ordem.indexOf(a)-ordem.indexOf(b)).map(r =>
+                '<div class="prob-linha">' +
+                    '<span class="nome">' + emojiRaridade(r) + ' ' + nomeRaridade(r) + '</span>' +
+                    '<div class="prob-barra"><div class="fill" style="width:' + (prob[r]||0) + '%;background:' + cores[r] + '"></div></div>' +
+                    '<span class="pct">' + (prob[r]||0).toFixed(1).replace(".",",") + '%</span>' +
+                '</div>'
+            ).join("") +
+            '<div class="prob-aviso">⚠️ As probabilidades representam as chances de cada figurinha sair em um pacote. Não há garantia de raridade nem promessa de valorização. Colecione por diversão!</div>';
+    } catch(e){
+        document.getElementById("packsGrid").innerHTML = '<div style="color:var(--muted);padding:16px">' + esc(e.message) + '</div>';
+    }
+}
+
+async function comprarPacote(packId){
+    if (!exigirLogin()) return;
+    abrirModalPagamento("pack", { packId });
+}
+
+/* =========================================================
+   MERCADO
+========================================================= */
+async function carregarMercado(pag){
+    const q = new URLSearchParams({ pagina: pag || estado.mercado.pagina });
+    const busca = document.getElementById("mkBusca").value.trim();
+    const raridade = document.getElementById("mkRaridade").value;
+    if (busca) q.set("busca", busca);
+    if (raridade) q.set("raridade", raridade);
+    try {
+        const d = await apiGet("/api/colecionaveis/marketplace?" + q.toString());
+        estado.mercado.pagina = d.pagina || 1;
+        const listings = d.listings || [];
+        document.getElementById("mkGrid").innerHTML = listings.length
+            ? listings.map(l => listingHtml(l)).join("")
+            : '<div style="color:var(--muted);padding:16px">Nenhum anúncio disponível. Seja o primeiro a vender!</div>';
+        document.getElementById("mkResultado").textContent = d.totalItems + " anúncio(s)";
+        renderPag(d, "mk");
+    } catch(e){
+        document.getElementById("mkGrid").innerHTML = '<div style="color:var(--muted);padding:16px">' + esc(e.message) + '</div>';
+    }
+}
+function mkPagGo(p){ carregarMercado(p); window.scrollTo({top:0, behavior:"smooth"}); }
+
+function listingHtml(l){
+    const ehMeu = minhaConta && minhaConta.usuario && l.seller_id === minhaConta.usuario.id;
+    return '<div class="listing-card">' +
+        '<div class="listing-top">' +
+            '<div class="listing-mini-arte r-' + l.rarity + '">' + emojiRaridade(l.rarity) + '</div>' +
+            '<div class="info">' +
+                '<div class="n">#' + String(l.number).padStart(3,"0") + ' — ' + esc(l.name) + '</div>' +
+                '<div class="muted">' + nomeRaridade(l.rarity) + ' • ' + l.quantity + ' disponível(is)</div>' +
+            '</div>' +
+        '</div>' +
+        '<div class="listing-preco">' + fmtR$(l.unit_price) + ' <small>/ cada</small></div>' +
+        '<div class="listing-vendedor">Vendedor: ' + esc(l.seller_nome || "—") + '</div>' +
+        (ehMeu
+            ? '<button class="btn btn-ghost" onclick="cancelarVenda(' + l.id + ')">Meu anúncio — cancelar</button>'
+            : '<button class="btn btn-laranja" onclick="comprarDoMercado(' + l.id + ',' + l.unit_price + ',' + l.quantity + ')">COMPRAR</button>') +
+    '</div>';
+}
+
+async function comprarDoMercado(listingId, preco, qtdDisp){
+    if (!exigirLogin()) return;
+    abrirModalPagamento("mercado", { listingId, preco, qtdDisp });
+}
+
+/* =========================================================
+   TROCAS
+========================================================= */
+async function carregarTrocas(){
+    if (!exigirLogin()) return;
+    try {
+        const d = await apiGet("/api/colecionaveis/trades/mine");
+        const trades = d.trades || [];
+        document.getElementById("tradesGrid").innerHTML = trades.length
+            ? trades.map(tradeHtml).join("")
+            : '<div style="color:var(--muted);padding:16px">Você ainda não participa de nenhuma negociação.</div>';
+    } catch(e){
+        document.getElementById("tradesGrid").innerHTML = '<div style="color:var(--muted);padding:16px">' + esc(e.message) + '</div>';
+    }
+}
+
+function tradeHtml(t){
+    const items = t.items || [];
+    const minhas = items.filter(i => i.owner_id === minhaConta.usuario.id);
+    const delas = items.filter(i => i.owner_id !== minhaConta.usuario.id);
+    const euSouProposer = t.proposer_id === minhaConta.usuario.id;
+    const elegivelAceitar = !euSouProposer && (t.status === "PENDING" || t.status === "COUNTER_OFFER");
+    const elegivelContra = euSouProposer && (t.status === "PENDING" || t.status === "COUNTER_OFFER");
+    const elegivelCancelar = euSouProposer && ["PENDING","COUNTER_OFFER"].includes(t.status);
+    const elegivelDeclinar = !euSouProposer && (t.status === "PENDING" || t.status === "COUNTER_OFFER");
+
+    return '<div class="trade-card">' +
+        '<div class="trade-top">' +
+            '<div class="vs">🤝 Negociação #' + t.id + '</div>' +
+            '<div class="trade-status ts-' + t.status + '">' + statusTxt(t.status) + '</div>' +
+        '</div>' +
+        '<div class="trade-lado"><div class="label">' + esc(t.proposer_nome || "Proponente") + ' oferece</div>' +
+            (minhas.length ? minhas.map(figHtml).join("") : '<span style="font-size:12px;color:var(--muted)">—</span>') +
+        '</div>' +
+        '<div class="trade-lado"><div class="label">' + esc(t.receiver_nome || "Destinatário") + ' oferece</div>' +
+            (delas.length ? delas.map(figHtml).join("") : '<span style="font-size:12px;color:var(--muted)">—</span>') +
+        '</div>' +
+        (Number(t.cash_amount) > 0
+            ? '<div class="trade-dinheiro">💵 Diferença: ' + fmtR$(t.cash_amount) + ' (' + (t.cash_direction === "proposer_pays" ? "proponente paga" : "destinatário paga") + ')</div>'
+            : '') +
+        '<div class="trade-exp">⏳ Expira em: ' + fmtData(t.expires_at) + '</div>' +
+        '<div class="chat-box" id="chat-' + t.id + '">' +
+            (t.messages || []).map(m => chatMsgHtml(m)).join("") +
+            '<div style="font-size:11px;color:var(--muted)">' + esc(t.history || "") + '</div>' +
+        '</div>' +
+        '<div class="chat-input">' +
+            '<input placeholder="Escrever mensagem..." onkeydown="if(event.key===\'Enter\')enviarMsg(' + t.id + ',this.value,this)">' +
+            '<button class="btn btn-ghost" onclick="enviarMsg(' + t.id + ',this.previousElementSibling.value,this.previousElementSibling)">➤</button>' +
+        '</div>' +
+        '<div class="trade-acoes">' +
+            (elegivelAceitar ? '<button class="btn btn-amarelo" onclick="aceitarTroca(' + t.id + ')">✓ Aceitar</button>' : '') +
+            (elegivelContra ? '<button class="btn btn-laranja" onclick="abrirContraproposta(' + t.id + ')">↻ Contrapropor</button>' : '') +
+            (elegivelDeclinar ? '<button class="btn btn-ghost" onclick="declinarTroca(' + t.id + ')">✕ Recusar</button>' : '') +
+            (elegivelCancelar ? '<button class="btn btn-ghost" onclick="cancelarTroca(' + t.id + ')">Cancelar</button>' : '') +
+        '</div>' +
+    '</div>';
+}
+function figHtml(i){
+    const r = (i.rarity || "COMUM");
+    return '<span class="mini-fig"><span class="emoji">' + emojiRaridade(r) + '</span>#' + String(i.number||i.card_id).padStart(3,"0") + ' ' + esc(i.name||"") + '</span>';
+}
+function chatMsgHtml(m){
+    const minha = m.usuario_id === minhaConta.usuario.id;
+    return '<div class="chat-msg ' + (minha ? "minha" : "deles") + '">' +
+        '<div class="quem">' + esc(m.autor_nome || "") + '</div>' + esc(m.text) + '</div>';
+}
+function statusTxt(s){
+    return { PENDING:"PENDENTE", COUNTER_OFFER:"CONTRA-PROPOSTA", ACCEPTED:"ACEITA", WAITING_PAYMENT:"AGUARDANDO PAGAMENTO",
+             PAID:"PAGA", PROCESSING:"PROCESSANDO", COMPLETED:"CONCLUÍDA", DECLINED:"RECUSADA", CANCELLED:"CANCELADA",
+             EXPIRED:"EXPIRADA", DISPUTED:"EM DISPUTA" }[s] || s;
+}
+function fmtData(d){
+    try {
+        return new Date(d).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+    } catch(e){ return d; }
+}
+
+async function enviarMsg(tradeId, texto, input){
+    if (!exigirLogin()) return;
+    if (!texto || !texto.trim()) return;
+    try {
+        await apiPost("/api/colecionaveis/trades/" + tradeId + "/messages", { text: texto.trim() });
+        input.value = "";
+        carregarTrocas();
+    } catch(e){ toast(e.message, "erro"); }
+}
+async function aceitarTroca(tradeId){
+    if (!exigirLogin()) return;
+    try {
+        const d = await apiPost("/api/colecionaveis/trades/" + tradeId + "/accept", {});
+        if (d.status === "WAITING_PAYMENT") {
+            toast("Negociação aceita! Pague a diferença para concluir.", "info");
+            abrirModalPagamento("trade", { tradeId, externalReference: d.externalReference, valor: d.cash_amount });
+        } else {
+            toast("Troca concluída com sucesso!", "ok");
+            carregarTrocas();
+            carregarAlbum();
+        }
+    } catch(e){ toast(e.message, "erro"); }
+}
+async function declinarTroca(tradeId){
+    try { await apiPost("/api/colecionaveis/trades/" + tradeId + "/decline", {}); toast("Troca recusada.", "info"); carregarTrocas(); }
+    catch(e){ toast(e.message, "erro"); }
+}
+async function cancelarTroca(tradeId){
+    try { await apiPost("/api/colecionaveis/trades/" + tradeId + "/cancel", {}); toast("Troca cancelada.", "info"); carregarTrocas(); }
+    catch(e){ toast(e.message, "erro"); }
+}
+
+async function abrirContraproposta(tradeId){
+    try {
+        const d = await apiGet("/api/colecionaveis/trades/" + tradeId);
+        const meuAcervo = await apiGet("/api/colecionaveis/acervo?pagina=1");
+        estado.modoTroca = { tradeId, tipo: "contra" };
+        abrirModalTrocaCom(d.trade, meuAcervo.cards);
+    } catch(e){ toast(e.message, "erro"); }
+}
+
+/* =========================================================
+   MODAL FIGURINHA
+========================================================= */
+async function abrirModalFigurinha(cardId){
+    const overlay = document.getElementById("modalOverlay");
+    const corpo = document.getElementById("modalBody");
+    try {
+        const d = await apiGet("/api/colecionaveis/figurinha/" + cardId);
+        const c = d.card;
+        const r = c.rarity;
+        overlay.classList.remove("hidden");
+        document.getElementById("modalArte").outerHTML = cardModalArte(c);
+        /* re-obter referência */
+        const novoArte = overlay.querySelector(".modal-arte");
+        novoArte.style.height = "230px";
+        novoArte.style.fontSize = "90px";
+        novoArte.querySelector("span").style.fontSize = "90px";
+
+        let html = '<div class="num">#' + String(c.number).padStart(3,"0") + ' • ' + nomeRaridade(r) + '</div>';
+        html += '<h2>' + esc(c.name) + '</h2>';
+        html += '<div class="desc">' + esc(c.description || "Sem descrição.") + '</div>';
+        html += '<div class="qtd-linha">' +
+            '<span class="pill-raridade pill-' + r + '">' + nomeRaridade(r) + '</span>' +
+            '<span class="pill-raridade" style="background:rgba(255,255,255,.08)">📦 Em estoque: <b>' + (c.quantidade||0) + 'x</b></span>' +
+            '<span class="pill-raridade" style="background:rgba(255,255,255,.08)">🎁 Total: <b>' + (c.total_em_circulacao||0) + 'x</b></span>' +
+        '</div>';
+
+        if (minhaConta && minhaConta.token) {
+            if (c.disponivel > 0) {
+                html += '<button class="btn btn-laranja" onclick="abrirModalVenda(' + c.id + ',\'' + esc(c.name) + '\',' + c.disponivel + ')">💰 Vender repetida</button>';
+            } else if (c.quantidade > 0) {
+                html += '<div style="font-size:12px;color:var(--muted)">Você tem ' + c.quantidade + 'x desta figurinha, mas nenhuma disponível no momento.</div>';
+            }
+        }
+        html += '<div class="modal-acoes"><button class="btn btn-ghost" onclick="fecharModal()">Fechar</button></div>';
+        corpo.innerHTML = html;
+    } catch(e){
+        toast(e.message, "erro");
+    }
+}
+
+async function abrirModalVenda(cardId, nome, disponivel){
+    const corpo = document.getElementById("modalBody");
+    let html = '<div class="num">💰 VENDER REPETIDA</div>';
+    html += '<h2>' + esc(nome) + '</h2>';
+    html += '<div class="desc">Você tem <b>' + disponivel + '</b> disponível(is) para vender.</div>';
+    html += '<div class="modal-form">' +
+        '<label>Quantidade</label><input type="number" id="vendaQtd" min="1" max="' + disponivel + '" value="1">' +
+        '<label>Preço por figurinha (R$)</label><input type="number" id="vendaPreco" min="0.5" max="100" step="0.01" value="5.00">' +
+        '<button class="btn btn-amarelo" onclick="confirmarVenda(' + cardId + ')">Publicar anúncio</button>' +
+        '<button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>' +
+    '</div>';
+    corpo.innerHTML = html;
+}
+async function confirmarVenda(cardId){
+    const qtd = Number(document.getElementById("vendaQtd").value);
+    const preco = Number(document.getElementById("vendaPreco").value);
+    if (!qtd || qtd < 1 || !preco || preco < 0.5) { toast("Informe quantidade e preço válidos.", "erro"); return; }
+    try {
+        await apiPost("/api/colecionaveis/listings", { cardId, quantidade: qtd, preco });
+        toast("Anúncio publicado! Suas figurinhas foram reservadas.", "ok");
+        fecharModal();
+        carregarAcervo();
+        carregarMercado(1);
+    } catch(e){ toast(e.message, "erro"); }
+}
+
+/* =========================================================
+   NOVA TROCA / CONTRA-PROPOSTA
+========================================================= */
+async function abrirModalTroca(){
+    if (!exigirLogin()) return;
+    try {
+        const meuAcervo = await apiGet("/api/colecionaveis/acervo?pagina=1");
+        const colec = await apiGet("/api/colecionaveis/colecionador/" + minhaConta.usuario.id);
+        estado.modoTroca = { tipo: "nova" };
+        let html = '<div class="num">🤝 NOVA TROCA</div>';
+        html += '<h2>Propor negociação</h2>';
+        html += '<div class="desc">Escolha o que você oferece, o que deseja receber e se haverá diferença em dinheiro.</div>';
+        html += '<div class="modal-form">' +
+            '<label>Eu ofereço (selecione)</label><div id="trocaOfereco" style="display:flex;gap:6px;flex-wrap:wrap"></div>' +
+            '<label>Quero receber (selecione)</label><div id="trocaRecebo" style="display:flex;gap:6px;flex-wrap:wrap"></div>' +
+            '<label>Destinatário (ID do colecionador)</label><input id="trocaDestino" placeholder="Ex.: 42">' +
+            '<div class="row2">' +
+                '<div><label>Diferença (R$)</label><input id="trocaCash" type="number" min="0" step="0.01" value="0"></div>' +
+                '<div><label>Quem paga</label><select id="trocaCashDir"><option value="">Sem dinheiro</option><option value="proposer_pays">Eu pago</option><option value="receiver_pays">Ele(a) paga</option></select></div>' +
+            '</div>' +
+            '<button class="btn btn-amarelo" onclick="confirmarTroca()">Enviar proposta</button>' +
+            '<button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>' +
+        '</div>';
+        document.getElementById("modalOverlay").classList.remove("hidden");
+        document.getElementById("modalBody").innerHTML = html;
+        /* mini-seletores */
+        renderSelFig(meuAcervo.cards, "trocaOfereco", "ofereco");
+        renderSelFig(meuAcervo.cards, "trocaRecebo", "recebo");
+    } catch(e){ toast(e.message, "erro"); }
+}
+
+async function abrirModalTrocaCom(trade, meuAcervo){
+    document.getElementById("modalOverlay").classList.remove("hidden");
+    let html = '<div class="num">↻ CONTRA-PROPOSTA #' + trade.id + '</div>';
+    html += '<h2>Contrapor negociação</h2>';
+    html += '<div class="desc">Ajuste as figurinhas e envie sua contra-proposta.</div>';
+    html += '<div class="modal-form">' +
+        '<label>Eu ofereço (selecione)</label><div id="trocaOfereco" style="display:flex;gap:6px;flex-wrap:wrap"></div>' +
+        '<label>Quero receber (selecione)</label><div id="trocaRecebo" style="display:flex;gap:6px;flex-wrap:wrap"></div>' +
+        '<div class="row2">' +
+            '<div><label>Diferença (R$)</label><input id="trocaCash" type="number" min="0" step="0.01" value="0"></div>' +
+            '<div><label>Quem paga</label><select id="trocaCashDir"><option value="">Sem dinheiro</option><option value="proposer_pays">Eu pago</option><option value="receiver_pays">Ele(a) paga</option></select></div>' +
+        '</div>' +
+        '<button class="btn btn-amarelo" onclick="confirmarContraproposta(' + trade.id + ')">Enviar contra-proposta</button>' +
+        '<button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>' +
+    '</div>';
+    document.getElementById("modalBody").innerHTML = html;
+    renderSelFig(meuAcervo, "trocaOfereco", "ofereco");
+    renderSelFig(meuAcervo, "trocaRecebo", "recebo");
+}
+
+function renderSelFig(cards, alvoId, nome){
+    const alvo = document.getElementById(alvoId);
+    if (!alvo) return;
+    const meus = (cards || []).filter(c => c.disponivel > 0);
+    alvo.innerHTML = meus.length
+        ? meus.map(c =>
+            '<span class="mini-fig" style="cursor:pointer;user-select:none" onclick="toggleSelFig(this,\'' + alvoId + '\',\'' + nome + '\')" data-id="' + c.id + '" data-nome="' + esc(c.name) + '">' +
+            '<span class="emoji">' + emojiRaridade(c.rarity) + '</span>#' + String(c.number).padStart(3,"0") + '</span>'
+        ).join("")
+        : '<span style="font-size:12px;color:var(--muted)">Nenhuma figurinha disponível.</span>';
+}
+function toggleSelFig(el, alvoId, nome){
+    el.classList.toggle("selecionada");
+    el.style.borderColor = el.classList.contains("selecionada") ? "var(--amarelo)" : "";
+    el.style.outline = el.classList.contains("selecionada") ? "2px solid var(--amarelo)" : "";
+}
+function selFiguras(alvoId){
+    return Array.from(document.querySelectorAll("#" + alvoId + " .selecionada")).map(el => ({ cardId: Number(el.dataset.id) }));
+}
+
+async function confirmarTroca(){
+    const ofereco = selFiguras("trocaOfereco");
+    const recebo = selFiguras("trocaRecebo");
+    const destino = Number(document.getElementById("trocaDestino").value);
+    const cash = Number(document.getElementById("trocaCash").value) || 0;
+    const dir = document.getElementById("trocaCashDir").value || null;
+    if (!ofereco.length) { toast("Selecione pelo menos 1 figurinha para oferecer.", "erro"); return; }
+    if (!recebo.length) { toast("Selecione pelo menos 1 figurinha que deseja receber.", "erro"); return; }
+    if (!destino) { toast("Informe o ID do destinatário.", "erro"); return; }
+    const body = { receiverId: destino, ofereco, recebo };
+    if (cash > 0 && dir) { body.cashAmount = cash; body.cashDirection = dir; }
+    try {
+        await apiPost("/api/colecionaveis/trades", body);
+        toast("Proposta de troca enviada!", "ok");
+        fecharModal();
+        carregarTrocas();
+    } catch(e){ toast(e.message, "erro"); }
+}
+
+async function confirmarContraproposta(tradeId){
+    const ofereco = selFiguras("trocaOfereco");
+    const recebo = selFiguras("trocaRecebo");
+    const cash = Number(document.getElementById("trocaCash").value) || 0;
+    const dir = document.getElementById("trocaCashDir").value || null;
+    if (!ofereco.length || !recebo.length) { toast("Selecione figurinhas de ambos os lados.", "erro"); return; }
+    const body = { ofereco, recebo };
+    if (cash > 0 && dir) { body.cashAmount = cash; body.cashDirection = dir; }
+    try {
+        await apiPost("/api/colecionaveis/trades/" + tradeId + "/counter", body);
+        toast("Contra-proposta enviada!", "ok");
+        fecharModal();
+        carregarTrocas();
+    } catch(e){ toast(e.message, "erro"); }
+}
+
+/* =========================================================
+   PAGAMENTO (MP)
+========================================================= */
+async function abrirModalPagamento(tipo, dados){
+    document.getElementById("modalOverlay").classList.remove("hidden");
+    const corpo = document.getElementById("modalBody");
+    let html = '<div class="num">💳 CONFIRMAR PAGAMENTO</div>';
+    html += '<h2>' + (tipo === "pack" ? "Abrir Pacote" : tipo === "mercado" ? "Comprar no Mercado" : "Diferença de Troca") + '</h2>';
+    html += '<div class="desc">Escolha como deseja pagar. O pagamento é processado com segurança pelo Mercado Pago.</div>';
+    html += '<div class="modal-form">' +
+        '<label>Forma de pagamento</label>' +
+        '<select id="pgMetodo"><option value="pix">💠 Pix</option><option value="credit_card">💳 Cartão de crédito</option></select>' +
+        '<label>CPF/CNPJ</label><input id="pgCpf" placeholder="Somente números" maxlength="14">' +
+        '<button class="btn btn-amarelo" onclick="iniciarPagamento(\'' + tipo + '\',' + JSON.stringify(dados).replace(/"/g,"&quot;") + ')">Gerar pagamento</button>' +
+        '<button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>' +
+    '</div>';
+    corpo.innerHTML = html;
+}
+
+async function iniciarPagamento(tipo, dados){
+    const metodo = document.getElementById("pgMetodo").value;
+    const cpf = document.getElementById("pgCpf").value.replace(/\D/g, "");
+    if (cpf.length < 11) { toast("Informe um CPF válido.", "erro"); return; }
+    let url, body;
+    if (tipo === "pack") {
+        url = "/api/colecionaveis/packs/" + dados.packId + "/checkout";
+        body = { paymentMethod: metodo, cpfCnpj: cpf };
+    } else if (tipo === "mercado") {
+        url = "/api/colecionaveis/listings/" + dados.listingId + "/buy";
+        body = { quantidade: 1, paymentMethod: metodo, cpfCnpj: cpf };
+    } else if (tipo === "trade") {
+        url = "/api/colecionaveis/trades/" + dados.tradeId + "/accept";
+        body = { paymentMethod: metodo, cpfCnpj: cpf };
+    }
+    try {
+        const d = await apiPost(url, body);
+        mostrarQr(d, tipo);
+    } catch(e){ toast(e.message, "erro"); }
+}
+
+function mostrarQr(d, tipo){
+    const corpo = document.getElementById("modalBody");
+    let html = '<div class="num">✅ PEDIDO CRIADO</div>';
+    html += '<h2>' + (tipo === "pack" ? "Pacote reservado" : tipo === "mercado" ? "Compra reservada" : "Diferença de troca") + '</h2>';
+    if (d.qrCodeBase64) {
+        html += '<div style="text-align:center;margin:14px 0">' +
+            '<img src="data:image/png;base64,' + d.qrCodeBase64 + '" alt="QR Code Pix" style="width:200px;height:200px;border-radius:12px">' +
+        '</div>';
+        html += '<div class="desc" style="text-align:center">Escaneie com o app do seu banco ou copie o código abaixo:</div>';
+    } else {
+        html += '<div class="desc">Pagamento gerado! Use o link abaixo para concluir:</div>';
+    }
+    html += '<div style="background:#0f0f16;border:1px solid var(--borda);border-radius:10px;padding:12px;font-size:12px;word-break:break-all;margin:10px 0">' +
+        esc(d.payload || (d.ticketUrl || d.paymentId || "—")) + '</div>';
+    html += '<div class="desc">Valor: <b style="color:var(--amarelo)">' + fmtR$(d.valor) + '</b> • Pedido: ' + esc(d.externalReference || d.orderId) + '</div>';
+    html += '<div style="display:flex;gap:8px;margin-top:14px">' +
+        '<button class="btn btn-amarelo" onclick="iniciarPolling(\'' + esc(d.orderId) + '\')">JÁ PAGUEI</button>' +
+        '<button class="btn btn-ghost" onclick="fecharModal()">Fechar</button>' +
+    '</div>';
+    corpo.innerHTML = html;
+}
+
+let pollTimer = null;
+async function iniciarPolling(orderId){
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+    const corpo = document.getElementById("modalBody");
+    corpo.innerHTML = '<div class="num">⏳ AGUARDANDO CONFIRMAÇÃO</div><h2>Verificando pagamento...</h2>' +
+        '<div class="desc">Assim que o pagamento for confirmado, suas figurinhas aparecem automaticamente.</div>' +
+        '<div style="text-align:center;margin:14px 0;font-size:30px">⏳</div>';
+    const checar = async () => {
+        try {
+            const d = await apiGet("/api/colecionaveis/pagamento/" + orderId);
+            if (d.status === "RECEIVED") {
+                toast("Pagamento confirmado! Suas figurinhas chegaram. 🎉", "ok");
+                fecharModal();
+                carregarAlbum();
+                carregarAcervo();
+                carregarTrocas();
+                carregarMercado(1);
+                return;
+            }
+        } catch(e){}
+        pollTimer = setTimeout(checar, 4000);
+    };
+    checar();
+}
+
+/* =========================================================
+   PERFIL
+========================================================= */
+async function carregarPerfil(){
+    if (!exigirLogin()) return;
+    try {
+        const d = await apiGet("/api/colecionaveis/perfil");
+        const p = d.perfil;
+        let stats = '<h4>📊 Estatísticas</h4>';
+        stats += '<div class="perfil-stats">' +
+            '<div class="stat-box"><div class="v">' + p.stats.diferentes + '</div><div class="l">DIFERENTES</div></div>' +
+            '<div class="stat-box"><div class="v">' + p.stats.total + '</div><div class="l">TOTAL</div></div>' +
+            '<div class="stat-box"><div class="v">' + p.stats.repetidas + '</div><div class="l">REPETIDAS</div></div>' +
+            '<div class="stat-box"><div class="v">' + p.stats.raras + '</div><div class="l">RARAS</div></div>' +
+            '<div class="stat-box"><div class="v">' + (p.album_completo ? "✅" : "❌") + '</div><div class="l">ÁLBUM</div></div>' +
+            '<div class="stat-box"><div class="v">' + p.ranking + '</div><div class="l">RANKING</div></div>' +
+        '</div>';
+        document.getElementById("perfilStatsCard").innerHTML = stats;
+
+        /* conquistas */
+        const conc = d.conquistas || [];
+        document.getElementById("conquistasLista").innerHTML = conc.map(c =>
+            '<div class="conquista ' + (c.desbloqueada ? "" : "lock") + '">' +
+                '<div class="icone">' + esc(c.icon || "🏅") + '</div>' +
+                '<div class="info"><div class="n">' + esc(c.name) + '</div>' +
+                '<div class="d">' + esc(c.description || "") + '</div></div>' +
+            '</div>'
+        ).join("");
+
+        /* histórico */
+        const hist = (await apiGet("/api/colecionaveis/historico")).historico || [];
+        document.getElementById("historicoLista").innerHTML = hist.length
+            ? hist.map(h =>
+                '<div class="hist-linha">' +
+                    '<div class="detalhe">' + esc(h.detalhe || h.tipo) + '</div>' +
+                    '<div style="text-align:right">' +
+                        (Number(h.valor) > 0 ? '<div class="valor">' + fmtR$(h.valor) + '</div>' : '') +
+                        '<div class="quando">' + fmtData(h.created_at) + '</div>' +
+                    '</div>' +
+                '</div>'
+            ).join("")
+            : '<div style="color:var(--muted);font-size:12px">Nenhuma atividade ainda.</div>';
+    } catch(e){
+        document.getElementById("perfilStatsCard").innerHTML = '<div style="color:var(--muted)">' + esc(e.message) + '</div>';
+    }
+}
+
+/* =========================================================
+   LOGIN / CONTA
+========================================================= */
+function abrirConta(){
+    if (minhaConta && minhaConta.token) {
+        mudarAba("perfil");
+        return;
+    }
+    abrirModalLogin();
+}
+
+function abrirModalLogin(){
+    document.getElementById("modalOverlay").classList.remove("hidden");
+    const corpo = document.getElementById("modalBody");
+    corpo.innerHTML = '<div class="login-panel">' +
+        '<h2>Entrar na sua conta</h2>' +
+        '<div class="sub">Para abrir pacotes, negociar e completar seu álbum.</div>' +
+        '<div class="login-tabs">' +
+            '<button class="ativa" id="tabLogin" onclick="alternarLoginTab(\'login\')">Entrar</button>' +
+            '<button id="tabReg" onclick="alternarLoginTab(\'reg\')">Criar conta</button>' +
+        '</div>' +
+        '<div class="login-form" id="loginForm">' +
+            '<label>E-mail</label><input id="lgEmail" type="email" placeholder="voce@email.com">' +
+            '<label>Senha</label><input id="lgSenha" type="password" placeholder="••••••••">' +
+            '<div class="login-erro" id="lgErro"></div>' +
+            '<button class="btn btn-amarelo" onclick="fazerLogin()">Entrar</button>' +
+        '</div>' +
+        '<div class="login-form hidden" id="regForm">' +
+            '<label>Nome</label><input id="rgNome" placeholder="Seu nome">' +
+            '<label>E-mail</label><input id="rgEmail" type="email" placeholder="voce@email.com">' +
+            '<label>Senha</label><input id="rgSenha" type="password" placeholder="Mínimo 6 caracteres">' +
+            '<div class="login-erro" id="rgErro"></div>' +
+            '<button class="btn btn-amarelo" onclick="fazerRegistro()">Criar conta</button>' +
+        '</div>' +
+    '</div>';
+}
+function alternarLoginTab(modo){
+    document.getElementById("tabLogin").classList.toggle("ativa", modo === "login");
+    document.getElementById("tabReg").classList.toggle("ativa", modo === "reg");
+    document.getElementById("loginForm").classList.toggle("hidden", modo !== "login");
+    document.getElementById("regForm").classList.toggle("hidden", modo !== "reg");
+}
+async function fazerLogin(){
+    const email = document.getElementById("lgEmail").value.trim();
+    const senha = document.getElementById("lgSenha").value;
+    try {
+        const d = await apiPost("/api/auth/login", { email, senha });
+        salvarSessao(d);
+        fecharModal();
+        toast("Bem-vindo de volta, " + (d.usuario.nome || "") + "!", "ok");
+        carregarAlbum();
+    } catch(e){ document.getElementById("lgErro").textContent = e.message; }
+}
+async function fazerRegistro(){
+    const nome = document.getElementById("rgNome").value.trim();
+    const email = document.getElementById("rgEmail").value.trim();
+    const senha = document.getElementById("rgSenha").value;
+    if (!nome || !email || senha.length < 6) { document.getElementById("rgErro").textContent = "Preencha todos os campos (senha mín. 6)."; return; }
+    try {
+        const d = await apiPost("/api/auth/registrar", { nome, email, senha });
+        salvarSessao(d);
+        fecharModal();
+        toast("Conta criada! Bem-vindo(a), " + nome + "! 🎉", "ok");
+        carregarAlbum();
+    } catch(e){ document.getElementById("rgErro").textContent = e.message; }
+}
+function salvarSessao(d){
+    minhaConta = { token: d.token, usuario: d.usuario };
+    localStorage.setItem("mega_conta", JSON.stringify(minhaConta));
+    atualizarHeader();
+}
+
+function fecharModal(){
+    document.getElementById("modalOverlay").classList.add("hidden");
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+}
+
+/* =========================================================
+   INICIALIZAÇÃO
+========================================================= */
+window.addEventListener("load", () => {
+    atualizarHeader();
+    carregarInfo().then(() => {
+        mudarAba("album");
+    });
+});
+</script>
+</body>
+</html>

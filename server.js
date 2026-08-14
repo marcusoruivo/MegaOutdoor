@@ -554,6 +554,19 @@ async function initBanco() {
             "idx_uchaves_valor ON usuario_chaves(tipo, valor)"
         );
 
+        /* Módulo de colecionáveis: cria as tabelas sticker_*
+           de forma segura (IF NOT EXISTS, sem DROP). */
+        try {
+            if (typeof colecionaveis?.migrar === "function") {
+                await colecionaveis.migrar();
+            }
+        } catch (eMigracao) {
+            console.error(
+                "ERRO ao migrar tabelas de colecionáveis:",
+                eMigracao.message
+            );
+        }
+
         pgDisponivel = true;
 
         console.log(
@@ -3515,6 +3528,19 @@ app.get(
 
                 pgPagamentoPago({ mpOrderId: orderId });
 
+                /* Módulo de colecionáveis: processa pacotes,
+                   compras no mercado e diferenças de troca. */
+                try {
+                    if (typeof colecionaveis?.processarPagamento === "function") {
+                        await colecionaveis.processarPagamento({ mpOrderId: orderId });
+                    }
+                } catch (eColecionaveis) {
+                    console.error(
+                        "ERRO ao processar pagamento de colecionáveis (polling):",
+                        eColecionaveis.message
+                    );
+                }
+
                 registrarLog("pagamento_confirmado", {
                     mpOrderId: orderId,
                     status: chargeStatus
@@ -6338,6 +6364,20 @@ app.post("/webhooks/mercadopago", async (req, res) => {
         pgPagamentoPago({ mpOrderId: orderId });
         await processarRenovacaoPagamento(orderId);
 
+        /* Pagamentos do módulo de colecionáveis (pacotes, compras
+           no mercado e diferenças de troca). Independente e
+           idempotente — só processa pedidos pendentes. */
+        try {
+            if (typeof colecionaveis?.processarPagamento === "function") {
+                await colecionaveis.processarPagamento({ mpOrderId: orderId });
+            }
+        } catch (eColecionaveis) {
+            console.error(
+                "ERRO ao processar pagamento de colecionáveis:",
+                eColecionaveis.message
+            );
+        }
+
         registrarLog("pagamento_confirmado_webhook", {
             mpOrderId: orderId,
             paymentId: dados.paymentId,
@@ -7338,6 +7378,33 @@ function gerarHtmlAvisoSorteio(valor, mensagem, email) {
         "</div>"
     );
 }
+
+/* =========================
+   MEGAOUTDOOR COLECIONÁVEIS
+   Módulo independente de figurinhas digitais.
+   Montado em /api/colecionaveis sem alterar os fluxos
+   existentes de espaços, pagamentos, chat, login ou regras.
+========================= */
+
+const criarColecionaveis = require("./colecionaveis.js");
+
+const colecionaveis = criarColecionaveis({
+    express,
+    authUsuario,
+    authAdmin,
+    criarOrderMercadoPago,
+    consultarOrderMercadoPago,
+    extrairDadosPagamento,
+    statusOrderPago,
+    registrarLog,
+    obterPool: () => pgPool,
+    obterPgDisponivel: () => pgDisponivel,
+    obterAuthUsuario: () => authUsuario
+});
+
+app.use("/api/colecionaveis", limiterLeitura);
+
+app.use("/api/colecionaveis", colecionaveis.router);
 
 /* =========================
    404 JSON PARA /api

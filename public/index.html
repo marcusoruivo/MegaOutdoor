@@ -2455,6 +2455,7 @@ body.footer-visible #area{
         <a href="#como-funciona" onclick="scrollToSection(event,'comoFuncionaSection')">COMO FUNCIONA</a>
         <a href="#precos" onclick="abrirPrecos(event)">PREÇOS</a>
         <a href="#faq" onclick="abrirFaq(event)">FAQ</a>
+        <a href="/colecionaveis.html" target="_blank">🃏 COLECIONÁVEIS</a>
         <a href="#contato" onclick="scrollToFooter(event)">CONTATO</a>
     </nav>
 
@@ -2490,6 +2491,7 @@ body.footer-visible #area{
         <a href="#como-funciona" onclick="scrollToSection(event,'comoFuncionaSection');fecharMenuMobile()">COMO FUNCIONA</a>
         <a href="#precos" onclick="abrirPrecos(event);fecharMenuMobile()">PREÇOS</a>
         <a href="#faq" onclick="abrirFaq(event);fecharMenuMobile()">FAQ</a>
+        <a href="/colecionaveis.html" target="_blank" onclick="fecharMenuMobile()">🃏 COLECIONÁVEIS</a>
         <a href="#contato" onclick="scrollToFooter(event);fecharMenuMobile()">CONTATO</a>
         <button
             class="btn-entrar"
@@ -2734,6 +2736,7 @@ LIMPAR
     </div>
 
     <!-- SIDEBAR DIREITA -->
+    <a id="como-funciona" style="position:relative;top:-20px;display:block;height:0;"></a>
     <aside class="sidebar-right" id="comoFuncionaSection">
 
         <div class="card how-it-works">
@@ -2768,6 +2771,44 @@ LIMPAR
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div class="card how-it-works" style="border-color:rgba(255,122,0,.35);">
+            <div class="card-title" style="color:#ffd400;">🃏 Colecionáveis — Como Funciona</div>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div>
+                        <b>Abra pacotes</b>
+                        <span>Compre um pacote (Bronze, Prata, Ouro ou Especial) e receba figurinhas digitais na hora após o pagamento confirmar.</span>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div>
+                        <b>Monte seu álbum</b>
+                        <span>Complete as <b>100 figurinhas</b> da 1ª edição. Cada raridade tem chances diferentes de sair.</span>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div>
+                        <b>Venda e troque</b>
+                        <span>Anuncie repetidas no mercado ou proponha trocas com outros colecionadores.</span>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div>
+                        <b>Complete a coleção</b>
+                        <span>Desbloqueie conquistas, suba no ranking e conquiste o Álbum Completo!</span>
+                    </div>
+                </div>
+            </div>
+            <button class="btn" style="width:100%;margin-top:14px;"
+                onclick="abrirTutorialColecionaveis(event)">
+                VER GUIA COMPLETO →
+            </button>
         </div>
 
         <div class="card discount-card" id="precos">
@@ -4019,6 +4060,81 @@ function abrirFaq(event){
         <p><b>Como faço para renovar?</b><br>Acesse a aba "Meus Espaços", localize o espaço com a licença próxima do vencimento e clique em "Renovar".</p>
         <p><b>Como falar com o suporte?</b><br>Use o chat ao vivo no canto inferior direito ou envie um e-mail para group.holding@outlook.com. No chat você pode usar emojis e mensagens rápidas.</p>
         <p><b>Posso revender meus espaços?</b><br>Sim! Ative o modo "Oferta em Blocos" para anunciar seus espaços para outros usuários.</p>
+        <h3 style="color:#ffd400;margin-top:22px;">🃏 COLECIONÁVEIS</h3>
+        <p><b>Como compro um pacote?</b><br>Entre na página de Colecionáveis, escolha um pacote (Bronze, Prata, Ouro ou Especial) e faça o pagamento via Pix ou cartão. Ao confirmar, as figurinhas são abertas automaticamente.</p>
+        <p><b>Quantas figurinhas vêm em cada pacote?</b><br>Bronze: 3 figurinhas (R$ 2,00) · Prata: 8 figurinhas (R$ 5,00) · Ouro: 20 figurinhas (R$ 10,00) · Especial: 45 figurinhas (R$ 20,00).</p>
+        <p><b>As figurinhas podem ser repetidas?</b><br>Sim. Você pode receber mais de uma cópia da mesma figurinha.</p>
+        <p><b>O que faço com uma figurinha repetida?</b><br>Você pode vendê-la no mercado para outros colecionadores ou usá-la em uma troca.</p>
+        <p><b>Posso trocar uma figurinha?</b><br>Sim! Proponha trocas com outros colecionadores, inclusive com diferença em dinheiro, e converse na negociação antes de aceitar.</p>
+        <p><b>Posso vender uma figurinha?</b><br>Sim. Anuncie suas repetidas no mercado e defina o preço de cada uma.</p>
+        <p><b>Posso comprar uma figurinha de outro usuário?</b><br>Sim. No mercado, basta escolher o anúncio e pagar pelo valor indicado.</p>
+        <p><b>Posso oferecer dinheiro + figurinha em uma negociação?</b><br>Sim. Ao propor uma troca, você pode incluir uma diferença em dinheiro a ser paga por um dos lados.</p>
+        <p><b>O que acontece se eu recusar uma negociação?</b><br>A negociação é encerrada e as figurinhas ficam livres para novas vendas ou trocas.</p>
+        <p><b>Como funciona o marketplace?</b><br>Colecionadores anunciam repetidas com preço definido. Ao comprar, o pagamento é feito dentro do sistema e a figurinha é transferida após a confirmação.</p>
+        <p><b>Como vejo minha coleção?</b><br>Na página de Colecionáveis, abra a aba "Álbum" para ver as figurinhas que você já tem e "Acervo" para suas repetidas.</p>
+        <p><b>Como funcionam as raridades?</b><br>As figurinhas têm 6 raridades: COMUM, INCOMUM, RARA, ÉPICA, LENDÁRIA e MÍTICA — das mais comuns às mais difíceis de conseguir.</p>
+        <p><b>As probabilidades são iguais para todas as figurinhas?</b><br>Não. As chances são: COMUM 65%, INCOMUM 20%, RARA 10%, ÉPICA 4%, LENDÁRIA 0,9% e MÍTICA 0,1%.</p>
+        <p><b>O que acontece quando completo o álbum?</b><br>Você desbloqueia a conquista "Álbum Completo" e entra para o ranking dos melhores colecionadores.</p>
+        <p><b>As negociações são seguras?</b><br>Sim. Todas as negociações entre usuários devem ocorrer através dos mecanismos disponibilizados pelo sistema. Nunca envie dinheiro diretamente para outro usuário fora do sistema.</p>
+    `);
+}
+
+function abrirTutorialColecionaveis(event){
+    if(event) event.preventDefault();
+    abrirInfoModal("🃏 COLECIONÁVEIS — COMO FUNCIONA", `
+        <h3 style="color:#ffd400;">O que são as figurinhas?</h3>
+        <p>São cartas digitais colecionáveis do universo MegaOutdoor. Existem <b>100 figurinhas</b> na 1ª edição, divididas em 6 raridades.</p>
+
+        <h3 style="color:#ffd400;margin-top:18px;">Como comprar pacotes</h3>
+        <p>Na página de Colecionáveis, abra a aba <b>Pacotes</b>, escolha um pacote e pague com Pix ou cartão. Nenhuma figurinha é entregue antes da confirmação real do pagamento.</p>
+
+        <h3 style="color:#ffd400;margin-top:18px;">Tipos e preços de pacotes</h3>
+        <ul style="padding-left:18px;line-height:1.8;font-size:13px;color:#aaa;">
+            <li><b>BRONZE</b> — R$ 2,00 · 3 figurinhas</li>
+            <li><b>PRATA</b> — R$ 5,00 · 8 figurinhas</li>
+            <li><b>OURO</b> — R$ 10,00 · 20 figurinhas</li>
+            <li><b>ESPECIAL</b> — R$ 20,00 · 45 figurinhas</li>
+        </ul>
+
+        <h3 style="color:#ffd400;margin-top:18px;">Como receber as figurinhas</h3>
+        <p>Assim que o pagamento confirmar, as figurinhas são abertas automaticamente e vão direto para o seu álbum. Se você já tiver aquela figurinha, ela entra no seu acervo como repetida.</p>
+
+        <h3 style="color:#ffd400;margin-top:18px;">Álbum e coleção</h3>
+        <p>A aba <b>Álbum</b> mostra as 100 figurinhas com o seu progresso. A aba <b>Acervo</b> lista as repetidas disponíveis para vender ou trocar. A barra de progresso indica quantas figurinhas diferentes você já completou.</p>
+
+        <h3 style="color:#ffd400;margin-top:18px;">Raridades e probabilidades</h3>
+        <ul style="padding-left:18px;line-height:1.8;font-size:13px;color:#aaa;">
+            <li>⚪ <b>COMUM</b> — 65%</li>
+            <li>🟢 <b>INCOMUM</b> — 20%</li>
+            <li>🔵 <b>RARA</b> — 10%</li>
+            <li>🟣 <b>ÉPICA</b> — 4%</li>
+            <li>🟡 <b>LENDÁRIA</b> — 0,9%</li>
+            <li>🔴 <b>MÍTICA</b> — 0,1%</li>
+        </ul>
+
+        <h3 style="color:#ffd400;margin-top:18px;">Figurinhas repetidas</h3>
+        <p>Recebeu uma figurinha que já tinha? Sem problema: ela fica no seu acervo como repetida e pode ser <b>vendida no mercado</b> ou <b>usada em trocas</b>.</p>
+
+        <h3 style="color:#ffd400;margin-top:18px;">Trocar figurinhas</h3>
+        <p>Na aba <b>Trocas</b>, proponha uma negociação escolhendo figurinhas suas e pedindo figurinhas do outro colecionador. Você também pode incluir uma <b>diferença em dinheiro</b> a ser paga por um dos lados.</p>
+
+        <h3 style="color:#ffd400;margin-top:18px;">Vender e comprar no mercado</h3>
+        <p>No <b>mercado</b>, você anuncia repetidas pelo preço que quiser e compra figurinhas anunciadas por outros. O pagamento é processado dentro do sistema, com taxa de 10% para o vendedor.</p>
+
+        <h3 style="color:#ffd400;margin-top:18px;">Aceitar ou recusar uma proposta</h3>
+        <p>Quando alguém propõe uma troca, você pode <b>aceitar</b>, <b>recusar</b>, <b>cancelar</b> ou enviar uma <b>contraproposta</b>. Você também pode conversar no chat da negociação antes de decidir.</p>
+
+        <h3 style="color:#ffd400;margin-top:18px;">Acompanhar uma negociação</h3>
+        <p>A aba <b>Trocas</b> mostra todas as suas negociações com status atual: pendente, aceita, concluída, recusada, cancelada ou expirada. Negociações expiram após 24 horas.</p>
+
+        <h3 style="color:#ffd400;margin-top:18px;">Histórico</h3>
+        <p>A aba <b>Perfil</b> guarda seu histórico completo: figurinhas recebidas, vendidas, compradas, trocas concluídas e valores movimentados.</p>
+
+        <h3 style="color:#ffd400;margin-top:18px;">Conquistas e progresso</h3>
+        <p>Complete metas como acumular 10, 25, 50 e 100 figurinhas, conseguir raras, completar 50% do álbum e até o <b>Álbum Completo</b>. Cada conquista desbloqueada aparece no seu perfil.</p>
+
+        <h3 style="color:#ffd400;margin-top:18px;">Regras de segurança das negociações</h3>
+        <p>Todas as negociações entre usuários devem ocorrer através dos mecanismos disponibilizados pelo sistema. <b>Nunca enviar dinheiro diretamente para outro usuário fora do sistema.</b> As figurinhas e pagamentos são sempre garantidos pela plataforma.</p>
     `);
 }
 
@@ -12499,6 +12615,7 @@ function abrirPaginaSorteio(){
             <a href="#como-funciona" onclick="scrollToSection(event,'comoFuncionaSection')">Como Funciona</a>
             <a href="#precos" onclick="abrirPrecos(event)">Preços</a>
             <a href="#faq" onclick="abrirFaq(event)">FAQ</a>
+            <a href="/colecionaveis.html" target="_blank">🃏 Colecionáveis</a>
         </div>
         <div class="footer-col">
             <h4>LEGAL</h4>

@@ -693,7 +693,7 @@ async function usuarioPossuiOrder(usuarioId, orderId) {
     return result.rowCount > 0;
 }
 
-/* initBanco() é chamado antes do app.listen, no final. */
+/* initBanco() é chamado em background após o app.listen, no final. */
 
 app.use(helmet({
     contentSecurityPolicy: false,
@@ -7313,28 +7313,50 @@ app.use((err, req, res, next) => {
     res.status(err.status || 500).send("Erro interno do servidor.");
 });
 
-initBanco().then(() => {
+/* =========================
+   INICIAR SERVIDOR IMEDIATAMENTE
+   O app.listen() deve acontecer primeiro para que
+   o health check do Render (/api/status) responda
+   enquanto a migração do banco executa em background.
+========================= */
 
-    /* Varredura periódica: libera reservas que estouraram
-       o tempo limite (RESERVA_TTL_MINUTOS). */
-    setInterval(limparReservasExpiradas, 60 * 1000);
-
-    if (MERCADOPAGO_SANDBOX) {
-        console.warn(
-            "⚠️  ATENÇÃO: MERCADOPAGO_SANDBOX=true — os pagamentos " +
-            "usarão o AMBIENTE DE TESTE do Mercado Pago (dinheiro simulado)."
+app.listen(
+    PORT,
+    () => {
+        console.log(
+            `Milhão Door funcionando em http://localhost:${PORT}` +
+            (MERCADOPAGO_SANDBOX ? " (Mercado Pago SANDBOX)" : "")
         );
     }
-    app.listen(
-        PORT,
-        () => {
-            console.log(
-                `Milhão Door funcionando em http://localhost:${PORT}` +
-                (MERCADOPAGO_SANDBOX ? " (Mercado Pago SANDBOX)" : "")
-            );
-        }
+);
+
+if (MERCADOPAGO_SANDBOX) {
+    console.warn(
+        "⚠️  ATENÇÃO: MERCADOPAGO_SANDBOX=true — os pagamentos " +
+        "usarão o AMBIENTE DE TESTE do Mercado Pago (dinheiro simulado)."
     );
-}).catch((error) => {
-    console.error("Falha ao iniciar:", error.message);
-    process.exit(1);
-});
+}
+
+/* Migração do banco em background.
+   O servidor já está escutando; o banco será preparado
+   sem bloquear as requisições. */
+initBanco()
+    .then(() => {
+        /* Varredura periódica: libera reservas que estouraram
+           o tempo limite (RESERVA_TTL_MINUTOS). */
+        setInterval(limparReservasExpiradas, 60 * 1000);
+
+        console.log(
+            "PostgreSQL conectado — migração concluída em background."
+        );
+    })
+    .catch((error) => {
+        console.error(
+            "ERRO ao conectar/migrar PostgreSQL:",
+            error.message
+        );
+        console.error(
+            "O servidor continua funcionando, mas o histórico " +
+            "de transações pode estar indisponível."
+        );
+    });

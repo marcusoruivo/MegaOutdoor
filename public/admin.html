@@ -156,6 +156,7 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
         <button id="tabLogs" onclick="aba('logs')">📜 LOGS</button>
         <button id="tabCupons" onclick="aba('cupons')">🎟️ CUPONS</button>
         <button id="tabSorteio" onclick="aba('sorteio')">🎲 SORTEIO</button>
+        <button id="tabReferencia" onclick="aba('referencia')">📋 REFERÊNCIA</button>
     </div>
 
     <main>
@@ -180,11 +181,17 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
                         <option value="published">published</option>
                     </select>
                     <button onclick="carregarEspacos()">BUSCAR</button>
+                    <button class="danger" id="btnApagarSel"
+                        onclick="apagarSelecionados()" disabled>
+                        🗑 APAGAR SELECIONADOS
+                    </button>
                 </div>
                 <div style="overflow:auto;max-height:70vh;">
                     <table id="espTabela">
                         <thead>
                             <tr>
+                                <th><input type="checkbox" id="espSelAll"
+                                    onclick="selecionarTodos(event)"></th>
                                 <th>#</th><th>Status</th><th>Foto</th><th>Título</th>
                                 <th>Link</th><th>Nome/E-mail</th><th>Pedido</th>
                                 <th>Token</th><th>Código</th><th>Ações</th>
@@ -334,6 +341,35 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
             </div>
         </div>
 
+        <div id="viewReferencia" style="display:none;">
+            <div class="card">
+                <h3 style="color:#ffd400;margin-bottom:6px;">📋 Referência do site</h3>
+                <p style="color:#888;font-size:12px;margin-bottom:12px;line-height:1.5;">
+                    Anote aqui onde cada coisa do site está: hospedagem, Render, Resend,
+                    Mercado Pago, banco de dados, usuários e senhas, links, etc.
+                    Fica salvo no servidor e só o admin vê.
+                </p>
+                <div class="toolbar">
+                    <button onclick="carregarNotas()">↻ RECARREGAR</button>
+                    <button onclick="salvarNotas()">💾 SALVAR NOTAS</button>
+                    <button class="sec" onclick="preencherModeloNotas()">📝 RESTAURAR MODELO</button>
+                    <span id="notasStatus" style="font-size:12px;color:#888;"></span>
+                </div>
+                <textarea id="notasTexto"
+                    style="width:100%;min-height:60vh;background:#0d0d0d;color:#ddd;
+                        border:1px solid #333;border-radius:10px;padding:14px;
+                        font-family:Consolas,monospace;font-size:13px;line-height:1.6;
+                        resize:vertical;outline:none;"
+                    placeholder="Carregando anotações..."></textarea>
+                <p style="color:#7a7a7a;font-size:11px;margin-top:8px;">
+                    ⚠️ Este arquivo fica no disco do servidor (pasta de dados) e é acessível
+                    somente por quem tem login de admin. Mesmo assim, evite salvar senhas
+                    reais de produção — prefira anotações seguras ou troque as senhas se
+                    este arquivo for compartilhado.
+                </p>
+            </div>
+        </div>
+
     </main>
 </div>
 
@@ -402,7 +438,7 @@ function sairAdmin(){
 
 function aba(nome){
     abaAtual = nome;
-    for(const n of ["resumo","espacos","transacoes","usuarios","logs","cupons","sorteio"]){
+    for(const n of ["resumo","espacos","transacoes","usuarios","logs","cupons","sorteio","referencia"]){
         const bt = document.getElementById("tab" + n.charAt(0).toUpperCase() + n.slice(1));
         const vw = document.getElementById("view" + n.charAt(0).toUpperCase() + n.slice(1));
         if(bt) bt.className = n === nome ? "ativa" : "";
@@ -415,6 +451,7 @@ function aba(nome){
     if(nome === "logs") carregarLogs();
     if(nome === "cupons") carregarCupons();
     if(nome === "sorteio") carregarSorteio();
+    if(nome === "referencia") carregarNotas();
 }
 
 const fmtDin = (n) => "R$ " + Number(n || 0).toLocaleString("pt-BR", {minimumFractionDigits: 2});
@@ -451,8 +488,8 @@ async function carregarResumo(){
             ).join("");
 
         const status = resumo.porStatus || {};
-        const modoAsaas =
-            resumo.asaasModo === "sandbox"
+        const modoMercadoPago =
+            resumo.mercadoPagoModo === "sandbox"
                 ? { txt: "🧪 SANDBOX", cor: "#ffd400" }
                 : { txt: "✅ PRODUÇÃO", cor: "#45d66f" };
         const statusHtml =
@@ -465,7 +502,7 @@ async function carregarResumo(){
         document.getElementById("resumoStatus").innerHTML =
             "<div style='display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e1e1e;'>" +
             "<span class='fade'>Pagamentos</span>" +
-            "<b style='color:" + modoAsaas.cor + ";'>" + modoAsaas.txt + "</b></div>" +
+            "<b style='color:" + modoMercadoPago.cor + ";'>" + modoMercadoPago.txt + "</b></div>" +
             statusHtml;
     } catch(err){
         alert("Erro: " + err.message);
@@ -482,6 +519,8 @@ async function carregarEspacos(offset){
         const tbody = document.querySelector("#espTabela tbody");
         tbody.innerHTML = data.espacos.map(s =>
             "<tr>" +
+            "<td><input type='checkbox' class='espSel' data-id='" + s.id +
+            "' onclick='atualizarSelecao()'></td>" +
             "<td><b>#" + fmtNum(s.id) + "</b></td>" +
             "<td><span class='pill " + s.status + "'>" + s.status + "</span>" +
             (s.test ? " <span class='pill available'>teste</span>" : "") + "</td>" +
@@ -499,9 +538,49 @@ async function carregarEspacos(offset){
               "<button class='danger' onclick='removerEspaco(" + s.id + ")'>🗑</button>" +
             "</td>" +
             "</tr>"
-        ).join("") || "<tr><td colspan='10' class='fade'>Nada encontrado.</td></tr>";
+        ).join("") || "<tr><td colspan='11' class='fade'>Nada encontrado.</td></tr>";
         document.getElementById("espPag").innerHTML =
             "<span>" + fmtNum(data.total) + " espaço(s) (mostrando até 200)</span>";
+        const selAll = document.getElementById("espSelAll");
+        if(selAll) selAll.checked = false;
+        atualizarSelecao();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+function selecionarTodos(e){
+    const checado = e.target.checked;
+    document.querySelectorAll(".espSel").forEach(cb => cb.checked = checado);
+    atualizarSelecao();
+}
+
+function atualizarSelecao(){
+    const btn = document.getElementById("btnApagarSel");
+    if(!btn) return;
+    const n = document.querySelectorAll(".espSel:checked").length;
+    btn.disabled = !n;
+    btn.textContent = n
+        ? "🗑 APAGAR SELECIONADOS (" + n + ")"
+        : "🗑 APAGAR SELECIONADOS";
+}
+
+async function apagarSelecionados(){
+    const ids = [...document.querySelectorAll(".espSel:checked")]
+        .map(cb => Number(cb.dataset.id));
+    if(!ids.length) return;
+    const lista = ids.slice(0, 30).map(fmtNum).join(", ");
+    if(!confirm(
+        "Apagar " + ids.length + " espaço(s) definitivamente?\n\n" +
+        "Espaços: " + lista + (ids.length > 30 ? " ..." : "")
+    )) return;
+    try {
+        const r = await api("/api/admin/spaces/bulk-delete", {
+            method: "POST",
+            body: JSON.stringify({ ids })
+        });
+        alert("✅ " + r.removidos + " espaço(s) apagado(s).");
+        carregarEspacos();
     } catch(err){
         alert("Erro: " + err.message);
     }
@@ -710,6 +789,49 @@ async function carregarSorteio(){
     } catch(err){
         alert("Erro: " + err.message);
     }
+}
+
+async function carregarNotas(){
+    const ta = document.getElementById("notasTexto");
+    const st = document.getElementById("notasStatus");
+    st.textContent = "Carregando...";
+    try {
+        const data = await api("/api/admin/notas");
+        ta.value = data.content;
+        st.textContent = data.saved
+            ? "Salvas em " + fmtData(data.updatedAt)
+            : "Nada salvo ainda — preencha o modelo e salve.";
+    } catch(err){
+        st.textContent = "Erro: " + err.message;
+    }
+}
+
+async function salvarNotas(){
+    const ta = document.getElementById("notasTexto");
+    const st = document.getElementById("notasStatus");
+    st.textContent = "Salvando...";
+    try {
+        const r = await api("/api/admin/notas", {
+            method: "POST",
+            body: JSON.stringify({ content: ta.value })
+        });
+        st.textContent = "✅ Salvas em " + fmtData(r.updatedAt);
+    } catch(err){
+        st.textContent = "Erro: " + err.message;
+    }
+}
+
+function preencherModeloNotas(){
+    const ta = document.getElementById("notasTexto");
+    if(ta.value.trim() && !confirm("Substituir o texto atual pelo modelo padrão?")) return;
+    const st = document.getElementById("notasStatus");
+    st.textContent = "Carregando modelo...";
+    api("/api/admin/notas/modelo")
+        .then(d => {
+            ta.value = d.content;
+            st.textContent = "Modelo restaurado — edite e salve.";
+        })
+        .catch(err => { st.textContent = "Erro: " + err.message; });
 }
 
 async function sortearAgora(){

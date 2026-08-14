@@ -82,13 +82,22 @@ const limiterUpload = rateLimit({
     }
 });
 
-const ASAAS_SANDBOX =
-    process.env.ASAAS_SANDBOX === "true";
-const ASAAS_API =
-    ASAAS_SANDBOX
-        ? "https://api-sandbox.asaas.com/v3"
-        : "https://api.asaas.com/v3";
-const ASAAS_KEY = process.env.ASAAS_API_KEY;
+/* =========================
+   MERCADO PAGO (PIX)
+   Documentação: https://www.mercadopago.com.br/developers
+========================= */
+
+const MERCADOPAGO_ACCESS_TOKEN =
+    process.env.MERCADOPAGO_ACCESS_TOKEN || "";
+
+const MERCADOPAGO_SANDBOX =
+    process.env.MERCADOPAGO_SANDBOX === "true" ||
+    (
+        process.env.NODE_ENV !== "production" &&
+        !process.env.RENDER
+    );
+
+const MERCADOPAGO_API = "https://api.mercadopago.com";
 
 const SEED_DIR = path.join(__dirname, "data");
 const DEFAULT_UPLOAD_DIR = path.join(__dirname, "uploads");
@@ -102,6 +111,20 @@ const CHAT_FILE = path.join(DATA_DIR, "chat.json");
 const CHAT_NEGOC_FILE = path.join(DATA_DIR, "chat-negociacao.json");
 const LOGS_FILE = path.join(DATA_DIR, "logs.jsonl");
 const SORTEIOS_FILE = path.join(DATA_DIR, "sorteios.json");
+const ADMIN_NOTES_FILE =
+    path.join(DATA_DIR, "admin-notes.json");
+const RESERVAS_LIBERADAS_FILE =
+    path.join(DATA_DIR, "reservas-liberadas.json");
+
+/* Tempo máximo que um espaço fica "reserved" aguardando
+   o pagamento do PIX. Após isso, o espaço é liberado.
+   Configurável via RESERVA_TTL_MINUTOS (padrão: 10).
+   A reserva também expira no prazo do QR Code do PIX
+   (date_of_expiration do Mercado Pago), o que vier antes. */
+const RESERVA_TTL_MINUTOS =
+    Math.max(1, Number(process.env.RESERVA_TTL_MINUTOS) || 10);
+const RESERVA_TTL_MS =
+    RESERVA_TTL_MINUTOS * 60 * 1000;
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -450,7 +473,7 @@ app.use(helmet({
 }));
 
 app.use(express.json({
-    limit: "100kb"
+    limit: "2mb"
 }));
 
 app.use("/api", limiterGlobal);
@@ -465,7 +488,7 @@ app.use("/api/offers", limiterOfertas);
 app.use("/api/pix-key", limiterSensivel);
 app.use("/api/upload", limiterUpload);
 app.use("/api/chat", limiterChat);
-app.use("/webhooks/asaas", limiterSensivel);
+app.use("/webhooks/mercadopago", limiterSensivel);
 
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/uploads", express.static(UPLOAD_DIR, {
@@ -597,6 +620,102 @@ function writeJsonFile(file, data) {
         JSON.stringify(data, null, 2),
         "utf8"
     );
+}
+
+/* =========================
+   RESERVAS COM VALIDADE
+   Espaços "reserved" são liberados após
+   RESERVA_TTL_MINUTOS sem pagamento.
+========================= */
+
+function readReservasLiberadas() {
+    return readJsonFile(RESERVAS_LIBERADAS_FILE, {});
+}
+
+function writeReservasLiberadas(data) {
+    writeJsonFile(RESERVAS_LIBERADAS_FILE, data);
+}
+
+function limparReservasExpiradas() {
+
+    const db = readDB();
+    const agora = Date.now();
+    const liberadas = readReservasLiberadas();
+    const expiradas = [];
+
+    for (const [id, s] of Object.entries(db)) {
+
+        if (
+            s.status !== "reserved" ||
+            !s.reservedAt
+        ) {
+            continue;
+        }
+
+        const limite =
+            s.expiresAt
+                ? new Date(s.expiresAt).getTime()
+                : new Date(s.reservedAt).getTime() + RESERVA_TTL_MS;
+
+        if (agora > limite) {
+
+            if (s.paymentId) {
+                liberadas[s.paymentId] = s;
+            }
+
+            delete db[id];
+            expiradas.push(id);
+        }
+    }
+
+    if (!expiradas.length) {
+        return false;
+    }
+
+    const chaves = Object.keys(liberadas);
+
+    if (chaves.length > 500) {
+        const excedente = chaves.length - 500;
+        for (const k of chaves.slice(0, excedente)) {
+            delete liberadas[k];
+        }
+    }
+
+    writeDB(db);
+    writeReservasLiberadas(liberadas);
+
+    registrarLog("reservas_expiraram", {
+        qtd: expiradas.length,
+        ttlMinutos: RESERVA_TTL_MINUTOS
+    });
+
+    console.log(
+        `[RESERVA] ${expiradas.length} espaço(s) liberados ` +
+        `após ${RESERVA_TTL_MINUTOS} min sem pagamento.`
+    );
+
+    return true;
+}
+
+/* Remove das reservas liberadas os blocos que foram
+   comprados novamente (evita pagamento tardio pegar
+   o espaço de um novo dono). */
+function limparLiberadasOcupadas(ids) {
+
+    const liberadas = readReservasLiberadas();
+    const idsSet = new Set(ids);
+    let alterado = false;
+
+    for (const [paymentId, s] of Object.entries(liberadas)) {
+        if (idsSet.has(s.id)) {
+            delete liberadas[paymentId];
+            alterado = true;
+        }
+    }
+
+    if (alterado) {
+        writeReservasLiberadas(liberadas);
+    }
 }
 
 function readOffers() {
@@ -1131,6 +1250,19 @@ function validarCupom(codigo) {
     return cupom;
 }
 
+function descontoProgressivo(quantidade) {
+    if (quantidade >= 1000) {
+        return 30;
+    }
+    if (quantidade >= 100) {
+        return 20;
+    }
+    if (quantidade >= 10) {
+        return 10;
+    }
+    return 0;
+}
+
 function validarCpf(cpf) {
     cpf = cpf.replace(/\D/g, "");
 
@@ -1208,31 +1340,116 @@ function validarDocumento(doc) {
     return validarCpf(d) || validarCnpj(d);
 }
 
-async function asaasRequest(endpoint, options = {}) {
+function identificacaoMercadoPago(document) {
+
+    const d = (document || "").replace(/\D/g, "");
+
+    if (d.length === 11) {
+        return { type: "CPF", number: d };
+    }
+
+    if (d.length === 14) {
+        return { type: "CNPJ", number: d };
+    }
+
+    return null;
+}
+
+async function mercadoPagoRequest(endpoint, options = {}) {
+
+    if (!MERCADOPAGO_ACCESS_TOKEN) {
+        throw new Error("MERCADOPAGO_ACCESS_TOKEN não configurado.");
+    }
 
     const response = await fetch(
-        ASAAS_API + endpoint,
+        MERCADOPAGO_API + endpoint,
         {
             ...options,
             headers: {
                 "Content-Type": "application/json",
-                "access_token": ASAAS_KEY,
+                "Authorization": `Bearer ${MERCADOPAGO_ACCESS_TOKEN}`,
                 ...(options.headers || {})
             }
         }
     );
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
         throw new Error(
-            data.errors?.map(e => e.description).join(", ")
-            || data.message
-            || `Erro Asaas HTTP ${response.status}`
+            data.message
+            || (data.errors && data.errors.map(e => e.message).join(", "))
+            || (data.cause && data.cause.map(c => c.description).join(", "))
+            || `Erro Mercado Pago HTTP ${response.status}`
         );
     }
 
     return data;
+}
+
+async function criarPagamentoPixMercadoPago({
+    externalReference,
+    value,
+    description,
+    customer,
+    expiresIn
+}) {
+
+    const id = externalReference || crypto.randomUUID();
+    const identificacao = identificacaoMercadoPago(customer.taxID);
+
+    const dateOfExpiration = new Date(
+        Date.now() + Math.min(
+            Math.max(300, expiresIn || 600) * 1000,
+            24 * 60 * 60 * 1000
+        )
+    ).toISOString();
+
+    const body = {
+        transaction_amount: Number(value),
+        description: description || `Cobrança ${id}`,
+        payment_method_id: "pix",
+        external_reference: id,
+        date_of_expiration: dateOfExpiration,
+        notification_url: process.env.MERCADOPAGO_WEBHOOK_URL || "",
+        payer: {
+            email: customer.email,
+            first_name: customer.name.split(" ")[0] || customer.name,
+            last_name: customer.name.split(" ").slice(1).join(" ") || "",
+            identification: identificacao || undefined
+        }
+    };
+
+    const payment = await mercadoPagoRequest("/v1/payments", {
+        method: "POST",
+        body: JSON.stringify(body)
+    });
+
+    const transactionData =
+        payment.point_of_interaction?.transaction_data || {};
+
+    return {
+        id: String(payment.id),
+        externalReference: id,
+        status: payment.status,
+        statusDetail: payment.status_detail,
+        dateOfExpiration: payment.date_of_expiration,
+        qrCodeBase64: transactionData.qr_code_base64 || "",
+        payload: transactionData.qr_code || "",
+        ticketUrl: transactionData.ticket_url || "",
+        raw: payment
+    };
+}
+
+async function consultarPagamentoMercadoPago(paymentId) {
+
+    return mercadoPagoRequest(`/v1/payments/${encodeURIComponent(paymentId)}`, {
+        method: "GET"
+    });
+}
+
+function statusMercadoPagoPago(status) {
+    return status === "approved" || status === "authorized";
 }
 
 /* =========================
@@ -1598,6 +1815,8 @@ app.post("/api/auth/senha", authUsuario, async (req, res) => {
 
 app.get("/api/spaces", (req, res) => {
 
+    limparReservasExpiradas();
+
     const db = readDB();
 
     const header =
@@ -1643,6 +1862,8 @@ app.get("/api/spaces", (req, res) => {
 
 app.get("/api/status", (req, res) => {
 
+    limparReservasExpiradas();
+
     const db = readDB();
 
     let sold = 0;
@@ -1678,6 +1899,14 @@ app.get("/api/status", (req, res) => {
 app.post("/api/checkout", authUsuario, async (req, res) => {
 
     try {
+
+        if (!MERCADOPAGO_ACCESS_TOKEN) {
+            return res.status(503).json({
+                error:
+                    "Pagamento temporariamente indisponível. " +
+                    "MERCADOPAGO_ACCESS_TOKEN não configurado."
+            });
+        }
 
         const {
             spaces,
@@ -1730,6 +1959,12 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
                 error: "CPF ou CNPJ inválido."
             });
         }
+
+        /* Libera reservas expiradas antes de checar
+           disponibilidade, para que o comprador possa
+           reusar os próprios espaços da compra anterior. */
+
+        limparReservasExpiradas();
 
         const db = readDB();
 
@@ -1831,62 +2066,27 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             }
         }
 
-        /* =========================
-           CRIA CLIENTE ASAAS
-        ========================= */
+        const descontoProgressivoPct = descontoProgressivo(total);
 
-        const customer = await asaasRequest(
-            "/customers",
-            {
-                method: "POST",
-                body: JSON.stringify({
-                    name: name.trim(),
-                    cpfCnpj: document,
-                    email: email.trim(),
-                    externalReference:
-                        `mega-outdoor-${Date.now()}`,
-                    notificationDisabled: true
-                })
-            }
-        );
+        const descontoCupomPct =
+            cupomCredito
+                ? cupomCredito.discountPercent
+                : (cupom && cupom.tipo !== "indicacao")
+                    ? cupom.discountPercent
+                    : 0;
 
-        /* =========================
-           CRIA COBRANÇA PIX
-        ========================= */
+        /* O cliente ganha o melhor desconto: progressivo ou cupom. */
+        const descontoPct =
+            Math.max(descontoProgressivoPct, descontoCupomPct);
 
-        const dueDate =
-            new Date()
-                .toISOString()
-                .slice(0, 10);
-
-        const payment = await asaasRequest(
-            "/payments",
-            {
-                method: "POST",
-                body: JSON.stringify({
-                    customer: customer.id,
-                    billingType: "PIX",
-                    value: total,
-                    dueDate,
-                    description:
-                        `Milhão Door - ${total} espaço(s)`,
-                    externalReference:
-                        `MEGA-${Date.now()}`,
-                    ...(desconto ? { discount: desconto } : {})
-                })
-            }
-        );
+        const valorCobrado =
+            Math.round(
+                total * (1 - descontoPct / 100) * 100
+            ) / 100;
 
         /* =========================
-           QR CODE
+           CRIA COBRANÇA PIX (Mercado Pago)
         ========================= */
-
-        const pix = await asaasRequest(
-            `/payments/${payment.id}/pixQrCode`,
-            {
-                method: "GET"
-            }
-        );
 
         const orderId =
             `MEGA-${Date.now()}-${Math.random()
@@ -1899,20 +2099,68 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
         const accessCode =
             gerarAccessCode();
 
+        const paymentId = crypto.randomUUID();
+
+        const mp = await criarPagamentoPixMercadoPago({
+            externalReference: paymentId,
+            value: valorCobrado,
+            description: `Milhão Door - ${total} espaço(s)`,
+            customer: {
+                name: name.trim(),
+                taxID: document,
+                email: email.trim()
+            },
+            expiresIn: Math.floor(RESERVA_TTL_MS / 1000)
+        });
+
+        const qrCodeBase64 = mp.qrCodeBase64;
+        const brCode = mp.payload;
+        const expiresDate = mp.dateOfExpiration;
+
         /* =========================
            RESERVA
+           Expira no menor prazo entre o TTL
+           (padrão 10 min) e o vencimento do QR Code.
         ========================= */
+
+        const reservedAt = new Date();
+
+        let expiresAt =
+            new Date(
+                reservedAt.getTime() + RESERVA_TTL_MS
+            );
+
+        if (expiresDate) {
+
+            const pixExpiresAt =
+                new Date(String(expiresDate).replace(" ", "T"));
+
+            if (
+                !isNaN(pixExpiresAt.getTime()) &&
+                pixExpiresAt.getTime() < expiresAt.getTime()
+            ) {
+                expiresAt = pixExpiresAt;
+            }
+        }
 
         for (const id of ids) {
 
             db[id] = {
                 id,
                 status: "reserved",
+                reservedAt:
+                    reservedAt.toISOString(),
+                expiresAt:
+                    expiresAt.toISOString(),
+                pixExpiresAt:
+                    expiresDate
+                        ? String(expiresDate)
+                        : undefined,
                 orderId,
                 orderToken,
                 accessCode,
-                customerId: customer.id,
-                paymentId: payment.id,
+                customerId: "",
+                paymentId,
                 name: name.trim(),
                 email: email.trim(),
                 createdAt:
@@ -1922,25 +2170,15 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
 
         writeDB(db);
 
-        const descontoPct =
-            cupomCredito
-                ? cupomCredito.discountPercent
-                : (cupom && cupom.tipo !== "indicacao")
-                    ? cupom.discountPercent
-                    : 0;
-
-        const valorCobrado =
-            Math.round(
-                total * (1 - descontoPct / 100) * 100
-            ) / 100;
+        limparLiberadasOcupadas(ids);
 
         registrarTransacao({
             tipo: "compra",
             accessCode,
             token: orderToken,
             orderId,
-            customerId: customer.id,
-            paymentId: payment.id,
+            customerId: "",
+            paymentId,
             usuarioId: req.usuario.id,
             nome: name.trim(),
             email: email.trim(),
@@ -2037,16 +2275,11 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             orderId,
             orderToken,
             accessCode,
-            paymentId: payment.id,
+            paymentId,
             spaces: ids,
             total,
-            value: total,
-            discountPercent:
-                cupomCredito
-                    ? cupomCredito.discountPercent
-                    : (cupom && cupom.tipo !== "indicacao")
-                        ? cupom.discountPercent
-                        : 0,
+            value: valorCobrado,
+            discountPercent: descontoPct,
             creditoUsado: !!cupomCredito,
             indicacaoRegistrada:
                 !!(cupom && cupom.tipo === "indicacao"),
@@ -2059,11 +2292,11 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
                     (s, c) => s + (c.credits || 0),
                     0
                 ),
-            qrCode: pix.encodedImage,
-            payload: pix.payload,
+            qrCode: qrCodeBase64 || "",
+            payload: brCode,
             meuCupom,
             expirationDate:
-                pix.expirationDate
+                expiresDate
         });
 
     } catch (error) {
@@ -2425,34 +2658,30 @@ app.get(
         try {
 
             const payment =
-                await asaasRequest(
-                    `/payments/${req.params.paymentId}`,
-                    {
-                        method: "GET"
-                    }
+                await consultarPagamentoMercadoPago(
+                    req.params.paymentId
                 );
 
             const db = readDB();
+            const chargeStatus = payment.status || "unknown";
+            const pago = statusMercadoPagoPago(chargeStatus);
 
-            if (
-                payment.status === "RECEIVED" ||
-                payment.status === "CONFIRMED"
-            ) {
+            if (pago) {
 
-                confirmarPagamentoOferta(payment.id);
+                confirmarPagamentoOferta(req.params.paymentId);
 
-                pgPagamentoPago(payment.id);
+                pgPagamentoPago(req.params.paymentId);
 
                 registrarLog("pagamento_confirmado", {
-                    paymentId: payment.id,
-                    status: payment.status
+                    paymentId: req.params.paymentId,
+                    status: chargeStatus
                 });
 
                 for (const id of Object.keys(db)) {
 
                     if (
                         db[id].paymentId ===
-                        payment.id
+                        req.params.paymentId
                     ) {
 
                         if (
@@ -2470,8 +2699,8 @@ app.get(
             }
 
             res.json({
-                status: payment.status,
-                paymentId: payment.id
+                status: pago ? "RECEIVED" : chargeStatus,
+                paymentId: req.params.paymentId
             });
 
         } catch (error) {
@@ -3680,58 +3909,51 @@ async function gerarPixOferta(oferta, document, valor, descricao) {
         ? valor
         : oferta.value;
 
-    const customer = await asaasRequest(
-        "/customers",
-        {
-            method: "POST",
-            body: JSON.stringify({
-                name: oferta.name,
-                cpfCnpj: document,
-                email: oferta.email,
-                externalReference:
-                    `oferta-${oferta.id}`,
-                notificationDisabled: true
-            })
+    const paymentId = crypto.randomUUID();
+
+    const mp = await criarPagamentoPixMercadoPago({
+        externalReference: paymentId,
+        value: montante,
+        description:
+            descricao ||
+            `Milhão Door - transferência do espaço ` +
+            `#${oferta.spaceId.toLocaleString("pt-BR")}`,
+        customer: {
+            name: oferta.name,
+            taxID: document,
+            email: oferta.email
+        },
+        expiresIn: Math.floor(RESERVA_TTL_MS / 1000)
+    });
+
+    return {
+        customer: null,
+        payment: {
+            id: mp.id,
+            correlationID: mp.externalReference,
+            paymentLinkID: mp.ticketUrl,
+            value: montante,
+            brCode: mp.payload
+        },
+        pix: {
+            encodedImage: mp.qrCodeBase64,
+            payload: mp.payload,
+            expirationDate: mp.dateOfExpiration
         }
-    );
-
-    const dueDate =
-        new Date()
-            .toISOString()
-            .slice(0, 10);
-
-    const payment = await asaasRequest(
-        "/payments",
-        {
-            method: "POST",
-            body: JSON.stringify({
-                customer: customer.id,
-                billingType: "PIX",
-                value: montante,
-                dueDate,
-                description:
-                    descricao ||
-                    `Milhão Door - transferência do espaço ` +
-                    `#${oferta.spaceId.toLocaleString("pt-BR")}`,
-                externalReference:
-                    `OFR-${oferta.id}`
-            })
-        }
-    );
-
-    const pix = await asaasRequest(
-        `/payments/${payment.id}/pixQrCode`,
-        {
-            method: "GET"
-        }
-    );
-
-    return { customer, payment, pix };
+    };
 }
 
 app.post("/api/offers/:id/accept", async (req, res) => {
 
     try {
+
+        if (!MERCADOPAGO_ACCESS_TOKEN) {
+            return res.status(503).json({
+                error:
+                    "Pagamento temporariamente indisponível. " +
+                    "MERCADOPAGO_ACCESS_TOKEN não configurado."
+            });
+        }
 
         const ofertas = readOffers();
         const oferta = ofertas[req.params.id];
@@ -3814,7 +4036,7 @@ app.post("/api/offers/:id/accept", async (req, res) => {
 
         oferta.status = "accepted";
         oferta.paymentId = payment.id;
-        oferta.customerId = customer.id;
+        oferta.customerId = customer?.correlationID || "";
         oferta.feeValue = feeValue;
         oferta.ownerPixKey = minhaChave;
         oferta.acceptedAt = new Date().toISOString();
@@ -3878,6 +4100,14 @@ app.post("/api/offers/:id/buyer-accept", async (req, res) => {
 
     try {
 
+        if (!MERCADOPAGO_ACCESS_TOKEN) {
+            return res.status(503).json({
+                error:
+                    "Pagamento temporariamente indisponível. " +
+                    "MERCADOPAGO_ACCESS_TOKEN não configurado."
+            });
+        }
+
         const ofertas = readOffers();
         const oferta = ofertas[req.params.id];
 
@@ -3935,7 +4165,7 @@ app.post("/api/offers/:id/buyer-accept", async (req, res) => {
 
         oferta.status = "accepted";
         oferta.paymentId = payment.id;
-        oferta.customerId = customer.id;
+        oferta.customerId = customer?.correlationID || "";
         oferta.feeValue = feeValue;
         oferta.ownerPixKey = chaveDono;
         oferta.acceptedAt = new Date().toISOString();
@@ -4327,18 +4557,17 @@ app.get("/api/offers/:id/payment", async (req, res) => {
             });
         }
 
-        const pix = await asaasRequest(
-            `/payments/${oferta.paymentId}/pixQrCode`,
-            {
-                method: "GET"
-            }
-        );
+        const payment =
+            await consultarPagamentoMercadoPago(oferta.paymentId);
+
+        const transactionData =
+            payment.point_of_interaction?.transaction_data || {};
 
         res.json({
             ok: true,
             offerId: oferta.id,
-            qrCode: pix.encodedImage,
-            payload: pix.payload,
+            qrCode: transactionData.qr_code_base64 || "",
+            payload: transactionData.qr_code || "",
             paymentId: oferta.paymentId,
             value: oferta.value,
             feeValue: oferta.feeValue,
@@ -5095,62 +5324,107 @@ app.post("/api/link", (req, res) => {
    INICIAR SERVIDOR
 ========================= */
 
-app.post("/webhooks/asaas", (req, res) => {
-    const tokenRecebido =
-        req.headers["asaas-access-token"];
+app.post("/webhooks/mercadopago", async (req, res) => {
 
-    if (!validarTokenWebhook(tokenRecebido)) {
-        console.log("Webhook Asaas recusado: token inválido.");
-        return res.status(401).json({
-            error: "Unauthorized"
-        });
+    const evento = req.body || {};
+
+    console.log("Webhook Mercado Pago recebido:", evento.type, evento.data);
+
+    if (evento.type !== "payment" || !evento.data?.id) {
+        return res.status(200).json({ received: true });
     }
 
-    const evento = req.body;
+    try {
 
-    console.log("Webhook recebido:", evento.event);
+        const paymentId = String(evento.data.id);
 
-    if (evento.event === "PAYMENT_RECEIVED") {
-        const paymentId = evento.payment?.id;
+        const payment =
+            await consultarPagamentoMercadoPago(paymentId);
 
-        if (paymentId) {
+        if (!statusMercadoPagoPago(payment.status)) {
+            return res.status(200).json({ received: true });
+        }
 
-            const ofertaPaga =
-                confirmarPagamentoOferta(paymentId);
+        const ofertaPaga =
+            confirmarPagamentoOferta(paymentId);
 
-            pgPagamentoPago(paymentId);
+        pgPagamentoPago(paymentId);
 
-            registrarLog("pagamento_confirmado_webhook", {
-                paymentId
-            });
+        registrarLog("pagamento_confirmado_webhook", {
+            paymentId,
+            status: payment.status
+        });
 
-            const db = readDB();
-            let alterado = false;
+        const db = readDB();
+        let alterado = false;
 
-            for (const id of Object.keys(db)) {
-                const space = db[id];
+        for (const id of Object.keys(db)) {
+            const space = db[id];
 
-                if (
-                    space.paymentId === paymentId &&
-                    space.status === "reserved"
-                ) {
-                    db[id] = {
-                        ...space,
-                        status: "paid",
-                        paidAt: new Date().toISOString()
-                    };
+            if (
+                space.paymentId === paymentId &&
+                space.status === "reserved"
+            ) {
+                db[id] = {
+                    ...space,
+                    status: "paid",
+                    paidAt: new Date().toISOString()
+                };
 
-                    alterado = true;
-                }
-            }
-
-            if (alterado || ofertaPaga) {
-                writeDB(db);
-                console.log(
-                    `Pagamento ${paymentId} confirmado.`
-                );
+                alterado = true;
             }
         }
+
+        /* Pagamento tardio: o espaço foi liberado
+           por tempo esgotado. Se ainda estiver livre,
+           entrega ele ao pagante de qualquer forma. */
+
+        const liberadas =
+            readReservasLiberadas();
+
+        const antiga =
+            liberadas[paymentId];
+
+        if (antiga && !db[antiga.id]) {
+
+            db[antiga.id] = {
+                ...antiga,
+                status: "paid",
+                paidAt:
+                    new Date().toISOString()
+            };
+
+            delete liberadas[paymentId];
+            writeReservasLiberadas(liberadas);
+
+            alterado = true;
+
+            registrarLog(
+                "pagamento_tardio_restaurado",
+                {
+                    paymentId,
+                    bloco: antiga.id
+                }
+            );
+
+            console.log(
+                `Pagamento tardio ${paymentId}: ` +
+                `espaço #${antiga.id} entregue ao comprador.`
+            );
+        }
+
+        if (alterado || ofertaPaga) {
+            writeDB(db);
+            console.log(
+                `Pagamento ${paymentId} confirmado.`
+            );
+        }
+
+    } catch (error) {
+        console.error(
+            "Erro ao processar webhook Mercado Pago:",
+            error.message
+        );
     }
 
     return res.status(200).json({
@@ -5272,7 +5546,7 @@ app.get("/api/admin/resumo", authAdmin, (req, res) => {
             porStatus,
             valorEspaco: 1,
             receitaPotencial: sold,
-            asaasModo: ASAAS_SANDBOX ? "sandbox" : "producao"
+            mercadoPagoModo: MERCADOPAGO_SANDBOX ? "sandbox" : "producao"
         });
 });
 
@@ -5290,10 +5564,12 @@ app.get("/api/admin/spaces", authAdmin, (req, res) => {
             .trim();
 
     const limite =
-        Math.min(
-            500,
-            Number(req.query.limite || 200)
-        );
+        req.query.all === "1"
+            ? Infinity
+            : Math.min(
+                  500,
+                  Number(req.query.limite || 200)
+              );
 
     let lista = Object.values(db);
 
@@ -5323,6 +5599,93 @@ app.get("/api/admin/spaces", authAdmin, (req, res) => {
         ok: true,
         total,
         espacos: lista
+    });
+});
+
+app.post("/api/admin/spaces/bulk-delete", authAdmin, (req, res) => {
+
+    const raw = req.body && req.body.ids;
+
+    const lista = Array.isArray(raw)
+        ? raw
+        : String(raw || "")
+            .split(/[,\s]+/)
+            .filter(Boolean);
+
+    const ids = [...new Set(
+        lista
+            .map(id => String(id).replace(/\D/g, ""))
+            .filter(Boolean)
+            .map(Number)
+            .filter(n =>
+                Number.isInteger(n) &&
+                n >= 1 &&
+                n <= 1000000
+            )
+    )];
+
+    if (!ids.length) {
+        return res.status(400).json({
+            error: "Nenhum espaço válido informado."
+        });
+    }
+
+    if (ids.length > 50000) {
+        return res.status(400).json({
+            error: "Máximo de 50.000 espaços por lote."
+        });
+    }
+
+    const db = readDB();
+    const idsSet = new Set(ids);
+    let removidos = 0;
+
+    for (const id of ids) {
+        if (db[id]) {
+            delete db[id];
+            removidos++;
+        }
+    }
+
+    if (removidos === 0) {
+        return res.json({
+            ok: true,
+            removidos: 0,
+            informados: ids.length
+        });
+    }
+
+    writeDB(db);
+
+    /* Remove reservas liberadas pendentes desses blocos,
+       para o pagamento tardio não devolvê-los depois. */
+    const liberadas = readReservasLiberadas();
+    let alteradoLib = false;
+
+    for (const [paymentId, s] of Object.entries(liberadas)) {
+        if (idsSet.has(s.id)) {
+            delete liberadas[paymentId];
+            alteradoLib = true;
+        }
+    }
+
+    if (alteradoLib) {
+        writeReservasLiberadas(liberadas);
+    }
+
+    registrarLog("admin_spaces_removidos_lote", {
+        qtd: removidos,
+        ids: ids.slice(0, 200)
+    });
+
+    console.log(
+        `[ADMIN] ${removidos} espaço(s) apagados em lote.`
+    );
+
+    res.json({
+        ok: true,
+        removidos,
+        informados: ids.length
     });
 });
 
@@ -5401,6 +5764,109 @@ app.delete("/api/admin/spaces/:id", authAdmin, (req, res) => {
     registrarLog("admin_space_removido", { id: Number(id) });
 
     res.json({ ok: true });
+});
+
+const TEMPLATE_NOTAS_ADMIN = `# 📋 Referência do site — Milhão Door
+
+Preencha com as informações de cada serviço e salve.
+
+## 🚀 Hospedagem
+- Plataforma: (ex: Render)
+- URL do site:
+- Painel da hospedagem:
+- Usuário:
+- Senha:
+
+## ☁️ Render
+- Dashboard: https://dashboard.render.com
+- Nome do serviço:
+- Região:
+- Build: npm install | Start: node server.js
+- Disco persistente: /var/lib/megaoutdoor (DADOS, UPLOADS)
+- Variáveis: DATA_DIR, UPLOAD_DIR, MERCADOPAGO_ACCESS_TOKEN,
+  MERCADOPAGO_SANDBOX, MERCADOPAGO_WEBHOOK_URL, WEBHOOK_TOKEN,
+  RESEND_API_KEY, JWT_SECRET, ADMIN_USER, ADMIN_PASSWORD,
+  DATABASE_URL, RESERVA_TTL_MINUTOS
+
+## 📧 Resend (e-mails)
+- Dashboard: https://resend.com
+- API Key:
+- Domínio verificado:
+- E-mails: compra, código de acesso, ofertas, sorteio, recuperação
+
+## 💳 Mercado Pago (pagamentos PIX)
+- Dashboard: https://www.mercadopago.com.br/developers
+- Access Token: configurar em MERCADOPAGO_ACCESS_TOKEN
+- Webhook: configurar URL /webhooks/mercadopago no dashboard
+- AppID:
+- Chave PIX cadastrada:
+- Modo sandbox / produção:
+
+## 🗄️ Banco de dados
+- Provedor:
+- DATABASE_URL:
+- (guarda o histórico de transações / extrato)
+
+## 🔐 Admin do site
+- URL: https://SEUSITE/admin.html
+- Usuário:
+- Senha:
+
+## 📂 Outros / anotações
+-
+`;
+
+app.get("/api/admin/notas", authAdmin, (req, res) => {
+
+    const data = readJsonFile(ADMIN_NOTES_FILE, null);
+
+    if (!data) {
+        return res.json({
+            ok: true,
+            saved: false,
+            content: TEMPLATE_NOTAS_ADMIN,
+            updatedAt: null
+        });
+    }
+
+    res.json({
+        ok: true,
+        saved: true,
+        content: data.content || "",
+        updatedAt: data.updatedAt || null
+    });
+});
+
+app.get("/api/admin/notas/modelo", authAdmin, (req, res) => {
+    res.json({
+        ok: true,
+        content: TEMPLATE_NOTAS_ADMIN
+    });
+});
+
+app.post("/api/admin/notas", authAdmin, (req, res) => {
+
+    const content =
+        typeof req.body?.content === "string"
+            ? req.body.content
+            : "";
+
+    if (content.length > 50000) {
+        return res.status(400).json({
+            error: "Texto muito longo (máx. 50.000 caracteres)."
+        });
+    }
+
+    const updatedAt = new Date().toISOString();
+
+    writeJsonFile(ADMIN_NOTES_FILE, {
+        content,
+        updatedAt
+    });
+
+    registrarLog("admin_notas_salvas");
+
+    res.json({ ok: true, updatedAt });
 });
 
 app.get("/api/admin/transacoes", authAdmin, async (req, res) => {
@@ -5970,10 +6436,15 @@ app.use((err, req, res, next) => {
 });
 
 initBanco().then(() => {
-    if (ASAAS_SANDBOX) {
+
+    /* Varredura periódica: libera reservas que estouraram
+       o tempo limite (RESERVA_TTL_MINUTOS). */
+    setInterval(limparReservasExpiradas, 60 * 1000);
+
+    if (MERCADOPAGO_SANDBOX) {
         console.warn(
-            "⚠️  ATENÇÃO: ASAAS_SANDBOX=true — os pagamentos " +
-            "usarão o AMBIENTE DE TESTE do Asaas (dinheiro simulado)."
+            "⚠️  ATENÇÃO: MERCADOPAGO_SANDBOX=true — os pagamentos " +
+            "usarão o AMBIENTE DE TESTE do Mercado Pago (dinheiro simulado)."
         );
     }
     app.listen(
@@ -5981,7 +6452,7 @@ initBanco().then(() => {
         () => {
             console.log(
                 `Milhão Door funcionando em http://localhost:${PORT}` +
-                (ASAAS_SANDBOX ? " (Asaas SANDBOX)" : "")
+                (MERCADOPAGO_SANDBOX ? " (Mercado Pago SANDBOX)" : "")
             );
         }
     );

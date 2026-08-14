@@ -12,7 +12,13 @@ services:
         value: /var/lib/megaoutdoor/data
       - key: UPLOAD_DIR
         value: /var/lib/megaoutdoor/uploads
-      - key: ASAAS_API_KEY
+      - key: MERCADOPAGO_ACCESS_TOKEN
+        sync: false
+      - key: MERCADOPAGO_SANDBOX
+        sync: false
+      - key: MERCADOPAGO_WEBHOOK_URL
+        sync: false
+      - key: RESERVA_TTL_MINUTOS
         sync: false
       - key: WEBHOOK_TOKEN
         sync: false

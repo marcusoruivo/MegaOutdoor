@@ -6,17 +6,96 @@
 <title>Milhão Door - O Maior Outdoor da Internet</title>
 <link rel="icon" type="image/png" href="logo-milhao-door.png">
 <meta name="theme-color" content="#050505">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
+/* =========================================================
+   VARIÁVEIS DE TEMA
+   Suporte a dark (padrão) e light theme
+========================================================= */
+
+:root{
+    --bg-primary:#050505;
+    --bg-secondary:#0a0a0a;
+    --bg-tertiary:#111111;
+    --bg-card:#161616;
+    --bg-card-hover:#1c1c1c;
+    --bg-input:#111111;
+    --bg-button-secondary:#232323;
+    --text-primary:#ffffff;
+    --text-secondary:#b0b0b0;
+    --text-muted:#888888;
+    --border-color:#292929;
+    --border-color-strong:#3a3a3a;
+    --accent:#ffd400;
+    --accent-hover:#ffe34d;
+    --accent-shadow:rgba(255,212,0,.22);
+    --success:#45df6e;
+    --success-bg:#1b3a2a;
+    --offer:#ff7a00;
+    --offer-bg:#3a2f1b;
+    --info:#5aa2ff;
+    --purple:#b06bff;
+    --pink:#ff6b9d;
+    --danger:#ff4d4d;
+    --shadow:0 10px 40px rgba(0,0,0,.45);
+    --shadow-sm:0 4px 16px rgba(0,0,0,.25);
+    --radius-sm:8px;
+    --radius-md:12px;
+    --radius-lg:16px;
+    --radius-xl:20px;
+    --transition:all .2s cubic-bezier(.4,0,.2,1);
+    --header-height:80px;
+    --benefits-height:64px;
+}
+
+.light-theme{
+    --bg-primary-rgb:245,245,247;
+    --bg-primary:#f5f5f7;
+    --bg-secondary:#ffffff;
+    --bg-tertiary:#f0f0f2;
+    --bg-card:#ffffff;
+    --bg-card-hover:#f8f8fa;
+    --bg-input:#f5f5f7;
+    --bg-button-secondary:#e8e8ec;
+    --text-primary:#111111;
+    --text-secondary:#4a4a4a;
+    --text-muted:#777777;
+    --border-color:#e0e0e2;
+    --border-color-strong:#d0d0d4;
+    --accent:#e5b800;
+    --accent-hover:#d4a800;
+    --accent-shadow:rgba(229,184,0,.18);
+    --success:#22a646;
+    --success-bg:#e8f5eb;
+    --offer:#e56d00;
+    --offer-bg:#fff4e8;
+    --info:#2563eb;
+    --purple:#8b4fd4;
+    --pink:#e14d7a;
+    --danger:#dc2626;
+    --shadow:0 10px 40px rgba(0,0,0,.08);
+    --shadow-sm:0 4px 16px rgba(0,0,0,.06);
+    --bg-primary-rgb:5,5,5;
+}
+
 *{box-sizing:border-box}
+
+html{
+    scroll-behavior:smooth
+}
 
 html,body{
     margin:0;
     width:100%;
     height:100%;
     overflow:hidden;
-    background:#050505;
-    color:#fff;
-    font-family:Arial,Helvetica,sans-serif
+    background:var(--bg-primary);
+    color:var(--text-primary);
+    font-family:'Inter',Arial,Helvetica,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale
 }
 
 .topo{
@@ -257,7 +336,7 @@ html,body{
     position:fixed;
     right:22px;
     top:105px;
-    z-index:20;
+    z-index:40;
     display:flex;
     flex-direction:column;
     background:#000;
@@ -367,6 +446,7 @@ html,body{
     bottom:20px;
     left:50%;
     transform:translateX(-50%);
+    z-index:35;
     background:#000d;
     border:1px solid #292929;
     border-radius:10px;
@@ -408,7 +488,7 @@ html,body{
 .modal{
     display:none;
     position:fixed;
-    z-index:100;
+    z-index:2000;
     inset:0;
     background:#000e;
     align-items:center;
@@ -542,6 +622,7 @@ html,body{
     gap:20px;
     text-align:center;
     min-width:0;
+    overflow:hidden;
 }
 
 .info > div{
@@ -621,10 +702,18 @@ html,body{
 
     .info{
         gap:16px;
+        overflow:hidden;
+    }
+
+    .info > div{
+        min-width:0;
+        flex:1 1 0;
+        white-space:normal;
     }
 
     .info strong{
         font-size:13px;
+        white-space:nowrap;
     }
 
     .info small{
@@ -645,14 +734,19 @@ html,body{
 
     .info{
         gap:8px;
+        overflow:hidden;
     }
 
     .info > div{
         padding:0 2px;
+        min-width:0;
+        flex:1 1 0;
+        white-space:normal;
     }
 
     .info strong{
         font-size:12px;
+        white-space:nowrap;
     }
 
     .info small{
@@ -1071,7 +1165,7 @@ html,body{
 
 @media (max-width:420px){
 
-    .info > div:nth-child(2){
+    .info > div:nth-child(4){
         display:none;
     }
 
@@ -1084,62 +1178,1276 @@ html,body{
         height:43px;
     }
 }
+
+/* =========================
+   BOTÃO CONTA (FLUTUANTE)
+========================= */
+
+.btnConta{
+    position:fixed;
+    right:22px;
+    bottom:22px;
+    z-index:35;
+    margin:0;
+    padding:12px 18px;
+    font-size:13px;
+    border-radius:14px;
+    white-space:nowrap;
+}
+
+@media(max-width:640px){
+    .btnConta{
+        display:none;
+    }
+}
+
+/* =========================
+   TUTORIAL DE BOAS-VINDAS
+========================= */
+
+.modalTutorial{
+    background:rgba(0,0,0,.85);
+    backdrop-filter:blur(4px);
+}
+
+.tutBox{
+    width:94vw;
+    max-width:580px;
+    max-height:92vh;
+    overflow:auto;
+    padding:28px 26px 22px;
+    background:
+        radial-gradient(900px 320px at 50% -15%, rgba(255,212,0,.14), transparent 60%),
+        radial-gradient(600px 240px at 110% -10%, rgba(90,162,255,.10), transparent 55%),
+        #101010;
+    border:1px solid #333;
+    border-radius:18px;
+    text-align:left;
+}
+
+.tutHero{
+    text-align:center;
+    padding-bottom:16px;
+    border-bottom:1px dashed #2c2c2c;
+    margin-bottom:16px;
+}
+
+.tutHero .tutEmoji{
+    font-size:46px;
+    line-height:1;
+    display:block;
+}
+
+.tutHero h2{
+    margin:10px 0 6px;
+    font-size:23px;
+    font-weight:900;
+    color:#ffd400;
+    letter-spacing:-.3px;
+}
+
+.tutHero p{
+    margin:0 auto;
+    font-size:13px;
+    color:#bbb;
+    line-height:1.55;
+    max-width:430px;
+}
+
+.tutSteps{
+    display:grid;
+    gap:9px;
+    margin:14px 0 16px;
+}
+
+.tutStep{
+    display:flex;
+    gap:12px;
+    align-items:flex-start;
+    background:#161616;
+    border:1px solid #2a2a2a;
+    border-radius:12px;
+    padding:12px 14px;
+}
+
+.tutNum{
+    flex:0 0 auto;
+    width:26px;
+    height:26px;
+    border-radius:50%;
+    background:linear-gradient(135deg,#ffd400,#ff9d00);
+    color:#000;
+    font-weight:900;
+    font-size:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin-top:1px;
+    box-shadow:0 3px 10px rgba(255,157,0,.35);
+}
+
+.tutStep b{
+    display:block;
+    font-size:14px;
+    margin-bottom:3px;
+}
+
+.tutStep span{
+    display:block;
+    font-size:12px;
+    color:#bbb;
+    line-height:1.5;
+}
+
+.tutCards{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:9px;
+    margin-bottom:14px;
+}
+
+.tutCard{
+    background:#161616;
+    border:1px solid #2a2a2a;
+    border-radius:12px;
+    padding:12px 13px;
+}
+
+.tutCard b{
+    display:block;
+    font-size:13px;
+    margin-bottom:4px;
+}
+
+.tutCard span{
+    display:block;
+    font-size:11.5px;
+    color:#bbb;
+    line-height:1.5;
+}
+
+.tutCard.gold b{ color:#ffd400; }
+.tutCard.green b{ color:#45df6e; }
+.tutCard.orange b{ color:#ff7a00; }
+.tutCard.blue b{ color:#5aa2ff; }
+.tutCard.purple b{ color:#b06bff; }
+.tutCard.pink b{ color:#ff6b9d; }
+
+.tutNote{
+    font-size:11.5px;
+    color:#999;
+    text-align:center;
+    line-height:1.5;
+    margin:0 0 14px;
+    background:#1a1406;
+    border:1px solid #3a2f0d;
+    border-radius:10px;
+    padding:9px 12px;
+}
+
+.tutCta{
+    width:100%;
+    padding:14px;
+    font-size:14px;
+    font-weight:900;
+    letter-spacing:.3px;
+    background:linear-gradient(135deg,#ffd400,#ff9d00);
+    color:#000;
+    border:0;
+    border-radius:12px;
+    cursor:pointer;
+    box-shadow:0 6px 20px rgba(255,157,0,.35);
+    transition:filter .15s,transform .15s;
+}
+
+.tutCta:hover{
+    filter:brightness(1.08);
+    transform:translateY(-1px);
+}
+
+@media(max-width:640px){
+    .tutCards{
+        grid-template-columns:1fr;
+    }
+    .tutBox{
+        padding:22px 18px 18px;
+    }
+}
+
+/* =========================================================
+   MEGA OUTDOOR 2.0 — REDESIGN VISUAL
+   Override CSS para novo layout premium
+========================================================= */
+
+/* --- VARIÁVEIS ADICIONAIS --- */
+:root{
+    --benefits-height:0px;
+}
+
+body.has-benefits{
+    --benefits-height:72px;
+}
+
+/* --- HEADER PREMIUM --- */
+.topo{
+    position:fixed;
+    inset:0 0 auto;
+    z-index:1000;
+    height:var(--header-height);
+    min-height:var(--header-height);
+    background:rgba(var(--bg-primary-rgb,5,5,5),.92);
+    backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border-color);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:24px;
+    padding:0 28px;
+    transition:var(--transition)
+}
+
+.light-theme .topo{
+    background:rgba(245,245,247,.94);
+}
+
+.topo.scrolled{
+    box-shadow:var(--shadow-sm);
+    border-color:var(--border-color-strong)
+}
+
+.topo .logo{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    min-width:0
+}
+
+.topo .logo img{
+    width:auto;
+    height:46px;
+    max-width:220px;
+    max-height:46px;
+    object-fit:contain;
+    display:block
+}
+
+.nav-desktop{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex:1;
+    justify-content:center
+}
+
+.nav-desktop a{
+    color:var(--text-secondary);
+    text-decoration:none;
+    font-size:13px;
+    font-weight:600;
+    padding:8px 14px;
+    border-radius:var(--radius-sm);
+    transition:var(--transition);
+    white-space:nowrap
+}
+
+.nav-desktop a:hover{
+    color:var(--accent);
+    background:rgba(255,212,0,.08)
+}
+
+.topo-actions{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex:0 0 auto
+}
+
+.btn-tema{
+    width:38px;
+    height:38px;
+    border-radius:50%;
+    border:1px solid var(--border-color);
+    background:var(--bg-card);
+    color:var(--text-secondary);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    font-size:16px;
+    transition:var(--transition)
+}
+
+.btn-tema:hover{
+    border-color:var(--accent);
+    color:var(--accent);
+    transform:translateY(-1px)
+}
+
+.btn-entrar{
+    padding:10px 20px;
+    border-radius:var(--radius-md);
+    background:linear-gradient(135deg,var(--accent-hover),var(--accent));
+    color:#000;
+    border:0;
+    font-weight:800;
+    font-size:13px;
+    cursor:pointer;
+    box-shadow:0 4px 12px var(--accent-shadow);
+    transition:var(--transition);
+    white-space:nowrap
+}
+
+.btn-entrar:hover{
+    filter:brightness(1.08);
+    transform:translateY(-2px)
+}
+
+.btn-menu-mobile{
+    display:none;
+    width:40px;
+    height:40px;
+    border-radius:var(--radius-sm);
+    border:1px solid var(--border-color);
+    background:var(--bg-card);
+    color:var(--text-primary);
+    align-items:center;
+    justify-content:center;
+    font-size:20px;
+    cursor:pointer
+}
+
+/* --- BARRA DE BENEFÍCIOS --- */
+.benefits-bar{
+    position:fixed;
+    top:var(--header-height);
+    left:0;
+    right:0;
+    z-index:998;
+    height:var(--benefits-height);
+    background:var(--bg-secondary);
+    border-bottom:1px solid var(--border-color);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:40px;
+    padding:0 20px;
+    overflow:hidden;
+    transition:var(--transition)
+}
+
+.benefit-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    color:var(--text-secondary);
+    font-size:12px;
+    font-weight:600;
+    white-space:nowrap
+}
+
+.benefit-item .icon{
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    background:rgba(255,212,0,.12);
+    color:var(--accent);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:13px;
+    flex:0 0 auto
+}
+
+/* --- LAYOUT PRINCIPAL --- */
+.main-layout{
+    position:absolute;
+    top:calc(var(--header-height) + var(--benefits-height));
+    left:0;
+    right:0;
+    bottom:0;
+    display:grid;
+    grid-template-columns:340px 1fr 300px;
+    gap:14px;
+    padding:14px;
+    overflow:hidden
+}
+
+#area{
+    position:relative;
+    inset:auto;
+    grid-column:2;
+    border-radius:var(--radius-lg);
+    border:1px solid var(--border-color);
+    overflow:hidden;
+    box-shadow:var(--shadow);
+    background:radial-gradient(circle at center, var(--bg-tertiary), var(--bg-primary) 72%)
+}
+
+.light-theme #area{
+    background:radial-gradient(circle at center, #ffffff, var(--bg-primary) 90%)
+}
+
+/* --- SIDEBAR ESQUERDA --- */
+.sidebar-left{
+    grid-column:1;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding-right:4px
+}
+
+.card{
+    background:var(--bg-card);
+    border:1px solid var(--border-color);
+    border-radius:var(--radius-lg);
+    padding:14px;
+    box-shadow:var(--shadow-sm);
+    transition:var(--transition)
+}
+
+.card:hover{
+    border-color:var(--border-color-strong);
+    transform:translateY(-1px)
+}
+
+.card-title{
+    font-size:12px;
+    font-weight:700;
+    color:var(--text-muted);
+    text-transform:uppercase;
+    letter-spacing:.8px;
+    margin:0 0 6px
+}
+
+.card-value{
+    font-size:22px;
+    font-weight:900;
+    color:var(--accent);
+    margin:0 0 2px
+}
+
+.card-sub{
+    font-size:13px;
+    color:var(--text-secondary);
+    margin:0
+}
+
+.search-box{
+    display:flex;
+    gap:8px;
+    margin:12px 0 0
+}
+
+.search-box input{
+    flex:1;
+    min-width:0;
+    background:var(--bg-input);
+    color:var(--text-primary);
+    border:1px solid var(--border-color);
+    border-radius:var(--radius-sm);
+    padding:9px 10px;
+    font-size:12px;
+    outline:none;
+    transition:var(--transition)
+}
+
+.search-box input:focus{
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(255,212,0,.1)
+}
+
+.search-box button{
+    background:var(--accent);
+    color:#000;
+    border:0;
+    border-radius:var(--radius-sm);
+    padding:0 14px;
+    font-size:12px;
+    font-weight:800;
+    cursor:pointer;
+    transition:var(--transition)
+}
+
+.search-box button:hover{
+    filter:brightness(1.1)
+}
+
+.mode-options{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    margin-top:10px
+}
+
+.mode-btn{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    width:100%;
+    padding:10px;
+    border-radius:var(--radius-md);
+    border:1px solid var(--border-color);
+    background:var(--bg-tertiary);
+    color:var(--text-primary);
+    cursor:pointer;
+    text-align:left;
+    transition:var(--transition)
+}
+
+.mode-btn:hover{
+    border-color:var(--accent);
+    background:var(--bg-card-hover)
+}
+
+.mode-btn .mode-icon{
+    width:30px;
+    height:30px;
+    border-radius:var(--radius-sm);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:14px;
+    flex:0 0 auto
+}
+
+.mode-btn .mode-text{
+    flex:1
+}
+
+.mode-btn .mode-text b{
+    display:block;
+    font-size:12px;
+    font-weight:800;
+    margin-bottom:1px
+}
+
+.mode-btn .mode-text span{
+    display:block;
+    font-size:10px;
+    color:var(--text-muted)
+}
+
+.block-inputs{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:8px
+}
+
+.block-inputs input{
+    width:56px;
+    padding:8px;
+    border-radius:var(--radius-sm);
+    background:var(--bg-input);
+    color:var(--text-primary);
+    border:1px solid var(--border-color);
+    text-align:center;
+    font-size:12px
+}
+
+.block-inputs input:focus{
+    border-color:var(--accent);
+    outline:none
+}
+
+/* --- CARD SELEÇÃO ATUAL --- */
+.selection-card .selection-count{
+    font-size:13px;
+    color:var(--text-secondary);
+    margin:0 0 6px
+}
+
+.selection-card .selection-total{
+    font-size:28px;
+    font-weight:900;
+    color:var(--text-primary);
+    margin:0 0 12px
+}
+
+.selection-card .selection-total span{
+    color:var(--accent)
+}
+
+.btn-pagar{
+    background:linear-gradient(135deg,var(--success),#2eb85a);
+    color:#000;
+    box-shadow:0 4px 14px rgba(69,223,110,.22);
+    animation:none
+}
+
+.btn-pagar:hover{
+    filter:brightness(1.08);
+    transform:translateY(-2px)
+}
+
+.btn-pagar.pulse{
+    animation:pulseGreen 2s ease-in-out infinite
+}
+
+@keyframes pulseGreen{
+    0%,100%{ box-shadow:0 4px 14px rgba(69,223,110,.22) }
+    50%{ box-shadow:0 4px 22px rgba(69,223,110,.45) }
+}
+
+.selection-empty{
+    text-align:center;
+    padding:14px 10px;
+    color:var(--text-muted);
+    font-size:12px
+}
+
+.selection-empty .icon{
+    font-size:24px;
+    margin-bottom:6px;
+    display:block
+}
+
+.mini-stats{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+    margin-top:10px
+}
+
+.mini-stats div{
+    background:var(--bg-tertiary);
+    border:1px solid var(--border-color);
+    border-radius:var(--radius-sm);
+    padding:8px;
+    font-size:10px;
+    color:var(--text-secondary);
+    text-align:center
+}
+
+.mini-stats div b{
+    display:block;
+    font-size:13px;
+    color:var(--text-primary);
+    margin-top:2px
+}
+
+/* --- SIDEBAR DIREITA --- */
+.sidebar-right{
+    grid-column:3;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding-right:4px
+}
+
+.how-it-works .steps{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    margin-top:12px
+}
+
+.step{
+    display:flex;
+    gap:12px;
+    align-items:flex-start
+}
+
+.step-num{
+    width:26px;
+    height:26px;
+    border-radius:50%;
+    background:linear-gradient(135deg,var(--accent),var(--offer));
+    color:#000;
+    font-size:12px;
+    font-weight:900;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex:0 0 auto
+}
+
+.step b{
+    display:block;
+    font-size:13px;
+    color:var(--text-primary);
+    margin-bottom:2px
+}
+
+.step span{
+    font-size:11px;
+    color:var(--text-secondary);
+    line-height:1.45
+}
+
+.discount-card{
+    background:linear-gradient(135deg, rgba(255,212,0,.12), rgba(255,122,0,.08));
+    border-color:rgba(255,212,0,.3)
+}
+
+.discount-card h3{
+    margin:0 0 6px;
+    font-size:16px;
+    color:var(--accent)
+}
+
+.discount-card p{
+    margin:0 0 12px;
+    font-size:12px;
+    color:var(--text-secondary)
+}
+
+/* --- LEGENDA --- */
+.map-legend{
+    position:absolute;
+    bottom:16px;
+    left:50%;
+    transform:translateX(-50%);
+    display:flex;
+    align-items:center;
+    gap:16px;
+    background:var(--bg-card);
+    border:1px solid var(--border-color);
+    border-radius:var(--radius-xl);
+    padding:10px 18px;
+    box-shadow:var(--shadow-sm);
+    z-index:10
+}
+
+.legend-item{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:11px;
+    color:var(--text-secondary);
+    font-weight:600
+}
+
+.legend-dot{
+    width:10px;
+    height:10px;
+    border-radius:2px
+}
+
+/* --- BOTÕES FIXOS INFERIORES --- */
+.fab-actions{
+    position:fixed;
+    left:20px;
+    bottom:20px;
+    z-index:50;
+    display:flex;
+    flex-direction:column;
+    gap:10px
+}
+
+.fab-btn{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:12px 18px;
+    border-radius:var(--radius-xl);
+    border:1px solid var(--border-color);
+    background:var(--bg-card);
+    color:var(--text-primary);
+    font-weight:700;
+    font-size:12px;
+    cursor:pointer;
+    box-shadow:var(--shadow-sm);
+    transition:var(--transition);
+    white-space:nowrap
+}
+
+.fab-btn:hover{
+    transform:translateY(-2px);
+    box-shadow:var(--shadow)
+}
+
+.fab-btn.cmd{
+    color:var(--success);
+    border-color:rgba(69,223,110,.3)
+}
+
+.fab-btn.chat{
+    color:var(--info);
+    border-color:rgba(90,162,255,.3)
+}
+
+/* --- SEÇÃO INFERIOR (TRUST + BENEFITS) --- */
+.bottom-section{
+    display:none
+}
+
+.trust-section,
+.benefits-section{
+    background:var(--bg-secondary);
+    border-top:1px solid var(--border-color);
+    padding:50px 28px
+}
+
+.section-title{
+    text-align:center;
+    font-size:24px;
+    font-weight:900;
+    color:var(--text-primary);
+    margin:0 0 30px
+}
+
+.section-title span{
+    color:var(--accent)
+}
+
+.cards-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:16px;
+    max-width:1200px;
+    margin:0 auto
+}
+
+.trust-card,
+.benefit-card{
+    background:var(--bg-card);
+    border:1px solid var(--border-color);
+    border-radius:var(--radius-lg);
+    padding:22px;
+    text-align:center;
+    transition:var(--transition)
+}
+
+.trust-card:hover,
+.benefit-card:hover{
+    transform:translateY(-3px);
+    border-color:var(--border-color-strong);
+    box-shadow:var(--shadow-sm)
+}
+
+.trust-card .big{
+    font-size:32px;
+    font-weight:900;
+    color:var(--accent);
+    margin:0 0 4px
+}
+
+.trust-card b,
+.benefit-card b{
+    display:block;
+    font-size:14px;
+    color:var(--text-primary);
+    margin:10px 0 4px
+}
+
+.trust-card span,
+.benefit-card span{
+    font-size:12px;
+    color:var(--text-secondary)
+}
+
+.benefit-card .icon{
+    width:46px;
+    height:46px;
+    border-radius:50%;
+    background:rgba(255,212,0,.1);
+    color:var(--accent);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:20px;
+    margin:0 auto
+}
+
+/* --- FOOTER --- */
+.site-footer{
+    background:var(--bg-tertiary);
+    border-top:1px solid var(--border-color);
+    padding:40px 28px 24px
+}
+
+.footer-content{
+    max-width:1200px;
+    margin:0 auto;
+    display:grid;
+    grid-template-columns:1.5fr 1fr 1fr 1fr;
+    gap:30px
+}
+
+.footer-brand img{
+    height:38px;
+    margin-bottom:12px
+}
+
+.footer-brand p{
+    font-size:12px;
+    color:var(--text-muted);
+    line-height:1.6;
+    margin:0
+}
+
+.footer-col h4{
+    font-size:12px;
+    color:var(--text-primary);
+    text-transform:uppercase;
+    letter-spacing:.8px;
+    margin:0 0 14px
+}
+
+.footer-col a{
+    display:block;
+    color:var(--text-secondary);
+    text-decoration:none;
+    font-size:12px;
+    margin-bottom:8px;
+    transition:var(--transition)
+}
+
+.footer-col a:hover{
+    color:var(--accent)
+}
+
+.footer-bottom{
+    max-width:1200px;
+    margin:30px auto 0;
+    padding-top:20px;
+    border-top:1px solid var(--border-color);
+    text-align:center;
+    font-size:11px;
+    color:var(--text-muted)
+}
+
+/* --- MENU MOBILE --- */
+.mobile-menu{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:1100;
+    background:rgba(0,0,0,.7);
+    backdrop-filter:blur(4px)
+}
+
+.mobile-menu.open{
+    display:block
+}
+
+.mobile-menu-content{
+    position:absolute;
+    top:0;
+    right:0;
+    width:280px;
+    height:100%;
+    background:var(--bg-card);
+    border-left:1px solid var(--border-color);
+    padding:24px;
+    transform:translateX(100%);
+    transition:transform .3s ease
+}
+
+.mobile-menu.open .mobile-menu-content{
+    transform:translateX(0)
+}
+
+.mobile-menu a{
+    display:block;
+    color:var(--text-primary);
+    text-decoration:none;
+    padding:14px 0;
+    border-bottom:1px solid var(--border-color);
+    font-size:15px;
+    font-weight:600
+}
+
+.mobile-menu a:hover{
+    color:var(--accent)
+}
+
+.mobile-menu .btn-entrar{
+    width:100%;
+    margin-top:16px
+}
+
+/* --- RESPONSIVIDADE GERAL --- */
+@media(max-width:1280px){
+    .main-layout{
+        grid-template-columns:320px 1fr 280px;
+        gap:14px;
+        padding:14px
+    }
+}
+
+@media(max-width:1100px){
+    .main-layout{
+        grid-template-columns:300px 1fr;
+        grid-template-rows:1fr auto
+    }
+    .sidebar-right{
+        grid-column:1 / -1;
+        flex-direction:row;
+        overflow-x:auto;
+        overflow-y:hidden;
+        padding-right:0;
+        padding-bottom:4px
+    }
+    .sidebar-right .card{
+        min-width:280px;
+        flex:0 0 auto
+    }
+}
+
+@media(max-width:900px){
+    .nav-desktop{
+        display:none
+    }
+    .btn-menu-mobile{
+        display:flex
+    }
+    .topo{
+        padding:0 16px;
+        gap:12px
+    }
+    .topo .logo img{
+        height:38px
+    }
+    .benefits-bar{
+        gap:20px;
+        justify-content:flex-start;
+        overflow-x:auto
+    }
+    .benefit-item span{
+        display:none
+    }
+}
+
+@media(max-width:760px){
+    :root{
+        --header-height:72px
+    }
+    body.has-benefits{
+        --benefits-height:56px
+    }
+    .main-layout{
+        grid-template-columns:1fr;
+        grid-template-rows:auto 1fr;
+        gap:12px;
+        padding:12px;
+        overflow-y:auto
+    }
+    .sidebar-left{
+        grid-column:1;
+        grid-row:1;
+        flex-direction:row;
+        overflow-x:auto;
+        overflow-y:hidden;
+        gap:10px;
+        padding-right:0;
+        padding-bottom:4px
+    }
+    .sidebar-left .card{
+        min-width:300px;
+        flex:0 0 auto
+    }
+    #area{
+        grid-column:1;
+        grid-row:2;
+        min-height:60vh
+    }
+    .sidebar-right{
+        display:none
+    }
+    .zoom{
+        right:12px;
+        top:calc(var(--header-height) + var(--benefits-height) + 12px)
+    }
+    .map-legend{
+        gap:10px;
+        padding:8px 12px;
+        font-size:10px
+    }
+    .legend-item span{
+        display:none
+    }
+    .fab-actions{
+        left:12px;
+        bottom:12px;
+        flex-direction:row
+    }
+    .fab-btn span{
+        display:none
+    }
+    .footer-content{
+        grid-template-columns:1fr 1fr;
+        gap:24px
+    }
+}
+
+@media(max-width:480px){
+    .topo .logo img{
+        height:32px
+    }
+    .btn-entrar{
+        padding:8px 14px;
+        font-size:12px
+    }
+    .benefit-item .icon{
+        width:24px;
+        height:24px;
+        font-size:11px
+    }
+    .footer-content{
+        grid-template-columns:1fr
+    }
+}
+
+/* --- AJUSTES FINAIS --- */
+body.footer-visible{
+    overflow-y:auto;
+    overflow-x:hidden
+}
+
+body.footer-visible .main-layout{
+    position:relative;
+    height:auto;
+    min-height:calc(100vh - var(--header-height) - var(--benefits-height))
+}
+
+body.footer-visible #area{
+    position:relative;
+    height:70vh;
+    min-height:500px
+}
+
+.cart{
+    background:var(--bg-card);
+    z-index:60
+}
+
+/* Carrinho flutuante antigo desativado — usamos o card de seleção na sidebar */
+#cart{
+    display:none !important
+}
+
+.cmdFixo,
+.chatFixo{
+    display:none
+}
+
+#btnEntrar{
+    display:none
+}
+
+#offerBar{
+    z-index:70
+}
+
+#sorteioBanner{
+    top:calc(var(--header-height) + var(--benefits-height) + 8px);
+    z-index:80
+}
+
+/* --- SCROLLBAR CUSTOMIZADA --- */
+::-webkit-scrollbar{
+    width:6px;
+    height:6px
+}
+
+::-webkit-scrollbar-track{
+    background:transparent
+}
+
+::-webkit-scrollbar-thumb{
+    background:var(--border-color-strong);
+    border-radius:3px
+}
+
+::-webkit-scrollbar-thumb:hover{
+    background:var(--text-muted)
+}
 </style>
 
 </head>
 
 <body>
 
-<header class="topo">
+<header class="topo" id="mainHeader">
 
-<div class="logo">
-    <img src="/logo-milhao-door.png" alt="Milhão Door">
+    <div class="logo">
+        <img src="/logo-milhao-door.png" alt="Milhão Door">
+    </div>
+
+    <nav class="nav-desktop">
+        <a href="#inicio" onclick="scrollToTop(event)">INÍCIO</a>
+        <a href="#como-funciona" onclick="scrollToSection(event,'comoFuncionaSection')">COMO FUNCIONA</a>
+        <a href="#precos" onclick="abrirPrecos(event)">PREÇOS</a>
+        <a href="#faq" onclick="abrirFaq(event)">FAQ</a>
+        <a href="#contato" onclick="scrollToFooter(event)">CONTATO</a>
+    </nav>
+
+    <div class="topo-actions">
+        <button
+            class="btn-tema"
+            id="btnTema"
+            onclick="toggleTema()"
+            title="Alternar tema">
+            🌙
+        </button>
+        <button
+            class="btn-entrar"
+            id="btnEntrarHeader"
+            onclick="abrirLogin()">
+            👤 ENTRAR
+        </button>
+        <button
+            class="btn-menu-mobile"
+            id="btnMenuMobile"
+            onclick="toggleMenuMobile()"
+            aria-label="Menu">
+            ☰
+        </button>
+    </div>
+
+</header>
+
+<!-- MENU MOBILE -->
+<div class="mobile-menu" id="mobileMenu" onclick="fecharMenuMobile(event)">
+    <div class="mobile-menu-content" onclick="event.stopPropagation()">
+        <a href="#inicio" onclick="scrollToTop(event);fecharMenuMobile()">INÍCIO</a>
+        <a href="#como-funciona" onclick="scrollToSection(event,'comoFuncionaSection');fecharMenuMobile()">COMO FUNCIONA</a>
+        <a href="#precos" onclick="abrirPrecos(event);fecharMenuMobile()">PREÇOS</a>
+        <a href="#faq" onclick="abrirFaq(event);fecharMenuMobile()">FAQ</a>
+        <a href="#contato" onclick="scrollToFooter(event);fecharMenuMobile()">CONTATO</a>
+        <button
+            class="btn-entrar"
+            id="btnEntrarMobile"
+            onclick="abrirLogin();fecharMenuMobile()">
+            👤 ENTRAR
+        </button>
+    </div>
 </div>
 
-<div class="info">
-
-<div>
-<small>ESPAÇOS</small>
-<strong>1.000.000</strong>
-</div>
-
-<div>
-<small>VALOR POR ESPAÇO</small>
-<strong class="y">R$ 1,00</strong>
-</div>
-
-<div>
-<small>VENDIDOS</small>
-<strong id="sold">0</strong>
-</div>
-
-<div>
-<small>FATURAMENTO</small>
-<strong class="g" id="rev">R$ 0,00</strong>
-</div>
-
+<!-- BARRA DE BENEFÍCIOS -->
+<div class="benefits-bar" id="benefitsBar">
+    <div class="benefit-item">
+        <span class="icon">🛒</span>
+        <span>COMPRE DO SEU JEITO</span>
+    </div>
+    <div class="benefit-item">
+        <span class="icon">🔒</span>
+        <span>PAGAMENTO SEGURO</span>
+    </div>
+    <div class="benefit-item">
+        <span class="icon">⚡</span>
+        <span>LIBERAÇÃO AUTOMÁTICA</span>
+    </div>
+    <div class="benefit-item">
+        <span class="icon">🎧</span>
+        <span>SUPORTE RÁPIDO</span>
+    </div>
 </div>
 
 <button
 id="btnEntrar"
-class="btn"
+class="btn btnConta"
 onclick="abrirLogin()"
-style="
-    margin:0;
-    padding:9px 14px;
-    font-size:12px;
-    white-space:nowrap;
-    box-shadow:0 4px 14px rgba(0,0,0,.5);
-">
+title="Entrar / Criar conta">
 👤 ENTRAR
 </button>
 
-</header>
-
-
-<div id="area">
-<canvas id="canvas"></canvas>
-</div>
 
 <div
 id="offerBar"
@@ -1149,7 +2457,7 @@ style="
     left:50%;
     transform:translateX(-50%);
     bottom:18px;
-    z-index:9000;
+    z-index:70;
     background:#111;
     border:1px solid #ff7a00;
     border-radius:12px;
@@ -1200,8 +2508,7 @@ LIMPAR
         position:fixed;
         left:50%;
         transform:translateX(-50%);
-        top:92px;
-        z-index:8999;
+        z-index:80;
         background:linear-gradient(90deg,#ffd400,#ff9d00);
         color:#111;
         border-radius:10px;
@@ -1235,177 +2542,204 @@ LIMPAR
 </div>
 
 
-<div class="painel">
+<main class="main-layout" id="mainLayout">
 
-<h2>1 MILHÃO DE ESPAÇOS</h2>
+    <!-- SIDEBAR ESQUERDA -->
+    <aside class="sidebar-left" id="inicio">
 
-<div class="num">
-1.000 × 1.000
-</div>
+        <div class="card">
+            <div class="card-title">1 Milhão de Espaços</div>
+            <div class="card-value">1.000 × 1.000</div>
+            <div class="card-sub">O maior outdoor da internet</div>
+        </div>
 
-<div class="search-box">
-  <input
-    id="spaceSearch"
-    type="number"
-    min="1"
-    max="1000000"
-    placeholder="Digite o número do espaço"
-    onkeydown="if(event.key==='Enter') localizarEspaco()"
-  />
-  <button onclick="localizarEspaco()">🔎 LOCALIZAR</button>
-</div>
-<button
-    id="btnArea"
-    class="btn"
-    style="margin-top:6px; width:100%;"
-    onclick="toggleSelectArea()">
-⬜ SELECIONAR VÁRIOS (ÁREA)
-</button>
+        <div class="card">
+            <div class="card-title">Localizar Espaço</div>
+            <div class="search-box">
+                <input
+                    id="spaceSearch"
+                    type="number"
+                    min="1"
+                    max="1000000"
+                    placeholder="Digite o número do espaço"
+                    onkeydown="if(event.key==='Enter') localizarEspaco()"
+                />
+                <button onclick="localizarEspaco()">🔍</button>
+            </div>
 
-<button
-    id="btnOferta"
-    class="btn"
-    style="margin-top:6px; width:100%; background:#ff7a00; color:#000;"
-    onclick="toggleOfferMode()">
-💰 OFERTA EM BLOCOS
-</button>
+            <div class="mode-options">
+                <button class="mode-btn" id="btnOferta" onclick="toggleOfferMode()">
+                    <span class="mode-icon" style="background:rgba(255,122,0,.15);color:var(--offer)">💰</span>
+                    <span class="mode-text">
+                        <b>OFERTA EM BLOCOS</b>
+                        <span>Monte seu bloco e pague menos</span>
+                    </span>
+                </button>
 
-<button
-    id="btnMeusBlocos"
-    class="btn"
-    style="margin-top:6px; width:100%; background:#1b3a2a; color:#45d66f;"
-    onclick="toggleMeusBlocos()">
-👁 MEUS BLOCOS
-</button>
+                <button class="mode-btn" id="btnArea" onclick="toggleSelectArea()">
+                    <span class="mode-icon" style="background:rgba(90,162,255,.15);color:var(--info)">⬜</span>
+                    <span class="mode-text">
+                        <b>SELECIONAR VÁRIOS (ÁREA)</b>
+                        <span>Selecione uma área personalizada</span>
+                    </span>
+                </button>
 
-<div style="margin-top:6px;">
+                <button class="mode-btn" id="btnMeusBlocos" onclick="toggleMeusBlocos()">
+                    <span class="mode-icon" style="background:rgba(69,223,110,.15);color:var(--success)">👁</span>
+                    <span class="mode-text">
+                        <b>SELECIONAR ESPAÇOS</b>
+                        <span>Escolha os espaços desejados</span>
+                    </span>
+                </button>
+            </div>
 
-<label style="font-size:12px;color:#aaa;display:block;margin-bottom:4px;">
-Selecionar bloco (Largura × Altura) — inicia no espaço pesquisado (canto superior esquerdo):
-</label>
+            <div style="margin-top:14px;">
+                <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:6px;">
+                    Selecionar bloco (Largura × Altura)
+                </label>
+                <div class="block-inputs">
+                    <input id="blkL" type="number" min="1" max="1000" value="10">
+                    <span style="color:var(--text-muted)">×</span>
+                    <input id="blkH" type="number" min="1" max="1000" value="10">
+                    <button class="btn" style="margin:0;flex:1;" onclick="selecionarBloco()">SELECIONAR</button>
+                </div>
+            </div>
+        </div>
 
-<div style="display:flex; gap:6px; align-items:center;">
+        <div class="card selection-card" id="selectionCard">
+            <div class="selection-empty" id="selectionEmpty">
+                <span class="icon">🖱️</span>
+                <div>Nenhum espaço selecionado ainda.<br>Clique no mapa para começar.</div>
+            </div>
+            <div id="selectionContent" style="display:none;">
+                <div class="card-title">Seleção Atual</div>
+                <div class="selection-count"><b id="qty">0</b> espaço(s) selecionado(s)</div>
+                <div class="selection-total">Total: <span id="total">R$ 0,00</span></div>
+                <button class="btn btn-pagar" id="go" onclick="checkout()">
+                    VER RESUMO E PAGAR →
+                </button>
+                <button class="btn sec" onclick="clearSel()">LIMPAR SELEÇÃO</button>
 
-<input
-    id="blkL"
-    type="number"
-    min="1"
-    max="1000"
-    value="10"
-    style="
-        width:64px;
-        padding:9px;
-        border-radius:8px;
-        background:#111;
-        color:#fff;
-        border:1px solid #333;
-    ">
+                <div class="mini-stats">
+                    <div>VENDIDOS<b id="sold2">0</b></div>
+                    <div>LIVRES<b id="free">1.000.000</b></div>
+                </div>
+            </div>
+        </div>
 
-<span style="color:#aaa;">×</span>
+    </aside>
 
-<input
-    id="blkH"
-    type="number"
-    min="1"
-    max="1000"
-    value="10"
-    style="
-        width:64px;
-        padding:9px;
-        border-radius:8px;
-        background:#111;
-        color:#fff;
-        border:1px solid #333;
-    ">
+    <!-- MAPA -->
+    <div id="area">
+        <canvas id="canvas"></canvas>
 
-<button
-    class="btn"
-    style="flex:1;"
-    onclick="selecionarBloco()">
-SELECIONAR BLOCO
-</button>
+        <div class="map-legend">
+            <div class="legend-item">
+                <span class="legend-dot" style="background:#1a1a1a;border:1px solid #333"></span>
+                <span>Disponível</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot" style="background:#45df6e"></span>
+                <span>Selecionado</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot" style="background:#5aa2ff"></span>
+                <span>Seu bloco</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot" style="background:#b06bff"></span>
+                <span>Vendido</span>
+            </div>
+        </div>
+    </div>
 
-</div>
+    <!-- SIDEBAR DIREITA -->
+    <aside class="sidebar-right" id="comoFuncionaSection">
 
-</div>
+        <div class="card how-it-works">
+            <div class="card-title">Como Funciona?</div>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div>
+                        <b>Escolha seu método</b>
+                        <span>Selecione como deseja comprar seu espaço ou bloco.</span>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div>
+                        <b>Selecione os espaços</b>
+                        <span>Clique nos quadradinhos ou selecione uma área.</span>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div>
+                        <b>Revise e pague</b>
+                        <span>Confira seus dados e escolha o pagamento.</span>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div>
+                        <b>Seu espaço será exibido!</b>
+                        <span>Após a confirmação, seu bloco aparecerá para todos.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-<p>
-Clique nos espaços disponíveis para selecionar vários.
-<br>
-<b>R$ 1,00 por espaço.</b>
-</p>
+        <div class="card discount-card" id="precos">
+            <h3>DESCONTO PROGRESSIVO</h3>
+            <p>Quanto mais espaços, maior o desconto!</p>
+            <button class="btn" onclick="abrirPrecos(event)">
+                VER TABELA DE PREÇOS →
+            </button>
+        </div>
 
-<div class="status">
+        <div class="card">
+            <div class="card-title">Estatísticas</div>
+            <div class="mini-stats">
+                <div>TOTAIS<b>1.000.000</b></div>
+                <div>DISPONÍVEIS<b class="g" id="freeTop">1.000.000</b></div>
+                <div>VENDIDOS<b id="sold">0</b></div>
+                <div>FATURAMENTO<b class="y" id="rev">R$ 0,00</b></div>
+            </div>
+        </div>
 
-<div>
-🟩 Vendidos:
-<b id="sold2">0</b>
-</div>
+    </aside>
 
-<div>
-⬜ Livres:
-<b id="free">1.000.000</b>
-</div>
-
-</div>
-
-<button
-class="btn"
-id="go"
-disabled
-onclick="checkout()">
-SELECIONE ESPAÇOS
-</button>
-
-<button
-class="btn sec"
-onclick="clearSel()">
-LIMPAR SELEÇÃO
-</button>
-
-</div>
-
+</main>
 
 <div class="zoom">
-
-<button onclick="zoom(1.2)">+</button>
-
-<button onclick="zoom(.83)">−</button>
-
+    <button onclick="zoom(1.2)">+</button>
+    <button onclick="zoom(.83)">−</button>
 </div>
-
 
 <div class="hint">
-🖱️ Arraste • Role ou pinça para zoom • Clique/toque para selecionar
+    🖱️ Arraste • Role ou pinça para zoom • Clique/toque para selecionar
 </div>
-
 
 <div class="cart" id="cart">
-
-<h3>Seu carrinho</h3>
-
-<div class="list" id="list"></div>
-
-<p>
-<b id="qty">0</b> espaço(s)
-</p>
-
-<div class="total" id="total">
-R$ 0,00
+    <h3>Seu carrinho</h3>
+    <div class="list" id="list"></div>
+    <p><b id="qty">0</b> espaço(s)</p>
+    <div class="total" id="total">R$ 0,00</div>
+    <button class="btn" onclick="checkout()">CONTINUAR</button>
+    <button class="btn sec" onclick="clearSel()">LIMPAR</button>
 </div>
 
-<button
-class="btn"
-onclick="checkout()">
-CONTINUAR
-</button>
-
-<button
-class="btn sec"
-onclick="clearSel()">
-LIMPAR
-</button>
-
+<!-- BOTÕES FIXOS INFERIORES -->
+<div class="fab-actions">
+    <button class="fab-btn cmd" id="btnPainelCmd" onclick="abrirPainelComando()">
+        <span>⚙️</span>
+        <span>PAINEL DE COMANDO</span>
+    </button>
+    <button class="fab-btn chat" id="btnChatGeral" onclick="abrirChatGeral()">
+        <span>💬</span>
+        <span>CHAT AO VIVO</span>
+    </button>
 </div>
 
 
@@ -1540,6 +2874,8 @@ class="pix"
 id="pix">
 
 <h2>Pagamento Pix</h2>
+
+<p id="pixResumo" style="text-align:center;margin-bottom:14px;"></p>
 
 <div id="qrArea">
 
@@ -2076,99 +3412,146 @@ style="font-size:13px;color:#ccc;">
 </div>
 
 
+<!-- MODAL INFORMATIVO (PREÇOS / FAQ) -->
+
+<div class="modal" id="infoModal" onclick="if(event.target===this)fecharInfoModal()">
+  <div class="box" style="max-width:560px;">
+    <button class="close" onclick="fecharInfoModal()" title="Fechar">×</button>
+    <h2 id="infoModalTitulo">Título</h2>
+    <div id="infoModalConteudo" style="line-height:1.6;font-size:14px;color:var(--text-secondary);"></div>
+  </div>
+</div>
+
 <!-- TUTORIAL DE BOAS-VINDAS -->
 
-<div class="modal" id="modalTutorial">
+<div class="modal modalTutorial" id="modalTutorial">
 
-  <div class="box" style="max-width:560px;">
+  <div class="box tutBox">
 
     <button
         class="close"
         onclick="fecharTutorial()"
         title="Fechar">×</button>
 
-    <h2 style="color:#ffd400;margin-top:0;">
-      👋 Bem-vindo ao Milhão Door!
-    </h2>
+    <div class="tutHero">
+      <span class="tutEmoji">🎉</span>
+      <h2>Bem-vindo ao Milhão Door!</h2>
+      <p>
+        O <b>maior outdoor da internet</b>! Compre espaços por
+        <b style="color:#ffd400;">R$ 1,00</b> e exiba fotos,
+        anúncios e o link do seu site para o mundo inteiro.
+      </p>
+    </div>
 
-    <p>
-      Aqui você compra espaços no <b>maior outdoor
-      da internet</b> e exibe o que quiser
-      (fotos, anúncios, desenhos).
-    </p>
+    <div class="tutSteps">
 
-    <div style="display:grid;gap:10px;margin:14px 0;">
-
-      <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:11px;">
-        <b style="color:#ffd400;">🖱️ Navegar</b>
-        <div style="font-size:12px;color:#bbb;line-height:1.5;">
-          <b>Arraste</b> para mover o mapa &nbsp;•&nbsp;
-          <b>Rolagem</b> (ou <b>pinça</b> no celular) para
-          dar zoom &nbsp;•&nbsp; <b>Clique/toque</b> em um
-          espaço para selecionar ou inspecionar.
+      <div class="tutStep">
+        <div class="tutNum">1</div>
+        <div>
+          <b>Escolha seus espaços</b>
+          <span>
+            Clique nos espaços livres (⬜) ou use o
+            <b>SELECIONAR BLOCO</b> (largura × altura)
+            para marcar um bloco inteiro de uma vez.
+          </span>
         </div>
       </div>
 
-      <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:11px;">
-        <b style="color:#ffd400;">🛒 Comprar</b>
-        <div style="font-size:12px;color:#bbb;line-height:1.5;">
-          Clique nos espaços livres (⬜) ou use
-          <b>SELECIONAR BLOCO</b> (largura × altura) para
-          marcar um bloco inteiro de uma vez. Depois clique em
-          <b>CONTINUAR</b> para pagar. <b>R$ 1,00 por espaço.</b>
+      <div class="tutStep">
+        <div class="tutNum">2</div>
+        <div>
+          <b>Pague via Pix</b>
+          <span>
+            O espaço fica <b>reservado por 10 minutos</b>
+            (ou até o QR Code vencer). Se o pagamento não
+            confirmar a tempo, ele é liberado automaticamente
+            para outra pessoa.
+          </span>
         </div>
       </div>
 
-      <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:11px;">
-        <b style="color:#ff7a00;">💰 Oferta em blocos</b>
-        <div style="font-size:12px;color:#bbb;line-height:1.5;">
-          Já é dono e quer vender? Ative <b>OFERTA EM BLOCOS</b>,
-          arraste sobre os seus espaços para formar um bloco e
-          envie a oferta. O comprador paga via Pix — você recebe
-          na sua <b>CHAVE PIX</b> (cadastrada no painel de comando).
-          A taxa do site é de <b>10%</b>, paga pelo comprador.
-        </div>
-      </div>
-
-      <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:11px;">
-        <b style="color:#45d66f;">⚙️ Painel de comando</b>
-        <div style="font-size:12px;color:#bbb;line-height:1.5;">
-          Toque no botão fixo <b>PAINEL DE COMANDO</b> (canto
-          inferior esquerdo) para ver ofertas recebidas e enviadas,
-          seus blocos, editar fotos, cadastrar o <b>link do seu site</b>
-          e configurar sua chave Pix.
-        </div>
-      </div>
-
-      <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:11px;">
-        <b style="color:#5aa2ff;">🌐 Link do site</b>
-        <div style="font-size:12px;color:#bbb;line-height:1.5;">
-          Em cada bloco comprado você pode cadastrar o
-          <b>link do seu site</b>. Quem clicar no espaço será levado
-          para o seu site. Ao vender para outra pessoa, o link é
-          removido e o novo dono cadastra o próprio.
-        </div>
-      </div>
-
-      <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:11px;">
-        <b style="color:#5aa2ff;">💬 Chat</b>
-        <div style="font-size:12px;color:#bbb;line-height:1.5;">
-          Use o botão fixo <b>CHAT</b> para conversar com a
-          comunidade em <b>tempo real</b> e, dentro de cada oferta,
-          negocie diretamente com o comprador ou proprietário.
+      <div class="tutStep">
+        <div class="tutNum">3</div>
+        <div>
+          <b>Publique e apareça</b>
+          <span>
+            Assim que o pagamento confirmar, toque no seu
+            espaço e publique <b>imagem, título e link</b>.
+            Sua exibição aparece no mapa na hora.
+          </span>
         </div>
       </div>
 
     </div>
 
-    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#aaa;margin-top:6px;">
+    <div class="tutCards">
+
+      <div class="tutCard gold">
+        <b>🎲 Sorteio semanal</b>
+        <span>
+          Cada espaço pago vale <b>1 bilhete</b> no sorteio.
+          Quanto mais espaços, mais chances! O ganhador é
+          avisado por e-mail.
+        </span>
+      </div>
+
+      <div class="tutCard orange">
+        <b>💰 Oferta em blocos</b>
+        <span>
+          Venda seus espaços: ative <b>OFERTA EM BLOCOS</b>,
+          arraste para montar o bloco e envie. O comprador
+          paga via Pix (taxa do site de <b>10%</b>, paga por ele).
+        </span>
+      </div>
+
+      <div class="tutCard green">
+        <b>📨 Painel de comando</b>
+        <span>
+          <b>Ofertas</b>, <b>seus blocos</b>, <b>chave Pix</b>,
+          <b>extrato</b> e <b>conta</b> em um só lugar —
+          botão fixo no canto inferior esquerdo.
+        </span>
+      </div>
+
+      <div class="tutCard blue">
+        <b>💬 Chat em tempo real</b>
+        <span>
+          Converse com a comunidade e negocie direto com
+          compradores e vendedores dentro de cada oferta.
+        </span>
+      </div>
+
+      <div class="tutCard purple">
+        <b>🌐 Link do seu site</b>
+        <span>
+          Cadastre o link do seu site em cada bloco. Quem
+          clicar no seu espaço vai direto para você.
+        </span>
+      </div>
+
+      <div class="tutCard pink">
+        <b>👤 Minha conta</b>
+        <span>
+          Faça login com seu e-mail para recuperar seus
+          espaços em qualquer aparelho e guardar seu
+          código de acesso.
+        </span>
+      </div>
+
+    </div>
+
+    <div class="tutNote">
+      💡 <b>Dica:</b> publique seus espaços para concorrer no
+      sorteio semanal — cada espaço pago vale um bilhete!
+    </div>
+
+    <label style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;color:#aaa;margin-bottom:12px;">
       <input id="tutorialNunca" type="checkbox">
       Não mostrar de novo
     </label>
 
     <button
-        class="btn"
-        style="margin-top:14px;"
+        class="tutCta"
         onclick="fecharTutorial()">
       ENTENDI, VAMOS NESSA →
     </button>
@@ -2195,6 +3578,149 @@ document.getElementById("area");
 
 
 let sc = .16;
+
+/* =========================
+   UTILIDADES DE INTERFACE
+========================= */
+
+function toggleTema(){
+    const body = document.body;
+    const isLight = body.classList.toggle("light-theme");
+    const btn = document.getElementById("btnTema");
+    if(btn) btn.textContent = isLight ? "☀️" : "🌙";
+    try{
+        localStorage.setItem("mega_tema", isLight ? "light" : "dark");
+    }catch(e){}
+}
+
+function aplicarTema(){
+    try{
+        const tema = localStorage.getItem("mega_tema");
+        const btn = document.getElementById("btnTema");
+        if(tema === "light"){
+            document.body.classList.add("light-theme");
+            if(btn) btn.textContent = "☀️";
+        }else{
+            if(btn) btn.textContent = "🌙";
+        }
+    }catch(e){}
+}
+
+function toggleMenuMobile(){
+    const m = document.getElementById("mobileMenu");
+    if(m) m.classList.toggle("open");
+}
+
+function fecharMenuMobile(event){
+    const m = document.getElementById("mobileMenu");
+    if(m) m.classList.remove("open");
+}
+
+function scrollToTop(event){
+    if(event) event.preventDefault();
+    document.body.classList.remove("footer-visible");
+    window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function scrollToSection(event,id){
+    if(event) event.preventDefault();
+    document.body.classList.add("footer-visible");
+    const el = document.getElementById(id);
+    if(el){
+        setTimeout(() => el.scrollIntoView({behavior:"smooth",block:"start"}), 50);
+    }
+}
+
+function scrollToFooter(event){
+    if(event) event.preventDefault();
+    abrirInfoModal("CONTATO", `
+        <p><b>E-mail:</b> <a href="mailto:group.holding@outlook.com" style="color:var(--accent)">group.holding@outlook.com</a></p>
+        <p><b>Chat:</b> <a href="#" onclick="fecharInfoModal();abrirChatGeral();return false;" style="color:var(--accent)">Chat ao vivo</a></p>
+        <p><b>Redes:</b> <a href="https://instagram.com/milhaodoor" target="_blank" style="color:var(--accent)">Instagram</a></p>
+        <hr style="border-color:var(--border-color);margin:16px 0;">
+        <p style="font-size:12px;color:var(--text-muted);">
+            © 2026 Milhão Door — Todos os direitos reservados.<br>
+            O maior painel digital colaborativo do Brasil.
+        </p>
+    `);
+}
+
+function atualizarHeaderScroll(){
+    const h = document.getElementById("mainHeader");
+    if(h){
+        if(window.scrollY > 8) h.classList.add("scrolled");
+        else h.classList.remove("scrolled");
+    }
+}
+
+function getMousePos(e){
+    const rect = area.getBoundingClientRect();
+    return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+    };
+}
+
+function descontoProgressivo(quantidade){
+    if(quantidade >= 1000) return 30;
+    if(quantidade >= 100) return 20;
+    if(quantidade >= 10) return 10;
+    return 0;
+}
+
+function calcularValorComDesconto(quantidade){
+    const pct = descontoProgressivo(quantidade);
+    const valor = quantidade * (1 - pct / 100);
+    return { valor, pct };
+}
+
+window.addEventListener("scroll", atualizarHeaderScroll, {passive:true});
+
+function abrirInfoModal(titulo, html){
+    const modal = document.getElementById("infoModal");
+    const t = document.getElementById("infoModalTitulo");
+    const c = document.getElementById("infoModalConteudo");
+    if(!modal || !t || !c) return;
+    t.textContent = titulo;
+    c.innerHTML = html;
+    modal.style.display = "flex";
+}
+
+function fecharInfoModal(){
+    const modal = document.getElementById("infoModal");
+    if(modal) modal.style.display = "none";
+}
+
+function abrirPrecos(event){
+    if(event) event.preventDefault();
+    abrirInfoModal("TABELA DE PREÇOS", `
+        <p>Cada espaço custa <b style="color:var(--accent)">R$ 1,00</b>. Quanto mais espaços você comprar de uma vez, maior o desconto progressivo:</p>
+        <ul style="padding-left:20px;margin:14px 0;">
+            <li>1 – 9 espaços: <b>R$ 1,00</b> cada</li>
+            <li>10 – 99 espaços: <b>R$ 0,90</b> cada (10% off)</li>
+            <li>100 – 999 espaços: <b>R$ 0,80</b> cada (20% off)</li>
+            <li>1.000+ espaços: <b>R$ 0,70</b> cada (30% off)</li>
+        </ul>
+        <p>O desconto é aplicado automaticamente no checkout. Você também pode usar créditos da plataforma e cupons de indicação.</p>
+    `);
+}
+
+function abrirFaq(event){
+    if(event) event.preventDefault();
+    abrirInfoModal("PERGUNTAS FREQUENTES", `
+        <p><b>Como funciona o Milhão Door?</b><br>Você compra espaços no maior painel digital do Brasil e publica imagem, título e link.</p>
+        <p><b>Quanto custa?</b><br>Cada espaço custa R$ 1,00, com desconto progressivo na compra de blocos.</p>
+        <p><b>Como pago?</b><br>Aceitamos pagamento via Pix, com confirmação em poucos minutos.</p>
+        <p><b>Posso revender meus espaços?</b><br>Sim! Ative o modo "Oferta em Blocos" para anunciar seus espaços para outros usuários.</p>
+        <p><b>E se eu tiver dúvidas?</b><br>Use o chat ao vivo ou envie um e-mail para group.holding@outlook.com.</p>
+    `);
+}
+
+document.addEventListener("DOMContentLoaded", function(){
+    aplicarTema();
+    document.body.classList.add("has-benefits");
+    atualizarHeaderScroll();
+});
 
 let x = 0;
 let y = 0;
@@ -2271,11 +3797,12 @@ function authHeaders(extra){
 }
 
 function updateBtnConta(){
-    const b = document.getElementById("btnEntrar");
-    if(!b)return;
-    b.textContent = minhaConta
-        ? "👤 MINHA CONTA"
-        : "👤 ENTRAR";
+    const labels = ["btnEntrar","btnEntrarHeader","btnEntrarMobile"];
+    const text = minhaConta ? "👤 MINHA CONTA" : "👤 ENTRAR";
+    labels.forEach(id => {
+        const b = document.getElementById(id);
+        if(b) b.textContent = text;
+    });
 }
 
 function abrirLogin(){
@@ -2915,11 +4442,10 @@ fecharInfoEspaco();
 
 function resize(){
 
-canvas.width =
-innerWidth;
+const rect = area.getBoundingClientRect();
 
-canvas.height =
-innerHeight - 82;
+canvas.width = rect.width;
+canvas.height = rect.height;
 
 draw();
 
@@ -3496,6 +5022,14 @@ s.available.toLocaleString(
 
 
 document.getElementById(
+"freeTop"
+).textContent =
+s.available.toLocaleString(
+"pt-BR"
+);
+
+
+document.getElementById(
 "rev"
 ).textContent =
 "R$ "+
@@ -3581,11 +5115,10 @@ e.deltaY<0
 ?1.16
 :.86;
 
-const mx =
-e.clientX;
+const pos = getMousePos(e);
 
-const my =
-e.clientY-82;
+const mx = pos.x;
+const my = pos.y;
 
 const wx =
 (mx-x)/sc;
@@ -4310,8 +5843,10 @@ rectDrag=true;
 
 moved=true;
 
-rectX1=e.clientX;
-rectY1=e.clientY-82;
+const pos = getMousePos(e);
+
+rectX1=pos.x;
+rectY1=pos.y;
 rectX2=rectX1;
 rectY2=rectY1;
 
@@ -4351,8 +5886,10 @@ return;
 
 if(rectDrag){
 
-rectX2=e.clientX;
-rectY2=e.clientY-82;
+const pos = getMousePos(e);
+
+rectX2=pos.x;
+rectY2=pos.y;
 
 moved=true;
 
@@ -4483,11 +6020,10 @@ sc*f
 )
 );
 
-const mx =
-touchPinch.cx;
+const rect = area.getBoundingClientRect();
 
-const my =
-touchPinch.cy-82;
+const mx = touchPinch.cx - rect.left;
+const my = touchPinch.cy - rect.top;
 
 x =
 mx-
@@ -4537,11 +6073,10 @@ e=>{
 
 if(moved)return;
 
-const mx =
-e.clientX;
+const pos = getMousePos(e);
 
-const my =
-e.clientY-82;
+const mx = pos.x;
+const my = pos.y;
 
 const col =
 Math.floor(
@@ -4677,12 +6212,31 @@ n
 :"SELECIONE ESPAÇOS";
 
 
+const empty = document.getElementById("selectionEmpty");
+const content = document.getElementById("selectionContent");
+if(empty) empty.style.display = n ? "none" : "block";
+if(content) content.style.display = n ? "block" : "none";
+
+
 document.getElementById(
 "cart"
 ).style.display =
 n
 ?"block"
 :"none";
+
+
+const btnConta =
+document.getElementById(
+"btnEntrar"
+);
+
+if(btnConta){
+    btnConta.style.display =
+    n
+    ?"none"
+    :"";
+}
 
 
 const arr =
@@ -4730,6 +6284,21 @@ fecharInfoEspaco();
 
 }
 /* =========================
+   UTILITÁRIOS DE QR CODE
+========================= */
+
+function qrCodeUrl(qrCode){
+
+    if(!qrCode) return "";
+
+    if(qrCode.startsWith("http") || qrCode.startsWith("data:image")){
+        return qrCode;
+    }
+
+    return "data:image/png;base64," + qrCode;
+}
+
+/* =========================
    ABRIR CHECKOUT
 ========================= */
 
@@ -4754,10 +6323,17 @@ if(sel.size > 1000){
 }
 
 
-document.getElementById(
-"ci"
-).textContent =
-`${sel.size.toLocaleString("pt-BR")} espaço(s) selecionado(s) — total R$ ${sel.size.toLocaleString("pt-BR")},00`;
+const resumo = calcularValorComDesconto(sel.size);
+const pct = resumo.pct;
+const valor = resumo.valor.toLocaleString("pt-BR") + ",00";
+
+document.getElementById("ci").innerHTML =
+    `<b>${sel.size.toLocaleString("pt-BR")} espaço(s) selecionado(s)</b><br>` +
+    (pct > 0
+        ? `<span style="color:#ffd400">Desconto progressivo de ${pct}% aplicado!</span><br>` +
+          `<span style="font-size:13px;color:#aaa;text-decoration:line-through;">R$ ${sel.size.toLocaleString("pt-BR")},00</span> ` +
+          `<span style="font-size:18px;color:#45df6f;font-weight:800;">R$ ${valor}</span>`
+        : `<span style="font-size:18px;color:#45df6f;font-weight:800;">R$ ${valor}</span>`);
 
 
 document.getElementById(
@@ -4981,14 +6557,29 @@ data.creditos || 0;
 document.getElementById(
 "qr"
 ).src =
-"data:image/png;base64,"+
-data.qrCode;
+qrCodeUrl(data.qrCode);
 
 
 document.getElementById(
 "payload"
 ).value =
 data.payload;
+
+
+const totalValor = data.total.toLocaleString("pt-BR") + ",00";
+const cobradoValor = Number(data.value || 0).toLocaleString("pt-BR") + ",00";
+const pct = data.discountPercent || 0;
+
+const pixResumo = document.getElementById("pixResumo");
+if(pixResumo){
+    pixResumo.innerHTML =
+        `<b>${data.total.toLocaleString("pt-BR")} espaço(s)</b><br>` +
+        (pct > 0
+            ? `<span style="color:#ffd400">${pct}% de desconto aplicado</span><br>` +
+              `<span style="font-size:13px;color:#aaa;text-decoration:line-through;">R$ ${totalValor}</span> ` +
+              `<span style="font-size:20px;color:#45df6f;font-weight:900;">R$ ${cobradoValor}</span>`
+            : `<span style="font-size:20px;color:#45df6f;font-weight:900;">R$ ${cobradoValor}</span>`);
+}
 
 
 document.getElementById(
@@ -8180,7 +9771,7 @@ function mostrarPixOferta(data, ehComprador){
           </div>
 
           <img
-            src="data:image/png;base64,${data.qrCode}"
+            src="${qrCodeUrl(data.qrCode)}"
             alt="QR Code"
             style="width:200px;height:200px;background:#fff;
                    padding:8px;border-radius:12px;
@@ -8253,11 +9844,11 @@ function mostrarPixOferta(data, ehComprador){
       </div>
 
       <img
-        src="data:image/png;base64,${data.qrCode}"
-        alt="QR Code"
-        style="width:200px;height:200px;background:#fff;
-               padding:8px;border-radius:12px;
-               display:block;margin:0 auto;">
+src="${qrCodeUrl(data.qrCode)}"
+            alt="QR Code"
+            style="width:200px;height:200px;background:#fff;
+                   padding:8px;border-radius:12px;
+                   display:block;margin:0 auto;">
 
       <input
         class="copia"
@@ -9170,7 +10761,7 @@ async function abrirPagamentoOferta(offerId){
           </div>
 
           <img
-            src="data:image/png;base64,${data.qrCode}"
+            src="${qrCodeUrl(data.qrCode)}"
             alt="QR Code"
             style="width:200px;height:200px;background:#fff;
                    padding:8px;border-radius:12px;
@@ -9675,6 +11266,38 @@ function abrirPaginaSorteio(){
 }
 
 </script>
+
+<!-- RODAPÉ -->
+<footer class="site-footer" id="contato">
+    <div class="footer-content">
+        <div class="footer-brand">
+            <img src="/logo-milhao-door.png" alt="Milhão Door">
+            <p>O maior painel digital colaborativo do Brasil. Um milhão de espaços para você mostrar sua ideia, produto ou marca ao mundo.</p>
+        </div>
+        <div class="footer-col">
+            <h4>LINKS</h4>
+            <a href="#inicio" onclick="scrollToTop(event)">Início</a>
+            <a href="#como-funciona" onclick="scrollToSection(event,'comoFuncionaSection')">Como Funciona</a>
+            <a href="#precos" onclick="abrirPrecos(event)">Preços</a>
+            <a href="#faq" onclick="abrirFaq(event)">FAQ</a>
+        </div>
+        <div class="footer-col">
+            <h4>LEGAL</h4>
+            <a href="/termos.html" target="_blank">Termos de Uso</a>
+            <a href="/privacidade.html" target="_blank">Política de Privacidade</a>
+            <a href="/regras.html" target="_blank">Regras de Conteúdo</a>
+        </div>
+        <div class="footer-col">
+            <h4>CONTATO</h4>
+            <a href="mailto:group.holding@outlook.com">group.holding@outlook.com</a>
+            <a href="#" onclick="abrirChatGeral();return false;">Chat ao Vivo</a>
+            <a href="https://instagram.com/milhaodoor" target="_blank">Instagram</a>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        © 2026 Milhão Door — Todos os direitos reservados. CNPJ 00.000.000/0001-00
+    </div>
+</footer>
 
 </body>
 </html>

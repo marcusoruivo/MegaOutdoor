@@ -20,6 +20,7 @@
 
 process.env.DATABASE_URL = process.env.DATABASE_URL || "postgres://memoria";
 process.env.ALLOW_TEST_MODE = "true";
+process.env.MERCADOPAGO_SANDBOX = process.env.MERCADOPAGO_SANDBOX || "true";
 process.env.PORT = process.env.PORT || "3000";
 
 require("dotenv").config();

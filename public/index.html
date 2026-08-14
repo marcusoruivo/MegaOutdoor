@@ -2437,6 +2437,621 @@ body.footer-visible #area{
 ::-webkit-scrollbar-thumb:hover{
     background:var(--text-muted)
 }
+
+/* =========================================================
+   MEGA OUTDOOR 2.1 — REDESIGN COMPLETO
+   Novo layout: header → barra de benefícios → área principal
+   (sidebar esquerda / mapa central / painel direito) → footer.
+   Nenhuma lógica JS do mapa foi alterada.
+========================================================= */
+
+/* --- GRID PRINCIPAL --- */
+.main-layout{
+    grid-template-columns:300px minmax(0,1fr) 320px;
+    max-width:1680px;
+    margin:0 auto;
+    width:100%;
+    gap:16px;
+    padding:16px
+}
+
+#area{
+    position:relative;
+    grid-column:2;
+    min-height:calc(100vh - var(--header-height) - var(--benefits-height) - 32px);
+    border:1px solid var(--border-color-strong);
+    border-radius:var(--radius-xl);
+    overflow:hidden;
+    background:
+        radial-gradient(1200px 600px at 50% 0%, rgba(255,212,0,.05), transparent 60%),
+        var(--bg-secondary);
+    box-shadow:inset 0 0 60px rgba(0,0,0,.35)
+}
+
+/* --- SIDEBAR ESQUERDA --- */
+.sidebar-left{
+    overflow-y:auto;
+    gap:12px;
+    scrollbar-width:thin
+}
+
+.sidebar-left .card{
+    border-radius:var(--radius-lg);
+    padding:18px;
+    background:linear-gradient(180deg,var(--bg-card),var(--bg-secondary));
+    border:1px solid var(--border-color);
+    box-shadow:var(--shadow-sm)
+}
+
+.sidebar-left .card-title{
+    font-size:13px;
+    letter-spacing:.04em
+}
+
+.search-box input{
+    height:44px;
+    border-radius:var(--radius-md)
+}
+
+.mode-btn{
+    padding:12px 12px
+}
+
+.selection-card{
+    border-color:rgba(255,212,0,.25) !important;
+    background:linear-gradient(180deg, rgba(255,212,0,.04), var(--bg-card)) !important
+}
+
+.btn-pagar{
+    font-size:14px;
+    padding:14px 16px
+}
+
+/* --- PAINEL DIREITO --- */
+.sidebar-right{
+    overflow-y:auto;
+    gap:12px;
+    scrollbar-width:thin
+}
+
+.sidebar-right .card{
+    border-radius:var(--radius-lg);
+    padding:18px;
+    background:linear-gradient(180deg,var(--bg-card),var(--bg-secondary));
+    border:1px solid var(--border-color);
+    box-shadow:var(--shadow-sm)
+}
+
+.sidebar-right .card-title{
+    font-size:13px;
+    letter-spacing:.04em
+}
+
+/* =========================================================
+   COMBOS & KITS
+========================================================= */
+
+.kits-section .card-title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px
+}
+
+.kits-section .card-title .kits-mini{
+    font-size:10px;
+    color:var(--text-muted);
+    font-weight:600
+}
+
+.kit-list{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin-top:12px
+}
+
+.kit-card{
+    position:relative;
+    border:1px solid var(--border-color);
+    border-radius:var(--radius-md);
+    padding:12px;
+    background:var(--bg-card);
+    cursor:pointer;
+    transition:var(--transition);
+    overflow:hidden
+}
+
+.kit-card:hover{
+    border-color:var(--accent);
+    transform:translateY(-2px);
+    box-shadow:0 6px 20px var(--accent-shadow)
+}
+
+.kit-card.destaque{
+    border-color:rgba(255,122,0,.55);
+    background:linear-gradient(135deg, rgba(255,122,0,.08), var(--bg-card))
+}
+
+.kit-card .kit-badge{
+    position:absolute;
+    top:10px;
+    right:10px;
+    font-size:9px;
+    font-weight:800;
+    letter-spacing:.05em;
+    padding:3px 8px;
+    border-radius:20px;
+    background:linear-gradient(90deg,#ff9d00,#ffd400);
+    color:#000
+}
+
+.kit-card .kit-badge.lendario{
+    background:linear-gradient(90deg,#b06bff,#ff6b9d);
+    color:#fff
+}
+
+.kit-card .kit-nome{
+    font-weight:800;
+    font-size:15px;
+    color:var(--text-primary);
+    display:flex;
+    align-items:center;
+    gap:6px
+}
+
+.kit-card .kit-desc{
+    font-size:11px;
+    color:var(--text-muted);
+    margin:4px 0 8px;
+    line-height:1.4
+}
+
+.kit-card .kit-precos{
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    flex-wrap:wrap
+}
+
+.kit-card .kit-preco-antigo{
+    font-size:12px;
+    color:var(--text-muted);
+    text-decoration:line-through
+}
+
+.kit-card .kit-preco-novo{
+    font-size:20px;
+    font-weight:900;
+    color:var(--accent)
+}
+
+.kit-card .kit-economia{
+    font-size:10px;
+    font-weight:700;
+    color:var(--success);
+    background:var(--success-bg);
+    padding:2px 8px;
+    border-radius:20px
+}
+
+.kit-card .kit-conteudo{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin:10px 0 0
+}
+
+.kit-chip{
+    font-size:10px;
+    font-weight:600;
+    color:var(--text-secondary);
+    background:var(--bg-button-secondary);
+    border:1px solid var(--border-color);
+    border-radius:20px;
+    padding:3px 8px
+}
+
+.kit-chip b{
+    color:var(--text-primary)
+}
+
+/* Modal de kit */
+.kitModal{
+    max-width:520px
+}
+
+.kitModal .kitModalHeader{
+    text-align:center;
+    margin-bottom:14px
+}
+
+.kitModal .kitModalNome{
+    font-size:20px;
+    font-weight:900;
+    color:var(--accent)
+}
+
+.kitModal .kitModalDestaque{
+    font-size:12px;
+    color:var(--offer);
+    font-weight:700;
+    margin-top:4px
+}
+
+.kitModal .kitModalPrecos{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    margin:10px 0 4px
+}
+
+.kitModal .kitModalPrecoAntigo{
+    font-size:16px;
+    color:var(--text-muted);
+    text-decoration:line-through
+}
+
+.kitModal .kitModalPrecoNovo{
+    font-size:32px;
+    font-weight:900;
+    color:var(--accent)
+}
+
+.kitModal .kitModalEconomia{
+    display:inline-block;
+    font-size:12px;
+    font-weight:800;
+    color:var(--success);
+    background:var(--success-bg);
+    padding:4px 12px;
+    border-radius:20px;
+    margin:6px 0 12px
+}
+
+.kitModal .kitModalItens{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:10px;
+    margin:12px 0
+}
+
+.kitModal .kitItem{
+    border:1px solid var(--border-color);
+    border-radius:var(--radius-sm);
+    padding:10px;
+    text-align:center;
+    background:var(--bg-secondary)
+}
+
+.kitModal .kitItem .kitItemIcon{
+    font-size:22px
+}
+
+.kitModal .kitItem b{
+    display:block;
+    font-size:14px;
+    color:var(--text-primary);
+    margin-top:4px
+}
+
+.kitModal .kitItem span{
+    font-size:10px;
+    color:var(--text-muted)
+}
+
+.kitModal .kitLicencas{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin:12px 0
+}
+
+.kitModal .kitLicenca{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    border:1px solid var(--border-color);
+    border-radius:var(--radius-sm);
+    padding:10px 12px;
+    cursor:pointer;
+    background:var(--bg-card);
+    transition:var(--transition)
+}
+
+.kitModal .kitLicenca.sel{
+    border-color:var(--accent);
+    background:rgba(255,212,0,.07);
+    box-shadow:0 0 0 1px var(--accent)
+}
+
+.kitModal .kitLicenca .kitLicNome{
+    font-weight:700;
+    font-size:14px;
+    color:var(--text-primary)
+}
+
+.kitModal .kitLicenca .kitLicDet{
+    font-size:11px;
+    color:var(--text-muted)
+}
+
+.kitModal .kitLicenca .kitLicFee{
+    font-size:13px;
+    font-weight:800;
+    color:var(--success)
+}
+
+.kitModal .kitModalBonus{
+    font-size:12px;
+    color:var(--text-secondary);
+    background:var(--bg-secondary);
+    border:1px dashed var(--border-color-strong);
+    border-radius:var(--radius-sm);
+    padding:10px;
+    margin:12px 0;
+    line-height:1.5
+}
+
+.kitModal .kitModalTotal{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--bg-secondary);
+    border-radius:var(--radius-sm);
+    padding:12px;
+    margin:12px 0
+}
+
+.kitModal .kitModalTotal span{
+    font-size:12px;
+    color:var(--text-muted);
+    font-weight:700
+}
+
+.kitModal .kitModalTotal b{
+    font-size:20px;
+    color:var(--accent)
+}
+
+.kitModal .kitModalNota{
+    font-size:11px;
+    color:var(--text-muted);
+    line-height:1.5;
+    margin-top:8px
+}
+
+.kitModal input[type="text"],
+.kitModal input[type="email"]{
+    width:100%;
+    height:42px;
+    border-radius:var(--radius-sm);
+    padding:0 12px;
+    margin-bottom:8px
+}
+
+/* --- BOTÃO BUG / SUGESTÃO --- */
+.bug-fab{
+    position:fixed;
+    right:18px;
+    bottom:76px;
+    z-index:65;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:linear-gradient(135deg,#4caf50,#2e7d32);
+    color:#fff;
+    border:0;
+    border-radius:30px;
+    padding:12px 18px;
+    font-size:13px;
+    font-weight:800;
+    cursor:pointer;
+    box-shadow:0 8px 24px rgba(0,0,0,.4);
+    transition:var(--transition)
+}
+
+.bug-fab:hover{
+    transform:translateY(-2px);
+    filter:brightness(1.1)
+}
+
+.bug-fab .bug-icone{
+    font-size:18px
+}
+
+/* Modal de bug/sugestão */
+.bugModal .box{
+    max-width:520px
+}
+
+.bugModal h2{
+    text-align:center;
+    margin-bottom:4px
+}
+
+.bugModal .bugSubtitulo{
+    text-align:center;
+    font-size:12px;
+    color:var(--text-muted);
+    margin-bottom:14px
+}
+
+.bugModal select,
+.bugModal input[type="text"],
+.bugModal input[type="email"],
+.bugModal input[type="number"],
+.bugModal textarea{
+    width:100%;
+    border-radius:var(--radius-sm);
+    padding:10px 12px;
+    margin-bottom:10px;
+    font-family:inherit;
+    font-size:13px
+}
+
+.bugModal textarea{
+    min-height:110px;
+    resize:vertical
+}
+
+.bugModal .bugTipos{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+    gap:8px;
+    margin-bottom:12px
+}
+
+.bugModal .bugTipo{
+    border:1px solid var(--border-color);
+    border-radius:var(--radius-sm);
+    padding:10px 8px;
+    text-align:center;
+    cursor:pointer;
+    background:var(--bg-card);
+    transition:var(--transition);
+    font-size:11px;
+    font-weight:700;
+    color:var(--text-secondary)
+}
+
+.bugModal .bugTipo.sel{
+    border-color:var(--accent);
+    color:var(--accent);
+    background:rgba(255,212,0,.07);
+    box-shadow:0 0 0 1px var(--accent)
+}
+
+.bugModal .bugTipo .bugTipoIcone{
+    display:block;
+    font-size:20px;
+    margin-bottom:4px
+}
+
+.bugModal .bugFooter{
+    display:flex;
+    gap:10px;
+    margin-top:6px
+}
+
+.bugModal .bugFooter .btn{
+    flex:1;
+    margin:0
+}
+
+/* Toasts do redesign */
+.mo-toast{
+    position:fixed;
+    left:50%;
+    bottom:28px;
+    transform:translateX(-50%) translateY(20px);
+    z-index:5000;
+    background:var(--bg-card);
+    color:var(--text-primary);
+    border:1px solid var(--border-color-strong);
+    border-radius:var(--radius-md);
+    padding:12px 20px;
+    font-size:13px;
+    font-weight:700;
+    box-shadow:0 12px 40px rgba(0,0,0,.5);
+    opacity:0;
+    pointer-events:none;
+    transition:all .3s ease;
+    max-width:90vw;
+    text-align:center
+}
+
+.mo-toast.show{
+    opacity:1;
+    transform:translateX(-50%) translateY(0)
+}
+
+.mo-toast.ok{
+    border-color:var(--success);
+    color:var(--success)
+}
+
+.mo-toast.err{
+    border-color:var(--danger);
+    color:var(--danger)
+}
+
+/* --- RESPONSIVIDADE DO REDESIGN --- */
+@media(max-width:1280px){
+    .main-layout{
+        grid-template-columns:280px minmax(0,1fr) 290px;
+        gap:12px;
+        padding:12px
+    }
+}
+
+@media(max-width:1180px){
+    .main-layout{
+        grid-template-columns:260px minmax(0,1fr);
+    }
+    .sidebar-right{
+        grid-column:1/-1;
+        flex-direction:row;
+        flex-wrap:nowrap;
+        overflow-x:auto;
+        align-items:stretch;
+        padding-bottom:4px
+    }
+    .sidebar-right .card{
+        min-width:280px;
+        flex:0 0 auto
+    }
+    .kits-section{
+        min-width:340px
+    }
+}
+
+@media(max-width:980px){
+    .bug-fab{
+        right:12px;
+        bottom:12px;
+        padding:11px 14px
+    }
+    .bug-fab .bug-label{
+        display:none
+    }
+    .bug-fab .bug-icone{
+        font-size:20px
+    }
+}
+
+@media(max-width:760px){
+    .main-layout{
+        grid-template-rows:auto 1fr;
+        overflow-y:auto
+    }
+    .sidebar-right{
+        display:none
+    }
+    .bug-fab{
+        right:12px;
+        bottom:12px
+    }
+    .kit-list{
+        max-height:320px;
+        overflow-y:auto
+    }
+}
+
+@media(max-width:480px){
+    .main-layout{
+        padding:8px;
+        gap:8px
+    }
+    .sidebar-left .card{
+        padding:14px
+    }
+    .kitModal .kitModalPrecoNovo{
+        font-size:26px
+    }
+}
 </style>
 
 <script src="https://sdk.mercadopago.com/js/v2"></script>
@@ -2454,6 +3069,7 @@ body.footer-visible #area{
         <a href="#inicio" onclick="scrollToTop(event)">INÍCIO</a>
         <a href="#como-funciona" onclick="scrollToSection(event,'comoFuncionaSection')">COMO FUNCIONA</a>
         <a href="#precos" onclick="abrirPrecos(event)">PREÇOS</a>
+        <a href="#combos" onclick="scrollToSection(event,'combosSection')">COMBOS & KITS</a>
         <a href="#faq" onclick="abrirFaq(event)">FAQ</a>
         <a href="/colecionaveis.html" target="_blank">🃏 COLECIONÁVEIS</a>
         <a href="#contato" onclick="scrollToFooter(event)">CONTATO</a>
@@ -2490,6 +3106,7 @@ body.footer-visible #area{
         <a href="#inicio" onclick="scrollToTop(event);fecharMenuMobile()">INÍCIO</a>
         <a href="#como-funciona" onclick="scrollToSection(event,'comoFuncionaSection');fecharMenuMobile()">COMO FUNCIONA</a>
         <a href="#precos" onclick="abrirPrecos(event);fecharMenuMobile()">PREÇOS</a>
+        <a href="#combos" onclick="scrollToSection(event,'combosSection');fecharMenuMobile()">COMBOS & KITS</a>
         <a href="#faq" onclick="abrirFaq(event);fecharMenuMobile()">FAQ</a>
         <a href="/colecionaveis.html" target="_blank" onclick="fecharMenuMobile()">🃏 COLECIONÁVEIS</a>
         <a href="#contato" onclick="scrollToFooter(event);fecharMenuMobile()">CONTATO</a>
@@ -2811,6 +3428,21 @@ LIMPAR
             </button>
         </div>
 
+        <div class="card kits-section" id="combosSection">
+            <div class="card-title">🔥 COMBOS & KITS
+                <span class="kits-mini">economize até R$120</span>
+            </div>
+            <div class="kit-list" id="kitList">
+                <div style="font-size:12px;color:var(--text-muted);padding:8px 0;">
+                    Carregando kits...
+                </div>
+            </div>
+            <button class="btn" style="width:100%;margin-top:12px;"
+                onclick="verTodosKits(event)">
+                VER TODOS OS KITS →
+            </button>
+        </div>
+
         <div class="card discount-card" id="precos">
             <h3>DESCONTO PROGRESSIVO</h3>
             <p>Quanto mais espaços, maior o desconto!</p>
@@ -2882,6 +3514,15 @@ title="Chat geral — converse com a comunidade">
 
 
 <div id="dragCount"></div>
+
+<!-- BOTÃO BUG / SUGESTÃO -->
+<button
+    class="bug-fab"
+    onclick="abrirBugSugestao()"
+    title="Encontrou um problema ou quer sugerir uma melhoria?">
+    <span class="bug-icone">🐞</span>
+    <span class="bug-label">BUG / SUGESTÃO</span>
+</button>
 
 
 <!-- CHAT -->
@@ -3672,6 +4313,61 @@ style="font-size:13px;color:#ccc;">
   </div>
 </div>
 
+<!-- MODAL DE KIT (COMPRA) -->
+<div class="modal kitModal" id="kitModal" onclick="if(event.target===this)fecharKitModal()">
+  <div class="box" style="max-width:520px;">
+    <button class="close" onclick="fecharKitModal()" title="Fechar">×</button>
+    <div id="kitModalConteudo">Carregando...</div>
+  </div>
+</div>
+
+<!-- MODAL DE BUG / SUGESTÃO -->
+<div class="modal bugModal" id="bugModal" onclick="if(event.target===this)fecharBugModal()">
+  <div class="box">
+    <button class="close" onclick="fecharBugModal()" title="Fechar">×</button>
+    <div id="bugModalConteudo">
+      <h2>COMO PODEMOS MELHORAR?</h2>
+      <div class="bugSubtitulo">
+        Encontrou um problema ou quer sugerir uma melhoria? Conte para nossa equipe!
+      </div>
+
+      <div class="bugTipos" id="bugTipos">
+        <div class="bugTipo" data-tipo="bug" onclick="selecionarBugTipo(this)">
+          <span class="bugTipoIcone">🐞</span>BUG
+        </div>
+        <div class="bugTipo" data-tipo="sugestao" onclick="selecionarBugTipo(this)">
+          <span class="bugTipoIcone">💡</span>SUGESTÃO
+        </div>
+        <div class="bugTipo" data-tipo="pagamento" onclick="selecionarBugTipo(this)">
+          <span class="bugTipoIcone">⚠️</span>PAGAMENTO
+        </div>
+        <div class="bugTipo" data-tipo="outro" onclick="selecionarBugTipo(this)">
+          <span class="bugTipoIcone">❓</span>OUTRO
+        </div>
+      </div>
+
+      <input type="text" id="bugAssunto" maxlength="120"
+          placeholder="Assunto (ex: não consigo publicar meu espaço)">
+      <textarea id="bugDescricao" maxlength="5000"
+          placeholder="Descreva o que aconteceu, o que esperava que acontecesse e como podemos reproduzir..."></textarea>
+      <input type="text" id="bugPagina" maxlength="120"
+          placeholder="Onde aconteceu? (ex: página inicial, mapa, checkout)">
+      <input type="number" id="bugEspaco" min="1" max="1000000"
+          placeholder="Número do espaço (se aplicável)">
+      <input type="email" id="bugEmail" maxlength="200"
+          placeholder="Seu e-mail (opcional)">
+      <div id="bugMsg" style="font-size:12px;min-height:16px;margin-bottom:6px;"></div>
+      <div class="bugFooter">
+        <button class="btn sec" onclick="fecharBugModal()">CANCELAR</button>
+        <button class="btn" onclick="enviarBugSugestao()">ENVIAR RELATO</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="mo-toast" id="moToast"></div>
+
 <!-- TUTORIAL DE BOAS-VINDAS -->
 
 <div class="modal modalTutorial" id="modalTutorial">
@@ -4143,6 +4839,7 @@ document.addEventListener("DOMContentLoaded", async function(){
     document.body.classList.add("has-benefits");
     atualizarHeaderScroll();
     await carregarConfigMercadoPago();
+    carregarKits();
 });
 
 let x = 0;
@@ -12600,6 +13297,423 @@ function abrirPaginaSorteio(){
     window.open("/sorteio.html", "_blank");
 }
 
+/* =========================================================
+   COMBOS & KITS — FRONTEND
+   Lista os kits ativos, abre o modal de compra e realiza o
+   checkout via Mercado Pago. O preço é sempre calculado no
+   backend; aqui enviamos apenas o id do kit e a licença.
+========================================================= */
+
+let kitsCache = null;
+
+function fmtMoeda(v){
+    return "R$ " + Number(v || 0).toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+function escHtml(s){
+    return String(s == null ? "" : s)
+        .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function moToast(msg, tipo){
+    const el = document.getElementById("moToast");
+    if(!el) return;
+    el.textContent = msg;
+    el.className = "mo-toast show " + (tipo || "");
+    clearTimeout(moToast._t);
+    moToast._t = setTimeout(() => {
+        el.className = "mo-toast";
+    }, 4000);
+}
+
+async function carregarKits(){
+    const lista = document.getElementById("kitList");
+    try{
+        const resp = await fetch("/api/combos/kits", { cache: "no-store" });
+        const data = await resp.json();
+        if(!data.ok) throw new Error(data.error || "Erro ao carregar kits.");
+        kitsCache = data.kits || [];
+        renderizarKits(kitsCache.slice(0, 3));
+    }catch(error){
+        if(lista){
+            lista.innerHTML =
+                '<div style="font-size:12px;color:var(--text-muted);padding:8px 0;">' +
+                "Não foi possível carregar os kits no momento.</div>";
+        }
+    }
+}
+
+function kitChips(kit){
+    const chips = [];
+    chips.push('<span class="kit-chip"><b>' + kit.espacos + "</b> espaço(s)</span>");
+    if(kit.pacotes && kit.pacotes.length){
+        chips.push('<span class="kit-chip">🎴 <b>' + kit.pacotes.length + "</b> pacote(s)</span>");
+    }
+    if(kit.bonus){
+        chips.push('<span class="kit-chip">🎁 bônus</span>');
+    }
+    return chips.join("");
+}
+
+function renderizarKits(kits){
+    const lista = document.getElementById("kitList");
+    if(!lista) return;
+
+    if(!kits || !kits.length){
+        lista.innerHTML =
+            '<div style="font-size:12px;color:var(--text-muted);padding:8px 0;">' +
+            "Nenhum kit disponível no momento.</div>";
+        return;
+    }
+
+    lista.innerHTML = kits.map(kit => {
+        const destaque = kit.destaque ? " destaque" : "";
+        const badge = kit.destaque
+            ? '<span class="kit-badge ' +
+              (kit.destaque === "MAIOR ECONOMIA" ? "lendario" : "") +
+              '">' + escHtml(kit.destaque) + "</span>"
+            : "";
+        return (
+            '<div class="kit-card' + destaque + '" onclick="abrirKit(' + kit.id + ')">' +
+                badge +
+                '<div class="kit-nome">🔥 ' + escHtml(kit.nome) + "</div>" +
+                '<div class="kit-desc">' + escHtml(kit.descricao || "") + "</div>" +
+                '<div class="kit-precos">' +
+                    '<span class="kit-preco-antigo">' + fmtMoeda(kit.precoNormal) + "</span>" +
+                    '<span class="kit-preco-novo">' + fmtMoeda(kit.preco) + "</span>" +
+                    '<span class="kit-economia">💚 economize ' + fmtMoeda(kit.economia) + "</span>" +
+                "</div>" +
+                '<div class="kit-conteudo">' + kitChips(kit) + "</div>" +
+            "</div>"
+        );
+    }).join("");
+}
+
+function verTodosKits(event){
+    if(event && event.preventDefault) event.preventDefault();
+    if(event && event.stopPropagation) event.stopPropagation();
+    if(!kitsCache || !kitsCache.length){
+        carregarKits();
+    }
+    let html = '<h2 style="text-align:center;color:var(--accent);margin-bottom:4px;">🔥 COMBOS & KITS</h2>';
+    html += '<p style="text-align:center;font-size:12px;color:var(--text-muted);margin-bottom:14px;">' +
+        "Pacotes completos: espaços + figurinhas colecionáveis + licença. Quanto maior o kit, maior a economia!</p>";
+
+    if(!kitsCache || !kitsCache.length){
+        html += '<p style="font-size:13px;color:var(--text-muted);text-align:center;">Nenhum kit disponível.</p>';
+    } else {
+        for(const kit of kitsCache){
+            const badge = kit.destaque
+                ? '<span style="display:inline-block;font-size:10px;font-weight:800;' +
+                  'background:linear-gradient(90deg,#ff9d00,#ffd400);color:#000;' +
+                  'padding:2px 8px;border-radius:20px;margin-bottom:6px;">' +
+                  escHtml(kit.destaque) + "</span>"
+                : "";
+            html +=
+                '<div class="kit-card" style="margin-bottom:10px;" onclick="abrirKit(' + kit.id + ')">' +
+                    badge +
+                    '<div class="kit-nome">🔥 ' + escHtml(kit.nome) + "</div>" +
+                    '<div class="kit-desc">' + escHtml(kit.descricao || "") + "</div>" +
+                    '<div class="kit-precos">' +
+                        '<span class="kit-preco-antigo">' + fmtMoeda(kit.precoNormal) + "</span>" +
+                        '<span class="kit-preco-novo">' + fmtMoeda(kit.preco) + "</span>" +
+                        '<span class="kit-economia">💚 economize ' + fmtMoeda(kit.economia) + "</span>" +
+                    "</div>" +
+                    '<div class="kit-conteudo">' + kitChips(kit) + "</div>" +
+                "</div>";
+        }
+    }
+
+    abrirInfoModal("🔥 Combos & Kits", html);
+}
+
+function abrirKit(kitId){
+    const kit = (kitsCache || []).find(k => k.id === kitId);
+    if(!kit) return;
+
+    let html = '<div class="kitModalHeader">';
+    html += '<div class="kitModalNome">🔥 ' + escHtml(kit.nome) + "</div>";
+    if(kit.destaque){
+        html += '<div class="kitModalDestaque">' + escHtml(kit.destaque) + "</div>";
+    }
+    html += "</div>";
+
+    html += '<div class="kitModalPrecos">' +
+        '<span class="kitModalPrecoAntigo">' + fmtMoeda(kit.precoNormal) + "</span>" +
+        '<span class="kitModalPrecoNovo">' + fmtMoeda(kit.preco) + "</span>" +
+    "</div>";
+    html += '<div class="kitModalEconomia">💚 Você economiza ' + fmtMoeda(kit.economia) + "!</div>";
+
+    html += '<div class="kitModalItens">';
+    html += '<div class="kitItem"><span class="kitItemIcon">🧩</span><b>' + kit.espacos + "</b><span>espaço(s)</span></div>";
+    if(kit.pacotes && kit.pacotes.length){
+        html += '<div class="kitItem"><span class="kitItemIcon">🎴</span><b>' + kit.pacotes.length + "</b><span>pacote(s)</span></div>";
+    }
+    if(kit.bonus){
+        html += '<div class="kitItem"><span class="kitItemIcon">🎁</span><b>Bônus</b><span>incluído</span></div>';
+    }
+    html += "</div>";
+
+    if(kit.bonus){
+        html += '<div class="kitModalBonus">🎁 <b>Bônus:</b> ' + escHtml(kit.bonus) + "</div>";
+    }
+
+    html += '<div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:8px;">' +
+        "⏱ Escolha a duração da licença (taxa única por pedido):</div>";
+    html += '<div class="kitLicencas" id="kitLicencas">';
+    const licencas = kit.licencas || {};
+    for(const key of ["1_year", "3_years", "5_years"]){
+        const lic = licencas[key];
+        if(!lic) continue;
+        const recomendada = key === "3_years" ? ' <span style="font-size:9px;color:var(--accent);">★ recomendado</span>' : "";
+        html +=
+            '<div class="kitLicenca' + (key === "1_year" ? " sel" : "") +
+            '" data-licenca="' + key + '" onclick="selecionarLicencaKit(this)">' +
+                '<div><span class="kitLicNome">' + escHtml(lic.label) + recomendada + "</span>" +
+                '<div class="kitLicDet">' +
+                    (Number(lic.fee) > 0 ? "Taxa única de " + fmtMoeda(lic.fee) : "Sem taxa extra") +
+                "</div></div>" +
+                '<span class="kitLicFee">' + (Number(lic.fee) > 0 ? "+ " + fmtMoeda(lic.fee) : "R$ 0,00") + "</span>" +
+            "</div>";
+    }
+    html += "</div>";
+
+    html += '<div class="kitModalTotal">' +
+        '<span>TOTAL</span><b id="kitTotal">' + fmtMoeda(kit.preco) + "</b>" +
+    "</div>";
+
+    if(!minhaConta){
+        html += '<p style="font-size:12px;color:var(--offer);font-weight:700;margin:8px 0;">' +
+            "🔐 Faça login para continuar a compra.</p>";
+    } else {
+        html += '<button class="btn" style="width:100%;margin:0;padding:14px;" onclick="comprarKit(' + kit.id + ')">' +
+            "🛒 COMPRAR KIT</button>";
+    }
+
+    html += '<p class="kitModalNota">' +
+        "Após a confirmação do pagamento, os espaços e as figurinhas são liberados automaticamente. " +
+        "A taxa de licença é cobrada uma única vez por pedido, não por espaço. " +
+        "Política de reembolso conforme os Termos de Uso.</p>";
+
+    document.getElementById("kitModalConteudo").innerHTML = html;
+    document.getElementById("kitModal").style.display = "flex";
+    document.getElementById("kitModalLicencas").dataset.kitId = kit.id;
+}
+
+function fecharKitModal(){
+    const modal = document.getElementById("kitModal");
+    if(modal) modal.style.display = "none";
+}
+
+function selecionarLicencaKit(el){
+    document.querySelectorAll("#kitLicencas .kitLicenca").forEach(x =>
+        x.classList.remove("sel"));
+    el.classList.add("sel");
+
+    const kitId = Number(document.getElementById("kitLicencas").dataset.kitId);
+    const kit = (kitsCache || []).find(k => k.id === kitId);
+    const lic = kit && kit.licencas ? kit.licencas[el.dataset.licenca] : null;
+    if(kit && lic){
+        const total = Math.round((Number(kit.preco) + Number(lic.fee)) * 100) / 100;
+        document.getElementById("kitTotal").textContent = fmtMoeda(total);
+    }
+}
+
+async function comprarKit(kitId){
+    const kit = (kitsCache || []).find(k => k.id === kitId);
+    if(!kit) return;
+
+    const licEl = document.querySelector("#kitLicencas .kitLicenca.sel");
+    const licensePlan = licEl ? licEl.dataset.licenca : "1_year";
+
+    try{
+        const resp = await fetch("/api/combos/kits/" + kitId + "/checkout", {
+            method: "POST",
+            headers: authHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({ licensePlan })
+        });
+        const data = await resp.json();
+        if(!data.ok){
+            throw new Error(data.error || "Erro ao gerar o pagamento.");
+        }
+        mostrarPagamentoKit(data);
+    }catch(error){
+        moToast(error.message, "err");
+    }
+}
+
+/* Exibe o QR Code / cartão e monitora o pagamento do kit. */
+function mostrarPagamentoKit(data){
+    let html = '<h2 style="text-align:center;color:var(--accent);">🛒 PAGAMENTO</h2>';
+    html += '<p style="text-align:center;font-size:13px;color:var(--text-secondary);margin:4px 0 12px;">' +
+        "Kit: <b>" + escHtml(data.kitNome) + "</b> — " + fmtMoeda(data.valor) + "</p>";
+
+    const metodo = data.paymentMethod || "pix";
+
+    if(data.paid){
+        html += '<div class="sucesso">✅ Pagamento aprovado! Liberando seu kit...</div>';
+    } else if(metodo === "pix" || data.qrCodeBase64 || data.payload){
+        html += '<div class="pix">';
+        if(data.qrCodeBase64){
+            html += '<img src="data:image/png;base64,' + data.qrCodeBase64 + '" alt="QR Code">';
+        } else if(data.payload){
+            html += '<p>Escaneie ou copie o código:</p>';
+        }
+        html += "</div>";
+        if(data.payload){
+            html += '<div class="copia"><span id="codigoPixKit">' + escHtml(data.payload) + "</span>" +
+                '<button class="btn sec" onclick="copiarTexto(document.getElementById(\'codigoPixKit\').textContent)">COPIAR</button></div>';
+        }
+        html += '<div class="statusPix" id="statusPixKit">Aguardando pagamento...</div>';
+        html += '<p style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:8px;">' +
+            "Você pode fechar esta janela; o kit será liberado automaticamente quando o pagamento confirmar.</p>";
+    } else {
+        html += '<div class="statusPix" id="statusPixKit">Processando pagamento...</div>';
+    }
+
+    document.getElementById("kitModalConteudo").innerHTML = html;
+
+    if(data.paid){
+        return;
+    }
+
+    /* Inicia o polling enquanto o modal estiver aberto. */
+    clearInterval(comprarKit._timer);
+    const currentPayment = data.orderId || data.paymentId;
+    comprarKit._timer = setInterval(() => monitorarPagamentoKit(currentPayment), 5000);
+    monitorarPagamentoKit(currentPayment);
+}
+
+async function monitorarPagamentoKit(orderId){
+    try{
+        const resp = await fetch("/api/combos/pagamento/" + encodeURIComponent(orderId), {
+            headers: authHeaders()
+        });
+        const data = await resp.json();
+        if(data.ok && data.status === "RECEIVED"){
+            clearInterval(comprarKit._timer);
+            const st = document.getElementById("statusPixKit");
+            const conteudo = document.getElementById("kitModalConteudo");
+            if(conteudo){
+                conteudo.innerHTML =
+                    '<div style="text-align:center;padding:20px 0;">' +
+                    '<div style="font-size:48px;margin-bottom:10px;">🎉</div>' +
+                    "<h2 style=\"color:var(--success);\">PAGAMENTO CONFIRMADO!</h2>" +
+                    "<p style=\"font-size:13px;color:var(--text-secondary);margin:10px 0 16px;\">" +
+                    "Seus espaços e figurinhas foram liberados! Confira no mapa e no seu painel.</p>" +
+                    '<button class="btn" style="margin:0;" onclick="fecharKitModal()">FECHAR</button>' +
+                    "</div>";
+            }
+            moToast("Kit liberado com sucesso!", "ok");
+            setTimeout(atualizarStatusMapa, 1000);
+        }
+    }catch(error){
+        /* continua tentando */
+    }
+}
+
+function atualizarStatusMapa(){
+    if(typeof stats === "function"){
+        try{ stats(); }catch(e){}
+    }
+}
+
+/* =========================================================
+   BUG / SUGESTÃO — FRONTEND
+========================================================= */
+
+let bugTipoSel = null;
+
+function abrirBugSugestao(){
+    bugTipoSel = null;
+    document.querySelectorAll("#bugTipos .bugTipo").forEach(x =>
+        x.classList.remove("sel"));
+    const campos = ["bugAssunto","bugDescricao","bugPagina","bugEspaco","bugEmail"];
+    campos.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.value = "";
+    });
+    const msg = document.getElementById("bugMsg");
+    if(msg) msg.textContent = "";
+
+    /* Pré-preenche o e-mail quando logado. */
+    const email = document.getElementById("bugEmail");
+    if(email && minhaConta && minhaConta.usuario && minhaConta.usuario.email){
+        email.value = minhaConta.usuario.email;
+        email.placeholder = minhaConta.usuario.email;
+    }
+
+    document.getElementById("bugModal").style.display = "flex";
+}
+
+function fecharBugModal(){
+    document.getElementById("bugModal").style.display = "none";
+}
+
+function selecionarBugTipo(el){
+    document.querySelectorAll("#bugTipos .bugTipo").forEach(x =>
+        x.classList.remove("sel"));
+    el.classList.add("sel");
+    bugTipoSel = el.dataset.tipo;
+}
+
+async function enviarBugSugestao(){
+    const msg = document.getElementById("bugMsg");
+    const tipo = bugTipoSel || "outro";
+    const assunto = document.getElementById("bugAssunto").value.trim();
+    const descricao = document.getElementById("bugDescricao").value.trim();
+
+    if(!assunto || assunto.length < 3){
+        if(msg) msg.innerHTML = '<span style="color:var(--danger);">⚠ Informe um assunto (mín. 3 caracteres).</span>';
+        return;
+    }
+    if(!descricao || descricao.length < 10){
+        if(msg) msg.innerHTML = '<span style="color:var(--danger);">⚠ Descreva o relato (mín. 10 caracteres).</span>';
+        return;
+    }
+
+    const pagina = document.getElementById("bugPagina").value.trim();
+    const espaco = document.getElementById("bugEspaco").value;
+    const email = document.getElementById("bugEmail").value.trim();
+
+    try{
+        const resp = await fetch("/api/bugs", {
+            method: "POST",
+            headers: authHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({
+                tipo,
+                assunto,
+                descricao,
+                pagina,
+                espaco: espaco ? Number(espaco) : null,
+                email: email || null
+            })
+        });
+        const data = await resp.json();
+        if(!data.ok){
+            if(resp.status === 429){
+                throw new Error("Você já enviou muitos relatos. Aguarde alguns minutos.");
+            }
+            throw new Error(data.error || "Erro ao enviar o relato.");
+        }
+        document.getElementById("bugModalConteudo").innerHTML =
+            '<div style="text-align:center;padding:24px 0;">' +
+            '<div style="font-size:48px;margin-bottom:10px;">🙏</div>' +
+            "<h2 style=\"color:var(--success);\">OBRIGADO!</h2>" +
+            "<p style=\"font-size:13px;color:var(--text-secondary);margin:10px 0 16px;\">" +
+            "Seu relato foi enviado para nossa equipe. " +
+            "Vamos analisar o mais rápido possível.</p>" +
+            '<button class="btn" style="margin:0;" onclick="fecharBugModal()">FECHAR</button>' +
+            "</div>";
+    }catch(error){
+        if(msg) msg.innerHTML = '<span style="color:var(--danger);">⚠ ' + escHtml(error.message) + "</span>";
+    }
+}
+
 </script>
 
 <!-- RODAPÉ -->
@@ -12614,6 +13728,7 @@ function abrirPaginaSorteio(){
             <a href="#inicio" onclick="scrollToTop(event)">Início</a>
             <a href="#como-funciona" onclick="scrollToSection(event,'comoFuncionaSection')">Como Funciona</a>
             <a href="#precos" onclick="abrirPrecos(event)">Preços</a>
+            <a href="#combos" onclick="scrollToSection(event,'combosSection')">🔥 Combos & Kits</a>
             <a href="#faq" onclick="abrirFaq(event)">FAQ</a>
             <a href="/colecionaveis.html" target="_blank">🃏 Colecionáveis</a>
         </div>

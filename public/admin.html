@@ -158,6 +158,8 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
         <button id="tabSorteio" onclick="aba('sorteio')">🎲 SORTEIO</button>
         <button id="tabReferencia" onclick="aba('referencia')">📋 REFERÊNCIA</button>
         <button id="tabColecionaveis" onclick="aba('colecionaveis')">🃏 COLECIONÁVEIS</button>
+        <button id="tabCombos" onclick="aba('combos')">🔥 COMBOS & KITS</button>
+        <button id="tabBugs" onclick="aba('bugs')">🐞 BUGS/SUGESTÕES</button>
     </div>
 
     <main>
@@ -565,6 +567,79 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
             </div>
         </div>
 
+        <div id="viewCombos" style="display:none;">
+            <div class="tabbar">
+                <button id="cbTabKits" class="ativa" onclick="cbAba('kits')">🔥 KITS</button>
+                <button id="cbTabVendas" onclick="cbAba('vendas')">💰 VENDAS</button>
+            </div>
+
+            <div id="cbViewKits" style="padding-top:16px;">
+                <div class="card">
+                    <div class="toolbar">
+                        <button onclick="cbAbrirNovo()">➕ NOVO KIT</button>
+                    </div>
+                    <div style="overflow:auto;max-height:70vh;">
+                        <table id="cbKitTabela">
+                            <thead>
+                                <tr>
+                                    <th>#</th><th>Nome</th><th>Destaque</th>
+                                    <th>Preço</th><th>Espaços</th><th>Pacotes</th>
+                                    <th>Status</th><th>Vendas</th><th>Receita</th><th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="cbViewVendas" style="display:none;padding-top:16px;">
+                <div class="grid" id="cbVendasCards"></div>
+                <div class="card">
+                    <h3 style="color:#ffd400;margin-bottom:10px;">Vendas por kit</h3>
+                    <div style="overflow:auto;max-height:70vh;">
+                        <table id="cbVendaTabela">
+                            <thead>
+                                <tr>
+                                    <th>Kit</th><th>Vendas</th><th>Receita</th><th>Pendentes</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="viewBugs" style="display:none;">
+            <div class="card">
+                <div class="toolbar">
+                    <select id="bugStatus" onchange="carregarBugs()">
+                        <option value="">Todos os status</option>
+                        <option value="novo">Novos</option>
+                        <option value="em_analise">Em análise</option>
+                        <option value="em_desenvolvimento">Em desenvolvimento</option>
+                        <option value="resolvido">Resolvidos</option>
+                        <option value="arquivado">Arquivados</option>
+                    </select>
+                    <button onclick="carregarBugs()">BUSCAR</button>
+                </div>
+                <div class="grid" id="bugResumoCards"></div>
+                <div style="overflow:auto;max-height:70vh;">
+                    <table id="bugTabela">
+                        <thead>
+                            <tr>
+                                <th>ID</th><th>Data</th><th>Tipo</th><th>Assunto</th>
+                                <th>Descrição</th><th>Página</th><th>Espaço</th><th>Usuário</th>
+                                <th>Status</th><th>Observação</th><th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
     </main>
 </div>
 
@@ -633,7 +708,7 @@ function sairAdmin(){
 
 function aba(nome){
     abaAtual = nome;
-    for(const n of ["resumo","espacos","transacoes","usuarios","logs","cupons","sorteio","referencia","colecionaveis"]){
+    for(const n of ["resumo","espacos","transacoes","usuarios","logs","cupons","sorteio","referencia","colecionaveis","combos","bugs"]){
         const bt = document.getElementById("tab" + n.charAt(0).toUpperCase() + n.slice(1));
         const vw = document.getElementById("view" + n.charAt(0).toUpperCase() + n.slice(1));
         if(bt) bt.className = n === nome ? "ativa" : "";
@@ -648,6 +723,8 @@ function aba(nome){
     if(nome === "sorteio") carregarSorteio();
     if(nome === "referencia") carregarNotas();
     if(nome === "colecionaveis") colAba("resumo");
+    if(nome === "combos") cbAba("kits");
+    if(nome === "bugs") carregarBugs();
 }
 
 const fmtDin = (n) => "R$ " + Number(n || 0).toLocaleString("pt-BR", {minimumFractionDigits: 2});
@@ -1520,6 +1597,329 @@ function esc(s){
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
+}
+
+/* =========================================================
+   COMBOS & KITS — ADMIN
+   Consome /api/combos/admin/* — protegidas por authAdmin.
+========================================================= */
+
+function cbAba(nome){
+    for(const n of ["kits","vendas"]){
+        const bt = document.getElementById("cbTab" + n.charAt(0).toUpperCase() + n.slice(1));
+        const vw = document.getElementById("cbView" + n.charAt(0).toUpperCase() + n.slice(1));
+        if(bt) bt.className = n === nome ? "ativa" : "";
+        if(vw) vw.style.display = n === nome ? "block" : "none";
+    }
+    if(nome === "kits") carregarCbKits();
+    if(nome === "vendas") carregarCbVendas();
+}
+
+function cbBadge(d){
+    return d ? "<span class='pill paid'>" + esc(d) + "</span>" : "<span class='fade'>—</span>";
+}
+
+async function carregarCbKits(){
+    try {
+        const d = await api("/api/combos/admin/kits");
+        const tbody = document.querySelector("#cbKitTabela tbody");
+        tbody.innerHTML = d.kits.map(k =>
+            "<tr>" +
+            "<td>" + k.id + "</td>" +
+            "<td><b>" + esc(k.nome) + "</b><br><span class='fade'>" + esc(k.slug) + "</span></td>" +
+            "<td>" + cbBadge(k.destaque) + "</td>" +
+            "<td><span class='fade'>" + fmtColDin(k.preco_normal) + "</span><br><b style='color:#ffd400;'>" + fmtColDin(k.preco) + "</b></td>" +
+            "<td><b>" + fmtNum(k.espacos) + "</b></td>" +
+            "<td>" + fmtNum((k.pacotes || []).length) + "</td>" +
+            "<td>" + (k.is_active ? "<span class='pill paid'>ativo</span>" : "<span class='pill available'>inativo</span>") + "</td>" +
+            "<td><b>" + fmtNum(k.vendas) + "</b></td>" +
+            "<td><b>" + fmtColDin(k.receita) + "</b></td>" +
+            "<td>" +
+                "<button onclick='cbEditar(" + k.id + ")'>✏️</button> " +
+                "<button onclick='cbToggle(" + k.id + ")'>" + (k.is_active ? "⛔" : "✅") + "</button> " +
+                "<button onclick='cbDuplicar(" + k.id + ")'>⧉</button>" +
+            "</td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='10' class='fade'>Nenhum kit criado.</td></tr>";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function cbDuplicar(id){
+    if(!confirm("Duplicar este kit? A cópia nasce inativa.")) return;
+    try {
+        await api("/api/combos/admin/kits/" + id + "/duplicar", { method: "POST" });
+        carregarCbKits();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function cbToggle(id){
+    try {
+        await api("/api/combos/admin/kits/" + id + "/toggle", { method: "POST" });
+        carregarCbKits();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+function cbAbrirNovo(){
+    cbAbrirFormulario(null);
+}
+
+async function cbEditar(id){
+    try {
+        const d = await api("/api/combos/admin/kits");
+        const kit = d.kits.find(k => k.id === id);
+        if(!kit){ alert("Kit não encontrado."); return; }
+        cbAbrirFormulario(kit);
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+function cbAbrirFormulario(kit){
+    const e = kit ? {
+        nome: kit.nome,
+        slug: kit.slug,
+        destaque: kit.destaque || "",
+        precoNormal: kit.preco_normal,
+        preco: kit.preco,
+        espacos: kit.espacos,
+        pacotes: kit.pacotes || [],
+        bonus: kit.bonus || "",
+        descricao: kit.descricao || "",
+        isActive: kit.is_active,
+        sortOrder: kit.sort_order || 0
+    } : { pacotes: [], isActive: true, sortOrder: 0 };
+
+    const txtPacotes = e.pacotes.map(p => p.pack_id + ":" + p.quantidade).join(",");
+
+    const html =
+        "<h3 style='color:#ffd400;margin-bottom:12px;'>" + (kit ? "✏️ EDITAR KIT" : "➕ NOVO KIT") + "</h3>" +
+        "<div class='toolbar' style='flex-wrap:wrap;'>" +
+        "<input id='cbFrmNome' placeholder='Nome do kit' value='" + esc(e.nome || "") + "' style='flex:1;min-width:180px;'>" +
+        "<input id='cbFrmSlug' placeholder='slug-unico' value='" + esc(e.slug || "") + "' style='flex:1;min-width:140px;'>" +
+        "<input id='cbFrmDestaque' placeholder='Destaque (ex: MAIS VENDIDO)' value='" + esc(e.destaque) + "' style='flex:1;min-width:160px;'>" +
+        "</div>" +
+        "<div class='toolbar' style='flex-wrap:wrap;'>" +
+        "<input id='cbFrmPrecoNormal' type='number' step='0.01' min='0' placeholder='Preço original' value='" + e.precoNormal + "' style='flex:1;min-width:140px;'>" +
+        "<input id='cbFrmPreco' type='number' step='0.01' min='0.01' placeholder='Preço final' value='" + e.preco + "' style='flex:1;min-width:140px;'>" +
+        "<input id='cbFrmEspacos' type='number' step='1' min='1' placeholder='Espaços' value='" + e.espacos + "' style='flex:1;min-width:120px;'>" +
+        "</div>" +
+        "<div class='toolbar' style='flex-wrap:wrap;'>" +
+        "<input id='cbFrmPacotes' placeholder='Pacotes (id:qtd,id:qtd)' value='" + esc(txtPacotes) + "' style='flex:1;min-width:200px;'>" +
+        "<input id='cbFrmSort' type='number' step='1' placeholder='Ordem' value='" + e.sortOrder + "' style='width:90px;'>" +
+        "<label style='display:flex;align-items:center;gap:6px;font-size:13px;color:#ccc;'>" +
+        "<input type='checkbox' id='cbFrmAtivo' " + (e.isActive ? "checked" : "") + "> Ativo</label>" +
+        "</div>" +
+        "<input id='cbFrmBonus' placeholder='Bônus (ex: 1 pacote Ouro extra)' value='" + esc(e.bonus) + "' style='width:100%;'>" +
+        "<textarea id='cbFrmDesc' placeholder='Descrição do kit' style='width:100%;min-height:60px;'>" + esc(e.descricao) + "</textarea>" +
+        "<p style='font-size:11px;color:#888;margin:6px 0;'>" +
+        "Pacotes: consulte os ids na aba 🃏 COLECIONÁVEIS → PACOTES. Formato: <code>id:quantidade</code>, separados por vírgula.</p>" +
+        "<div style='display:flex;gap:10px;margin-top:8px;'>" +
+        "<button onclick='cbSalvar(" + (kit ? kit.id : "null") + ")' style='flex:1;'>💾 SALVAR</button>" +
+        "<button class='danger' onclick='cbCancelarForm()' style='flex:1;'>CANCELAR</button>" +
+        "</div>";
+
+    const div = document.createElement("div");
+    div.id = "cbModal";
+    div.style.cssText = "position:fixed;inset:0;background:#000c;z-index:3000;display:flex;align-items:center;justify-content:center;";
+    div.onclick = (ev) => { if(ev.target === div) div.remove(); };
+    const inner = document.createElement("div");
+    inner.className = "card";
+    inner.style.cssText = "max-width:720px;width:94%;max-height:88vh;overflow:auto;";
+    inner.innerHTML = html;
+    div.appendChild(inner);
+    document.body.appendChild(div);
+}
+
+function cbCancelarForm(){
+    const el = document.getElementById("cbModal");
+    if(el) el.remove();
+}
+
+async function cbSalvar(id){
+    try {
+        const body = {
+            nome: document.getElementById("cbFrmNome").value.trim(),
+            slug: document.getElementById("cbFrmSlug").value.trim(),
+            destaque: document.getElementById("cbFrmDestaque").value.trim() || null,
+            precoNormal: Number(document.getElementById("cbFrmPrecoNormal").value),
+            preco: Number(document.getElementById("cbFrmPreco").value),
+            espacos: Number(document.getElementById("cbFrmEspacos").value),
+            sortOrder: Number(document.getElementById("cbFrmSort").value) || 0,
+            isActive: document.getElementById("cbFrmAtivo").checked,
+            bonus: document.getElementById("cbFrmBonus").value.trim() || null,
+            descricao: document.getElementById("cbFrmDesc").value.trim() || null
+        };
+
+        const txtPacotes = document.getElementById("cbFrmPacotes").value.trim();
+        body.pacotes = txtPacotes ? txtPacotes.split(",").map(s => {
+            const [pid, qtd] = s.split(":");
+            return { pack_id: Number(pid), quantidade: Number(qtd) || 1 };
+        }).filter(p => Number.isInteger(p.pack_id) && p.pack_id > 0) : [];
+
+        if(!body.nome){ alert("Informe o nome do kit."); return; }
+        if(!body.slug){ alert("Informe o slug do kit."); return; }
+        if(!(body.preco > 0)){ alert("Preço final deve ser maior que zero."); return; }
+        if(!(body.espacos > 0)){ alert("Quantidade de espaços inválida."); return; }
+
+        if(id){
+            await api("/api/combos/admin/kits/" + id, { method: "POST", body: JSON.stringify(body) });
+        } else {
+            await api("/api/combos/admin/kits", { method: "POST", body: JSON.stringify(body) });
+        }
+        cbCancelarForm();
+        carregarCbKits();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function carregarCbVendas(){
+    try {
+        const d = await api("/api/combos/admin/vendas");
+        document.getElementById("cbVendasCards").innerHTML = [
+            ["Vendas de kits", fmtNum(d.totalVendas)],
+            ["Receita de kits", fmtColDin(d.totalReceita)]
+        ].map(([l,v]) => "<div class='metric'><b>" + v + "</b><span>" + l + "</span></div>").join("");
+
+        const tbody = document.querySelector("#cbVendaTabela tbody");
+        tbody.innerHTML = d.porKit.map(k =>
+            "<tr>" +
+            "<td><b>" + esc(k.nome) + "</b></td>" +
+            "<td><b style='color:#ffd400;'>" + fmtNum(k.vendas) + "</b></td>" +
+            "<td><b>" + fmtColDin(k.receita) + "</b></td>" +
+            "<td><span class='fade'>" + fmtNum(k.pendentes) + "</span></td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='4' class='fade'>Nenhuma venda registrada.</td></tr>";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+/* =========================================================
+   BUGS & SUGESTÕES — ADMIN
+   Consome /api/admin/bugs — protegidas por authAdmin.
+========================================================= */
+
+const BUG_TIPOS_LABEL = {
+    bug: "🐞 BUG",
+    sugestao: "💡 SUGESTÃO",
+    pagamento: "⚠️ PAGAMENTO",
+    outro: "❓ OUTRO"
+};
+const BUG_STATUS_LABEL = {
+    novo: "🆕 Novo",
+    em_analise: "🔍 Em análise",
+    em_desenvolvimento: "🛠 Em desenvolvimento",
+    resolvido: "✅ Resolvido",
+    arquivado: "📦 Arquivado"
+};
+
+async function carregarBugs(){
+    try {
+        const status = document.getElementById("bugStatus").value;
+        const q = status ? "?status=" + encodeURIComponent(status) : "";
+        const d = await api("/api/admin/bugs" + q);
+
+        const contagem = d.contagem || [];
+        const totalBugs = d.bugs.length;
+        const novoTotal = (contagem.find(c => c.status === "novo")?.total || 0) +
+                          (status && status !== "novo" ? 0 : totalBugs);
+
+        const cards = [
+            ["Novos", contagem.find(c => c.status === "novo")?.total || 0],
+            ["Em análise", contagem.find(c => c.status === "em_analise")?.total || 0],
+            ["Em desenvolvimento", contagem.find(c => c.status === "em_desenvolvimento")?.total || 0],
+            ["Resolvidos", contagem.find(c => c.status === "resolvido")?.total || 0],
+            ["Arquivados", contagem.find(c => c.status === "arquivado")?.total || 0],
+            ["Total", novoTotal]
+        ];
+        document.getElementById("bugResumoCards").innerHTML =
+            cards.map(([l,v]) => "<div class='metric'><b>" + fmtNum(v) + "</b><span>" + l + "</span></div>").join("");
+
+        const tbody = document.querySelector("#bugTabela tbody");
+        tbody.innerHTML = d.bugs.map(b =>
+            "<tr>" +
+            "<td><b>#" + b.id + "</b></td>" +
+            "<td class='fade'>" + fmtData(b.created_at) + "</td>" +
+            "<td><span class='pill available'>" + (BUG_TIPOS_LABEL[b.tipo] || esc(b.tipo)) + "</span></td>" +
+            "<td><b>" + esc(b.assunto) + "</b></td>" +
+            "<td style='max-width:260px;'>" + esc(b.descricao) + "</td>" +
+            "<td class='fade'>" + esc(b.pagina || "—") + "</td>" +
+            "<td>" + (b.espaco ? "#" + b.espaco : "—") + "</td>" +
+            "<td class='fade'>" + esc(b.usuario_nome || (b.email ? b.email : "anônimo")) + "</td>" +
+            "<td>" + (BUG_STATUS_LABEL[b.status] || esc(b.status)) + "</td>" +
+            "<td style='max-width:160px;' class='fade'>" + esc(b.observacao || "—") + "</td>" +
+            "<td><button onclick='bugAbrir(" + b.id + ")'>⚙️</button></td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='11' class='fade'>Nenhum relato.</td></tr>";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function bugAbrir(id){
+    const status = document.getElementById("bugStatus").value;
+    const q = status ? "?status=" + encodeURIComponent(status) : "";
+    const d = await api("/api/admin/bugs" + q);
+    const bug = d.bugs.find(b => b.id === id);
+    if(!bug){ alert("Relato não encontrado."); return; }
+
+    const opcoesStatus = Object.keys(BUG_STATUS_LABEL).map(s =>
+        "<option value='" + s + "' " + (s === bug.status ? "selected" : "") + ">" + BUG_STATUS_LABEL[s] + "</option>"
+    ).join("");
+
+    const div = document.createElement("div");
+    div.id = "bugModal";
+    div.style.cssText = "position:fixed;inset:0;background:#000c;z-index:3000;display:flex;align-items:center;justify-content:center;";
+    div.onclick = (ev) => { if(ev.target === div) div.remove(); };
+    const inner = document.createElement("div");
+    inner.className = "card";
+    inner.style.cssText = "max-width:640px;width:94%;max-height:88vh;overflow:auto;";
+    inner.innerHTML =
+        "<h3 style='color:#ffd400;margin-bottom:10px;'>🐞 Relato #" + bug.id + "</h3>" +
+        "<div style='font-size:13px;line-height:1.6;color:#ccc;margin-bottom:12px;'>" +
+        "<b>Tipo:</b> " + (BUG_TIPOS_LABEL[bug.tipo] || bug.tipo) + "<br>" +
+        "<b>Assunto:</b> " + esc(bug.assunto) + "<br>" +
+        "<b>Descrição:</b> " + esc(bug.descricao) + "<br>" +
+        (bug.pagina ? "<b>Página:</b> " + esc(bug.pagina) + "<br>" : "") +
+        (bug.espaco ? "<b>Espaço:</b> #" + bug.espaco + "<br>" : "") +
+        (bug.usuario_nome ? "<b>Usuário:</b> " + esc(bug.usuario_nome) + " (id " + bug.usuario_id + ")<br>" : "") +
+        (bug.email ? "<b>E-mail:</b> " + esc(bug.email) + "<br>" : "") +
+        "<b>Data:</b> " + fmtData(bug.created_at) +
+        "</div>" +
+        "<select id='bugFrmStatus'>" + opcoesStatus + "</select>" +
+        "<textarea id='bugFrmObs' placeholder='Observação interna' style='width:100%;min-height:80px;margin-top:10px;'>" + esc(bug.observacao || "") + "</textarea>" +
+        "<div style='display:flex;gap:10px;margin-top:10px;'>" +
+        "<button onclick='bugSalvar(" + bug.id + ")' style='flex:1;'>💾 SALVAR</button>" +
+        "<button class='danger' onclick='bugFecharModal()' style='flex:1;'>CANCELAR</button>" +
+        "</div>";
+    div.appendChild(inner);
+    document.body.appendChild(div);
+}
+
+function bugFecharModal(){
+    const el = document.getElementById("bugModal");
+    if(el) el.remove();
+}
+
+async function bugSalvar(id){
+    try {
+        const body = {
+            status: document.getElementById("bugFrmStatus").value,
+            observacao: document.getElementById("bugFrmObs").value.trim() || null
+        };
+        await api("/api/admin/bugs/" + id, { method: "POST", body: JSON.stringify(body) });
+        bugFecharModal();
+        carregarBugs();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
 }
 
 if(token){

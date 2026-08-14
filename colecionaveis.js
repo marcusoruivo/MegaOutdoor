@@ -854,6 +854,79 @@ module.exports = function criarModuloColecionaveis(deps) {
         return null;
     }
 
+    /* Entrega figurinhas de um pacote diretamente ao acervo do usuário,
+       SEM passar por cobrança (usada pelos Combos & Kits). Idempotente:
+       chamada apenas uma vez por pedido pago. */
+    async function entregarPacoteParaUsuario({ usuarioId, packId, quantidade = 1, refId = null }) {
+        if (!pgOk()) {
+            throw new Error("Sistema de colecionáveis indisponível no momento.");
+        }
+
+        const pool = pg();
+
+        const packQ = await pool.query(
+            `SELECT * FROM sticker_packs WHERE id = $1 AND is_active = TRUE`,
+            [packId]
+        );
+        const pack = packQ.rows[0];
+        if (!pack) {
+            throw new Error("Pacote de figurinhas não encontrado.");
+        }
+
+        const colQ = await pool.query(
+            `SELECT * FROM sticker_cards
+              WHERE collection_id = $1 AND is_active = TRUE
+              ORDER BY id`,
+            [pack.collection_id]
+        );
+        const cards = colQ.rows;
+
+        const sorteadas = sortearCards(cards, quantidade);
+
+        const client = await pool.connect();
+        try {
+            await client.query("BEGIN");
+
+            for (const card of sorteadas) {
+                await client.query(
+                    `INSERT INTO user_stickers (usuario_id, card_id, quantity)
+                     VALUES ($1,$2,1)
+                     ON CONFLICT (usuario_id, card_id)
+                     DO UPDATE SET quantity =
+                         user_stickers.quantity + 1`,
+                    [usuarioId, card.id]
+                );
+            }
+
+            await client.query("COMMIT");
+        } catch (e) {
+            await client.query("ROLLBACK");
+            throw e;
+        } finally {
+            client.release();
+        }
+
+        await registrarTransacaoCol(
+            usuarioId,
+            "PACOTE_KIT_RECEBIDO",
+            `Recebeu ${sorteadas.length} figurinha(s) do pacote ${pack.name} (Kit).`,
+            0,
+            refId
+        );
+
+        const colecao = await colecaoAtiva();
+        if (colecao) {
+            await verificarConquistas(usuarioId, colecao.id);
+        }
+
+        return {
+            packId: pack.id,
+            packName: pack.name,
+            figurinhas: sorteadas.length,
+            cards: sorteadas.map(c => c.id)
+        };
+    }
+
     async function confirmarCompraPacote(compra, mpOrderId) {
         const pool = pg();
         const packQ = await pool.query(
@@ -3306,6 +3379,7 @@ module.exports = function criarModuloColecionaveis(deps) {
         migrar,
         processarPagamento,
         sortearRaridade,
-        sortearCards
+        sortearCards,
+        entregarPacoteParaUsuario
     };
 };

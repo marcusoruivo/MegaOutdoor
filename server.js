@@ -106,6 +106,18 @@ const limiterUpload = rateLimit({
     }
 });
 
+/* Relatos de bug/sugestão: limite por usuário/IP para
+   evitar spam, mas generoso para uso legítimo. */
+const limiterBugs = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    limit: ALLOW_TEST_MODE ? 500 : 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        error: "Você já enviou muitos relatos. Aguarde alguns minutos e tente novamente."
+    }
+});
+
 /* =========================
    MERCADO PAGO (Orders API)
    Documentação: https://www.mercadopago.com.br/developers
@@ -564,6 +576,50 @@ async function initBanco() {
             console.error(
                 "ERRO ao migrar tabelas de colecionáveis:",
                 eMigracao.message
+            );
+        }
+
+        /* Combos & Kits: tabelas `kits` e `kit_compras` são
+           criadas pelo próprio módulo (combos.migrar()). */
+        try {
+            if (typeof combos?.migrar === "function") {
+                await combos.migrar();
+            }
+        } catch (eMigracaoCombos) {
+            console.error(
+                "ERRO ao migrar tabelas de combos/kits:",
+                eMigracaoCombos.message
+            );
+        }
+
+        /* Bugs e sugestões enviados pelo site. */
+        try {
+            await pgPool.query(`
+                CREATE TABLE IF NOT EXISTS bugs_sugestoes (
+                    id            SERIAL PRIMARY KEY,
+                    tipo          VARCHAR(20) NOT NULL,
+                    assunto       VARCHAR(120) NOT NULL,
+                    descricao     TEXT NOT NULL,
+                    pagina        VARCHAR(120),
+                    espaco        INTEGER,
+                    email         VARCHAR(200),
+                    usuario_id    INTEGER,
+                    anexo_url     VARCHAR(400),
+                    status        VARCHAR(30) NOT NULL DEFAULT 'novo',
+                    observacao    TEXT,
+                    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            `);
+
+            await pgPool.query(
+                "CREATE INDEX IF NOT EXISTS idx_bugs_status " +
+                "ON bugs_sugestoes(status)"
+            );
+        } catch (eBugs) {
+            console.error(
+                "ERRO ao migrar tabela de bugs/sugestões:",
+                eBugs.message
             );
         }
 
@@ -3541,6 +3597,18 @@ app.get(
                     );
                 }
 
+                /* Módulo de Combos & Kits (idempotente). */
+                try {
+                    if (typeof combos?.processarPagamento === "function") {
+                        await combos.processarPagamento({ mpOrderId: orderId });
+                    }
+                } catch (eCombos) {
+                    console.error(
+                        "ERRO ao processar pagamento de combos/kits (polling):",
+                        eCombos.message
+                    );
+                }
+
                 registrarLog("pagamento_confirmado", {
                     mpOrderId: orderId,
                     status: chargeStatus
@@ -6378,6 +6446,19 @@ app.post("/webhooks/mercadopago", async (req, res) => {
             );
         }
 
+        /* Pagamentos do módulo de Combos & Kits. Idempotente —
+           só processa pedidos pendentes, sem entregar em dobro. */
+        try {
+            if (typeof combos?.processarPagamento === "function") {
+                await combos.processarPagamento({ mpOrderId: orderId });
+            }
+        } catch (eCombos) {
+            console.error(
+                "ERRO ao processar pagamento de combos/kits:",
+                eCombos.message
+            );
+        }
+
         registrarLog("pagamento_confirmado_webhook", {
             mpOrderId: orderId,
             paymentId: dados.paymentId,
@@ -7405,6 +7486,236 @@ const colecionaveis = criarColecionaveis({
 app.use("/api/colecionaveis", limiterLeitura);
 
 app.use("/api/colecionaveis", colecionaveis.router);
+
+/* =========================
+   COMBOS & KITS
+   Módulo de Combos & Kits (pacotes de espaços + figurinhas +
+   licença). Tabelas `kits` e `kit_compras`. processarPagamento
+   é chamado no webhook, no polling e no polling de colecionáveis.
+========================= */
+
+const criarCombos = require("./combos.js");
+
+const combos = criarCombos({
+    express,
+    authUsuario,
+    authAdmin,
+    criarOrderMercadoPago,
+    consultarOrderMercadoPago,
+    statusOrderPago,
+    registrarLog,
+    obterPool: () => pgPool,
+    obterPgDisponivel: () => pgDisponivel,
+    obterAuthUsuario: () => authUsuario,
+    readDB,
+    writeDB,
+    registrarTransacao,
+    salvarChaveUsuario,
+    gerarToken,
+    gerarAccessCode,
+    obterColecionaveis: () => colecionaveis
+});
+
+app.use("/api/combos", limiterLeitura);
+
+app.use("/api/combos", combos.router);
+
+/* =========================
+   BUGS & SUGESTÕES
+   Relatos enviados pelo site (botão BUG/SUGESTÃO). O admin
+   acompanha e atualiza o status no painel.
+========================= */
+
+const TIPOS_BUG = [
+    "bug",
+    "sugestao",
+    "pagamento",
+    "outro"
+];
+
+const STATUS_BUG = [
+    "novo",
+    "em_analise",
+    "em_desenvolvimento",
+    "resolvido",
+    "arquivado"
+];
+
+/* Envio público de um relato. authOpcional: preenche o usuário
+   automaticamente quando logado, mas aceita anônimos. */
+app.post(
+    "/api/bugs",
+    limiterBugs,
+    authOpcional,
+    async (req, res) => {
+        try {
+            const tipo = String(req.body.tipo || "").trim().toLowerCase();
+            if (!TIPOS_BUG.includes(tipo)) {
+                return res.status(400).json({ error: "Tipo de relato inválido." });
+            }
+
+            const assunto = String(req.body.assunto || "").trim();
+            if (!assunto || assunto.length < 3 || assunto.length > 120) {
+                return res.status(400).json({ error: "Assunto deve ter entre 3 e 120 caracteres." });
+            }
+
+            const descricao = String(req.body.descricao || "").trim();
+            if (!descricao || descricao.length < 10 || descricao.length > 5000) {
+                return res.status(400).json({ error: "Descreva o relato com pelo menos 10 caracteres (máx. 5000)." });
+            }
+
+            const email = String(req.body.email || "").trim().toLowerCase();
+            if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                return res.status(400).json({ error: "E-mail inválido." });
+            }
+
+            const pagina = String(req.body.pagina || "").trim();
+            const espaco = Number(req.body.espaco);
+            const usuarioId = req.usuario ? req.usuario.id : null;
+
+            if (!pgDisponivel) {
+                return res.status(503).json({ error: "Sistema de relatos indisponível no momento." });
+            }
+
+            const r = await pgPool.query(
+                `INSERT INTO bugs_sugestoes
+                    (tipo, assunto, descricao, pagina, espaco, email,
+                     usuario_id, anexo_url, status)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'novo')
+                 RETURNING id`,
+                [
+                    tipo,
+                    assunto,
+                    descricao,
+                    pagina || null,
+                    Number.isInteger(espaco) && espaco > 0 ? espaco : null,
+                    email || (req.usuario ? req.usuario.email : null),
+                    usuarioId,
+                    req.body.anexoUrl || null
+                ]
+            );
+
+            registrarLog("bug_sugestao_recebida", {
+                bugId: r.rows[0].id,
+                tipo,
+                usuarioId
+            });
+
+            res.json({
+                ok: true,
+                id: r.rows[0].id,
+                message: "Obrigado! Seu relato foi enviado para nossa equipe."
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+);
+
+/* Admin: listar relatos com filtro por status. */
+app.get("/api/admin/bugs", authAdmin, async (req, res) => {
+    try {
+        if (!pgDisponivel) {
+            return res.status(503).json({ error: "Banco de dados indisponível." });
+        }
+
+        const status = String(req.query.status || "").trim();
+        let where = "";
+        const params = [];
+
+        if (status) {
+            if (!STATUS_BUG.includes(status)) {
+                return res.status(400).json({ error: "Status inválido." });
+            }
+            params.push(status);
+            where = `WHERE status = $${params.length}`;
+        }
+
+        const limite = Math.min(500, Number(req.query.limite || 200));
+
+        const r = await pgPool.query(
+            `SELECT b.id, b.tipo, b.assunto, b.descricao, b.pagina,
+                    b.espaco, b.email, b.usuario_id, b.anexo_url,
+                    b.status, b.observacao, b.created_at, b.updated_at,
+                    u.nome AS usuario_nome
+               FROM bugs_sugestoes b
+               LEFT JOIN usuarios u ON u.id = b.usuario_id
+               ${where}
+               ORDER BY b.created_at DESC
+               LIMIT ${limite}`,
+            params
+        );
+
+        const contagem = await pgPool.query(
+            `SELECT status, COUNT(*)::int AS total
+               FROM bugs_sugestoes
+              GROUP BY status`
+        );
+
+        res.json({
+            ok: true,
+            bugs: r.rows,
+            contagem: contagem.rows
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/* Admin: atualizar status e/ou observação de um relato. */
+app.post("/api/admin/bugs/:id", authAdmin, async (req, res) => {
+    try {
+        if (!pgDisponivel) {
+            return res.status(503).json({ error: "Banco de dados indisponível." });
+        }
+
+        const bugId = Number(req.params.id);
+        const campos = [];
+        const params = [];
+
+        if (req.body.status !== undefined) {
+            const status = String(req.body.status).trim();
+            if (!STATUS_BUG.includes(status)) {
+                return res.status(400).json({ error: "Status inválido." });
+            }
+            params.push(status);
+            campos.push(`status = $${params.length}`);
+        }
+
+        if (req.body.observacao !== undefined) {
+            const obs = req.body.observacao === null
+                ? null
+                : String(req.body.observacao).trim();
+            params.push(obs);
+            campos.push(`observacao = $${params.length}`);
+        }
+
+        if (!campos.length) {
+            return res.status(400).json({ error: "Nenhum campo para atualizar." });
+        }
+
+        params.push(bugId);
+        campos.push("updated_at = NOW()");
+
+        const r = await pgPool.query(
+            `UPDATE bugs_sugestoes SET ${campos.join(", ")}
+              WHERE id = $${params.length}`,
+            params
+        );
+        if (!r.rowCount) {
+            return res.status(404).json({ error: "Relato não encontrado." });
+        }
+
+        registrarLog("bug_sugestao_atualizada", {
+            bugId,
+            status: req.body.status
+        });
+
+        res.json({ ok: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 /* =========================
    404 JSON PARA /api

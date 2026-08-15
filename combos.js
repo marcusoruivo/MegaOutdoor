@@ -137,10 +137,18 @@ module.exports = function criarModuloCombos(deps) {
                 total          NUMERIC(10,2) NOT NULL,
                 espacos        INTEGER[] NOT NULL DEFAULT '{}',
                 status         VARCHAR(20) NOT NULL DEFAULT 'pending',
+                espacos_confirmados BOOLEAN NOT NULL DEFAULT FALSE,
                 test           BOOLEAN NOT NULL DEFAULT FALSE,
                 created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 paid_at        TIMESTAMPTZ
             )
+        `);
+
+        /* Compatibilidade com bancos já existentes (estado de seleção
+           manual de espaços dos kits, CORREÇÃO 7). */
+        await pool.query(`
+            ALTER TABLE kit_compras
+                ADD COLUMN IF NOT EXISTS espacos_confirmados BOOLEAN NOT NULL DEFAULT FALSE
         `);
 
         await pool.query(
@@ -324,48 +332,110 @@ module.exports = function criarModuloCombos(deps) {
         };
     }
 
-    /* Escolhe espaços livres para um kit. Se o usuário enviar
-       espaços específicos (validados livres), usa-os; senão,
-       aloca os primeiros espaços livres automaticamente. */
-    async function alocarEspacos(kit, espacosSugeridos) {
-        const db = readDB();
+    /* Fila de escrita única para o spaces.json (read-modify-write).
+       Serializa confirmações de kits entre requisições concorrentes,
+       evitando que dois usuários confirmem o MESMO espaço. */
+    let filaEscritaMapa = Promise.resolve();
 
-        const ocupados = new Set(
-            Object.keys(db).map(Number)
-        );
+    function enfileirarEscritaMapa(fn) {
+        const exec = filaEscritaMapa.then(() => fn());
+        filaEscritaMapa = exec.catch(() => {});
+        return exec;
+    }
 
-        const escolhidos = [];
-
-        if (
-            Array.isArray(espacosSugeridos) &&
-            espacosSugeridos.length > 0
-        ) {
-            const unicos = [
-                ...new Set(espacosSugeridos.map(Number))
-            ].filter(n =>
-                Number.isInteger(n) &&
-                n >= 1 &&
-                n <= 1000000 &&
-                !ocupados.has(n)
-            );
-            escolhidos.push(...unicos);
-        }
-
-        if (escolhidos.length < kit.espacos) {
-            let n = 1;
-            while (escolhidos.length < kit.espacos && n <= 1000000) {
-                if (!ocupados.has(n)) {
-                    escolhidos.push(n);
-                }
-                n++;
+    /* Valida números de espaço recebidos do usuário (1..1.000.000,
+       inteiros, sem duplicatas). Aceita também a representação textual
+       de array ({1,2,3}) para bancos/adaptadores que a devolvam. */
+    function normalizarIdsEspacos(entrada) {
+        let lista = entrada;
+        if (typeof entrada === "string") {
+            try {
+                lista = JSON.parse(
+                    entrada.trim().replace(/^\{/, "[").replace(/\}$/, "]")
+                );
+            } catch (e) {
+                lista = [];
             }
         }
+        if (!Array.isArray(lista)) return [];
+        return [...new Set(lista.map(Number))]
+            .filter(n => Number.isInteger(n) && n >= 1 && n <= 1000000);
+    }
 
-        if (escolhidos.length < kit.espacos) {
-            throw new Error("Não há espaço suficiente disponível para este kit.");
+    /* Confirma a seleção de espaços de um kit (CORREÇÃO 7).
+       Executado sob a fila de escrita: revalida a disponibilidade
+       ATÔMICA de todos os espaços e só então grava no mapa. Lança
+       erro se a quantidade não bater com o kit ou se algum espaço
+       não estiver mais livre (concorrência). */
+    async function alocarEspacosConfirmados(compra) {
+        const kit = await kitPorId(compra.kit_id);
+        if (!kit) {
+            throw new Error("Kit não encontrado para confirmação.");
         }
 
-        return escolhidos;
+        const ids = normalizarIdsEspacos(compra.espacos);
+        const esperados = Number(kit.espacos);
+        if (ids.length !== esperados) {
+            throw new Error(`Selecione exatamente ${esperados} espaço(s) para confirmar (${ids.length} selecionado(s)).`);
+        }
+
+        const usuario = await usuarioPorId(compra.usuario_id);
+        if (!usuario) {
+            throw new Error("Usuário do kit não encontrado.");
+        }
+
+        return await enfileirarEscritaMapa(async () => {
+            const db = readDB();
+            const ocupados = new Set(Object.keys(db).map(Number));
+
+            for (const id of ids) {
+                if (ocupados.has(id)) {
+                    throw new Error(`O espaço ${id} não está mais disponível.`);
+                }
+            }
+
+            const licenca = escolherLicenca(compra.license_plan);
+            const paidAt = new Date();
+            const orderToken = gerarToken();
+            const accessCode = gerarAccessCode();
+
+            for (const id of ids) {
+                db[id] = {
+                    id,
+                    status: "paid",
+                    paidAt: paidAt.toISOString(),
+                    purchasedAt: paidAt.toISOString(),
+                    expiresAt: adicionarMeses(paidAt, licenca.months).toISOString(),
+                    orderId: compra.order_id,
+                    mpOrderId: compra.mp_order_id || "",
+                    orderToken,
+                    accessCode,
+                    customerId: "",
+                    paymentId: compra.payment_id || "",
+                    paymentMethod: "kit",
+                    usuarioId: compra.usuario_id,
+                    name: usuario.nome,
+                    email: usuario.email,
+                    createdAt: paidAt.toISOString(),
+                    licensePlan: compra.license_plan,
+                    licenseDurationMonths: licenca.months,
+                    licenseFee: licenca.fee,
+                    baseAmount: Number(kit.preco),
+                    totalAmount: Number(compra.total),
+                    basePricePerBlock: 0,
+                    operationType: "kit",
+                    originalLicensePlan: compra.license_plan,
+                    originalLicenseDurationMonths: licenca.months,
+                    originalBasePricePerBlock: 0,
+                    originalLicenseFee: licenca.fee,
+                    kitId: kit.id,
+                    kitNome: kit.nome
+                };
+            }
+
+            writeDB(db);
+            return ids;
+        });
     }
 
     /* Entrega física de um kit: cria os espaços pagos com
@@ -385,50 +455,14 @@ module.exports = function criarModuloCombos(deps) {
         const licenca = escolherLicenca(compra.license_plan);
         const pacotes = Array.isArray(kit.pacotes) ? kit.pacotes : [];
 
-        /* 1) Aloca os espaços e marca como pagos */
-        const ids = compra.espacos && compra.espacos.length
-            ? compra.espacos.map(Number)
-            : await alocarEspacos(kit, []);
+        /* 1) NÃO aloca espaços aqui (CORREÇÃO 7). O pagamento aprovado
+           libera o BENEFÍCIO do kit; a seleção e a confirmação dos
+           espaços acontecem depois, manualmente, via endpoints próprios.
+           A alocação física ocorre apenas em alocarEspacosConfirmados. */
+        const ids = [];
 
-        const db = readDB();
-        const paidAt = new Date();
         const orderToken = gerarToken();
         const accessCode = gerarAccessCode();
-
-        for (const id of ids) {
-            db[id] = {
-                id,
-                status: "paid",
-                paidAt: paidAt.toISOString(),
-                purchasedAt: paidAt.toISOString(),
-                expiresAt: adicionarMeses(paidAt, licenca.months).toISOString(),
-                orderId: compra.order_id,
-                mpOrderId: compra.mp_order_id || "",
-                orderToken,
-                accessCode,
-                customerId: "",
-                paymentId: compra.payment_id || "",
-                paymentMethod: "kit",
-                usuarioId: compra.usuario_id,
-                name: usuario.nome,
-                email: usuario.email,
-                createdAt: paidAt.toISOString(),
-                licensePlan: compra.license_plan,
-                licenseDurationMonths: licenca.months,
-                licenseFee: licenca.fee,
-                baseAmount: Number(kit.preco),
-                totalAmount: Number(compra.total),
-                basePricePerBlock: 0,
-                operationType: "kit",
-                originalLicensePlan: compra.license_plan,
-                originalLicenseDurationMonths: licenca.months,
-                originalBasePricePerBlock: 0,
-                originalLicenseFee: licenca.fee,
-                kitId: kit.id,
-                kitNome: kit.nome
-            };
-        }
-        writeDB(db);
 
         /* 2) Registra a compra */
         await registrarTransacao({
@@ -765,7 +799,7 @@ module.exports = function criarModuloCombos(deps) {
             const orderId = req.params.orderId;
 
             const dono = await pg().query(
-                `SELECT usuario_id, mp_order_id, order_id, status
+                `SELECT usuario_id, mp_order_id, order_id, status, espacos_confirmados
                    FROM kit_compras
                   WHERE (mp_order_id = $1 OR order_id = $1)
                     AND usuario_id = $2
@@ -797,12 +831,187 @@ module.exports = function criarModuloCombos(deps) {
                 ok: true,
                 status: pago ? "RECEIVED" : (ordem.status || "pending"),
                 orderId: orderId,
-                entrega: pago ? "confirmada" : "aguardando"
+                entrega: pago ? "confirmada" : "aguardando",
+                espacosConfirmados: !!dono.rows[0].espacos_confirmados
             });
         } catch (error) {
             if (error && error.status === 404) {
                 return res.status(404).json({ error: "Pedido não encontrado no Mercado Pago." });
             }
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /* =========================================================
+       BENEFÍCIOS DE KIT (CORREÇÃO 7)
+       Pagamento aprovado libera um BENEFÍCIO sem alocar espaço
+       algum automaticamente. O usuário seleciona manualmente e
+       confirma. NENHUMA auto-seleção/primeiro disponível/aleatório.
+    ========================================================= */
+
+    async function beneficioPorId(usuarioId, compraId) {
+        const q = await pg().query(
+            `SELECT kc.*, k.nome AS kit_nome, k.slug AS kit_slug,
+                    k.espacos AS espacos_kit, k.preco AS kit_preco
+               FROM kit_compras kc
+               JOIN kits k ON k.id = kc.kit_id
+              WHERE kc.id = $1 AND kc.usuario_id = $2
+              LIMIT 1`,
+            [Number(compraId), usuarioId]
+        );
+        return q.rows[0] || null;
+    }
+
+    function serializarBeneficio(b) {
+        const selecionados = normalizarIdsEspacos(b.espacos);
+        const esperados = Number(b.espacos_kit);
+        return {
+            compraId: Number(b.id),
+            kitId: Number(b.kit_id),
+            kitNome: b.kit_nome,
+            kitSlug: b.kit_slug,
+            orderId: b.order_id,
+            licensePlan: b.license_plan,
+            licenseMonths: Number(b.license_months),
+            spacesAllowed: esperados,
+            espacosSelecionados: selecionados,
+            restantes: Math.max(0, esperados - selecionados.length),
+            espacosConfirmados: !!b.espacos_confirmados,
+            pagoEm: b.paid_at
+        };
+    }
+
+    /* Lista os benefícios de kit pagos do usuário que ainda aguardam
+       a seleção/confirmação manual dos espaços. */
+    router.get("/kits/beneficios", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) {
+            return res.status(503).json({ error: "Sistema de Combos & Kits indisponível no momento." });
+        }
+        try {
+            const q = await pg().query(
+                `SELECT kc.*, k.nome AS kit_nome, k.slug AS kit_slug,
+                        k.espacos AS espacos_kit, k.preco AS kit_preco
+                   FROM kit_compras kc
+                   JOIN kits k ON k.id = kc.kit_id
+                  WHERE kc.usuario_id = $1
+                    AND kc.status = 'paid'
+                    AND kc.espacos_confirmados = FALSE
+                  ORDER BY kc.paid_at ASC, kc.id ASC`,
+                [req.usuario.id]
+            );
+            res.json({
+                ok: true,
+                beneficios: q.rows.map(serializarBeneficio)
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /* Grava a SELEÇÃO TEMPORÁRIA de espaços (idempotente: re-enviar
+       substitui a seleção anterior). Não aloca nada no mapa. */
+    router.post("/kits/beneficios/:compraId/selecionar", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) {
+            return res.status(503).json({ error: "Sistema de Combos & Kits indisponível no momento." });
+        }
+        try {
+            const beneficio = await beneficioPorId(req.usuario.id, req.params.compraId);
+            if (!beneficio) {
+                return res.status(404).json({ error: "Benefício de kit não encontrado." });
+            }
+            if (beneficio.status !== "paid") {
+                return res.status(400).json({ error: "Este benefício ainda não foi pago." });
+            }
+            if (beneficio.espacos_confirmados) {
+                return res.status(400).json({ error: "Este benefício já teve os espaços confirmados." });
+            }
+
+            const esperados = Number(beneficio.espacos_kit);
+            const selecionados = normalizarIdsEspacos(req.body && req.body.espacos);
+            if (selecionados.length > esperados) {
+                return res.status(400).json({
+                    error: `Este kit permite até ${esperados} espaço(s). Selecione no máximo ${esperados}.`
+                });
+            }
+
+            /* Valida que os espaços escolhidos estão livres AGORA. */
+            const db = readDB();
+            const ocupados = new Set(Object.keys(db).map(Number));
+            for (const id of selecionados) {
+                if (ocupados.has(id)) {
+                    return res.status(400).json({
+                        error: `O espaço ${id} não está mais disponível.`
+                    });
+                }
+            }
+
+            await pg().query(
+                `UPDATE kit_compras
+                    SET espacos = $3
+                  WHERE id = $1 AND usuario_id = $2 AND espacos_confirmados = FALSE`,
+                [beneficio.id, req.usuario.id, selecionados]
+            );
+
+            res.json({
+                ok: true,
+                ...serializarBeneficio({
+                    ...beneficio,
+                    espacos: selecionados
+                })
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /* Confirma a seleção: aloca os espaços no mapa (atômico, sob
+       fila de escrita) e marca o benefício como confirmado. A
+       quantidade precisa bater EXATAMENTE com a do kit (X/X). */
+    router.post("/kits/beneficios/:compraId/confirmar", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) {
+            return res.status(503).json({ error: "Sistema de Combos & Kits indisponível no momento." });
+        }
+        try {
+            const beneficio = await beneficioPorId(req.usuario.id, req.params.compraId);
+            if (!beneficio) {
+                return res.status(404).json({ error: "Benefício de kit não encontrado." });
+            }
+            if (beneficio.status !== "paid") {
+                return res.status(400).json({ error: "Este benefício ainda não foi pago." });
+            }
+            if (beneficio.espacos_confirmados) {
+                return res.status(409).json({ error: "Este benefício já teve os espaços confirmados." });
+            }
+
+            let alocados;
+            try {
+                alocados = await alocarEspacosConfirmados(beneficio);
+            } catch (eConf) {
+                return res.status(409).json({ error: eConf.message });
+            }
+
+            /* Marca como confirmado (após alocação bem-sucedida). */
+            await pg().query(
+                `UPDATE kit_compras
+                    SET espacos_confirmados = TRUE,
+                        paid_at = COALESCE(paid_at, NOW())
+                  WHERE id = $1 AND usuario_id = $2 AND espacos_confirmados = FALSE`,
+                [beneficio.id, req.usuario.id]
+            );
+
+            registrarLog("combo_beneficio_confirmado", {
+                compraId: beneficio.id,
+                usuarioId: req.usuario.id,
+                espacos: alocados
+            });
+
+            res.json({
+                ok: true,
+                espacos: alocados,
+                espacosConfirmados: true,
+                kitNome: beneficio.kit_nome
+            });
+        } catch (error) {
             res.status(500).json({ error: error.message });
         }
     });
@@ -816,8 +1025,8 @@ module.exports = function criarModuloCombos(deps) {
             const q = await pg().query(
                 `SELECT kc.id, kc.kit_id, kc.order_id, kc.license_plan,
                         kc.license_months, kc.preco, kc.total, kc.status,
-                        kc.created_at, kc.paid_at, kc.espacos,
-                        k.nome, k.slug
+                        kc.created_at, kc.paid_at, kc.espacos, kc.espacos_confirmados,
+                        k.nome, k.slug, k.espacos AS espacos_kit
                    FROM kit_compras kc
                    JOIN kits k ON k.id = kc.kit_id
                   WHERE kc.usuario_id = $1
@@ -840,7 +1049,9 @@ module.exports = function criarModuloCombos(deps) {
                     status: c.status,
                     criadoEm: c.created_at,
                     pagoEm: c.paid_at,
-                    espacos: c.espacos || []
+                    espacos: c.espacos || [],
+                    espacosConfirmados: !!c.espacos_confirmados,
+                    spacesAllowed: Number(c.espacos_kit)
                 }))
             });
         } catch (error) {

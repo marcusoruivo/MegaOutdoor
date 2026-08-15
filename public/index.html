@@ -3975,7 +3975,7 @@ onclick="fecharDonoModal()">
 ×
 </button>
 
-<div style="font-size:14px;color:#ff4d4d;font-weight:800;">
+<div style="font-size:14px;color:#ff4d4d;font-weight:800;" id="donoTitulo">
 🔴 ESPAÇO VENDIDO
 </div>
 
@@ -4378,6 +4378,14 @@ style="font-size:13px;color:#ccc;">
   <div class="box" style="max-width:520px;">
     <button class="close" onclick="fecharKitModal()" title="Fechar">×</button>
     <div id="kitModalConteudo">Carregando...</div>
+  </div>
+</div>
+
+<!-- MODAL DE SELEÇÃO DE ESPAÇOS DO KIT (CORREÇÃO 7) -->
+<div class="modal kitModal" id="kitSelecaoModal" onclick="if(event.target===this)fecharSelecaoKit()">
+  <div class="box" style="max-width:540px;">
+    <button class="close" onclick="fecharSelecaoKit()" title="Fechar">×</button>
+    <div id="kitSelecaoConteudo">Carregando...</div>
   </div>
 </div>
 
@@ -5675,6 +5683,19 @@ function mostrarDonoEspaco(numero){
 
   if(!s)return;
 
+  /* Espaços próprios NUNCA aparecem como "ESPAÇO VENDIDO"
+     (CORREÇÃO 7). */
+  const donoTitulo = document.getElementById("donoTitulo");
+  if(donoTitulo){
+    if(minhaPropriedade(numero)){
+      donoTitulo.textContent = "✅ MEU ESPAÇO";
+      donoTitulo.style.color = "#45d66f";
+    }else{
+      donoTitulo.textContent = "🔴 ESPAÇO VENDIDO";
+      donoTitulo.style.color = "#ff4d4d";
+    }
+  }
+
   document.getElementById("donoNumero").textContent =
     "#" + numero.toLocaleString("pt-BR");
 
@@ -5768,8 +5789,15 @@ function selecionarEspacoPesquisado(numero){
 
   const id = Number(numero);
 
-  // Não permite selecionar espaço já vendido
+  // Não permite selecionar espaço já vendido (mas espaço PRÓPRIO
+  // não é "vendido" para o dono — abre o painel "MEU ESPAÇO").
   if(db[id]){
+    if(minhaPropriedade(id)){
+      searchTarget = null;
+      fecharInfoEspaco();
+      mostrarDonoEspaco(id);
+      return;
+    }
     alert("Este espaço já está vendido.");
     return;
   }
@@ -7479,6 +7507,14 @@ offerSel.add(id);
 atualizarBarraOferta();
 
 draw();
+
+return;
+
+}
+
+if(kitBeneficioAtivo){
+
+toggleEspacoKit(id);
 
 return;
 
@@ -14136,11 +14172,15 @@ async function monitorarPagamentoKit(orderId){
                     '<div style="font-size:48px;margin-bottom:10px;">🎉</div>' +
                     "<h2 style=\"color:var(--success);\">PAGAMENTO CONFIRMADO!</h2>" +
                     "<p style=\"font-size:13px;color:var(--text-secondary);margin:10px 0 16px;\">" +
-                    "Seus espaços e figurinhas foram liberados! Confira no mapa e no seu painel.</p>" +
-                    '<button class="btn" style="margin:0;" onclick="fecharKitModal()">FECHAR</button>' +
+                    "Suas figurinhas já foram liberadas. Agora escolha os espaços do seu kit " +
+                    "— nenhum espaço é escolhido automaticamente.</p>" +
+                    '<button class="btn" style="margin:0;width:100%;" onclick="fecharKitModal(); abrirSelecaoKit()">' +
+                    "🎯 ESCOLHER ESPAÇOS</button>" +
+                    '<button class="btn sec" style="margin-top:8px;width:100%;" onclick="fecharKitModal()">' +
+                    "FECHAR</button>" +
                     "</div>";
             }
-            moToast("Kit liberado com sucesso!", "ok");
+            moToast("Kit liberado! Escolha seus espaços no mapa.", "ok");
             setTimeout(atualizarStatusMapa, 1000);
         }
     }catch(error){
@@ -14152,6 +14192,233 @@ function atualizarStatusMapa(){
     if(typeof stats === "function"){
         try{ stats(); }catch(e){}
     }
+}
+
+/* =========================================================
+   SELEÇÃO MANUAL DE ESPAÇOS DO KIT (CORREÇÃO 7)
+   O pagamento aprovado libera o BENEFÍCIO sem alocar espaço.
+   O usuário escolhe manualmente no mapa (contador X/X) e
+   confirma. A seleção é salva no servidor (sobrevive a refresh).
+========================================================= */
+
+let kitBeneficioAtivo = null;
+let kitSelTimer = null;
+
+async function abrirSelecaoKit(){
+    try{
+        const resp = await fetch("/api/combos/kits/beneficios", {
+            headers: authHeaders()
+        });
+        const data = await resp.json();
+        const lista = (data.beneficios || []).filter(b => !b.espacosConfirmados);
+        const box = document.getElementById("kitSelecaoModal");
+        const corpo = document.getElementById("kitSelecaoConteudo");
+        if(!corpo || !box) return;
+        if(!lista.length){
+            corpo.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-secondary);">' +
+                "Você não tem kits aguardando a escolha de espaços.</div>";
+        }else{
+            corpo.innerHTML =
+                '<h2 style="text-align:center;color:var(--accent);">🎁 SEUS ESPAÇOS DE KIT</h2>' +
+                '<p style="text-align:center;font-size:13px;color:var(--text-secondary);margin:4px 0 14px;">' +
+                "Nenhum espaço é escolhido automaticamente. Selecione no mapa os espaços do seu kit.</p>" +
+                lista.map(b =>
+                    '<div style="border:1px solid rgba(255,212,0,.3);border-radius:12px;padding:14px;margin:8px 0;">' +
+                        '<div style="font-weight:800;font-size:15px;">' + escHtml(b.kitNome) + "</div>" +
+                        '<div style="font-size:13px;color:var(--text-secondary);margin:4px 0;">' +
+                            b.spacesAllowed + " espaço(s) — selecionados: <b>" +
+                            b.espacosSelecionados.length + "/" + b.spacesAllowed + "</b></div>" +
+                        '<button class="btn" style="width:100%;margin-top:8px;" ' +
+                            'onclick="entrarSelecaoKit(' + b.compraId + ')">ESCOLHER NO MAPA</button>' +
+                    "</div>"
+                ).join("");
+        }
+        box.style.display = "flex";
+    }catch(error){
+        moToast(error.message || "Erro ao carregar seus kits.", "err");
+    }
+}
+
+function fecharSelecaoKit(){
+    const box = document.getElementById("kitSelecaoModal");
+    if(box) box.style.display = "none";
+}
+
+function entrarSelecaoKit(compraId){
+    if(kitBeneficioAtivo){
+        sairModoSelecaoKit();
+    }
+    fetch("/api/combos/kits/beneficios", { headers: authHeaders() })
+        .then(r => r.json())
+        .then(data => {
+            const b = (data.beneficios || []).find(x => x.compraId === Number(compraId));
+            if(!b){
+                moToast("Benefício não encontrado.", "err");
+                return;
+            }
+            fecharSelecaoKit();
+            kitBeneficioAtivo = {
+                compraId: b.compraId,
+                spacesAllowed: b.spacesAllowed,
+                kitNome: b.kitNome
+            };
+            sel.clear();
+            (b.espacosSelecionados || []).forEach(id => sel.add(Number(id)));
+            renderBarraSelecaoKit();
+            draw();
+            moToast("Selecione " + b.spacesAllowed + " espaço(s) do kit no mapa.", "ok");
+        })
+        .catch(() => moToast("Erro ao carregar o benefício.", "err"));
+}
+
+function renderBarraSelecaoKit(){
+    let bar = document.getElementById("kitSelBar");
+    if(!bar){
+        bar = document.createElement("div");
+        bar.id = "kitSelBar";
+        bar.style.cssText =
+            "position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:9999;" +
+            "background:#15151e;border:1px solid var(--accent);border-radius:14px;" +
+            "padding:12px 18px;box-shadow:0 8px 30px rgba(0,0,0,.6);max-width:92vw;text-align:center;";
+        document.body.appendChild(bar);
+    }
+    const b = kitBeneficioAtivo;
+    if(!b){
+        bar.style.display = "none";
+        return;
+    }
+    const n = sel.size;
+    bar.style.display = "block";
+    bar.innerHTML =
+        '<div style="font-weight:800;color:var(--accent);font-size:14px;margin-bottom:4px;">' +
+            "🎁 KIT: " + escHtml(b.kitNome) + "</div>" +
+        '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;">' +
+            "Selecione no mapa <b>" + b.spacesAllowed + "</b> espaço(s) — " +
+            '<b id="kitSelCount">' + n + "/" + b.spacesAllowed + "</b></div>" +
+        '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">' +
+            '<button class="btn sec" onclick="limparSelecaoKit()">LIMPAR</button>' +
+            '<button class="btn" id="btnConfirmarKit" ' +
+                (n === b.spacesAllowed ? "" : "disabled") +
+                ' onclick="confirmarEspacosKit()">CONFIRMAR ESPAÇOS</button>' +
+            '<button class="btn sec" onclick="cancelarSelecaoKit()">CANCELAR</button>' +
+        "</div>";
+}
+
+function toggleEspacoKit(id){
+    const b = kitBeneficioAtivo;
+    if(!b) return;
+    if(db[id]){
+        if(minhaPropriedade(id)){
+            mostrarDonoEspaco(id);
+        }else{
+            moToast("Este espaço já pertence a outro dono.", "err");
+        }
+        return;
+    }
+    if(sel.has(id)){
+        sel.delete(id);
+    }else{
+        if(sel.size >= b.spacesAllowed){
+            moToast("Selecione até " + b.spacesAllowed + " espaço(s) para este kit.", "err");
+            return;
+        }
+        sel.add(id);
+    }
+    renderBarraSelecaoKit();
+    draw();
+    agendarSalvarSelecaoKit();
+}
+
+function agendarSalvarSelecaoKit(){
+    if(!kitBeneficioAtivo) return;
+    clearTimeout(kitSelTimer);
+    kitSelTimer = setTimeout(salvarSelecaoKit, 500);
+}
+
+async function salvarSelecaoKit(){
+    const b = kitBeneficioAtivo;
+    if(!b) return;
+    try{
+        const resp = await fetch("/api/combos/kits/beneficios/" + b.compraId + "/selecionar", {
+            method: "POST",
+            headers: authHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({ espacos: Array.from(sel) })
+        });
+        const data = await resp.json();
+        if(!data.ok){
+            moToast(data.error || "Erro ao salvar a seleção.", "err");
+        }
+    }catch(error){
+        moToast(error.message || "Erro ao salvar a seleção.", "err");
+    }
+}
+
+function limparSelecaoKit(){
+    sel.clear();
+    renderBarraSelecaoKit();
+    draw();
+    agendarSalvarSelecaoKit();
+}
+
+async function confirmarEspacosKit(){
+    const b = kitBeneficioAtivo;
+    if(!b) return;
+    if(sel.size !== b.spacesAllowed){
+        moToast("Selecione exatamente " + b.spacesAllowed + " espaço(s) para confirmar.", "err");
+        return;
+    }
+    try{
+        const resp = await fetch("/api/combos/kits/beneficios/" + b.compraId + "/confirmar", {
+            method: "POST",
+            headers: authHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({})
+        });
+        const data = await resp.json();
+        if(!data.ok){
+            throw new Error(data.error || "Erro ao confirmar os espaços.");
+        }
+        moToast("Espaços confirmados com sucesso!", "ok");
+        sairModoSelecaoKit();
+        if(typeof stats === "function"){
+            try{ stats(); }catch(e){}
+        }
+    }catch(error){
+        moToast(error.message, "err");
+        carregarSelecaoKitDoServidor(b.compraId);
+    }
+}
+
+async function carregarSelecaoKitDoServidor(compraId){
+    try{
+        const resp = await fetch("/api/combos/kits/beneficios", { headers: authHeaders() });
+        const data = await resp.json();
+        const b = (data.beneficios || []).find(x => x.compraId === Number(compraId));
+        if(!b){
+            sairModoSelecaoKit();
+            return;
+        }
+        kitBeneficioAtivo = {
+            compraId: b.compraId,
+            spacesAllowed: b.spacesAllowed,
+            kitNome: b.kitNome
+        };
+        sel.clear();
+        (b.espacosSelecionados || []).forEach(id => sel.add(Number(id)));
+        renderBarraSelecaoKit();
+        draw();
+    }catch(e){ /* mantém o modo atual */ }
+}
+
+function sairModoSelecaoKit(){
+    kitBeneficioAtivo = null;
+    const bar = document.getElementById("kitSelBar");
+    if(bar) bar.style.display = "none";
+    sel.clear();
+    draw();
+}
+
+function cancelarSelecaoKit(){
+    sairModoSelecaoKit();
 }
 
 /* =========================================================

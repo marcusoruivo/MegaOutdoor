@@ -127,7 +127,17 @@ main{padding:20px;}
 img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px solid #333;display:block;}
 .badge-count{background:#222;border-radius:10px;padding:2px 8px;font-size:11px;color:#ccc;margin-left:6px;}
 .paginacao{display:flex;gap:8px;margin-top:12px;align-items:center;font-size:12px;color:#888;}
+
+/* Preview do card da coleção */
+.colpv-modal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
+.colpv-modal.hidden{display:none}
+.colpv-box{background:#0f0f14;border:1px solid #333;border-radius:18px;max-width:420px;width:100%;position:relative;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.7)}
+.colpv-fechar{position:absolute;top:8px;right:12px;background:transparent;border:0;color:#aaa;font-size:20px;cursor:pointer;z-index:5}
+.colpv-fechar:hover{color:#fff}
+.colpv-detalhes{margin-top:14px;font-size:12px;color:#bbb;line-height:1.7}
+.colpv-detalhes b{color:#ffd400;font-weight:800}
 </style>
+<link rel="stylesheet" href="/css/colecao.css">
 </head>
 <body>
 
@@ -643,6 +653,7 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
     </main>
 </div>
 
+<script src="/js/colecao-ui.js"></script>
 <script>
 const LS = "mega_admin_token";
 let token = localStorage.getItem(LS) || null;
@@ -1286,6 +1297,7 @@ async function carregarColCards(){
             "<td>" + (c.image_url ? "<a href='" + esc(c.image_url) + "' target='_blank' style='color:#4dc3ff;'>arte</a>" : "<span class='fade'>—</span>") + "</td>" +
             "<td>" + (c.is_active ? "<span class='pill paid'>ativo</span>" : "<span class='pill available'>inativo</span>") + "</td>" +
             "<td>" +
+              "<button class='sec' onclick='previewColCard(" + c.id + ")' title='Preview do card' style='margin-right:4px;'>👁️</button>" +
               "<button class='sec' onclick='editarColCard(" + c.id + ")' style='margin-right:4px;'>✏️</button>" +
               "<button class='sec' onclick='toggleColCard(" + c.id + ")'>" + (c.is_active ? "🔒" : "✅") + "</button>" +
             "</td>" +
@@ -1309,6 +1321,9 @@ async function editarColCard(id){
     if(raridade === null) return;
     const descricao = prompt("Descrição (Enter mantém, digite - para apagar):", c.description || "");
     const imageUrl = prompt("URL da arte (opcional, https:// — Enter mantém, digite - para apagar):", c.image_url || "");
+    const scientificName = prompt("Nome científico (ex.: Panthera leo — Enter mantém, digite - para apagar):", c.scientific_name || "");
+    const habitat = prompt("Habitat (ex.: Savanas — Enter mantém, digite - para apagar):", c.habitat || "");
+    const peso = prompt("Peso (ex.: 120–190 kg — Enter mantém, digite - para apagar):", c.peso || "");
     const body = { name: name.trim() };
     const num = Number(number);
     if(!Number.isInteger(num) || num < 1){ alert("Número inválido."); return; }
@@ -1316,6 +1331,9 @@ async function editarColCard(id){
     body.rarity = raridade.trim().toUpperCase();
     if(descricao !== null && descricao !== "") body.description = descricao === "-" ? null : descricao;
     if(imageUrl !== null) body.image_url = imageUrl === "-" ? "" : imageUrl.trim();
+    if(scientificName !== null) body.scientific_name = scientificName === "-" ? null : scientificName.trim();
+    if(habitat !== null) body.habitat = habitat === "-" ? null : habitat.trim();
+    if(peso !== null) body.peso = peso === "-" ? null : peso.trim();
     try {
         await api("/api/colecionaveis/admin/cards/" + id, {
             method: "POST",
@@ -1927,7 +1945,36 @@ if(token){
 } else {
     document.getElementById("login").style.display = "block";
 }
+
+/* ===== PREVIEW DO CARD DA COLEÇÃO ===== */
+function previewColCard(id){
+    const c = colCardsCache.find(x => x.id === id);
+    if(!c){ alert("Figurinha não encontrada no cache."); return; }
+    const finish = ColecaoUI.finishDeCard(c);
+    const html = ColecaoUI.cardGrandeHtml(c) +
+        '<div class="colpv-detalhes">' +
+            '<div><b>Raridade:</b> ' + ColecaoUI.nomeRaridade(c.rarity) + '</div>' +
+            (finish !== "normal" ? '<div><b>Acabamento:</b> ' + ColecaoUI.finishNome(finish) + '</div>' : '') +
+            (c.scientific_name ? '<div><b>Nome científico:</b> ' + esc(c.scientific_name) + '</div>' : '') +
+            (c.habitat ? '<div><b>Habitat:</b> ' + esc(c.habitat) + '</div>' : '') +
+            (c.peso ? '<div><b>Peso:</b> ' + esc(c.peso) + '</div>' : '') +
+            '<div><b>Número:</b> #' + String(c.number || "").padStart(3,"0") + '</div>' +
+        '</div>';
+    document.getElementById("colPreviewConteudo").innerHTML = html;
+    document.getElementById("colPreviewModal").classList.remove("hidden");
+}
+function fecharColPreview(e){
+    if(e && e.target !== e.currentTarget) return;
+    document.getElementById("colPreviewModal").classList.add("hidden");
+}
 </script>
+
+<div id="colPreviewModal" class="colpv-modal hidden" onclick="fecharColPreview(event)">
+    <div class="colpv-box" onclick="event.stopPropagation()">
+        <button class="colpv-fechar" onclick="fecharColPreview()">✕</button>
+        <div id="colPreviewConteudo"></div>
+    </div>
+</div>
 
 </body>
 </html>

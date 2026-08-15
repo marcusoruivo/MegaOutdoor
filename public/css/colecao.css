@@ -1,0 +1,210 @@
+:root{
+    --fundo:#0b0b0f;
+    --painel:#14141c;
+    --painel2:#1a1a26;
+    --borda:#262633;
+    --texto:#e8e8ee;
+    --muted:#8a8a9a;
+    --amarelo:#ffd400;
+    --laranja:#ff7a00;
+    --vermelho:#d7263d;
+    --verde:#2ecc71;
+    --azul:#3b82f6;
+    --roxo:#a855f7;
+    --ouro:#ffbf40;
+}
+
+/* =========================================================
+   MILHÃO DOOR — ANIMAIS DO MUNDO | CARDS PREMIUM
+========================================================= */
+.colecao-card{
+    position:relative;border-radius:16px;overflow:hidden;cursor:pointer;
+    background:var(--painel);
+    display:flex;flex-direction:column;
+    transition:transform .15s,box-shadow .15s,border-color .15s;
+    border:2px solid var(--borda);
+}
+.colecao-card:hover{transform:translateY(-4px);box-shadow:0 14px 30px rgba(0,0,0,.55)}
+.colecao-card.r-COMUM{border-color:#6b7280}
+.colecao-card.r-INCOMUM{border-color:var(--verde);box-shadow:0 0 10px rgba(46,204,113,.18)}
+.colecao-card.r-RARA{border-color:var(--azul);box-shadow:0 0 14px rgba(59,130,246,.3)}
+.colecao-card.r-EPICA{border-color:var(--roxo);box-shadow:0 0 16px rgba(168,85,247,.35)}
+.colecao-card.r-LENDARIA{border-color:var(--ouro);box-shadow:0 0 20px rgba(255,191,64,.45)}
+.colecao-card.r-MITICA{border-color:var(--vermelho);box-shadow:0 0 22px rgba(215,38,61,.5)}
+.colecao-card.cc-fin-ouro{
+    background:linear-gradient(160deg,#3a2c00,#241a00);
+    border-color:#ffd700;
+    box-shadow:0 0 22px rgba(255,215,0,.45), inset 0 0 20px rgba(255,215,0,.12);
+}
+.colecao-card.cc-fin-cromada{
+    background:linear-gradient(160deg,#26263c,#161626);
+    border-color:#cfd9ff;
+    box-shadow:0 0 22px rgba(150,170,255,.45), inset 0 0 22px rgba(150,170,255,.14);
+}
+.cc-fin-ouro .cc-arte{border-color:rgba(255,215,0,.5)}
+.cc-fin-cromada .cc-arte{border-color:rgba(190,200,255,.45)}
+.cc-topo{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:7px 11px;font-size:10px;font-weight:800;letter-spacing:1px;
+}
+.cc-num{color:var(--muted);font-family:'Orbitron',sans-serif}
+.cc-fin-ouro .cc-num,.cc-fin-cromada .cc-num{color:#fff}
+.cc-simbolo{font-size:12px}
+.cc-arte{
+    aspect-ratio:1/1;margin:0 8px;border-radius:12px;
+    display:flex;align-items:center;justify-content:center;
+    position:relative;overflow:hidden;
+    border:2px solid rgba(255,255,255,.08);
+}
+.cc-arte .cc-emoji{font-size:52px;line-height:1;filter:drop-shadow(0 4px 12px rgba(0,0,0,.5));z-index:1}
+.cc-img{width:100%;height:100%;object-fit:cover;z-index:1}
+.cc-arte-rev .cc-emoji{font-size:58px}
+.cc-arte-grande .cc-emoji{font-size:92px}
+.bio-oceano{background:linear-gradient(160deg,#0b3a63,#051d33)}
+.bio-savana{background:linear-gradient(160deg,#7a4a1f,#3d2410)}
+.bio-floresta{background:linear-gradient(160deg,#14532d,#052e16)}
+.bio-deserto{background:linear-gradient(160deg,#8a6d3b,#4a3418)}
+.bio-montanha{background:linear-gradient(160deg,#3b4a63,#1f2937)}
+.bio-rio{background:linear-gradient(160deg,#16606b,#083b43)}
+.bio-campo{background:linear-gradient(160deg,#365314,#1a2e05)}
+.bio-regiao{background:linear-gradient(160deg,#3f3f8f,#1e1b4b)}
+.bio-generico{background:linear-gradient(160deg,#2b2b3a,#1a1a26)}
+.cc-glow{position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(circle at 30% 20%,rgba(255,255,255,.26),transparent 55%)}
+.cc-shine{position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(115deg,transparent 34%,rgba(255,255,255,.13) 48%,transparent 62%);
+    transform:translateX(-130%);animation:ccShine 3.4s ease-in-out infinite}
+@keyframes ccShine{0%{transform:translateX(-130%)}55%,100%{transform:translateX(130%)}}
+.cc-part{position:absolute;width:5px;height:5px;border-radius:50%;pointer-events:none;opacity:.9;animation:ccPartFloat 2.6s ease-in infinite}
+.cc-part-ouro{background:#ffd700;box-shadow:0 0 8px #ffd700}
+.cc-part-croma{background:#dbe4ff;box-shadow:0 0 8px #a9c2ff}
+@keyframes ccPartFloat{0%{transform:translateY(0) scale(.6);opacity:0}25%{opacity:.95}100%{transform:translateY(-46px) scale(1.1);opacity:0}}
+.cc-arte-bloq{background:linear-gradient(160deg,#16161d,#0d0d12)!important;border-color:#2a2a35}
+.cc-silhueta{opacity:.28;filter:grayscale(1) brightness(.4);transform:scale(1.15)}
+.cc-lock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:26px;z-index:2;text-shadow:0 2px 8px rgba(0,0,0,.8)}
+.cc-info{padding:9px 11px 12px;display:flex;flex-direction:column;gap:3px;background:rgba(0,0,0,.18)}
+.cc-info-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cc-nome{font-size:13px;font-weight:800;line-height:1.25;color:var(--texto)}
+.cc-nome-bloq{color:var(--muted);letter-spacing:1px}
+.cc-sn{font-size:10px;font-style:italic;color:var(--muted);min-height:12px}
+.cc-meta{font-size:10px;color:var(--muted);line-height:1.4}
+.cc-meta-sep{margin:0 4px;opacity:.5}
+.cc-qtd{font-size:10px;color:var(--muted)}
+.cc-qtd b{color:var(--amarelo)}
+.cc-rep{color:var(--laranja);font-size:9px;font-weight:700}
+.cc-pill{font-size:9px;font-weight:800;letter-spacing:.8px;padding:2px 8px;border-radius:999px;display:inline-block}
+.cc-finish-badge{font-size:8px;font-weight:900;letter-spacing:.8px;padding:2px 7px;border-radius:999px;display:inline-block}
+.fin-ouro{background:linear-gradient(90deg,#b8860b,#ffd700);color:#241a00;box-shadow:0 0 8px rgba(255,215,0,.5)}
+.fin-cromada{background:linear-gradient(90deg,#7c8ee0,#dfe7ff);color:#141a38;box-shadow:0 0 8px rgba(180,200,255,.55)}
+.cc-rodape{font-family:'Orbitron',sans-serif;font-size:8px;letter-spacing:1.2px;color:var(--muted);text-align:center;padding:6px}
+.cc-grande{width:min(300px,86vw);margin:0 auto}
+.cc-arte-grande{aspect-ratio:1/1;margin:0 14px}
+.colecao-card.cc-bloqueada{opacity:.85;cursor:pointer;border-style:dashed}
+.colecao-card.cc-bloqueada:hover{border-color:var(--laranja)}
+
+/* ===== REVELAÇÃO (cards dentro do pacote) ===== */
+.rev-card{padding:10px;display:flex;flex-direction:column;gap:8px;text-align:left}
+.rev-card .rev-num{font-family:'Orbitron',sans-serif;font-size:10px;color:var(--muted);margin:0}
+.rev-card .cc-arte{margin:0;aspect-ratio:1/1}
+.rev-card.r-COMUM{border-color:#6b7280}
+.rev-card.r-INCOMUM{border-color:var(--verde);box-shadow:0 0 12px rgba(46,204,113,.25)}
+.rev-card.r-RARA{border-color:var(--azul);box-shadow:0 0 14px rgba(59,130,246,.3)}
+.rev-card.r-EPICA{border-color:var(--roxo);box-shadow:0 0 16px rgba(168,85,247,.35)}
+.rev-card.r-LENDARIA{border-color:var(--ouro);box-shadow:0 0 20px rgba(255,191,64,.45)}
+.rev-card.r-MITICA{border-color:var(--vermelho);box-shadow:0 0 22px rgba(215,38,61,.5)}
+.rev-card.cc-fin-ouro{border-color:#ffd700;box-shadow:0 0 20px rgba(255,215,0,.45)}
+.rev-card.cc-fin-cromada{border-color:#cfd9ff;box-shadow:0 0 20px rgba(150,170,255,.45)}
+.rev-info{display:flex;flex-direction:column;gap:3px;text-align:left}
+.rev-info-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.rev-nome{font-size:12px;font-weight:800;line-height:1.2}
+.rev-sn{font-size:10px;font-style:italic;color:var(--muted)}
+.rev-flag{font-size:9px;font-weight:900;letter-spacing:.8px;padding:2px 8px;border-radius:999px;display:inline-block;margin-top:2px}
+.rev-flag-nova{background:rgba(46,204,113,.18);color:#7dff9b}
+.rev-flag-rep{background:rgba(255,122,0,.16);color:#ffd166}
+
+/* ===== FILTROS DO ÁLBUM ===== */
+.album-filtros{display:flex;flex-direction:column;gap:12px;margin-bottom:16px}
+.af-linha{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.filtro-chips{display:flex;gap:6px;flex-wrap:wrap}
+.filtro-chip{border:1px solid var(--borda);background:var(--painel);color:var(--muted);
+    border-radius:999px;padding:6px 12px;font-size:11px;font-weight:800;letter-spacing:.6px;transition:all .12s}
+.filtro-chip:hover{color:var(--texto);border-color:var(--amarelo)}
+.filtro-chip.ativa{background:linear-gradient(90deg,var(--amarelo),var(--laranja));color:#141414;border-color:transparent}
+
+/* ===== EXPERIÊNCIA DE ABERTURA DO PACOTE ===== */
+.pack-overlay{position:fixed;inset:0;z-index:300;background:#07070b;
+    display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:manipulation}
+.pack-stage{position:relative;z-index:2;width:min(480px,94vw);text-align:center;color:var(--texto);max-height:92vh;overflow-y:auto}
+.pack-burst{position:fixed;inset:0;pointer-events:none;z-index:1;opacity:0;
+    background:radial-gradient(circle at 50% 42%,rgba(255,212,0,.5),rgba(255,122,0,.16) 40%,transparent 65%)}
+.pack-overlay.abrindo .pack-burst{animation:packBurst .8s ease both}
+@keyframes packBurst{0%{opacity:0;transform:scale(.4)}30%{opacity:1}100%{opacity:0;transform:scale(1.6)}}
+.pack-fechado{position:relative;width:min(260px,70vw);aspect-ratio:4/5.2;margin:0 auto;cursor:pointer;
+    border-radius:18px;border:2px solid var(--amarelo);
+    background:
+        radial-gradient(200px 90px at 80% 0%, rgba(255,122,0,.28), transparent 60%),
+        linear-gradient(160deg,#3d2c00,#1c1400);
+    box-shadow:0 0 34px rgba(255,191,64,.35), inset 0 0 30px rgba(255,212,0,.12);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+    transition:transform .12s}
+.pack-fechado:active{transform:scale(.97)}
+.pack-fechado .pf-icone{font-size:64px;filter:drop-shadow(0 4px 14px rgba(255,212,0,.5))}
+.pack-fechado .pf-nome{font-family:'Orbitron',sans-serif;font-size:18px;letter-spacing:2px;
+    background:linear-gradient(90deg,#ffd700,#ff7a00);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.pack-fechado .pf-sub{font-size:10px;letter-spacing:2px;color:#d9c58a;font-weight:700}
+.pack-fechado .pf-qtd{font-size:12px;color:#ffe9b0}
+.pack-fechado .pf-tap{position:absolute;bottom:14px;font-size:10px;letter-spacing:2px;color:#ffe9b0;
+    animation:pfTap 1.6s ease-in-out infinite}
+@keyframes pfTap{0%,100%{opacity:.4}50%{opacity:1}}
+.pack-fechado.rasgando{animation:packRasgo .5s cubic-bezier(.6,-.28,.74,.05) both}
+@keyframes packRasgo{0%{transform:rotate(0) scale(1);opacity:1}100%{transform:rotate(-8deg) scale(.4) translateY(60px);opacity:0}}
+.pack-luz{position:relative;width:min(300px,80vw);aspect-ratio:1/1;margin:0 auto;border-radius:20px;
+    background:radial-gradient(circle at 50% 50%,#fff8d0,rgba(255,212,0,.35) 40%,transparent 70%);
+    animation:packLuz .9s ease both}
+@keyframes packLuz{0%{transform:scale(.2);opacity:0}35%{opacity:1}100%{transform:scale(1.4);opacity:0}}
+.slot-carta{position:relative;width:min(230px,64vw);aspect-ratio:4/5.4;margin:0 auto;cursor:pointer;
+    border-radius:16px;background:linear-gradient(160deg,#1e1e2b,#101018);
+    border:2px solid var(--borda);overflow:hidden;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.slot-carta::after{content:"";position:absolute;inset:0;
+    background:radial-gradient(circle at 40% 25%,rgba(255,255,255,.1),transparent 55%);pointer-events:none}
+.slot-carta .sc-icone{font-size:54px;opacity:.85}
+.slot-carta .sc-texto{font-size:11px;letter-spacing:2px;color:var(--muted);font-weight:700}
+.pack-titulo{font-family:'Orbitron',sans-serif;font-size:15px;letter-spacing:2px;color:#ffe9b0;margin-bottom:16px}
+.pack-contagem{font-size:12px;color:var(--muted);margin-top:14px;font-weight:600}
+.pack-grande{width:100%;text-align:center}
+.pack-grande .colecao-card.cc-grande{animation:grandeZoom .7s cubic-bezier(.2,.9,.3,1.2) both}
+@keyframes grandeZoom{0%{transform:scale(.2) translateY(40px);opacity:0}100%{transform:scale(1);opacity:1}}
+.pack-grande .grande-msg{font-family:'Orbitron',sans-serif;font-size:clamp(15px,4vw,21px);font-weight:900;letter-spacing:1px;margin-top:16px}
+.grande-msg-ouro{background:linear-gradient(90deg,#ffd700,#fff3c4,#ffd700);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    animation:grandeBrilho 1.4s ease-in-out infinite}
+.grande-msg-cromada{background:linear-gradient(90deg,#8fb4ff,#ffffff,#8fb4ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    animation:grandeBrilho 1.4s ease-in-out infinite}
+.grande-msg-lendaria{background:linear-gradient(90deg,#ffbf40,#ffe9a8,#ffbf40);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    animation:grandeBrilho 1.2s ease-in-out infinite}
+@keyframes grandeBrilho{0%,100%{filter:brightness(1)}50%{filter:brightness(1.35)}}
+.grande-nova{display:inline-block;font-size:12px;font-weight:900;letter-spacing:1.5px;color:#7dff9b;margin-top:8px;
+    animation:grandePulso 1s ease-in-out infinite}
+.grande-rep{display:inline-block;font-size:12px;font-weight:900;letter-spacing:1.5px;color:#ffd166;margin-top:8px}
+@keyframes grandePulso{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+.pack-grande .grande-tap{font-size:11px;color:var(--muted);margin-top:16px;letter-spacing:1px}
+.pack-overlay.escuro{background:#04040a}
+.gp{position:fixed;pointer-events:none;border-radius:50%;z-index:3;opacity:0;animation:gpFly 1.3s ease-out both}
+.gp-ouro{background:#ffd700;box-shadow:0 0 10px #ffd700}
+.gp-cromada{background:#e4ecff;box-shadow:0 0 10px #bcd0ff}
+.gp-lendaria{background:#ffd700;box-shadow:0 0 12px #ffd700}
+@keyframes gpFly{0%{transform:translate(0,0) scale(.4);opacity:0}25%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(1);opacity:0}}
+.pack-resumo{width:100%}
+.pack-resumo .rev-grid{grid-template-columns:repeat(auto-fill,minmax(118px,1fr))}
+.pack-resumo-total{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+.pr-box{background:var(--painel);border:1px solid var(--borda);border-radius:12px;padding:10px 16px;font-size:12px;color:var(--muted)}
+.pr-box b{font-family:'Orbitron',sans-serif;font-size:18px}
+.pr-box.pr-novo b{color:var(--verde)}
+.pr-box.pr-rep b{color:var(--laranja)}
+.pr-box.pr-col b{color:var(--amarelo)}
+
+@media (max-width:640px){
+    .pack-fechado{width:min(220px,74vw)}
+    .slot-carta{width:min(200px,66vw)}
+    .cc-arte-grande .cc-emoji{font-size:74px}
+}

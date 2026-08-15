@@ -74,10 +74,10 @@ const PACKS_PADRAO = [
 
 const COLECAO_PADRAO = {
     slug: "primeira-edicao",
-    nome: "MEGAOUTDOOR — PRIMEIRA EDIÇÃO",
+    nome: "MILHÃO DOOR — ANIMAIS DO MUNDO",
     edicao: "1ª EDIÇÃO",
     total: 100,
-    descricao: "A coleção inaugural de figurinhas digitais do universo MegaOutdoor."
+    descricao: "Coleção de figurinhas digitais com 100 espécies reais de animais do mundo inteiro, com dados científicos."
 };
 
 const MARKETPLACE_FEE_PERCENT = 10;
@@ -101,77 +101,144 @@ const CONQUISTAS = [
     { slug: "primeira_venda",          nome: "PRIMEIRA VENDA",           descricao: "Venda sua primeira figurinha no mercado.",            icone: "💰" }
 ];
 
-/* Catálogo de 100 figurinhas da 1ª edição.
+/* Catálogo de 100 FIGURINHAS DE ANIMAIS REAIS do mundo.
    Distribuição por raridade:
-   COMUM 60 · INCOMUM 25 · RARA 9 · ÉPICA 4 · LENDÁRIA 1 · MÍTICA 1 = 100 */
+   COMUM 60 · INCOMUM 25 · RARA 9 · ÉPICA 4 · LENDÁRIA 1 · MÍTICA 1 = 100
+   Cada espécie traz nome científico, habitat e peso reais. */
 const CATALOGO = (() => {
     const cards = [];
 
-    const comuns = [
-        "O Primeiro Outdoor", "Luzes da Cidade", "Horizonte Digital", "Neon Urbano",
-        "A Cidade Conectada", "Marquise Iluminada", "Painel Gigante", "LED na Madrugada",
-        "Telão da Avenida", "Estrelas de Concreto", "Vitrine da Metrópole", "O Anúncio Clássico",
-        "Cruzamento Brilhante", "Fachada Neon", "Sinais da Cidade", "O Letreiro Dourado",
-        "Avenida dos Letreiros", "Pixels no Céu", "Tela Viva", "Cores da Noite",
-        "Outdoor do Amanhecer", "Prédio Iluminado", "A Esquina Mágica", "Marquise Clássica",
-        "O Painel Dourado", "Cartaz Urbano", "Neon Roxo", "A Rua de Luz",
-        "Banners do Centro", "Holofote da Praça", "O Letreiro de Vapor", "Publicidade Noturna",
-        "Cidade Infinita", "Marquise Digital", "O Painel Holográfico", "LED Verde",
-        "A Torre de Sinais", "Outdoor Retrô", "Neon Vermelho", "A Via Iluminada",
-        "Painel de Ouro", "Cidade Elétrica", "O Anúncio Atemporal", "Telas do Horizonte",
-        "Marquise de Cristal", "O Letreiro Celeste", "Avenida Neon", "Outdoor em Chamas",
-        "Cartazes do Tempo", "A Praça de LED", "Painel Espelhado", "O Anúncio Fantasma",
-        "Neon Amarelo", "Cidade em Movimento", "Marquise Reluzente", "O Painel do Futuro",
-        "Tela de Prata", "Bairro Iluminado", "O Outdoor Inteligente", "Vitrine Noturna"
+    const especies = [
+        /* ===== COMUM (60) ===== */
+        { name: "Leão-africano", sn: "Panthera leo", habitat: "Savanas", peso: "120–190 kg", desc: "O único felino que vive em grupos, as alcateias. O rugido pode ser ouvido a até 8 km." },
+        { name: "Onça-pintada", sn: "Panthera onca", habitat: "Florestas tropicais", peso: "56–96 kg", desc: "Maior felino das Américas e o terceiro do mundo. Sua mordida é a mais forte entre os felinos." },
+        { name: "Elefante-africano", sn: "Loxodonta africana", habitat: "Savanas e florestas", peso: "4.000–6.000 kg", desc: "O maior animal terrestre vivo. Suas orelhas ajudam a dissipar o calor." },
+        { name: "Girafa", sn: "Giraffa camelopardalis", habitat: "Savanas", peso: "800–1.200 kg", desc: "O animal mais alto do mundo; tem o mesmo número de vértebras do pescoço que os humanos." },
+        { name: "Zebra-das-planícies", sn: "Equus quagga", habitat: "Savanas", peso: "300–350 kg", desc: "Suas listras são únicas como impressões digitais e confundem predadores." },
+        { name: "Hipopótamo-comum", sn: "Hippopotamus amphibius", habitat: "Rios e lagos", peso: "1.500–3.200 kg", desc: "Passa o dia na água, mas não sabe nadar: caminha no fundo dos rios." },
+        { name: "Rinoceronte-branco", sn: "Ceratotherium simum", habitat: "Savanas", peso: "1.700–2.300 kg", desc: "Apesar do nome, sua coloração é acinzentada. Tem o segundo maior chifre entre os rinocerontes." },
+        { name: "Búfalo-africano", sn: "Syncerus caffer", habitat: "Savanas", peso: "500–900 kg", desc: "Vive em grandes manadas e é considerado um dos animais mais perigosos da África." },
+        { name: "Guepardo", sn: "Acinonyx jubatus", habitat: "Savanas", peso: "35–65 kg", desc: "O animal terrestre mais rápido, chegando a 110 km/h em rajadas curtas." },
+        { name: "Leopardo-africano", sn: "Panthera pardus", habitat: "Savanas e florestas", peso: "30–90 kg", desc: "Excelente escalador: leva presas maiores que ele para o alto das árvores." },
+        { name: "Suricato", sn: "Suricata suricatta", habitat: "Desertos", peso: "0,6–1 kg", desc: "Vive em grupos e tem sentinelas que ficam de vigia em pé sobre as patas traseiras." },
+        { name: "Canguru-vermelho", sn: "Osphranter rufus", habitat: "Desertos da Austrália", peso: "18–85 kg", desc: "Maior marsupial do mundo; salta até 8 metros de comprimento." },
+        { name: "Coala", sn: "Phascolarctos cinereus", habitat: "Florestas de eucalipto", peso: "4–14 kg", desc: "Dorme até 20 horas por dia e se alimenta quase só de folhas de eucalipto." },
+        { name: "Ornitorrinco", sn: "Ornithorhynchus anatinus", habitat: "Rios da Austrália", peso: "0,7–2,4 kg", desc: "Mamífero que bota ovos, tem bico de pato e é um dos poucos venenosos do grupo." },
+        { name: "Diabo-da-tasmânia", sn: "Sarcophilus harrisii", habitat: "Tasmânia", peso: "6–12 kg", desc: "Maior marsupial carnívoro vivo. Seu grito assustador ecoa à noite." },
+        { name: "Cão-da-pradaria", sn: "Cynomys ludovicianus", habitat: "Pradarias", peso: "0,7–1,4 kg", desc: "Vive em colônias subterrâneas com 'cidades' que podem ter milhares de tocas." },
+        { name: "Lobo-cinzento", sn: "Canis lupus", habitat: "Florestas e tundras", peso: "25–60 kg", desc: "Ancestral do cão doméstico; caça em matilhas com estratégia e comunicação." },
+        { name: "Raposa-vermelha", sn: "Vulpes vulpes", habitat: "Florestas e campos", peso: "3–11 kg", desc: "Usa o campo magnético da Terra para caçar escondidas sob a neve." },
+        { name: "Urso-pardo", sn: "Ursus arctos", habitat: "Florestas e montanhas", peso: "100–680 kg", desc: "Omnívoro poderoso; no inverno entra em dormência e pode passar meses sem comer." },
+        { name: "Urso-polar", sn: "Ursus maritimus", habitat: "Gelo do Ártico", peso: "400–700 kg", desc: "Maior urso do mundo. Sua pele é preta por baixo da pelagem translúcida." },
+        { name: "Urso-negro-americano", sn: "Ursus americanus", habitat: "Florestas", peso: "40–270 kg", desc: "Excelente nadador e escalador; pode correr a mais de 50 km/h." },
+        { name: "Panda-gigante", sn: "Ailuropoda melanoleuca", habitat: "Florestas de bambu", peso: "70–120 kg", desc: "Símbolo de conservação; passa até 14 horas por dia comendo bambu." },
+        { name: "Alce", sn: "Alces alces", habitat: "Florestas boreais", peso: "270–700 kg", desc: "Maior membro da família dos cervos; seus chifres podem medir 1,8 m." },
+        { name: "Veado-de-cauda-branca", sn: "Odocoileus virginianus", habitat: "Florestas", peso: "40–120 kg", desc: "Levanta a cauda branca para alertar o grupo diante do perigo." },
+        { name: "Bisão-americano", sn: "Bison bison", habitat: "Pradarias", peso: "320–1.000 kg", desc: "Símbolo das planícies norte-americanas; quase foi extinto no século XIX." },
+        { name: "Carneiro-da-montanha", sn: "Ovis canadensis", habitat: "Montanhas", peso: "50–140 kg", desc: "Os machos disputam com choques de chifres que ecoam por quilômetros." },
+        { name: "Lhama", sn: "Lama glama", habitat: "Andes", peso: "90–200 kg", desc: "Domesticada há milhares de anos; cuspe é sua defesa característica." },
+        { name: "Guanaco", sn: "Lama guanicoe", habitat: "Andes", peso: "90–140 kg", desc: "Parente selvagem da lhama; vive em altas altitudes até 4.000 m." },
+        { name: "Puma", sn: "Puma concolor", habitat: "Américas", peso: "30–100 kg", desc: "Segundo maior felino das Américas; adapta-se de florestas a desertos." },
+        { name: "Jaguatirica", sn: "Leopardus pardalis", habitat: "Florestas tropicais", peso: "8–16 kg", desc: "Felino de porte médio com pelagem manchada que o camufla na mata." },
+        { name: "Anta-brasileira", sn: "Tapirus terrestris", habitat: "Florestas e banhados", peso: "150–300 kg", desc: "Maior mamífero terrestre da América do Sul; 'jardineira da mata' por dispersar sementes." },
+        { name: "Capivara", sn: "Hydrochoerus hydrochaeris", habitat: "Rios e várzeas", peso: "35–66 kg", desc: "Maior roedor do mundo; é ótima nadadora e vive em grupos." },
+        { name: "Tatu-galinha", sn: "Dasypus novemcinctus", habitat: "Cerrado e mata", peso: "3–6 kg", desc: "Sua carapaça é feita de placas ósseas cobertas por escamas." },
+        { name: "Tamanduá-bandeira", sn: "Myrmecophaga tridactyla", habitat: "Cerrado e campos", peso: "22–39 kg", desc: "Língua de até 60 cm que consome até 30 mil formigas por dia." },
+        { name: "Bicho-preguiça", sn: "Bradypus variegatus", habitat: "Florestas tropicais", peso: "3–5 kg", desc: "Se move tão devagar que algas crescem em seu pelo." },
+        { name: "Macaco-prego", sn: "Sapajus apella", habitat: "Florestas", peso: "1,3–4,8 kg", desc: "Um dos poucos primatas que usam ferramentas de pedra." },
+        { name: "Mico-leão-dourado", sn: "Leontopithecus rosalia", habitat: "Mata Atlântica", peso: "0,5–0,7 kg", desc: "Símbolo da conservação brasileira; vive na Mata Atlântica do Rio de Janeiro." },
+        { name: "Arara-azul", sn: "Anodorhynchus hyacinthinus", habitat: "Pantanal", peso: "1,2–1,7 kg", desc: "Maior arara do mundo e o maior psitacídeo em comprimento." },
+        { name: "Tucano-toco", sn: "Ramphastos toco", habitat: "Cerrado e mata", peso: "0,5–0,8 kg", desc: "Seu bico enorme ajuda a regular a temperatura corporal." },
+        { name: "Beija-flor-tesoura", sn: "Eupetomena macroura", habitat: "Jardins e matas", peso: "0,004–0,008 kg", desc: "Bate as asas até 80 vezes por segundo e pode voar para trás." },
+        { name: "Pinguim-imperador", sn: "Aptenodytes forsteri", habitat: "Antártida", peso: "22–45 kg", desc: "Maior pinguim; o macho incuba o ovo no inverno antártico." },
+        { name: "Águia-careca", sn: "Haliaeetus leucocephalus", habitat: "Lagos e rios", peso: "3–6 kg", desc: "Símbolo dos EUA; constrói ninhos entre os maiores das aves." },
+        { name: "Coruja-buraqueira", sn: "Athene cunicularia", habitat: "Campos abertos", peso: "0,15–0,25 kg", desc: "Nidifica em buracos no chão e é ativa durante o dia." },
+        { name: "Falcão-peregrino", sn: "Falco peregrinus", habitat: "Montanhas e cidades", peso: "0,5–1 kg", desc: "O animal mais rápido em mergulho, ultrapassando 300 km/h." },
+        { name: "Pavão-indiano", sn: "Pavo cristatus", habitat: "Florestas da Índia", peso: "3–6 kg", desc: "A cauda do macho, em forma de leque, é usada na corte." },
+        { name: "Flamingo-chileno", sn: "Phoenicopterus chilensis", habitat: "Salinas andinas", peso: "2–4 kg", desc: "Sua coloração rosada vem da dieta rica em carotenoides." },
+        { name: "Golfinho-nariz-de-garrafa", sn: "Tursiops truncatus", habitat: "Oceanos", peso: "150–300 kg", desc: "Comunica-se por assobios; um dos animais mais inteligentes do mar." },
+        { name: "Orca", sn: "Orcinus orca", habitat: "Oceanos", peso: "2.500–5.400 kg", desc: "Maior golfinho; caça em grupos coordenados com técnicas transmitidas entre gerações." },
+        { name: "Baleia-jubarte", sn: "Megaptera novaeangliae", habitat: "Oceanos", peso: "25.000–30.000 kg", desc: "Famosa pelos saltos e cantos longos que viajam por oceanos." },
+        { name: "Tubarão-branco", sn: "Carcharodon carcharias", habitat: "Oceanos temperados", peso: "680–1.100 kg", desc: "Maior peixe predador vivo; detecta um pingo de sangue a quilômetros." },
+        { name: "Tubarão-martelo", sn: "Sphyrna lewini", habitat: "Águas costeiras", peso: "80–430 kg", desc: "A cabeça em forma de martelo amplia seu campo de visão." },
+        { name: "Tartaruga-verde", sn: "Chelonia mydas", habitat: "Oceanos tropicais", peso: "65–190 kg", desc: "Faz migrações de milhares de quilômetros entre alimentação e desova." },
+        { name: "Jacaré-de-papo-amarelo", sn: "Caiman latirostris", habitat: "Rios e alagados", peso: "15–40 kg", desc: "Quase extinto pela caça; é o jacaré símbolo do Brasil." },
+        { name: "Camaleão-pantera", sn: "Furcifer pardalis", habitat: "Madagascar", peso: "0,3–0,6 kg", desc: "Muda de cor para se comunicar e regular temperatura, não só para se esconder." },
+        { name: "Iguana-verde", sn: "Iguana iguana", habitat: "Florestas tropicais", peso: "2–5 kg", desc: "Ótima nadadora e escaladora; descansa no alto das árvores." },
+        { name: "Serpente-real", sn: "Ophiophagus hannah", habitat: "Florestas da Ásia", peso: "3–6 kg", desc: "A maior cobra venenosa do mundo, com até 5,5 m." },
+        { name: "Sapo-cururu", sn: "Rhinella marina", habitat: "Campos e matas", peso: "0,3–1,5 kg", desc: "Glândulas atrás dos olhos secretam toxina para se defender." },
+        { name: "Polvo-comum", sn: "Octopus vulgaris", habitat: "Recifes costeiros", peso: "3–10 kg", desc: "Três corações, sangue azul e nove cérebros (um central e oito nos braços)." },
+        { name: "Caranguejo-eremita", sn: "Pagurus bernhardus", habitat: "Costões", peso: "0,02–0,1 kg", desc: "Carrega conchas abandonadas para proteger o abdômen mole." },
+        { name: "Abelha-europeia", sn: "Apis mellifera", habitat: "Mundo todo", peso: "0,0001 kg", desc: "Poliniza grande parte das plantas que alimentam a humanidade." },
+
+        /* ===== INCOMUM (25) ===== */
+        { name: "Okapi", sn: "Okapia johnstoni", habitat: "Floresta do Congo", peso: "200–300 kg", desc: "Primo da girafa com listras de zebra; descrito pela ciência só em 1901." },
+        { name: "Saiga", sn: "Saiga tatarica", habitat: "Estepes", peso: "26–51 kg", desc: "Nariz bulboso que aquece o ar nas estepes geladas da Ásia." },
+        { name: "Fossa", sn: "Cryptoprocta ferox", habitat: "Madagascar", peso: "7–12 kg", desc: "Maior predador de Madagascar; caça lêmures nas árvores." },
+        { name: "Aie-aie", sn: "Daubentonia madagascariensis", habitat: "Madagascar", peso: "2–2,7 kg", desc: "Dedo fino e longo bate na madeira para localizar larvas pelo som." },
+        { name: "Lêmure-de-cauda-anelada", sn: "Lemur catta", habitat: "Madagascar", peso: "2–3,5 kg", desc: "Vive em grupos liderados por fêmeas; usa a cauda para se comunicar." },
+        { name: "Quokka", sn: "Setonix brachyurus", habitat: "Ilhas da Austrália", peso: "2,5–5 kg", desc: "Conhecido como 'animal mais feliz do mundo' por sua cara de sorriso." },
+        { name: "Dugongo", sn: "Dugong dugon", habitat: "Águas costeiras", peso: "250–420 kg", desc: "Primo do peixe-boi; alimenta-se de ervas marinhas." },
+        { name: "Peixe-boi-amazônico", sn: "Trichechus inunguis", habitat: "Rio Amazonas", peso: "300–450 kg", desc: "Só vive em água doce e é o menor dos peixes-boi." },
+        { name: "Axolote", sn: "Ambystoma mexicanum", habitat: "Lagos do México", peso: "0,06–0,2 kg", desc: "Regenera patas, cauda e até partes do coração e do cérebro." },
+        { name: "Geco-leopardo", sn: "Eublepharis macularius", habitat: "Desertos da Ásia", peso: "0,05–0,1 kg", desc: "Lagarto popular em terrários; as fêmeas podem viver mais de 20 anos." },
+        { name: "Narval", sn: "Monodon monoceros", habitat: "Ártico", peso: "800–1.600 kg", desc: "Seu 'chifre' é na verdade um dente que pode chegar a 3 metros." },
+        { name: "Beluga", sn: "Delphinapterus leucas", habitat: "Ártico", peso: "1.100–1.600 kg", desc: "Baleia branca famosa pela variedade de sons; chamada de 'canário do mar'." },
+        { name: "Urso-de-óculos", sn: "Tremarctos ornatus", habitat: "Andes", peso: "64–140 kg", desc: "Único urso nativo da América do Sul; as manchas no rosto parecem óculos." },
+        { name: "Lobo-guará", sn: "Chrysocyon brachyurus", habitat: "Cerrado", peso: "20–30 kg", desc: "Pernas longas para enxergar sobre o capim alto; onívoro, adora o fruto do lobo." },
+        { name: "Cachorro-do-mato", sn: "Cerdocyon thous", habitat: "Cerrado e mata", peso: "4–7 kg", desc: "Canídeo brasileiro de hábitos noturnos e onívoro." },
+        { name: "Gato-mourisco", sn: "Herpailurus yagouaroundi", habitat: "Cerrado e mata", peso: "4–9 kg", desc: "Felino brasileiro com pelagem que varia do cinza ao avermelhado." },
+        { name: "Gato-palheiro", sn: "Leopardus colocola", habitat: "Campos", peso: "1,5–3,5 kg", desc: "Raro felino dos campos sul-americanos, ameaçado pelo avanço agrícola." },
+        { name: "Veado-campeiro", sn: "Ozotoceros bezoarticus", habitat: "Campos do Brasil", peso: "20–35 kg", desc: "Cervo ameaçado que habita o Pampa e o Cerrado." },
+        { name: "Cutia", sn: "Dasyprocta azarae", habitat: "Mata Atlântica", peso: "1,5–4 kg", desc: "Roedor que enterra sementes e ajuda a regenerar florestas." },
+        { name: "Paca", sn: "Cuniculus paca", habitat: "Rios e matas", peso: "5–12 kg", desc: "Roedor noturno de pelagem manchada; bom nadador e escalador." },
+        { name: "Ouriço-cacheiro", sn: "Hystrix cristata", habitat: "Savanas", peso: "12–27 kg", desc: "Coberto de espinhos que ergue e sacode quando ameaçado." },
+        { name: "Musaranho-elefante", sn: "Elephantulus rufescens", habitat: "Savanas africanas", peso: "0,04–0,07 kg", desc: "Apesar do focinho alongado, não é parente do elefante: é afim de manatins e elefantes na evolução." },
+        { name: "Tarsius", sn: "Tarsius tarsier", habitat: "Ilhas do Sudeste Asiático", peso: "0,08–0,15 kg", desc: "Olhos maiores que o estômago; enxerga bem no escuro com olhos fixos." },
+        { name: "Pangolim", sn: "Manis pentadactyla", habitat: "Florestas da Ásia", peso: "2–7 kg", desc: "Único mamífero coberto de escamas; o mais traficado do mundo." },
+        { name: "Pica-pau-imperador", sn: "Campephilus imperialis", habitat: "Florestas do México", peso: "0,6–0,7 kg", desc: "Um dos maiores pica-paus do mundo, possivelmente extinto na natureza." },
+
+        /* ===== RARA (9) ===== */
+        { name: "Vaquita", sn: "Phocoena sinus", habitat: "Golfo da Califórnia", peso: "30–55 kg", desc: "O mamífero marinho mais ameaçado do mundo: restam poucos indivíduos." },
+        { name: "Lince-ibérico", sn: "Lynx pardinus", habitat: "Península Ibérica", peso: "9–13 kg", desc: "Felino mais ameaçado da Europa; especialista em caçar coelhos." },
+        { name: "Leopardo-das-neves", sn: "Panthera uncia", habitat: "Montanhas da Ásia Central", peso: "22–55 kg", desc: "Vive acima de 3.000 m; usa a cauda longa como cobertor." },
+        { name: "Tigre-de-bengala", sn: "Panthera tigris tigris", habitat: "Florestas da Índia", peso: "90–260 kg", desc: "Maior felino vivo; cada tigre tem listras únicas." },
+        { name: "Dragão-de-komodo", sn: "Varanus komodoensis", habitat: "Ilhas da Indonésia", peso: "70–90 kg", desc: "O maior lagarto do mundo, com mordida cheia de bactérias." },
+        { name: "Mandril", sn: "Mandrillus sphinx", habitat: "Florestas da África", peso: "12–35 kg", desc: "O primata com as cores mais vivas; o rosto azul e vermelho atrai fêmeas." },
+        { name: "Macaco-narigudo", sn: "Nasalis larvatus", habitat: "Florestas de Bornéu", peso: "7–24 kg", desc: "O nariz grande do macho amplifica chamados e atrai parceiras." },
+        { name: "Lobo-marinho-das-galápagos", sn: "Arctocephalus galapagoensis", habitat: "Galápagos", peso: "30–80 kg", desc: "O menor lobo-marinho do mundo e o único do hemisfério Norte tropical." },
+        { name: "Tartaruga-de-couro", sn: "Dermochelys coriacea", habitat: "Oceanos", peso: "300–700 kg", desc: "A maior tartaruga viva; não tem casco rígido e pode mergulhar a 1.000 m." },
+
+        /* ===== ÉPICA (4) ===== */
+        { name: "Águia-dourada", sn: "Aquila chrysaetos", habitat: "Montanhas do Hemisfério Norte", peso: "3–6 kg", desc: "Ave de rapina poderosa, capaz de derrubar presas maiores que ela." },
+        { name: "Gorila-da-montanha", sn: "Gorilla beringei beringei", habitat: "Montanhas da África", peso: "90–200 kg", desc: "O maior primata vivo; vive em famílias lideradas por um 'dorso-prateado'." },
+        { name: "Condor-andino", sn: "Vultur gryphus", habitat: "Andes", peso: "9–15 kg", desc: "Uma das maiores aves voadoras; plana por horas sem bater as asas." },
+        { name: "Rinoceronte-de-sumatra", sn: "Dicerorhinus sumatrensis", habitat: "Florestas da Sumatra", peso: "600–950 kg", desc: "O rinoceronte mais peludo e o menor das espécies vivas." },
+
+        /* ===== LENDÁRIA (1) ===== */
+        { name: "Baleia-azul", sn: "Balaenoptera musculus", habitat: "Oceanos", peso: "100.000–150.000 kg", desc: "O maior animal que já existiu na Terra; o coração pesa como um carro pequeno." },
+
+        /* ===== MÍTICA (1) ===== */
+        { name: "Lula-colossal", sn: "Mesonychoteuthis hamiltoni", habitat: "Águas antárticas", peso: "400–600 kg", desc: "O maior invertebrado conhecido, com olhos do tamanho de pratos." }
     ];
 
-    const incomuns = [
-        "Marquise Lendária", "O Sinal Dourado", "Painel da Meia-Noite", "A Rota Neon",
-        "Cartaz Reluzente", "O Letreiro do Amanhã", "Cidade Neon", "Marquise Mística",
-        "Painel do Horizonte", "O Anúncio Cósmico", "LED Estelar", "A Torre Dourada",
-        "Outdoor de Prata", "Praça dos Cartazes", "O Painel Celestial", "Neon do Futuro",
-        "Marquise Imperial", "A Avenida de Luz", "Cartaz Dourado", "O Letreiro Supremo",
-        "Painel Primordial", "Marquise de Ouro", "O Outdoor Legendário", "A Rua Dourada",
-        "Painel dos Deuses"
-    ];
-
-    const raras = [
-        "Cidade de Cristal", "O Painel Épico", "Marquise Real", "A Estrela do Letreiro",
-        "Telão de Ouro", "Marquise Suprema", "O Painel Celestial", "A Cidade Dourada",
-        "Marquise de Luz"
-    ];
-
-    const epicas = [
-        "O Outdoor Épico", "Telão das Estrelas", "Painel Solar", "A Marquise Lendária"
-    ];
-
-    const lendaria = ["O Painel Lendário"];
-
-    const mitica = ["Marquise Mítica"];
-
-    const descricaoPadrao = (nome) =>
-        `${nome}. Uma peça da 1ª edição do universo MegaOutdoor.`;
-
-    let numero = 0;
-
-    const empilhar = (lista, raridade) => {
-        for (const nome of lista) {
-            numero++;
-            cards.push({
-                number: numero,
-                name: nome,
-                rarity: raridade,
-                description: descricaoPadrao(nome)
-            });
-        }
-    };
-
-    empilhar(comuns, "COMUM");
-    empilhar(incomuns, "INCOMUM");
-    empilhar(raras, "RARA");
-    empilhar(epicas, "EPICA");
-    empilhar(lendaria, "LENDARIA");
-    empilhar(mitica, "MITICA");
+    especies.forEach((e, i) => {
+        const raridade =
+            i < 60 ? "COMUM" :
+            i < 85 ? "INCOMUM" :
+            i < 94 ? "RARA" :
+            i < 98 ? "EPICA" :
+            i < 99 ? "LENDARIA" : "MITICA";
+        cards.push({
+            number: i + 1,
+            name: e.name,
+            scientific_name: e.sn,
+            habitat: e.habitat,
+            peso: e.peso,
+            rarity: raridade,
+            description: e.desc
+        });
+    });
 
     return cards;
 })();
@@ -319,6 +386,12 @@ module.exports = function criarModuloColecionaveis(deps) {
             )
         `);
 
+        /* Dados científicos das espécies (ANIMAIS DO MUNDO) —
+           compatibilidade com bancos já existentes. */
+        await pool.query(`ALTER TABLE sticker_cards ADD COLUMN IF NOT EXISTS scientific_name VARCHAR(200)`);
+        await pool.query(`ALTER TABLE sticker_cards ADD COLUMN IF NOT EXISTS habitat VARCHAR(120)`);
+        await pool.query(`ALTER TABLE sticker_cards ADD COLUMN IF NOT EXISTS peso VARCHAR(80)`);
+
         await pool.query(`
             CREATE TABLE IF NOT EXISTS sticker_packs (
                 id                SERIAL PRIMARY KEY,
@@ -354,6 +427,10 @@ module.exports = function criarModuloColecionaveis(deps) {
                 paid_at       TIMESTAMPTZ
             )
         `);
+
+        /* Sorteio persistido do pacote (abre UMA vez; refresh devolve
+           as MESMAS figurinhas — CORREÇÃO 7 / ANIMAIS DO MUNDO). */
+        await pool.query(`ALTER TABLE sticker_pack_purchases ADD COLUMN IF NOT EXISTS figurinhas INTEGER[]`);
 
         await pool.query(`
             CREATE TABLE IF NOT EXISTS user_stickers (
@@ -530,16 +607,35 @@ module.exports = function criarModuloColecionaveis(deps) {
                  COLECAO_PADRAO.total, COLECAO_PADRAO.descricao]
             );
             colecaoId = q.rows[0].id;
+        } else {
+            /* Coleção já existente: atualiza metadados (ANIMAIS DO MUNDO). */
+            await pool.query(
+                `UPDATE sticker_collections
+                    SET name = $2, edition = $3, total = $4, description = $5
+                  WHERE id = $1`,
+                [colecaoId, COLECAO_PADRAO.nome, COLECAO_PADRAO.edicao,
+                 COLECAO_PADRAO.total, COLECAO_PADRAO.descricao]
+            );
         }
 
-        /* Figurinhas */
+        /* Figurinhas: upsert com dados científicos. O DO UPDATE garante
+           que bancos já existentes passem a exibir as 100 espécies reais
+           sem perder os ids (user_stickers preservadas). */
         for (const card of CATALOGO) {
             await pool.query(
                 `INSERT INTO sticker_cards
-                    (collection_id, number, name, description, rarity)
-                 VALUES ($1,$2,$3,$4,$5)
-                 ON CONFLICT (collection_id, number) DO NOTHING`,
-                [colecaoId, card.number, card.name, card.description, card.rarity]
+                    (collection_id, number, name, description, rarity,
+                     scientific_name, habitat, peso)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+                 ON CONFLICT (collection_id, number)
+                 DO UPDATE SET name = EXCLUDED.name,
+                               description = EXCLUDED.description,
+                               rarity = EXCLUDED.rarity,
+                               scientific_name = EXCLUDED.scientific_name,
+                               habitat = EXCLUDED.habitat,
+                               peso = EXCLUDED.peso`,
+                [colecaoId, card.number, card.name, card.description, card.rarity,
+                 card.scientific_name, card.habitat, card.peso]
             );
         }
 
@@ -993,6 +1089,13 @@ module.exports = function criarModuloColecionaveis(deps) {
 
     async function confirmarCompraPacote(compra, mpOrderId) {
         const pool = pg();
+
+        /* CORREÇÃO 7: se o sorteio já foi persistido, nada a refazer
+           (idempotência — o refresh volta a MESMA resposta). */
+        if (compra.figurinhas && compra.figurinhas.length) {
+            return { jaConfirmado: true };
+        }
+
         const packQ = await pool.query(
             `SELECT * FROM sticker_packs WHERE id = $1`,
             [compra.pack_id]
@@ -1028,9 +1131,10 @@ module.exports = function criarModuloColecionaveis(deps) {
             await client.query(
                 `UPDATE sticker_pack_purchases
                     SET status = 'paid', paid_at = NOW(),
-                        mp_order_id = COALESCE(mp_order_id, $2)
+                        mp_order_id = COALESCE(mp_order_id, $2),
+                        figurinhas = $3
                   WHERE id = $1`,
-                [compra.id, mpOrderId]
+                [compra.id, mpOrderId, sorteadas.map((c) => c.id)]
             );
 
             await client.query("COMMIT");
@@ -1264,7 +1368,8 @@ module.exports = function criarModuloColecionaveis(deps) {
                 [colecao.id]
             );
             const cardsQ = await pg().query(
-                `SELECT id, number, name, rarity, image_url
+                `SELECT id, number, name, description, rarity, image_url,
+                        scientific_name, habitat, peso
                    FROM sticker_cards
                   WHERE collection_id = $1 AND is_active = TRUE
                   ORDER BY number`,
@@ -1315,7 +1420,8 @@ module.exports = function criarModuloColecionaveis(deps) {
         try {
             const colecao = await colecaoAtiva();
             const cardsQ = await pg().query(
-                `SELECT id, number, name, description, rarity, image_url
+                `SELECT id, number, name, description, rarity, image_url,
+                        scientific_name, habitat, peso
                    FROM sticker_cards
                   WHERE collection_id = $1 AND is_active = TRUE
                   ORDER BY number`,
@@ -1341,6 +1447,7 @@ module.exports = function criarModuloColecionaveis(deps) {
             const colecao = await colecaoAtiva();
             const q = await pg().query(
                 `SELECT c.id, c.number, c.name, c.rarity, c.image_url,
+                        c.scientific_name, c.habitat, c.peso,
                         COALESCE(us.quantity,0) AS quantidade
                    FROM sticker_cards c
                    LEFT JOIN user_stickers us
@@ -1363,6 +1470,9 @@ module.exports = function criarModuloColecionaveis(deps) {
                     name: c.name,
                     rarity: c.rarity,
                     image_url: c.image_url,
+                    scientific_name: c.scientific_name,
+                    habitat: c.habitat,
+                    peso: c.peso,
                     quantidade: Number(c.quantidade)
                 }))
             });
@@ -1510,6 +1620,9 @@ module.exports = function criarModuloColecionaveis(deps) {
                     description: card.description,
                     rarity: card.rarity,
                     image_url: card.image_url,
+                    scientific_name: card.scientific_name,
+                    habitat: card.habitat,
+                    peso: card.peso,
                     quantidade: q.rows[0] ? Number(q.rows[0].quantity) : 0,
                     acquired_at: q.rows[0]?.acquired_at || null,
                     disponivel: await quantidadeDisponivel(req.usuario.id, card.id),
@@ -1618,6 +1731,54 @@ module.exports = function criarModuloColecionaveis(deps) {
     });
 
     /* Status de um pedido de colecionável (polling do frontend). */
+    /* Devolve o sorteio JÁ PERSISTIDO de um pacote pago, na ordem do sorteio.
+       Retorna null quando não é um pacote confirmado (CORREÇÃO 7). */
+    async function obterResultadoPacotePersistido(usuarioId, orderId) {
+        const pool = pg();
+        const detQ = await pool.query(
+            `SELECT spp.id, spp.quantity, spp.figurinhas,
+                    pk.name AS pack_name
+               FROM sticker_pack_purchases spp
+               JOIN sticker_packs pk ON pk.id = spp.pack_id
+              WHERE (spp.mp_order_id = $1 OR spp.order_id = $1)
+                AND spp.usuario_id = $2
+                AND spp.status = 'paid'
+                AND spp.figurinhas IS NOT NULL
+              LIMIT 1`,
+            [orderId, usuarioId]
+        );
+        const det = detQ.rows[0];
+        if (!det) return null;
+
+        const ids = det.figurinhas;
+        if (!Array.isArray(ids) || !ids.length) return null;
+
+        const cardQ = await pool.query(
+            `SELECT id, number, name, rarity, scientific_name, habitat, peso
+               FROM sticker_cards
+              WHERE id = ANY($1::int[])`,
+            [ids]
+        );
+        const porId = new Map(cardQ.rows.map((r) => [r.id, r]));
+
+        return {
+            nome: det.pack_name,
+            quantidade: det.quantity,
+            figurinhas: ids.map((id) => {
+                const c = porId.get(id) || {};
+                return {
+                    id,
+                    number: c.number,
+                    name: c.name,
+                    rarity: c.rarity,
+                    scientific_name: c.scientific_name,
+                    habitat: c.habitat,
+                    peso: c.peso
+                };
+            })
+        };
+    }
+
     router.get("/pagamento/:orderId", obterAuthUsuario(), async (req, res) => {
         if (!pgOk()) {
             return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
@@ -1629,15 +1790,15 @@ module.exports = function criarModuloColecionaveis(deps) {
                Aceita tanto o id numérico do Mercado Pago (mp_order_id)
                quanto o externalReference (order_id) usado no frontend. */
             const dono = await pg().query(
-                `SELECT usuario_id, mp_order_id, order_id, status
+                `SELECT usuario_id, mp_order_id, order_id, status, 'pack' AS tipo
                    FROM sticker_pack_purchases
                   WHERE (mp_order_id = $1 OR order_id = $1) AND usuario_id = $2
                  UNION ALL
-                 SELECT buyer_id, mp_order_id, order_id, status
+                 SELECT buyer_id, mp_order_id, order_id, status, 'purchase' AS tipo
                    FROM sticker_orders
                   WHERE (mp_order_id = $1 OR order_id = $1) AND buyer_id = $2
                  UNION ALL
-                 SELECT proposer_id, mp_order_id, order_id, status
+                 SELECT proposer_id, mp_order_id, order_id, status, 'trade' AS tipo
                    FROM sticker_trades
                   WHERE (mp_order_id = $1 OR order_id = $1) AND proposer_id = $2`,
                 [orderId, req.usuario.id]
@@ -1668,7 +1829,8 @@ module.exports = function criarModuloColecionaveis(deps) {
             res.json({
                 ok: true,
                 status: pago ? "RECEIVED" : (ordem.status || "pending"),
-                orderId
+                orderId,
+                pacote: await obterResultadoPacotePersistido(req.usuario.id, orderId)
             });
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -2673,6 +2835,14 @@ module.exports = function criarModuloColecionaveis(deps) {
                 [req.usuario.id]
             );
 
+            /* Pacotes de figurinhas abertos (pagos) — estatística visual. */
+            const pacotesQ = await pg().query(
+                `SELECT COUNT(*)::int AS pacotes
+                   FROM sticker_pack_purchases
+                  WHERE usuario_id = $1 AND status = 'paid'`,
+                [req.usuario.id]
+            );
+
             const conquistasQ = await pg().query(
                 `SELECT a.slug, a.name, a.icon
                    FROM sticker_user_achievements ua
@@ -2732,6 +2902,7 @@ module.exports = function criarModuloColecionaveis(deps) {
                     trocas_dinheiro: Number(tradesQ.rows[0]?.trocas_dinheiro || 0),
                     vendas: Number(vendasQ.rows[0]?.vendas || 0),
                     compras: Number(comprasQ.rows[0]?.compras || 0),
+                    pacotes_abertos: Number(pacotesQ.rows[0]?.pacotes || 0),
                     ranking: Number(rankQ.rows[0]?.posicao || 1),
                     total_colecionadores: Number(totalColecionadores.rows[0]?.total || 0),
                     stats: {
@@ -3285,6 +3456,33 @@ module.exports = function criarModuloColecionaveis(deps) {
                 const description = req.body.description === null ? null : String(req.body.description);
                 params.push(description);
                 campos.push(`description = $${params.length}`);
+            }
+
+            if (req.body.scientific_name !== undefined) {
+                const sn = req.body.scientific_name === null ? null : String(req.body.scientific_name).trim();
+                if (sn !== null && sn.length > 200) {
+                    return res.status(400).json({ error: "Nome científico inválido." });
+                }
+                params.push(sn);
+                campos.push(`scientific_name = $${params.length}`);
+            }
+
+            if (req.body.habitat !== undefined) {
+                const habitat = req.body.habitat === null ? null : String(req.body.habitat).trim();
+                if (habitat !== null && habitat.length > 120) {
+                    return res.status(400).json({ error: "Habitat inválido." });
+                }
+                params.push(habitat);
+                campos.push(`habitat = $${params.length}`);
+            }
+
+            if (req.body.peso !== undefined) {
+                const peso = req.body.peso === null ? null : String(req.body.peso).trim();
+                if (peso !== null && peso.length > 80) {
+                    return res.status(400).json({ error: "Peso inválido." });
+                }
+                params.push(peso);
+                campos.push(`peso = $${params.length}`);
             }
 
             if (req.body.image_url !== undefined) {

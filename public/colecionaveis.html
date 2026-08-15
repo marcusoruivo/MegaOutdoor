@@ -211,6 +211,27 @@ body{overflow-x:hidden}
 .r-LENDARIA .card-arte{background:linear-gradient(145deg,#4a3200,#332200);border-bottom:3px solid var(--ouro);box-shadow:0 0 18px rgba(255,191,64,.35),inset 0 0 26px rgba(255,191,64,.2)}
 .r-MITICA .card-arte{background:linear-gradient(145deg,#4d0f1c,#2e0711);border-bottom:3px solid var(--vermelho);box-shadow:0 0 24px rgba(215,38,61,.5),inset 0 0 26px rgba(215,38,61,.25)}
 .r-LENDARIA,.r-MITICA{animation:brilho 2.6s ease-in-out infinite}
+
+/* ===== ABERTURA DE PACOTE (REVELAÇÃO) — ANIMAIS DO MUNDO ===== */
+.rev-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:14px 0}
+.rev-card{position:relative;border-radius:14px;padding:12px;text-align:center;background:#12121a;
+    border:2px solid var(--borda);overflow:hidden;transition:transform .2s}
+.rev-card:hover{transform:translateY(-3px)}
+.rev-card .shine{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.16) 46%,transparent 58%);
+    background-size:260% 260%;animation:shineMove 2.6s linear infinite}
+@keyframes shineMove{0%{background-position:160% 0}100%{background-position:-60% 0}}
+.rev-card .emoji{font-size:44px;line-height:1.2}
+.rev-card .sn{font-style:italic;font-size:11px;color:var(--muted)}
+.rev-card .dados{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5}
+.rev-card .rev-num{font-size:10px;color:var(--muted);margin-top:6px}
+.rev-card.rev-COMUM{border-color:#9aa0a6}
+.rev-card.rev-INCOMUM{border-color:var(--verde);box-shadow:0 0 14px rgba(46,204,113,.3)}
+.rev-card.rev-RARA{border-color:var(--azul);box-shadow:0 0 16px rgba(59,130,246,.35)}
+.rev-card.rev-EPICA{border-color:var(--roxo);box-shadow:0 0 18px rgba(168,85,247,.4)}
+.rev-card.rev-LENDARIA{border-color:var(--ouro);box-shadow:0 0 22px rgba(255,191,64,.5)}
+.rev-card.rev-MITICA{border-color:var(--vermelho);box-shadow:0 0 26px rgba(215,38,61,.6)}
+.rev-card.rev-novo{animation:revEntra .45s ease both}
+@keyframes revEntra{from{transform:scale(.4) rotateY(90deg);opacity:0}to{transform:scale(1) rotateY(0);opacity:1}}
 @keyframes brilho{0%,100%{filter:brightness(1)}50%{filter:brightness(1.14)}}
 .pill-raridade{
     font-size:10px;font-weight:800;letter-spacing:.8px;
@@ -375,6 +396,9 @@ body{overflow-x:hidden}
     background:radial-gradient(circle at 30% 20%, rgba(255,255,255,.3), transparent 55%);
     pointer-events:none;
 }
+.modal-arte-premium{background:transparent;height:230px;padding:16px 16px 0}
+.modal-arte-premium::after{display:none}
+.modal-arte-premium .cc-arte{height:100%;aspect-ratio:auto;margin:0;border-radius:18px}
 .modal-body{padding:22px}
 .modal-body h2{font-size:22px;margin:10px 0 4px}
 .modal-body .num{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:1px}
@@ -476,6 +500,201 @@ body{overflow-x:hidden}
 .produto-nome{font-size:16px;font-weight:800;color:#fff;text-transform:uppercase}
 .produto-preco{font-size:24px;font-weight:900;color:var(--amarelo);margin:4px 0}
 .produto-detalhe{font-size:12px;color:var(--muted)}
+
+/* =========================================================
+   MILHÃO DOOR — ANIMAIS DO MUNDO | CARDS PREMIUM
+========================================================= */
+.colecao-card{
+    position:relative;border-radius:16px;overflow:hidden;cursor:pointer;
+    background:var(--painel);
+    display:flex;flex-direction:column;
+    transition:transform .15s,box-shadow .15s,border-color .15s;
+    border:2px solid var(--borda);
+}
+.colecao-card:hover{transform:translateY(-4px);box-shadow:0 14px 30px rgba(0,0,0,.55)}
+.colecao-card.r-COMUM{border-color:#6b7280}
+.colecao-card.r-INCOMUM{border-color:var(--verde);box-shadow:0 0 10px rgba(46,204,113,.18)}
+.colecao-card.r-RARA{border-color:var(--azul);box-shadow:0 0 14px rgba(59,130,246,.3)}
+.colecao-card.r-EPICA{border-color:var(--roxo);box-shadow:0 0 16px rgba(168,85,247,.35)}
+.colecao-card.r-LENDARIA{border-color:var(--ouro);box-shadow:0 0 20px rgba(255,191,64,.45)}
+.colecao-card.r-MITICA{border-color:var(--vermelho);box-shadow:0 0 22px rgba(215,38,61,.5)}
+.colecao-card.cc-fin-ouro{
+    background:linear-gradient(160deg,#3a2c00,#241a00);
+    border-color:#ffd700;
+    box-shadow:0 0 22px rgba(255,215,0,.45), inset 0 0 20px rgba(255,215,0,.12);
+}
+.colecao-card.cc-fin-cromada{
+    background:linear-gradient(160deg,#26263c,#161626);
+    border-color:#cfd9ff;
+    box-shadow:0 0 22px rgba(150,170,255,.45), inset 0 0 22px rgba(150,170,255,.14);
+}
+.cc-fin-ouro .cc-arte{border-color:rgba(255,215,0,.5)}
+.cc-fin-cromada .cc-arte{border-color:rgba(190,200,255,.45)}
+.cc-topo{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:7px 11px;font-size:10px;font-weight:800;letter-spacing:1px;
+}
+.cc-num{color:var(--muted);font-family:'Orbitron',sans-serif}
+.cc-fin-ouro .cc-num,.cc-fin-cromada .cc-num{color:#fff}
+.cc-simbolo{font-size:12px}
+.cc-arte{
+    aspect-ratio:1/1;margin:0 8px;border-radius:12px;
+    display:flex;align-items:center;justify-content:center;
+    position:relative;overflow:hidden;
+    border:2px solid rgba(255,255,255,.08);
+}
+.cc-arte .cc-emoji{font-size:52px;line-height:1;filter:drop-shadow(0 4px 12px rgba(0,0,0,.5));z-index:1}
+.cc-img{width:100%;height:100%;object-fit:cover;z-index:1}
+.cc-arte-rev .cc-emoji{font-size:58px}
+.cc-arte-grande .cc-emoji{font-size:92px}
+.bio-oceano{background:linear-gradient(160deg,#0b3a63,#051d33)}
+.bio-savana{background:linear-gradient(160deg,#7a4a1f,#3d2410)}
+.bio-floresta{background:linear-gradient(160deg,#14532d,#052e16)}
+.bio-deserto{background:linear-gradient(160deg,#8a6d3b,#4a3418)}
+.bio-montanha{background:linear-gradient(160deg,#3b4a63,#1f2937)}
+.bio-rio{background:linear-gradient(160deg,#16606b,#083b43)}
+.bio-campo{background:linear-gradient(160deg,#365314,#1a2e05)}
+.bio-regiao{background:linear-gradient(160deg,#3f3f8f,#1e1b4b)}
+.bio-generico{background:linear-gradient(160deg,#2b2b3a,#1a1a26)}
+.cc-glow{position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(circle at 30% 20%,rgba(255,255,255,.26),transparent 55%)}
+.cc-shine{position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(115deg,transparent 34%,rgba(255,255,255,.13) 48%,transparent 62%);
+    transform:translateX(-130%);animation:ccShine 3.4s ease-in-out infinite}
+@keyframes ccShine{0%{transform:translateX(-130%)}55%,100%{transform:translateX(130%)}}
+.cc-part{position:absolute;width:5px;height:5px;border-radius:50%;pointer-events:none;opacity:.9;animation:ccPartFloat 2.6s ease-in infinite}
+.cc-part-ouro{background:#ffd700;box-shadow:0 0 8px #ffd700}
+.cc-part-croma{background:#dbe4ff;box-shadow:0 0 8px #a9c2ff}
+@keyframes ccPartFloat{0%{transform:translateY(0) scale(.6);opacity:0}25%{opacity:.95}100%{transform:translateY(-46px) scale(1.1);opacity:0}}
+.cc-arte-bloq{background:linear-gradient(160deg,#16161d,#0d0d12)!important;border-color:#2a2a35}
+.cc-silhueta{opacity:.28;filter:grayscale(1) brightness(.4);transform:scale(1.15)}
+.cc-lock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:26px;z-index:2;text-shadow:0 2px 8px rgba(0,0,0,.8)}
+.cc-info{padding:9px 11px 12px;display:flex;flex-direction:column;gap:3px;background:rgba(0,0,0,.18)}
+.cc-info-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cc-nome{font-size:13px;font-weight:800;line-height:1.25;color:var(--texto)}
+.cc-nome-bloq{color:var(--muted);letter-spacing:1px}
+.cc-sn{font-size:10px;font-style:italic;color:var(--muted);min-height:12px}
+.cc-meta{font-size:10px;color:var(--muted);line-height:1.4}
+.cc-meta-sep{margin:0 4px;opacity:.5}
+.cc-qtd{font-size:10px;color:var(--muted)}
+.cc-qtd b{color:var(--amarelo)}
+.cc-rep{color:var(--laranja);font-size:9px;font-weight:700}
+.cc-pill{font-size:9px;font-weight:800;letter-spacing:.8px;padding:2px 8px;border-radius:999px;display:inline-block}
+.cc-finish-badge{font-size:8px;font-weight:900;letter-spacing:.8px;padding:2px 7px;border-radius:999px;display:inline-block}
+.fin-ouro{background:linear-gradient(90deg,#b8860b,#ffd700);color:#241a00;box-shadow:0 0 8px rgba(255,215,0,.5)}
+.fin-cromada{background:linear-gradient(90deg,#7c8ee0,#dfe7ff);color:#141a38;box-shadow:0 0 8px rgba(180,200,255,.55)}
+.cc-rodape{font-family:'Orbitron',sans-serif;font-size:8px;letter-spacing:1.2px;color:var(--muted);text-align:center;padding:6px}
+.cc-grande{width:min(300px,86vw);margin:0 auto}
+.cc-arte-grande{aspect-ratio:1/1;margin:0 14px}
+.colecao-card.cc-bloqueada{opacity:.85;cursor:pointer;border-style:dashed}
+.colecao-card.cc-bloqueada:hover{border-color:var(--laranja)}
+
+/* ===== REVELAÇÃO (cards dentro do pacote) ===== */
+.rev-card{padding:10px;display:flex;flex-direction:column;gap:8px;text-align:left}
+.rev-card .rev-num{font-family:'Orbitron',sans-serif;font-size:10px;color:var(--muted);margin:0}
+.rev-card .cc-arte{margin:0;aspect-ratio:1/1}
+.rev-card.r-COMUM{border-color:#6b7280}
+.rev-card.r-INCOMUM{border-color:var(--verde);box-shadow:0 0 12px rgba(46,204,113,.25)}
+.rev-card.r-RARA{border-color:var(--azul);box-shadow:0 0 14px rgba(59,130,246,.3)}
+.rev-card.r-EPICA{border-color:var(--roxo);box-shadow:0 0 16px rgba(168,85,247,.35)}
+.rev-card.r-LENDARIA{border-color:var(--ouro);box-shadow:0 0 20px rgba(255,191,64,.45)}
+.rev-card.r-MITICA{border-color:var(--vermelho);box-shadow:0 0 22px rgba(215,38,61,.5)}
+.rev-card.cc-fin-ouro{border-color:#ffd700;box-shadow:0 0 20px rgba(255,215,0,.45)}
+.rev-card.cc-fin-cromada{border-color:#cfd9ff;box-shadow:0 0 20px rgba(150,170,255,.45)}
+.rev-info{display:flex;flex-direction:column;gap:3px;text-align:left}
+.rev-info-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.rev-nome{font-size:12px;font-weight:800;line-height:1.2}
+.rev-sn{font-size:10px;font-style:italic;color:var(--muted)}
+.rev-flag{font-size:9px;font-weight:900;letter-spacing:.8px;padding:2px 8px;border-radius:999px;display:inline-block;margin-top:2px}
+.rev-flag-nova{background:rgba(46,204,113,.18);color:#7dff9b}
+.rev-flag-rep{background:rgba(255,122,0,.16);color:#ffd166}
+
+/* ===== FILTROS DO ÁLBUM ===== */
+.album-filtros{display:flex;flex-direction:column;gap:12px;margin-bottom:16px}
+.af-linha{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.filtro-chips{display:flex;gap:6px;flex-wrap:wrap}
+.filtro-chip{border:1px solid var(--borda);background:var(--painel);color:var(--muted);
+    border-radius:999px;padding:6px 12px;font-size:11px;font-weight:800;letter-spacing:.6px;transition:all .12s}
+.filtro-chip:hover{color:var(--texto);border-color:var(--amarelo)}
+.filtro-chip.ativa{background:linear-gradient(90deg,var(--amarelo),var(--laranja));color:#141414;border-color:transparent}
+
+/* ===== EXPERIÊNCIA DE ABERTURA DO PACOTE ===== */
+.pack-overlay{position:fixed;inset:0;z-index:300;background:#07070b;
+    display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:manipulation}
+.pack-stage{position:relative;z-index:2;width:min(480px,94vw);text-align:center;color:var(--texto);max-height:92vh;overflow-y:auto}
+.pack-burst{position:fixed;inset:0;pointer-events:none;z-index:1;opacity:0;
+    background:radial-gradient(circle at 50% 42%,rgba(255,212,0,.5),rgba(255,122,0,.16) 40%,transparent 65%)}
+.pack-overlay.abrindo .pack-burst{animation:packBurst .8s ease both}
+@keyframes packBurst{0%{opacity:0;transform:scale(.4)}30%{opacity:1}100%{opacity:0;transform:scale(1.6)}}
+.pack-fechado{position:relative;width:min(260px,70vw);aspect-ratio:4/5.2;margin:0 auto;cursor:pointer;
+    border-radius:18px;border:2px solid var(--amarelo);
+    background:
+        radial-gradient(200px 90px at 80% 0%, rgba(255,122,0,.28), transparent 60%),
+        linear-gradient(160deg,#3d2c00,#1c1400);
+    box-shadow:0 0 34px rgba(255,191,64,.35), inset 0 0 30px rgba(255,212,0,.12);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+    transition:transform .12s}
+.pack-fechado:active{transform:scale(.97)}
+.pack-fechado .pf-icone{font-size:64px;filter:drop-shadow(0 4px 14px rgba(255,212,0,.5))}
+.pack-fechado .pf-nome{font-family:'Orbitron',sans-serif;font-size:18px;letter-spacing:2px;
+    background:linear-gradient(90deg,#ffd700,#ff7a00);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.pack-fechado .pf-sub{font-size:10px;letter-spacing:2px;color:#d9c58a;font-weight:700}
+.pack-fechado .pf-qtd{font-size:12px;color:#ffe9b0}
+.pack-fechado .pf-tap{position:absolute;bottom:14px;font-size:10px;letter-spacing:2px;color:#ffe9b0;
+    animation:pfTap 1.6s ease-in-out infinite}
+@keyframes pfTap{0%,100%{opacity:.4}50%{opacity:1}}
+.pack-fechado.rasgando{animation:packRasgo .5s cubic-bezier(.6,-.28,.74,.05) both}
+@keyframes packRasgo{0%{transform:rotate(0) scale(1);opacity:1}100%{transform:rotate(-8deg) scale(.4) translateY(60px);opacity:0}}
+.pack-luz{position:relative;width:min(300px,80vw);aspect-ratio:1/1;margin:0 auto;border-radius:20px;
+    background:radial-gradient(circle at 50% 50%,#fff8d0,rgba(255,212,0,.35) 40%,transparent 70%);
+    animation:packLuz .9s ease both}
+@keyframes packLuz{0%{transform:scale(.2);opacity:0}35%{opacity:1}100%{transform:scale(1.4);opacity:0}}
+.slot-carta{position:relative;width:min(230px,64vw);aspect-ratio:4/5.4;margin:0 auto;cursor:pointer;
+    border-radius:16px;background:linear-gradient(160deg,#1e1e2b,#101018);
+    border:2px solid var(--borda);overflow:hidden;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.slot-carta::after{content:"";position:absolute;inset:0;
+    background:radial-gradient(circle at 40% 25%,rgba(255,255,255,.1),transparent 55%);pointer-events:none}
+.slot-carta .sc-icone{font-size:54px;opacity:.85}
+.slot-carta .sc-texto{font-size:11px;letter-spacing:2px;color:var(--muted);font-weight:700}
+.pack-titulo{font-family:'Orbitron',sans-serif;font-size:15px;letter-spacing:2px;color:#ffe9b0;margin-bottom:16px}
+.pack-contagem{font-size:12px;color:var(--muted);margin-top:14px;font-weight:600}
+.pack-grande{width:100%;text-align:center}
+.pack-grande .colecao-card.cc-grande{animation:grandeZoom .7s cubic-bezier(.2,.9,.3,1.2) both}
+@keyframes grandeZoom{0%{transform:scale(.2) translateY(40px);opacity:0}100%{transform:scale(1);opacity:1}}
+.pack-grande .grande-msg{font-family:'Orbitron',sans-serif;font-size:clamp(15px,4vw,21px);font-weight:900;letter-spacing:1px;margin-top:16px}
+.grande-msg-ouro{background:linear-gradient(90deg,#ffd700,#fff3c4,#ffd700);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    animation:grandeBrilho 1.4s ease-in-out infinite}
+.grande-msg-cromada{background:linear-gradient(90deg,#8fb4ff,#ffffff,#8fb4ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    animation:grandeBrilho 1.4s ease-in-out infinite}
+.grande-msg-lendaria{background:linear-gradient(90deg,#ffbf40,#ffe9a8,#ffbf40);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    animation:grandeBrilho 1.2s ease-in-out infinite}
+@keyframes grandeBrilho{0%,100%{filter:brightness(1)}50%{filter:brightness(1.35)}}
+.grande-nova{display:inline-block;font-size:12px;font-weight:900;letter-spacing:1.5px;color:#7dff9b;margin-top:8px;
+    animation:grandePulso 1s ease-in-out infinite}
+.grande-rep{display:inline-block;font-size:12px;font-weight:900;letter-spacing:1.5px;color:#ffd166;margin-top:8px}
+@keyframes grandePulso{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+.pack-grande .grande-tap{font-size:11px;color:var(--muted);margin-top:16px;letter-spacing:1px}
+.pack-overlay.escuro{background:#04040a}
+.gp{position:fixed;pointer-events:none;border-radius:50%;z-index:3;opacity:0;animation:gpFly 1.3s ease-out both}
+.gp-ouro{background:#ffd700;box-shadow:0 0 10px #ffd700}
+.gp-cromada{background:#e4ecff;box-shadow:0 0 10px #bcd0ff}
+.gp-lendaria{background:#ffd700;box-shadow:0 0 12px #ffd700}
+@keyframes gpFly{0%{transform:translate(0,0) scale(.4);opacity:0}25%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(1);opacity:0}}
+.pack-resumo{width:100%}
+.pack-resumo .rev-grid{grid-template-columns:repeat(auto-fill,minmax(118px,1fr))}
+.pack-resumo-total{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+.pr-box{background:var(--painel);border:1px solid var(--borda);border-radius:12px;padding:10px 16px;font-size:12px;color:var(--muted)}
+.pr-box b{font-family:'Orbitron',sans-serif;font-size:18px}
+.pr-box.pr-novo b{color:var(--verde)}
+.pr-box.pr-rep b{color:var(--laranja)}
+.pr-box.pr-col b{color:var(--amarelo)}
+
+@media (max-width:640px){
+    .pack-fechado{width:min(220px,74vw)}
+    .slot-carta{width:min(200px,66vw)}
+    .cc-arte-grande .cc-emoji{font-size:74px}
+}
 </style>
 </head>
 <body>
@@ -485,8 +704,8 @@ body{overflow-x:hidden}
     <div class="logo">
         <span style="font-size:24px">🃏</span>
         <div>
-            <div class="marca">MEGAOUTDOOR</div>
-            <div class="sub">COLECIONÁVEIS</div>
+            <div class="marca">MILHÃO DOOR</div>
+            <div class="sub">ANIMAIS DO MUNDO · COLECIONÁVEIS</div>
         </div>
     </div>
     <div class="topo-actions">
@@ -497,12 +716,12 @@ body{overflow-x:hidden}
 
 <!-- ===== HERO ===== -->
 <section class="hero">
-    <h1>COLETE. COMPLETE. NEGOCIE.</h1>
-    <p>O álbum de figurinhas digitais do universo <b style="color:var(--amarelo)">MegaOutdoor</b>.
-    Abra pacotes, monte sua coleção de <b>100 figurinhas</b>, venda repetidas no mercado
-    e troque com outros colecionadores.</p>
+    <h1>ANIMAIS DO MUNDO</h1>
+    <p>A coleção de figurinhas digitais da <b style="color:var(--amarelo)">Milhão Door</b>.
+    Abra pacotinhos, descubra <b>100 espécies reais</b>, complete o álbum, venda repetidas
+    no mercado e troque com outros colecionadores.</p>
     <div class="chips">
-        <span class="chip">🎁 Pacotes a partir de <b>R$ 2,00</b></span>
+        <span class="chip">🎁 Pacotinhos a partir de <b>R$ 2,00</b></span>
         <span class="chip">🔄 Troque figurinhas</span>
         <span class="chip">💰 Venda repetidas</span>
         <span class="chip">🏆 Desbloqueie conquistas</span>
@@ -519,9 +738,10 @@ body{overflow-x:hidden}
         </div>
         <div class="barra"><div class="barra-fill" id="progressoFill"></div></div>
         <div class="legenda">
-            <span>🆕 Diferentes: <b id="legendaDiferentes">0</b></span>
+            <span>🆕 Descobertas: <b id="legendaDiferentes">0</b></span>
             <span>🔁 Repetidas: <b id="legendaRepetidas">0</b></span>
-            <span>⭐ Raras: <b id="legendaRaras">0</b></span>
+            <span>🎁 Pacotes abertos: <b id="legendaPacotes">0</b></span>
+            <span>✨ Especiais: <b id="legendaEspeciais">0</b></span>
         </div>
         <div id="albumStatus" class="hidden" style="margin-top:12px;"></div>
     </div>
@@ -543,7 +763,24 @@ body{overflow-x:hidden}
     <!-- ÁLBUM -->
     <section class="secao ativa" id="secao-album">
         <div class="secao-titulo">Meu Álbum</div>
-        <div class="secao-sub">Toque numa figurinha para ver detalhes.</div>
+        <div class="secao-sub">Toque numa figurinha para ver os detalhes. Figurinhas bloqueadas aparecem escondidas — abra pacotinhos para descobri-las!</div>
+        <div class="album-filtros">
+            <div class="af-linha">
+                <input id="albumBusca" placeholder="🔎 Buscar animal..." oninput="carregarAlbum()" style="flex:1;min-width:180px;max-width:340px">
+                <div class="resultado" id="albumResultado"></div>
+            </div>
+            <div class="filtro-chips" id="albumFiltroChips">
+                <button class="filtro-chip ativa" data-f="todas" onclick="setAlbumFiltro('todas',this)">TODAS</button>
+                <button class="filtro-chip" data-f="COMUM" onclick="setAlbumFiltro('COMUM',this)">COMUNS</button>
+                <button class="filtro-chip" data-f="INCOMUM" onclick="setAlbumFiltro('INCOMUM',this)">INCOMUNS</button>
+                <button class="filtro-chip" data-f="RARA" onclick="setAlbumFiltro('RARA',this)">RARAS</button>
+                <button class="filtro-chip" data-f="EPICA" onclick="setAlbumFiltro('EPICA',this)">ÉPICAS</button>
+                <button class="filtro-chip" data-f="LENDARIA" onclick="setAlbumFiltro('LENDARIA',this)">LENDÁRIAS</button>
+                <button class="filtro-chip" data-f="MITICA" onclick="setAlbumFiltro('MITICA',this)">MÍTICAS</button>
+                <button class="filtro-chip" data-f="ouro" onclick="setAlbumFiltro('ouro',this)">◈ OURO</button>
+                <button class="filtro-chip" data-f="cromada" onclick="setAlbumFiltro('cromada',this)">◇ CROMADAS</button>
+            </div>
+        </div>
         <div class="grid-cards" id="albumGrid"></div>
     </section>
 
@@ -639,6 +876,12 @@ body{overflow-x:hidden}
 
 <div class="toast-wrap" id="toastWrap"></div>
 
+<!-- ===== EXPERIÊNCIA DE ABERTURA DE PACOTE ===== -->
+<div class="pack-overlay hidden" id="packOverlay" onclick="packEtapaClicada()">
+    <div class="pack-burst" id="packBurst"></div>
+    <div class="pack-stage" id="packStage"></div>
+</div>
+
 <!-- ===== MODAL ===== -->
 <div class="modal-overlay hidden" id="modalOverlay" onclick="fecharModal(event)">
     <div class="modal" onclick="event.stopPropagation()">
@@ -648,6 +891,7 @@ body{overflow-x:hidden}
     </div>
 </div>
 
+<script src="/js/colecao-ui.js"></script>
 <script>
 /* =========================================================
    MEGAOUTDOOR COLECIONÁVEIS — FRONTEND
@@ -715,8 +959,9 @@ function nomeRaridade(r){
 }
 function cardModalArte(card){
     const r = card.rarity;
-    const e = emojiRaridade(r);
-    return '<div class="modal-arte r-' + r + '"><span style="font-size:90px">' + e + '</span></div>';
+    return '<div class="modal-arte modal-arte-premium r-' + r + '">' +
+        ColecaoUI.arteHtml(card, "cc-arte-grande", { particulas: 2 }) +
+    '</div>';
 }
 
 function atualizarHeader(){
@@ -801,16 +1046,21 @@ async function carregarAlbum(){
         MEU_ALBUM = d;
         const cards = d.cards || [];
         const total = d.colecao ? d.colecao.total : 100;
-        const diferentes = cards.filter(c => c.quantidade > 0).length;
-        const repetidas = cards.reduce((a,c) => a + Math.max(0, c.quantidade - 1), 0);
-        const raras = cards.filter(c => c.quantidade > 0 && ["RARA","EPICA","LENDARIA","MITICA"].includes(c.rarity)).length;
-        document.getElementById("progressoNum").textContent = diferentes + "/" + total;
-        document.getElementById("progressoFill").style.width = Math.round(diferentes/total*100) + "%";
-        document.getElementById("legendaDiferentes").textContent = diferentes;
-        document.getElementById("legendaRepetidas").textContent = repetidas;
-        document.getElementById("legendaRaras").textContent = raras;
+
+        /* estatísticas visuais (descobertas / repetidas / especiais / pacotes) */
+        const res = ColecaoUI.resumoColecao(cards, total);
+        document.getElementById("progressoNum").textContent = res.diferentes + "/" + total;
+        document.getElementById("progressoFill").style.width = res.progresso + "%";
+        document.getElementById("legendaDiferentes").textContent = res.diferentes;
+        document.getElementById("legendaRepetidas").textContent = res.repetidas;
+        document.getElementById("legendaEspeciais").textContent = res.especiais;
+        try {
+            const pf = await apiGet("/api/colecionaveis/perfil");
+            document.getElementById("legendaPacotes").textContent = (pf.perfil && pf.perfil.pacotes_abertos) || 0;
+        } catch(e){}
+
         const statusEl = document.getElementById("albumStatus");
-        if (diferentes >= total) {
+        if (res.completo) {
             statusEl.classList.remove("hidden");
             statusEl.innerHTML = '<div style="background:linear-gradient(90deg,rgba(46,204,113,.18),rgba(255,212,0,.12));' +
                 'border:1px solid rgba(46,204,113,.5);border-radius:12px;padding:12px 16px;text-align:center;">' +
@@ -821,29 +1071,34 @@ async function carregarAlbum(){
             statusEl.classList.remove("hidden");
             statusEl.innerHTML = '<div style="background:rgba(255,122,0,.08);border:1px solid rgba(255,122,0,.35);' +
                 'border-radius:12px;padding:10px 16px;text-align:center;font-size:12px;color:var(--muted);">' +
-                '🎯 Faltam <b style="color:var(--laranja);">' + (total - diferentes) + '</b> figurinha(s) para completar o álbum. ' +
-                'Abra pacotes, compre no mercado ou troque para acelerar!</div>';
+                '🎯 Faltam <b style="color:var(--laranja);">' + (total - res.diferentes) + '</b> figurinha(s) para completar o álbum. ' +
+                'Abra pacotinhos, compre no mercado ou troque para acelerar!</div>';
         }
-        grid.innerHTML = cards.map(cardHtml).join("");
+
+        /* filtros + pesquisa do álbum */
+        const busca = document.getElementById("albumBusca").value;
+        const filtradas = ColecaoUI.filtrarCards(cards, { filtro: albumFiltro, busca });
+        document.getElementById("albumResultado").textContent = filtradas.length + " de " + cards.length + " figurinha(s)";
+        grid.innerHTML = filtradas.map(cardHtml).join("")
+            || '<div style="color:var(--muted);padding:20px">Nenhuma figurinha encontrada com esse filtro.</div>';
     } catch(e){
         grid.innerHTML = '<div style="color:var(--muted);padding:20px">' + (e.message || "Erro") + '</div>';
     }
 }
 
+let albumFiltro = "todas";
+function setAlbumFiltro(f, btn){
+    albumFiltro = f;
+    document.querySelectorAll("#albumFiltroChips .filtro-chip").forEach(b => b.classList.toggle("ativa", b === btn));
+    carregarAlbum();
+}
+
+function mostrarBloqueada(){
+    toast("🔒 Figurinha bloqueada. Abra um pacotinho para descobrir!", "info");
+}
+
 function cardHtml(card){
-    const tem = card.quantidade > 0;
-    const r = card.rarity;
-    if (!tem) {
-        return '<div class="card-vazia" onclick="abrirModalFigurinha(' + card.id + ')"><span>?</span><span>#' + String(card.number).padStart(3,"0") + '</span></div>';
-    }
-    return '<div class="card-col r-' + r + '" onclick="abrirModalFigurinha(' + card.id + ')">' +
-        '<div class="card-arte">' + emojiRaridade(r) + '</div>' +
-        '<div class="card-info">' +
-            '<div class="pill-raridade pill-' + r + '">' + nomeRaridade(r) + '</div>' +
-            '<div class="card-numero">#' + String(card.number).padStart(3,"0") + '</div>' +
-            '<div class="card-nome">' + esc(card.name) + '</div>' +
-            '<div class="card-qtd">Possui: <b>' + card.quantidade + 'x</b></div>' +
-        '</div></div>';
+    return ColecaoUI.cardColecaoHtml(card);
 }
 function esc(s){
     return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
@@ -946,7 +1201,7 @@ async function carregarPacks(){
                 '<div class="preco">' + fmtR$(p.price) + ' <small>por pacote</small></div>' +
                 '<div class="desc">' + esc(p.description) + '</div>' +
                 '<div class="qtd">Contém <b>' + p.sticker_quantity + '</b> figurinhas</div>' +
-                '<button class="btn btn-amarelo" onclick="comprarPacote(' + p.id + ')">ABRIR PACOTE</button>' +
+                '<button class="btn btn-amarelo" onclick="comprarPacote(' + p.id + ')">🎁 ABRIR PACOTINHO</button>' +
             '</div>'
         ).join("");
         /* probabilidades */
@@ -1159,17 +1414,25 @@ async function abrirModalFigurinha(cardId){
         const r = c.rarity;
         overlay.classList.remove("hidden");
         document.getElementById("modalArte").outerHTML = cardModalArte(c);
-        /* re-obter referência */
-        const novoArte = overlay.querySelector(".modal-arte");
-        novoArte.style.height = "230px";
-        novoArte.style.fontSize = "90px";
-        novoArte.querySelector("span").style.fontSize = "90px";
 
         let html = '<div class="num">#' + String(c.number).padStart(3,"0") + ' • ' + nomeRaridade(r) + '</div>';
         html += '<h2>' + esc(c.name) + '</h2>';
+        html += (c.scientific_name
+            ? '<div style="font-size:12px;font-style:italic;color:var(--muted);text-align:center;margin-bottom:4px">' + esc(c.scientific_name) + '</div>'
+            : "");
+        html += (c.habitat || c.peso
+            ? '<div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:10px">' +
+                (c.habitat ? '🌍 ' + esc(c.habitat) : "") +
+                (c.habitat && c.peso ? ' • ' : "") +
+                (c.peso ? '⚖️ ' + esc(c.peso) : "") +
+              '</div>'
+            : "");
         html += '<div class="desc">' + esc(c.description || "Sem descrição.") + '</div>';
         html += '<div class="qtd-linha">' +
             '<span class="pill-raridade pill-' + r + '">' + nomeRaridade(r) + '</span>' +
+            (ColecaoUI.finishDeCard(c) !== "normal"
+                ? '<span class="pill-raridade cc-finish-badge ' + (ColecaoUI.finishDeCard(c) === "ouro" ? "cc-fin-ouro" : "cc-fin-cromada") + '">' + (ColecaoUI.finishDeCard(c) === "ouro" ? "◈ OURO" : "◇ CROMADA") + '</span>'
+                : "") +
             '<span class="pill-raridade" style="background:rgba(255,255,255,.08)">📦 Em estoque: <b>' + (c.quantidade||0) + 'x</b></span>' +
             '<span class="pill-raridade" style="background:rgba(255,255,255,.08)">🎁 Total: <b>' + (c.total_em_circulacao||0) + 'x</b></span>' +
         '</div>';
@@ -1400,14 +1663,14 @@ function mostrarQr(d, tipo){
         esc(d.payload || (d.ticketUrl || d.paymentId || "—")) + '</div>';
     html += '<div class="desc">Valor: <b style="color:var(--amarelo)">' + fmtR$(d.valor) + '</b> • Pedido: ' + esc(d.externalReference || d.orderId) + '</div>';
     html += '<div style="display:flex;gap:8px;margin-top:14px">' +
-        '<button class="btn btn-amarelo" onclick="iniciarPolling(\'' + esc(d.orderId) + '\')">JÁ PAGUEI</button>' +
+        '<button class="btn btn-amarelo" onclick="iniciarPolling(\'' + esc(d.orderId) + '\',\'' + esc(tipo || "") + '\')">JÁ PAGUEI</button>' +
         '<button class="btn btn-ghost" onclick="fecharModal()">Fechar</button>' +
     '</div>';
     corpo.innerHTML = html;
 }
 
 let pollTimer = null;
-async function iniciarPolling(orderId){
+async function iniciarPolling(orderId, tipo){
     if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
     const corpo = document.getElementById("modalBody");
     corpo.innerHTML = '<div class="num">⏳ AGUARDANDO CONFIRMAÇÃO</div><h2>Verificando pagamento...</h2>' +
@@ -1417,18 +1680,209 @@ async function iniciarPolling(orderId){
         try {
             const d = await apiGet("/api/colecionaveis/pagamento/" + orderId);
             if (d.status === "RECEIVED") {
-                toast("Pagamento confirmado! Suas figurinhas chegaram. 🎉", "ok");
-                fecharModal();
-                carregarAlbum();
-                carregarAcervo();
-                carregarTrocas();
-                carregarMercado(1);
+                /* CORREÇÃO 7: pacote pago → revela o sorteio JÁ persistido
+                   (a mesma abertura a cada refresh). */
+                if (tipo === "pack" && d.pacote && d.pacote.figurinhas && d.pacote.figurinhas.length) {
+                    toast("Pagamento confirmado! Pacote aberto. 🎉", "ok");
+                    revelarPacote(d.pacote);
+                } else {
+                    toast("Pagamento confirmado! Suas figurinhas chegaram. 🎉", "ok");
+                    fecharModal();
+                    carregarAlbum();
+                    carregarAcervo();
+                    carregarTrocas();
+                    carregarMercado(1);
+                }
                 return;
             }
         } catch(e){}
         pollTimer = setTimeout(checar, 4000);
     };
     checar();
+}
+
+/* ===== EXPERIÊNCIA DE ABERTURA DE PACOTE (MILHÃO DOOR) ===== */
+let pacoteEstado = null;
+let pacoteTimers = [];
+
+function pacoteLimparTimers(){
+    (pacoteTimers || []).forEach(t => clearTimeout(t));
+    pacoteTimers = [];
+}
+function pacoteRoda(fn, ms){ pacoteTimers.push(setTimeout(fn, ms)); }
+
+function revelarPacote(pacote){
+    pacoteLimparTimers();
+    const figs = (pacote && pacote.figurinhas) || [];
+    /* posse após abertura do pacote (para nova/repetida) */
+    const posse = {};
+    ((MEU_ALBUM && MEU_ALBUM.cards) || []).forEach(c => { posse[c.id] = c.quantidade; });
+    for (const c of figs) { posse[c.id] = (posse[c.id] || 0) + 1; }
+    const marcadas = ColecaoUI.marcarNovidades(posse, figs);
+    const melhor = ColecaoUI.melhorDoPacote(figs);
+    const iMelhor = figs.indexOf(melhor);
+    pacoteEstado = {
+        figs: figs.map((c, i) => ({ card: c, marc: marcadas[i] })),
+        idx: 0,
+        melhor: melhor,
+        melhorMarc: marcadas[iMelhor] || { nova: false, repetida: true },
+        etapa: "fechado",
+        nome: (pacote && pacote.nome) || "Pacote"
+    };
+    const overlay = document.getElementById("packOverlay");
+    overlay.classList.remove("hidden", "escuro", "abrindo");
+    document.body.style.overflow = "hidden";
+    renderPackFechado();
+}
+
+function packEtapaClicada(){
+    if (!pacoteEstado) return;
+    const etapa = pacoteEstado.etapa;
+    if (etapa === "fechado") {
+        pacoteEstado.etapa = "rasgando";
+        const pf = document.getElementById("packFechado");
+        if (pf) pf.classList.add("rasgando");
+        document.getElementById("packOverlay").classList.add("abrindo");
+        pacoteRoda(renderPackLuz, 520);
+    } else if (etapa === "rasgando" || etapa === "luz") {
+        /* avança sozinho pelos timers */
+    } else if (etapa === "slotBack") {
+        revelarSlot();
+    } else if (etapa === "slotReveal") {
+        avancarPacote();
+    } else if (etapa === "grande") {
+        renderPackResumo();
+    } else if (etapa === "resumo") {
+        fecharExperienciaPacote();
+    }
+}
+
+function renderPackFechado(){
+    const stage = document.getElementById("packStage");
+    stage.innerHTML = '<div class="pack-titulo">🎁 ' + esc(pacoteEstado.nome) + '</div>' +
+        '<div class="pack-fechado" id="packFechado">' +
+            '<span class="pf-icone">🃏</span>' +
+            '<span class="pf-nome">MILHÃO DOOR</span>' +
+            '<span class="pf-sub">ANIMAIS DO MUNDO</span>' +
+            '<span class="pf-qtd">' + pacoteEstado.figs.length + ' FIGURINHAS</span>' +
+            '<span class="pf-tap">TOQUE PARA RASGAR ✂️</span>' +
+        '</div>';
+}
+
+function renderPackLuz(){
+    const stage = document.getElementById("packStage");
+    stage.innerHTML = '<div class="pack-luz"></div>';
+    pacoteEstado.etapa = "luz";
+    pacoteRoda(renderSlotBack, 900);
+}
+
+function renderSlotBack(){
+    const stage = document.getElementById("packStage");
+    stage.innerHTML = '<div class="pack-titulo">🎁 ' + esc(pacoteEstado.nome) + '</div>' +
+        '<div class="slot-carta" onclick="packEtapaClicada()">' +
+            '<span class="sc-icone">🐾</span>' +
+            '<span class="sc-texto">TOCAR PARA REVELAR</span>' +
+        '</div>' +
+        '<div class="pack-contagem">Figurinha ' + (pacoteEstado.idx + 1) + ' de ' + pacoteEstado.figs.length + '</div>';
+    pacoteEstado.etapa = "slotBack";
+    pacoteRoda(revelarSlot, 8000);
+}
+
+function revelarSlot(){
+    if (!pacoteEstado || (pacoteEstado.etapa !== "slotBack" && pacoteEstado.etapa !== "slotReveal")) return;
+    const item = pacoteEstado.figs[pacoteEstado.idx];
+    const stage = document.getElementById("packStage");
+    stage.innerHTML = '<div class="pack-titulo">🎁 ' + esc(pacoteEstado.nome) + '</div>' +
+        ColecaoUI.cardRevelacaoHtml(item.card, pacoteEstado.idx, item.marc) +
+        '<div class="pack-contagem">Figurinha ' + (pacoteEstado.idx + 1) + ' de ' + pacoteEstado.figs.length + ' · Toque para continuar</div>';
+    pacoteEstado.etapa = "slotReveal";
+    pacoteRoda(avancarPacote, 6500);
+}
+
+function avancarPacote(){
+    if (!pacoteEstado) return;
+    pacoteEstado.idx++;
+    if (pacoteEstado.idx >= pacoteEstado.figs.length) {
+        const m = pacoteEstado.melhor;
+        const fin = m ? ColecaoUI.finishDeCard(m) : "normal";
+        const especial = m && (fin !== "normal" || m.rarity === "LENDARIA" || m.rarity === "MITICA");
+        if (especial) { renderPackGrande(); } else { renderPackResumo(); }
+        return;
+    }
+    renderSlotBack();
+}
+
+function renderPackGrande(){
+    pacoteEstado.etapa = "grande";
+    const m = pacoteEstado.melhor;
+    const fin = ColecaoUI.finishDeCard(m);
+    let msg, msgCls;
+    if (fin === "ouro") { msg = "✨ VOCÊ ENCONTROU UMA FIGURINHA OURO!"; msgCls = "grande-msg-ouro"; }
+    else if (fin === "cromada") { msg = "🪩 VOCÊ ENCONTROU UMA FIGURINHA CROMADA!"; msgCls = "grande-msg-cromada"; }
+    else { msg = "🏆 FIGURINHA " + ColecaoUI.nomeRaridade(m.rarity).toUpperCase() + "!"; msgCls = "grande-msg-lendaria"; }
+    const badge = pacoteEstado.melhorMarc.nova
+        ? '<span class="grande-nova">✨ NOVA!</span>'
+        : '<span class="grande-rep">🔁 REPETIDA</span>';
+    const overlay = document.getElementById("packOverlay");
+    overlay.classList.add("escuro");
+    const gp = [];
+    const qtd = fin === "cromada" ? 30 : 20;
+    for (let i = 0; i < qtd; i++) {
+        const dx = ((i * 53) % 360) - 180;
+        const dy = -60 - ((i * 31) % 220);
+        gp.push('<span class="gp gp-' + (fin === "cromada" ? "cromada" : "ouro") + '" style="left:50%;top:38%;--dx:' + dx + 'px;--dy:' + dy + 'px;animation-delay:' + ((i % 6) * 0.08).toFixed(2) + 's;width:' + (6 + (i % 5)) + 'px;height:' + (6 + (i % 5)) + 'px"></span>');
+    }
+    const stage = document.getElementById("packStage");
+    stage.innerHTML = gp.join("") +
+        '<div class="pack-grande">' +
+            ColecaoUI.cardGrandeHtml(m) +
+            '<div class="grande-msg ' + msgCls + '">' + msg + '</div>' +
+            badge +
+            '<div class="grande-tap">Toque para ver o resumo do pacote →</div>' +
+        '</div>';
+    pacoteRoda(renderPackResumo, 9000);
+}
+
+function renderPackResumo(){
+    if (!pacoteEstado) return;
+    pacoteEstado.etapa = "resumo";
+    const st = ColecaoUI.packResumo(pacoteEstado.figs.map(f => f.marc));
+    /* coleção atualizada com as figurinhas recém-abertas */
+    const base = ((MEU_ALBUM && MEU_ALBUM.cards) || []).map(c => Object.assign({}, c, { quantidade: Number(c.quantidade || 0) }));
+    for (const f of pacoteEstado.figs) {
+        const c = base.find(x => x.id === f.card.id);
+        if (c) c.quantidade += 1;
+    }
+    const res = ColecaoUI.resumoColecao(base);
+    const stage = document.getElementById("packStage");
+    stage.innerHTML = '<div class="pack-titulo">🎉 PACOTE ABERTO!</div>' +
+        '<div class="pack-resumo">' +
+            '<div class="rev-grid">' + pacoteEstado.figs.map((f, i) => ColecaoUI.cardRevelacaoHtml(f.card, i, f.marc)).join("") + '</div>' +
+            '<div class="pack-resumo-total">' +
+                '<span class="pr-box pr-novo">✨ Novas<br><b>' + st.novas + '</b></span>' +
+                '<span class="pr-box pr-rep">🔁 Repetidas<br><b>' + st.repetidas + '</b></span>' +
+                '<span class="pr-box pr-col">📖 Na coleção<br><b>' + res.diferentes + '/' + (res.total || 100) + '</b></span>' +
+            '</div>' +
+            '<div class="modal-acoes" style="margin-top:18px">' +
+                '<button class="btn btn-amarelo" onclick="fecharExperienciaPacote()">CONTINUAR ➜</button>' +
+            '</div>' +
+        '</div>';
+    pacoteLimparTimers();
+}
+
+function fecharExperienciaPacote(){
+    pacoteLimparTimers();
+    pacoteEstado = null;
+    const overlay = document.getElementById("packOverlay");
+    overlay.classList.add("hidden");
+    overlay.classList.remove("escuro", "abrindo");
+    document.getElementById("packStage").innerHTML = "";
+    document.body.style.overflow = "";
+    toast("🎉 Figurinhas adicionadas à sua coleção!", "ok");
+    carregarAlbum();
+    carregarAcervo();
+    carregarTrocas();
+    carregarMercado(1);
 }
 
 /* =========================================================

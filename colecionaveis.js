@@ -246,6 +246,7 @@ module.exports = function criarModuloColecionaveis(deps) {
         consultarOrderMercadoPago,
         extrairDadosPagamento,
         statusOrderPago,
+        orderPagaMercadoPago,
         paraCentavos,
         registrarLog,
         normalizarDadosComprador,
@@ -1649,7 +1650,7 @@ module.exports = function criarModuloColecionaveis(deps) {
             /* Consulta no MP pelo id numérico real da Order. */
             const mpConsultaId = dono.rows[0].mp_order_id || orderId;
             const ordem = await consultarOrderMercadoPago(mpConsultaId);
-            const pago = statusOrderPago(ordem.status);
+            const pago = orderPagaMercadoPago(ordem);
 
             if (pago) {
                 const resultado = await processarPagamento({

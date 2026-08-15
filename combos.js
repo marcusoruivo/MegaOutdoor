@@ -68,6 +68,7 @@ module.exports = function criarModuloCombos(deps) {
         criarOrderMercadoPago,
         consultarOrderMercadoPago,
         statusOrderPago,
+        orderPagaMercadoPago,
         paraCentavos,
         registrarLog,
         obterPool,
@@ -777,7 +778,7 @@ module.exports = function criarModuloCombos(deps) {
 
             const mpConsultaId = dono.rows[0].mp_order_id || orderId;
             const ordem = await consultarOrderMercadoPago(mpConsultaId);
-            const pago = statusOrderPago(ordem.status);
+            const pago = orderPagaMercadoPago(ordem);
 
             if (pago) {
                 const resultado = await processarPagamento({

@@ -880,6 +880,263 @@ async function main() {
         wCanc.r.status === 200 && !dbCanc[String(espCanc)],
         "status=" + wCanc.r.status + " existe=" + (!!dbCanc[String(espCanc)]));
 
+    /* =========================================================
+       CORREÇÃO 6 — Orders API: order.status="processed" (status_detail
+       "accredited") = PAGO. Reproduz o problema REAL de produção:
+       webhook order.processed + GET /v1/orders/{id} retornando
+       processed/accredited -> a Order DEVE ser reconhecida como paga.
+    ========================================================= */
+
+    /* 37) CENÁRIO REAL: Order processed + status_detail accredited +
+       payment processed + status_detail accredited + paid_amount certo
+       -> PAGO (espaço liberado). */
+    const espProc = 999970;
+    const ckProc = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espProc], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdProc = String(ckProc.body.mpOrderId);
+    const ordemProc = ordersCriadas.get(dataIdProc);
+    ordemProc.status = "processed";
+    ordemProc.status_detail = "accredited";
+    ordemProc.total_paid_amount = ordemProc.total_amount;
+    ordemProc.transactions.payments[0].status = "processed";
+    ordemProc.transactions.payments[0].status_detail = "accredited";
+    ordemProc.transactions.payments[0].paid_amount = ordemProc.total_amount;
+    const tsProc = Math.floor(Date.now() / 1000);
+    const ridProc = "req-proc-" + Date.now();
+    const wProc = await reqJson(
+        BASE + "/webhooks/mercadopago?data.id=" + dataIdProc + "&type=order",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-signature": "ts=" + tsProc + ",v1=" + assinar(dataIdProc, tsProc, ridProc),
+                "x-request-id": ridProc
+            },
+            body: JSON.stringify({ type: "order", action: "order.processed", live_mode: true, data: { id: dataIdProc } })
+        });
+    await sleep(700);
+    const dbProc = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("37) CENÁRIO REAL processed/accredited -> PAGO + espaço pago",
+        wProc.r.status === 200 && wProc.body.received === true &&
+        dbProc[String(espProc)] && dbProc[String(espProc)].status === "paid",
+        "status=" + wProc.r.status + " body=" + JSON.stringify(wProc.body) +
+        " espaço=" + (dbProc[String(espProc)] && dbProc[String(espProc)].status));
+
+    /* 37b) webhook duplicado com processed -> idempotente (paidAt inalterado) */
+    const paidAtProc1 = dbProc[String(espProc)] && dbProc[String(espProc)].paidAt;
+    const tsProcDup = Math.floor(Date.now() / 1000);
+    const ridProcDup = "req-proc-dup-" + Date.now();
+    const wProcDup = await reqJson(
+        BASE + "/webhooks/mercadopago?data.id=" + dataIdProc + "&type=order",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-signature": "ts=" + tsProcDup + ",v1=" + assinar(dataIdProc, tsProcDup, ridProcDup),
+                "x-request-id": ridProcDup
+            },
+            body: JSON.stringify({ type: "order", action: "order.processed", live_mode: true, data: { id: dataIdProc } })
+        });
+    await sleep(700);
+    const dbProcDup = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("37b) processed duplicado -> idempotente, paidAt inalterado",
+        wProcDup.r.status === 200 &&
+        dbProcDup[String(espProc)] && dbProcDup[String(espProc)].status === "paid" &&
+        dbProcDup[String(espProc)].paidAt === paidAtProc1,
+        "status=" + wProcDup.r.status +
+        " paidAt igual=" + (dbProcDup[String(espProc)].paidAt === paidAtProc1));
+
+    /* 38) order.status="accredited" (variação) -> PAGO */
+    const espAcred = 999969;
+    const ckAcred = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espAcred], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdAcred = String(ckAcred.body.mpOrderId);
+    const ordemAcred = ordersCriadas.get(dataIdAcred);
+    ordemAcred.status = "accredited";
+    ordemAcred.status_detail = "accredited";
+    ordemAcred.transactions.payments[0].status = "processed";
+    ordemAcred.transactions.payments[0].status_detail = "accredited";
+    const tsAcred = Math.floor(Date.now() / 1000);
+    const ridAcred = "req-acred-" + Date.now();
+    const wAcred = await reqJson(
+        BASE + "/webhooks/mercadopago?data.id=" + dataIdAcred + "&type=order",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-signature": "ts=" + tsAcred + ",v1=" + assinar(dataIdAcred, tsAcred, ridAcred),
+                "x-request-id": ridAcred
+            },
+            body: JSON.stringify({ type: "order", action: "order.processed", live_mode: true, data: { id: dataIdAcred } })
+        });
+    await sleep(700);
+    const dbAcred = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("38) order.status accredited -> PAGO + espaço pago",
+        wAcred.r.status === 200 &&
+        dbAcred[String(espAcred)] && dbAcred[String(espAcred)].status === "paid",
+        "status=" + wAcred.r.status +
+        " espaço=" + (dbAcred[String(espAcred)] && dbAcred[String(espAcred)].status));
+
+    /* 39) action_required/waiting_transfer (ANTES do pagamento) -> NÃO PAGO */
+    const espProcPend = 999968;
+    const ckProcPend = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espProcPend], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdProcPend = String(ckProcPend.body.mpOrderId);
+    const ordemProcPend = ordersCriadas.get(dataIdProcPend);
+    ordemProcPend.status = "action_required";
+    ordemProcPend.status_detail = "waiting_transfer";
+    ordemProcPend.transactions.payments[0].status = "action_required";
+    ordemProcPend.transactions.payments[0].status_detail = "action_required";
+    const tsProcPend = Math.floor(Date.now() / 1000);
+    const ridProcPend = "req-proc-pend-" + Date.now();
+    const wProcPend = await reqJson(
+        BASE + "/webhooks/mercadopago?data.id=" + dataIdProcPend + "&type=order",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-signature": "ts=" + tsProcPend + ",v1=" + assinar(dataIdProcPend, tsProcPend, ridProcPend),
+                "x-request-id": ridProcPend
+            },
+            body: JSON.stringify({ type: "order", action: "order.action_required", live_mode: true, data: { id: dataIdProcPend } })
+        });
+    await sleep(700);
+    const dbProcPend = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("39) action_required/waiting_transfer -> NÃO PAGO (espaço reservado)",
+        wProcPend.r.status === 200 && wProcPend.body.received === true &&
+        dbProcPend[String(espProcPend)] && dbProcPend[String(espProcPend)].status === "reserved",
+        "status=" + wProcPend.r.status +
+        " espaço=" + (dbProcPend[String(espProcPend)] && dbProcPend[String(espProcPend)].status));
+
+    /* 40) order processed MAS payment refunded -> NÃO PAGO (a transação vale
+       mais que o status da Order: pagamento devolvido nunca é pago). */
+    const espProcRef = 999967;
+    const ckProcRef = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espProcRef], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdProcRef = String(ckProcRef.body.mpOrderId);
+    const ordemProcRef = ordersCriadas.get(dataIdProcRef);
+    ordemProcRef.status = "processed";
+    ordemProcRef.status_detail = "accredited";
+    ordemProcRef.transactions.payments[0].status = "refunded";
+    ordemProcRef.transactions.payments[0].status_detail = "refunded";
+    const tsProcRef = Math.floor(Date.now() / 1000);
+    const ridProcRef = "req-proc-ref-" + Date.now();
+    const wProcRef = await reqJson(
+        BASE + "/webhooks/mercadopago?data.id=" + dataIdProcRef + "&type=order",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-signature": "ts=" + tsProcRef + ",v1=" + assinar(dataIdProcRef, tsProcRef, ridProcRef),
+                "x-request-id": ridProcRef
+            },
+            body: JSON.stringify({ type: "order", action: "order.processed", live_mode: true, data: { id: dataIdProcRef } })
+        });
+    await sleep(700);
+    const dbProcRef = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("40) processed mas payment refunded -> NÃO PAGO",
+        wProcRef.r.status === 200 &&
+        dbProcRef[String(espProcRef)] && dbProcRef[String(espProcRef)].status === "reserved",
+        "status=" + wProcRef.r.status +
+        " espaço=" + (dbProcRef[String(espProcRef)] && dbProcRef[String(espProcRef)].status));
+
+    /* 41) order.status="failed" -> NÃO PAGO (espaço continua reservado) */
+    const espFail = 999966;
+    const ckFail = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espFail], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdFail = String(ckFail.body.mpOrderId);
+    ordersCriadas.get(dataIdFail).status = "failed";
+    const tsFail = Math.floor(Date.now() / 1000);
+    const ridFail = "req-fail-" + Date.now();
+    const wFail = await reqJson(
+        BASE + "/webhooks/mercadopago?data.id=" + dataIdFail + "&type=order",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-signature": "ts=" + tsFail + ",v1=" + assinar(dataIdFail, tsFail, ridFail),
+                "x-request-id": ridFail
+            },
+            body: JSON.stringify({ type: "order", action: "order.rejected", live_mode: true, data: { id: dataIdFail } })
+        });
+    await sleep(700);
+    const dbFail = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("41) order failed -> NÃO PAGO",
+        wFail.r.status === 200 &&
+        dbFail[String(espFail)] && dbFail[String(espFail)].status === "reserved",
+        "status=" + wFail.r.status +
+        " espaço=" + (dbFail[String(espFail)] && dbFail[String(espFail)].status));
+
+    /* 42) order.status="expired" -> NÃO PAGO (regra existente: libera reserva) */
+    const espExp = 999965;
+    const ckExp = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espExp], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdExp = String(ckExp.body.mpOrderId);
+    ordersCriadas.get(dataIdExp).status = "expired";
+    const tsExp = Math.floor(Date.now() / 1000);
+    const ridExp = "req-exp-" + Date.now();
+    const wExp = await reqJson(
+        BASE + "/webhooks/mercadopago?data.id=" + dataIdExp + "&type=order",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-signature": "ts=" + tsExp + ",v1=" + assinar(dataIdExp, tsExp, ridExp),
+                "x-request-id": ridExp
+            },
+            body: JSON.stringify({ type: "order", action: "order.rejected", live_mode: true, data: { id: dataIdExp } })
+        });
+    await sleep(700);
+    const dbExp = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("42) order expired -> NÃO PAGO (reserva liberada pela regra)",
+        wExp.r.status === 200 && !dbExp[String(espExp)],
+        "status=" + wExp.r.status + " existe=" + (!!dbExp[String(espExp)]));
+
+    /* 43) botão "Já paguei o PIX" consulta a MESMA Order real: processed ->
+       payment-status devolve RECEIVED e marca o espaço pago. */
+    const espPollProc = 999964;
+    const ckPollProc = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espPollProc], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdPollProc = String(ckPollProc.body.mpOrderId);
+    const ordemPollProc = ordersCriadas.get(dataIdPollProc);
+    ordemPollProc.status = "processed";
+    ordemPollProc.status_detail = "accredited";
+    ordemPollProc.total_paid_amount = ordemPollProc.total_amount;
+    ordemPollProc.transactions.payments[0].status = "processed";
+    ordemPollProc.transactions.payments[0].status_detail = "accredited";
+    ordemPollProc.transactions.payments[0].paid_amount = ordemPollProc.total_amount;
+    const wPollProc = await reqJson(BASE + "/api/payment-status/" + dataIdPollProc, {
+        headers: { "Authorization": "Bearer " + userTok }
+    });
+    await sleep(700);
+    const dbPollProc = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("43) botão consulta Order real processed -> RECEIVED + espaço pago",
+        wPollProc.r.status === 200 && wPollProc.body.status === "RECEIVED" &&
+        dbPollProc[String(espPollProc)] && dbPollProc[String(espPollProc)].status === "paid",
+        "status=" + wPollProc.r.status + " st=" + wPollProc.body.status +
+        " espaço=" + (dbPollProc[String(espPollProc)] && dbPollProc[String(espPollProc)].status));
+
     /* ---- resultado ---- */
     const falhas = log.filter(l => l.startsWith("FAIL"));
     console.log("\n=== RESULTADO test-col-webhook ===");

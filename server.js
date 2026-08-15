@@ -2127,7 +2127,8 @@ async function consultarOrderMercadoPago(orderId) {
 }
 
 function statusOrderPago(status) {
-    return status === "paid" || status === "approved";
+    return status === "paid" || status === "approved" ||
+           status === "processed" || status === "accredited";
 }
 
 /* Orders que NUNCA serão pagas: libera a reserva imediatamente
@@ -2139,6 +2140,41 @@ function statusOrderRejeitada(status) {
         status === "cancelled" ||
         status === "expired"
     );
+}
+
+/* CORREÇÃO 6 — Decisão definitiva de pagamento para a resposta REAL da
+   API Orders do Mercado Pago (GET /v1/orders/{id}).
+   A Orders API usa order.status="processed" (com status_detail
+   "accredited") quando o PIX é pago/creditado — e NÃO "approved".
+   Para os status "processed"/"accredited" exigimos a validação da
+   TRANSAÇÃO em transactions.payments: payment.status processado/
+   creditado/aprovado E payment.status_detail NÃO pendente. Assim
+   nunca marcamos pago apenas pelo status da Order (ex.: um PIX pago
+   mas com transação refunded/cancelada NÃO é pago). */
+function orderPagaMercadoPago(order) {
+    if (!order || typeof order !== "object") return false;
+    const status = String(order.status || "");
+    if (statusOrderRejeitada(status)) return false;
+    if (!statusOrderPago(status)) return false;
+    if (status === "paid" || status === "approved") return true;
+
+    const payments = order?.transactions?.payments || order?.payments || [];
+    if (!Array.isArray(payments) || payments.length === 0) return false;
+
+    return payments.some(p => {
+        if (!statusOrderPago(String(p.status || ""))) return false;
+        const detalhe = String(p.status_detail || "");
+        if (
+            detalhe === "action_required" ||
+            detalhe === "waiting_transfer" ||
+            detalhe === "pending_waiting_transfer" ||
+            detalhe === "in_process" ||
+            detalhe === "waiting_capture"
+        ) {
+            return false;
+        }
+        return true;
+    });
 }
 
 /* Libera na hora os espaços reservados de uma Order que foi
@@ -4026,7 +4062,7 @@ app.get(
 
             const db = readDB();
             const chargeStatus = order.status || "unknown";
-            const pago = statusOrderPago(chargeStatus);
+            const pago = orderPagaMercadoPago(order);
 
             /* external_reference: vínculo definitivo entre o pagamento
                consultado no MP e o orderId interno (nunca só o id do webhook). */
@@ -7110,10 +7146,24 @@ app.post("/webhooks/mercadopago", async (req, res) => {
            pagamento real e o pedido — nunca confiamos só no id do webhook. */
         const externalReference = String(order.external_reference || "").trim();
 
-        console.log("Order consultada:", order.id, order.status);
+        /* Log diagnóstico seguro (sem token/secret): apenas dados da Order. */
+        const pagamentosDaOrder = (order?.transactions?.payments || []).map(p => ({
+            paymentId: p.id,
+            status: p.status,
+            status_detail: p.status_detail,
+            paid_amount: p.paid_amount
+        }));
+        console.log(
+            "Order consultada:", order.id,
+            "status=" + order.status,
+            "status_detail=" + (order.status_detail || ""),
+            "total_amount=" + order.total_amount,
+            "total_paid_amount=" + (order.total_paid_amount || ""),
+            "payments=" + JSON.stringify(pagamentosDaOrder)
+        );
 
         /* Só liberamos espaços se a Order estiver efetivamente paga. */
-        if (!statusOrderPago(order.status)) {
+        if (!orderPagaMercadoPago(order)) {
 
             if (statusOrderRejeitada(order.status)) {
                 liberarEspacosRejeitados(orderId, order.status, externalReference);
@@ -8267,6 +8317,7 @@ const colecionaveis = criarColecionaveis({
     consultarOrderMercadoPago,
     extrairDadosPagamento,
     statusOrderPago,
+    orderPagaMercadoPago,
     paraCentavos,
     registrarLog,
     obterPool: () => pgPool,
@@ -8297,6 +8348,7 @@ const combos = criarCombos({
     criarOrderMercadoPago,
     consultarOrderMercadoPago,
     statusOrderPago,
+    orderPagaMercadoPago,
     paraCentavos,
     registrarLog,
     obterPool: () => pgPool,

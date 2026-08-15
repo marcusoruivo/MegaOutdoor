@@ -284,6 +284,36 @@ async function main() {
         btnOutro.r.status === 403,
         "status=" + btnOutro.r.status);
 
+    /* ===== CORREÇÃO 6 — COMBO/KIT: Order processed/accredited = PAGO ===== */
+    const ckProcKit = await reqJson(BASE + "/api/combos/kits/" + premium.id + "/checkout",
+        json("POST", userTok, checkoutBody("1_year")));
+    const mpProcKit = String(ckProcKit.body.orderId);
+    const ordemProcKit = ordersCriadas.get(mpProcKit);
+    ordemProcKit.status = "processed";
+    ordemProcKit.status_detail = "accredited";
+    ordemProcKit.total_amount = String(ckProcKit.body.valor);
+    ordemProcKit.total_paid_amount = String(ckProcKit.body.valor);
+    ordemProcKit.transactions.payments[0].status = "processed";
+    ordemProcKit.transactions.payments[0].status_detail = "accredited";
+    ordemProcKit.transactions.payments[0].paid_amount = String(ckProcKit.body.valor);
+    const btnProcKit = await reqJson(BASE + "/api/combos/pagamento/" + ckProcKit.body.externalReference, json("GET", userTok));
+    t("C6) combo processed/accredited -> RECEIVED + entrega confirmada",
+        btnProcKit.r.status === 200 && btnProcKit.body.status === "RECEIVED" && btnProcKit.body.entrega === "confirmada",
+        "status=" + btnProcKit.r.status + " st=" + btnProcKit.body.status);
+
+    const ckPendKit = await reqJson(BASE + "/api/combos/kits/" + premium.id + "/checkout",
+        json("POST", userTok, checkoutBody("1_year")));
+    const mpPendKit = String(ckPendKit.body.orderId);
+    const ordemPendKit = ordersCriadas.get(mpPendKit);
+    ordemPendKit.status = "action_required";
+    ordemPendKit.status_detail = "waiting_transfer";
+    ordemPendKit.transactions.payments[0].status = "pending";
+    ordemPendKit.transactions.payments[0].status_detail = "action_required";
+    const btnPendKit = await reqJson(BASE + "/api/combos/pagamento/" + ckPendKit.body.externalReference, json("GET", userTok));
+    t("C6) combo action_required -> NÃO PAGO, entrega aguardando",
+        btnPendKit.r.status === 200 && btnPendKit.body.status !== "RECEIVED" && btnPendKit.body.entrega === "aguardando",
+        "status=" + btnPendKit.r.status + " st=" + btnPendKit.body.status);
+
     /* ===== Status antes de pagar ===== */
     const antes = await reqJson(BASE + "/api/combos/pagamento/" + ck.body.externalReference, json("GET", userTok));
     t("pedido pendente antes do pagamento", antes.r.status === 200 &&

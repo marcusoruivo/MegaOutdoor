@@ -162,6 +162,18 @@ body{overflow-x:hidden}
     display:grid;gap:12px;
     grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
 }
+.completa-card{
+    background:var(--painel);border:1px solid var(--borda);border-radius:14px;
+    overflow:hidden;position:relative;transition:transform .15s,border-color .15s;
+}
+.completa-card:hover{transform:translateY(-3px);border-color:var(--amarelo)}
+.completa-arte{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#151515;overflow:hidden}
+.completa-arte img{width:100%;height:100%;object-fit:cover;display:block}
+.completa-info{padding:10px}
+.completa-num{font-size:10px;color:var(--muted);font-weight:800;letter-spacing:.5px}
+.completa-nome{font-size:13px;font-weight:800;margin:3px 0;line-height:1.2}
+.completa-meta{font-size:10px;color:var(--muted)}
+.completa-posse{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.75);border:1px solid rgba(255,212,0,.4);border-radius:999px;padding:4px 7px;font-size:10px;color:var(--amarelo);font-weight:800}
 .card-col{
     background:var(--painel);border:1px solid var(--borda);
     border-radius:14px;overflow:hidden;cursor:pointer;
@@ -430,6 +442,10 @@ body{overflow-x:hidden}
 
 /* ===== LOGIN ===== */
 .login-panel{text-align:center;padding:24px}
+.login-brand{display:flex;flex-direction:column;align-items:center;gap:2px;margin-bottom:18px}
+.login-brand .icone{font-size:34px;line-height:1;filter:drop-shadow(0 0 8px rgba(255,212,0,.35))}
+.login-brand .marca{font-size:18px;font-weight:900;letter-spacing:1.5px;background:linear-gradient(90deg,#fff,var(--amarelo),var(--laranja));-webkit-background-clip:text;background-clip:text;color:transparent}
+.login-brand .submarca{font-size:9px;font-weight:800;letter-spacing:2px;color:var(--muted)}
 .login-panel h2{font-size:20px;margin-bottom:6px}
 .login-panel .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
 .login-tabs{display:flex;gap:6px;margin-bottom:16px;justify-content:center}
@@ -751,6 +767,7 @@ body{overflow-x:hidden}
 <!-- ===== NAV ABAS ===== -->
 <nav class="nav-abas" id="navAbas">
     <button class="aba-btn ativa" data-aba="album" onclick="mudarAba('album')">📖 ÁLBUM</button>
+    <button class="aba-btn" data-aba="completa" onclick="mudarAba('completa')">🌎 COLEÇÃO COMPLETA</button>
     <button class="aba-btn" data-aba="acervo" onclick="mudarAba('acervo')">🗂️ ACERVO</button>
     <button class="aba-btn" data-aba="packs" onclick="mudarAba('packs')">🎁 PACOTES</button>
     <button class="aba-btn" data-aba="mercado" onclick="mudarAba('mercado')">🏪 MERCADO</button>
@@ -783,6 +800,26 @@ body{overflow-x:hidden}
             </div>
         </div>
         <div class="grid-cards" id="albumGrid"></div>
+    </section>
+
+    <!-- COLEÇÃO COMPLETA -->
+    <section class="secao" id="secao-completa">
+        <div class="secao-titulo">Coleção Completa</div>
+        <div class="secao-sub">Veja as 100 espécies da edição, com número, raridade e status da sua coleção.</div>
+        <div class="filtros">
+            <input id="completaBusca" placeholder="🔎 Buscar número ou animal..." oninput="carregarColecaoCompleta()">
+            <select id="completaRaridade" onchange="carregarColecaoCompleta()">
+                <option value="">Todas as raridades</option>
+                <option value="COMUM">COMUM</option>
+                <option value="INCOMUM">INCOMUM</option>
+                <option value="RARA">RARA</option>
+                <option value="EPICA">ÉPICA</option>
+                <option value="LENDARIA">LENDÁRIA</option>
+                <option value="MITICA">MÍTICA</option>
+            </select>
+            <div class="resultado" id="completaResultado"></div>
+        </div>
+        <div class="grid-cards" id="completaGrid"></div>
     </section>
 
     <!-- ACERVO -->
@@ -828,6 +865,7 @@ body{overflow-x:hidden}
         <div class="secao-titulo">Pacotes de Figurinhas</div>
         <div class="secao-sub">Escolha um pacote e abra na hora. Cada figurinha é revelada automaticamente ao confirmar o pagamento.</div>
         <div class="grid-packs" id="packsGrid"></div>
+        <button class="btn btn-ghost" onclick="abrirModalProbabilidades()" style="margin-top:14px">🔍 VEJA O QUE PODE SAIR</button>
         <div class="prob-wrap" id="probWrap"></div>
     </section>
 
@@ -1036,6 +1074,7 @@ function mudarAba(aba){
     document.querySelectorAll(".secao").forEach(s => s.classList.remove("ativa"));
     document.getElementById("secao-" + aba).classList.add("ativa");
     if (aba === "album") carregarAlbum();
+    if (aba === "completa") carregarColecaoCompleta();
     if (aba === "acervo") carregarAcervo();
     if (aba === "packs") carregarPacks();
     if (aba === "mercado") carregarMercado(1);
@@ -1117,6 +1156,47 @@ function mostrarBloqueada(){
 function cardHtml(card){
     return ColecaoUI.cardColecaoHtml(card);
 }
+
+function completaCardHtml(card){
+    const owned = Number(card.quantidade || 0);
+    const image = card.image_url || (window.ANIMAIS_DADOS && window.ANIMAIS_DADOS.IMAGENS_ANIMAIS && window.ANIMAIS_DADOS.IMAGENS_ANIMAIS[card.name]) || "";
+    const imageHtml = image
+        ? '<img src="' + esc(image) + '" alt="' + esc(card.name) + '" loading="lazy" onerror="this.style.display=\'none\'">'
+        : '<span style="font-size:42px">🐾</span>';
+    return '<article class="completa-card">' +
+        (owned ? '<span class="completa-posse">' + owned + 'x</span>' : '') +
+        '<div class="completa-arte">' + imageHtml + '</div>' +
+        '<div class="completa-info"><div class="completa-num">#' + String(card.number).padStart(3,"0") + ' · ' + esc(card.rarity) + '</div>' +
+        '<div class="completa-nome">' + esc(card.name) + '</div>' +
+        '<div class="completa-meta">' + (owned ? '✅ Na sua coleção' : '🔒 Ainda não descoberta') + '</div></div></article>';
+}
+
+async function carregarColecaoCompleta(){
+    const grid = document.getElementById("completaGrid");
+    if (!grid) return;
+    try {
+        const info = INFO || await apiGet("/api/colecionaveis/info");
+        INFO = info;
+        let cards = (info.cards || []).map(c => Object.assign({}, c));
+        if (minhaConta && minhaConta.token) {
+            try {
+                const album = MEU_ALBUM || await apiGet("/api/colecionaveis/meu-album");
+                MEU_ALBUM = album;
+                const posse = new Map((album.cards || []).map(c => [Number(c.id), Number(c.quantidade || 0)]));
+                cards = cards.map(c => Object.assign(c, { quantidade: posse.get(Number(c.id)) || 0 }));
+            } catch(e) {}
+        }
+        const busca = (document.getElementById("completaBusca").value || "").trim().toLowerCase();
+        const raridade = document.getElementById("completaRaridade").value;
+        cards = cards.filter(c => (!raridade || c.rarity === raridade) &&
+            (!busca || String(c.number).includes(busca) || String(c.name || "").toLowerCase().includes(busca)));
+        document.getElementById("completaResultado").textContent = cards.length + " espécie(s)";
+        grid.innerHTML = cards.length ? cards.map(completaCardHtml).join("") : '<div style="color:var(--muted);padding:20px">Nenhuma espécie encontrada.</div>';
+    } catch(e) {
+        grid.innerHTML = '<div style="color:var(--muted);padding:20px">' + esc(e.message || "Erro") + '</div>';
+    }
+}
+
 function esc(s){
     return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
@@ -1235,17 +1315,20 @@ async function carregarPacks(){
         /* probabilidades */
         const prob = d.probabilidades || {};
         const rarids = d.raridades || [];
-        const ordem = ["COMUM","INCOMUM","RARA","EPICA","LENDARIA","MITICA"];
-        const cores = { COMUM:"#9aa0a6", INCOMUM:"#2ecc71", RARA:"#3b82f6", EPICA:"#a855f7", LENDARIA:"#ffbf40", MITICA:"#d7263d" };
+        const ordemProb = ["COMUM","INCOMUM","RARA","EPICA","LENDARIA","MITICA"];
         document.getElementById("probWrap").innerHTML =
             '<h4>🎲 Probabilidades por raridade</h4>' +
-            rarids.sort((a,b)=>ordem.indexOf(a)-ordem.indexOf(b)).map(r =>
-                '<div class="prob-linha">' +
-                    '<span class="nome">' + emojiRaridade(r) + ' ' + nomeRaridade(r) + '</span>' +
-                    '<div class="prob-barra"><div class="fill" style="width:' + (prob[r]||0) + '%;background:' + cores[r] + '"></div></div>' +
-                    '<span class="pct">' + (prob[r]||0).toFixed(1).replace(".",",") + '%</span>' +
-                '</div>'
-            ).join("") +
+            rarids
+                .filter(r => r && r.chave)
+                .sort((a,b)=>ordemProb.indexOf(a.chave)-ordemProb.indexOf(b.chave))
+                .map(r => {
+                    const pct = Number(prob[r.chave]) || 0;
+                    return '<div class="prob-linha">' +
+                        '<span class="nome">' + (r.icone || "") + ' ' + esc(r.nome || r.chave) + '</span>' +
+                        '<div class="prob-barra"><div class="fill" style="width:' + pct + '%;background:' + (r.cor || '#888') + '"></div></div>' +
+                        '<span class="pct">' + pct.toFixed(1).replace(".",",") + '%</span>' +
+                    '</div>';
+                }).join("") +
             '<div class="prob-aviso">⚠️ As probabilidades representam as chances de cada figurinha sair em um pacote. Não há garantia de raridade nem promessa de valorização. Colecione por diversão!</div>';
     } catch(e){
         document.getElementById("packsGrid").innerHTML = '<div style="color:var(--muted);padding:16px">' + esc(e.message) + '</div>';
@@ -1263,6 +1346,28 @@ async function comprarPacote(packId){
         preco: pack ? pack.price : 0,
         figurinhas: pack ? pack.sticker_quantity : 0
     });
+}
+
+function abrirModalProbabilidades(){
+    const d = INFO || {};
+    const prob = d.probabilidades || {};
+    const raridades = (d.raridades || []).filter(r => r && r.chave);
+    const packs = d.packs || [];
+    const linhas = raridades.map(r => {
+        const pct = Number(prob[r.chave]) || 0;
+        return '<div class="prob-linha"><span class="nome">' + (r.icone || "") + ' ' + esc(r.nome || r.chave) + '</span>' +
+            '<div class="prob-barra"><div class="fill" style="width:' + pct + '%;background:' + (r.cor || '#888') + '"></div></div>' +
+            '<span class="pct">' + pct.toFixed(1).replace('.', ',') + '%</span></div>';
+    }).join('');
+    document.getElementById("modalBody").innerHTML =
+        '<div class="login-panel" style="max-width:620px">' +
+        '<h2>🔍 Veja o que pode sair</h2>' +
+        '<div class="sub">Cada pacote sorteia figurinhas da coleção. As chances abaixo são por figurinha.</div>' +
+        '<div class="prob-wrap" style="margin-top:16px"><h4>🎲 Chances por raridade</h4>' + linhas + '</div>' +
+        '<div style="margin-top:16px;color:var(--muted);font-size:12px;line-height:1.5"><b>Pacotes disponíveis:</b> ' +
+        packs.map(p => esc(p.name) + ' (' + p.sticker_quantity + ' figurinhas)').join(' · ') +
+        '<br>Não há garantia de raridade específica. Colecione por diversão.</div></div>';
+    document.getElementById("modalOverlay").classList.remove("hidden");
 }
 
 /* =========================================================
@@ -1715,6 +1820,7 @@ async function iniciarPolling(orderId, tipo){
                    (a mesma abertura a cada refresh). */
                 if (tipo === "pack" && d.pacote && d.pacote.figurinhas && d.pacote.figurinhas.length) {
                     toast("Pagamento confirmado! Pacote aberto. 🎉", "ok");
+                    fecharModal();
                     revelarPacote(d.pacote);
                 } else {
                     toast("Pagamento confirmado! Suas figurinhas chegaram. 🎉", "ok");
@@ -1918,7 +2024,8 @@ function renderPackResumo(){
                 '<span class="pr-box pr-col">📖 Na coleção<br><b>' + res.diferentes + '/' + (res.total || 100) + '</b></span>' +
             '</div>' +
             '<div class="modal-acoes" style="margin-top:18px">' +
-                '<button class="btn btn-amarelo" onclick="fecharExperienciaPacote()">CONTINUAR ➜</button>' +
+                '<button class="btn btn-amarelo" onclick="verMinhasFigurinhas()">🗂️ VER MINHAS FIGURINHAS</button>' +
+                '<button class="btn btn-ghost" onclick="abrirOutroPacote()">🎁 ABRIR OUTRO PACOTE</button>' +
             '</div>' +
         '</div>';
     pacoteLimparTimers();
@@ -1937,6 +2044,16 @@ function fecharExperienciaPacote(){
     carregarAcervo();
     carregarTrocas();
     carregarMercado(1);
+}
+
+function verMinhasFigurinhas(){
+    fecharExperienciaPacote();
+    mudarAba("acervo");
+}
+
+function abrirOutroPacote(){
+    fecharExperienciaPacote();
+    mudarAba("packs");
 }
 
 /* =========================================================
@@ -2001,6 +2118,7 @@ function abrirModalLogin(){
     document.getElementById("modalOverlay").classList.remove("hidden");
     const corpo = document.getElementById("modalBody");
     corpo.innerHTML = '<div class="login-panel">' +
+        '<div class="login-brand"><div class="icone">🃏</div><div class="marca">MILHÃO DOOR</div><div class="submarca">ANIMAIS DO MUNDO · COLECIONÁVEIS</div></div>' +
         '<h2>Entrar na sua conta</h2>' +
         '<div class="sub">Para abrir pacotes, negociar e completar seu álbum.</div>' +
         '<div class="login-tabs">' +

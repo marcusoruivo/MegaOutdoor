@@ -565,6 +565,20 @@ html,body{
 #authModal{
     z-index:9999;
 }
+.auth-box{background:linear-gradient(180deg,#111 0%,#0a0a0a 100%);border:1px solid rgba(255,212,0,.25);box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 40px rgba(255,212,0,.08)}
+.auth-header{position:relative;text-align:center;padding:28px 20px 18px;margin:-25px -25px 18px;border-radius:14px 14px 0 0;background:linear-gradient(135deg,#1a1a1a,#0d0d0d);overflow:hidden}
+.auth-logo{font-size:46px;line-height:1;margin-bottom:4px;filter:drop-shadow(0 0 8px rgba(255,212,0,.4))}
+.auth-title{font-size:22px;font-weight:900;letter-spacing:2px;background:linear-gradient(90deg,#ffd400,#ff9d00);-webkit-background-clip:text;background-clip:text;color:transparent}
+.auth-subtitle{font-size:10px;font-weight:700;letter-spacing:3px;color:var(--text-muted);margin-top:3px}
+.auth-shine{position:absolute;top:0;left:-50%;width:50%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);animation:authShine 3.5s infinite}
+@keyframes authShine{0%{left:-50%}100%{left:150%}}
+.auth-tabs{display:flex;gap:8px;background:rgba(0,0,0,.3);border:1px solid var(--borda);border-radius:999px;padding:4px;margin-bottom:16px}
+.auth-tab{flex:1;border:none;border-radius:999px;padding:10px 8px;font-size:11px;font-weight:800;letter-spacing:1px;color:var(--text-muted);background:transparent;cursor:pointer;transition:.2s}
+.auth-tab.ativa{background:linear-gradient(135deg,var(--amarelo),var(--laranja));color:#000;box-shadow:0 4px 15px rgba(255,157,0,.3)}
+#authEntrar input,#authCadastrar input{width:100%;padding:12px 14px;background:#0d0d0d;border:1px solid #333;border-radius:10px;color:#fff;font-size:14px;margin-top:10px;transition:.2s}
+#authEntrar input:focus,#authCadastrar input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,212,0,.12);outline:none}
+#authEntrar button,#authCadastrar button{margin-top:14px;width:100%;padding:14px;font-size:13px;font-weight:800;letter-spacing:1px;border-radius:10px;background:linear-gradient(135deg,var(--verde),#2dd36f);box-shadow:0 6px 18px rgba(40,209,127,.25);border:none;color:#000}
+#authMsg{min-height:18px;margin-top:10px;font-size:12px;text-align:center;color:var(--text-muted)}
 
 .pix{
     display:none;
@@ -2856,6 +2870,20 @@ body.footer-visible #area{
     line-height:1.5;
     margin-top:8px
 }
+.como-funciona-modal{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.cfm-passo{display:flex;align-items:flex-start;gap:12px;background:var(--painel);border:1px solid var(--borda);border-radius:10px;padding:10px 12px}
+.cfm-num{flex:0 0 28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:linear-gradient(135deg,var(--amarelo),var(--laranja));color:#000;font-weight:900;font-size:13px}
+.cfm-passo b{display:block;font-size:13px;color:var(--texto);margin-bottom:2px}
+.cfm-passo span{font-size:12px;color:var(--text-muted);line-height:1.4}
+.kit-breakdown{background:var(--painel);border:1px solid var(--borda);border-radius:12px;padding:12px;margin:12px 0}
+.kit-breakdown-title{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent);margin-bottom:10px}
+.kit-breakdown-linha{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.kit-breakdown-linha:last-child{border-bottom:none}
+.kit-breakdown-linha small{color:var(--text-muted);font-size:11px}
+.kit-breakdown-sub{font-weight:700;color:var(--texto);margin-top:6px;border-top:1px dashed rgba(255,255,255,.12)}
+.kit-breakdown-desc{color:var(--verde);font-weight:700}
+.kit-breakdown-total{font-size:15px;font-weight:800;color:var(--amarelo);border-top:1px dashed rgba(255,255,255,.12);padding-top:10px;margin-top:6px}
+.kit-breakdown-bonus{font-size:12px;color:var(--text-muted);margin-top:10px;padding:8px;background:rgba(255,212,0,.08);border-radius:8px;border:1px solid rgba(255,212,0,.2)}
 
 .kitFormGroup{margin:10px 0}
 .kitFormGroup label{display:block;font-size:12px;font-weight:700;margin-bottom:5px;color:var(--text-secondary)}
@@ -3109,9 +3137,9 @@ body.footer-visible #area{
 
     <nav class="nav-desktop">
         <a href="#inicio" onclick="scrollToTop(event)">INÍCIO</a>
-        <a href="#como-funciona" onclick="scrollToSection(event,'comoFuncionaSection')">COMO FUNCIONA</a>
+        <a href="#como-funciona" onclick="abrirComoFunciona(event)">COMO FUNCIONA</a>
         <a href="#precos" onclick="abrirPrecos(event)">PREÇOS</a>
-        <a href="#combos" onclick="scrollToSection(event,'combosSection')">COMBOS & KITS</a>
+        <a href="#combos" onclick="verTodosKits(event)">COMBOS & KITS</a>
         <a href="#faq" onclick="abrirFaq(event)">FAQ</a>
         <a href="/colecionaveis.html" target="_blank">🃏 COLECIONÁVEIS</a>
         <a href="#contato" onclick="scrollToFooter(event)">CONTATO</a>
@@ -3146,9 +3174,9 @@ body.footer-visible #area{
 <div class="mobile-menu" id="mobileMenu" onclick="fecharMenuMobile(event)">
     <div class="mobile-menu-content" onclick="event.stopPropagation()">
         <a href="#inicio" onclick="scrollToTop(event);fecharMenuMobile()">INÍCIO</a>
-        <a href="#como-funciona" onclick="scrollToSection(event,'comoFuncionaSection');fecharMenuMobile()">COMO FUNCIONA</a>
+        <a href="#como-funciona" onclick="abrirComoFunciona(event);fecharMenuMobile()">COMO FUNCIONA</a>
         <a href="#precos" onclick="abrirPrecos(event);fecharMenuMobile()">PREÇOS</a>
-        <a href="#combos" onclick="scrollToSection(event,'combosSection');fecharMenuMobile()">COMBOS & KITS</a>
+        <a href="#combos" onclick="verTodosKits(event);fecharMenuMobile()">COMBOS & KITS</a>
         <a href="#faq" onclick="abrirFaq(event);fecharMenuMobile()">FAQ</a>
         <a href="/colecionaveis.html" target="_blank" onclick="fecharMenuMobile()">🃏 COLECIONÁVEIS</a>
         <a href="#contato" onclick="scrollToFooter(event);fecharMenuMobile()">CONTATO</a>
@@ -4200,7 +4228,7 @@ ENVIAR OFERTA
 
 <div class="modal" id="authModal" style="display:none;">
 
-<div class="box" style="max-width:380px;">
+<div class="box auth-box" style="max-width:420px;">
 
 <button
 class="close"
@@ -4208,21 +4236,24 @@ onclick="fecharLogin()">
 ×
 </button>
 
-<h2 style="color:#ffd400;">Minha conta</h2>
+<div class="auth-header">
+  <div class="auth-logo">🦁</div>
+  <div class="auth-title">MILHÃO DOOR</div>
+  <div class="auth-subtitle">COLEÇÃO ANIMAIS DO MUNDO</div>
+  <div class="auth-shine"></div>
+</div>
 
-<div style="display:flex;gap:6px;margin-bottom:12px;">
+<div class="auth-tabs">
   <button
     id="authTabEntrar"
-    class="btn"
-    onclick="authTab('entrar')"
-    style="flex:1;margin:0;padding:8px;font-size:12px;">
+    class="auth-tab ativa"
+    onclick="authTab('entrar')">
     ENTRAR
   </button>
   <button
     id="authTabCadastrar"
-    class="btn sec"
-    onclick="authTab('cadastrar')"
-    style="flex:1;margin:0;padding:8px;font-size:12px;">
+    class="auth-tab"
+    onclick="authTab('cadastrar')">
     CRIAR CONTA
   </button>
 </div>
@@ -5185,13 +5216,13 @@ function authTab(modo){
     if(modo === "cadastrar"){
         entrar.style.display = "none";
         cadastrar.style.display = "block";
-        bt.classList.add("sec");
-        bc.classList.remove("sec");
+        bt.classList.remove("ativa");
+        bc.classList.add("ativa");
     } else {
         entrar.style.display = "block";
         cadastrar.style.display = "none";
-        bt.classList.remove("sec");
-        bc.classList.add("sec");
+        bt.classList.add("ativa");
+        bc.classList.remove("ativa");
     }
 
     document.getElementById("authMsg").textContent = "";
@@ -10340,7 +10371,7 @@ function iniciarChat(){
 
                     if(!msg || !msg.text)return;
 
-                    chatMsgs.push(msg);
+                    adicionarMsgSemDuplicar(msg);
 
                     renderChatLista();
                 }catch(e){
@@ -10356,6 +10387,12 @@ function iniciarChat(){
     }catch(error){
         console.error(error);
     }
+}
+
+function adicionarMsgSemDuplicar(msg){
+    if(!msg || !msg.id)return;
+    if(chatMsgs.some(m => m.id === msg.id))return;
+    chatMsgs.push(msg);
 }
 
 function fecharChatModal(){
@@ -10641,7 +10678,7 @@ async function enviarMensagemChat(){
         if(erro)erro.textContent = "";
 
         if(data.message){
-            chatMsgs.push(data.message);
+            adicionarMsgSemDuplicar(data.message);
             renderChatLista();
         }
 
@@ -13845,9 +13882,20 @@ async function carregarKits(){
 function kitChips(kit){
     const chips = [];
     chips.push('<span class="kit-chip"><b>' + kit.espacos + "</b> espaço(s)</span>");
-    const totalPacotes = kit.totalPacotes || (kit.pacotes || []).length;
-    if(totalPacotes){
-        chips.push('<span class="kit-chip">🎴 <b>' + totalPacotes + "</b> pacote(s)</span>");
+    const summary = kit.packageSummary || [];
+    if(summary.length){
+        for(const p of summary){
+            chips.push('<span class="kit-chip">🎴 <b>' + p.quantidade + "</b> " + escHtml(p.pack_name) +
+                " <small>(" + p.cards_count + " figs)</small></span>");
+        }
+    } else {
+        const totalPacotes = kit.totalPacotes || (kit.pacotes || []).length;
+        if(totalPacotes){
+            chips.push('<span class="kit-chip">🎴 <b>' + totalPacotes + "</b> pacote(s)</span>");
+        }
+    }
+    if(kit.totalCards){
+        chips.push('<span class="kit-chip">✨ <b>' + kit.totalCards + "</b> figurinha(s)</span>");
     }
     if(kit.licencaIncluida){
         chips.push('<span class="kit-chip">📜 licença</span>');
@@ -13891,6 +13939,23 @@ function renderizarKits(kits){
             "</div>"
         );
     }).join("");
+}
+
+function abrirComoFunciona(event){
+    if(event && event.preventDefault) event.preventDefault();
+    if(event && event.stopPropagation) event.stopPropagation();
+    const html =
+        '<div class="como-funciona-modal">' +
+            '<div class="cfm-passo"><div class="cfm-num">1</div><div><b>Escolha seu espaço</b><span>Selecione os blocos no mapa ou compre pacotes de espaços.</span></div></div>' +
+            '<div class="cfm-passo"><div class="cfm-num">2</div><div><b>Escolha seu pacote</b><span>Adicione pacotes de figurinhas para completar sua coleção.</span></div></div>' +
+            '<div class="cfm-passo"><div class="cfm-num">3</div><div><b>Faça o pagamento</b><span>Pague via Pix ou cartão com total segurança.</span></div></div>' +
+            '<div class="cfm-passo"><div class="cfm-num">4</div><div><b>Aguarde confirmação</b><span>O pagamento é confirmado em segundos pela nossa integração.</span></div></div>' +
+            '<div class="cfm-passo"><div class="cfm-num">5</div><div><b>Receba/libere seus espaços</b><span>Seus blocos aparecem no mapa e ficam reservados.</span></div></div>' +
+            '<div class="cfm-passo"><div class="cfm-num">6</div><div><b>Abra seus pacotes</b><span>Revele suas figurinhas e descubra as raridades.</span></div></div>' +
+            '<div class="cfm-passo"><div class="cfm-num">7</div><div><b>Complete sua coleção</b><span>Negocie repetidas e alcance o Álbum Completo.</span></div></div>' +
+            '<div class="cfm-passo"><div class="cfm-num">8</div><div><b>Troque ou negocie repetidas</b><span>Use o mercado ou proponha trocas com outros colecionadores.</span></div></div>' +
+        '</div>';
+    abrirInfoModal("📖 COMO FUNCIONA", html);
 }
 
 function verTodosKits(event){
@@ -13949,20 +14014,24 @@ function abrirKit(kitId){
     "</div>";
     html += '<div class="kitModalEconomia">💚 Você economiza ' + fmtMoeda(kit.economia) + "!</div>";
 
-    html += '<div class="kitModalItens">';
-    html += '<div class="kitItem"><span class="kitItemIcon">🧩</span><b>' + kit.espacos + "</b><span>espaço(s)</span></div>";
-    const totalPacotesModal = kit.totalPacotes || (kit.pacotes || []).length;
-    if(totalPacotesModal){
-        html += '<div class="kitItem"><span class="kitItemIcon">🎴</span><b>' + totalPacotesModal + "</b><span>pacote(s)</span></div>";
+    html += '<div class="kit-breakdown">';
+    html += '<div class="kit-breakdown-title">📦 O QUE ESTÁ INCLUSO</div>';
+    html += '<div class="kit-breakdown-linha"><span>🧩 ' + kit.espacos + ' espaço(s)</span><span>' + fmtMoeda(kit.spacesPrice) + '</span></div>';
+    const summary = kit.packageSummary || [];
+    if(summary.length){
+        for(const p of summary){
+            html += '<div class="kit-breakdown-linha"><span>🎴 ' + p.quantidade + 'x ' + escHtml(p.pack_name) +
+                ' <small>(' + p.cards_count + ' figurinhas cada)</small></span><span>' + fmtMoeda(p.total_price) + '</span></div>';
+        }
     }
+    html += '<div class="kit-breakdown-linha"><span>Total dos pacotes</span><span>' + fmtMoeda(kit.packsPrice) + '</span></div>';
+    html += '<div class="kit-breakdown-linha kit-breakdown-sub"><span>Valor avulso dos itens</span><span>' + fmtMoeda(kit.precoNormal) + '</span></div>';
+    html += '<div class="kit-breakdown-linha kit-breakdown-desc"><span>Desconto do combo (-' + Math.round(kit.discountPercent || 0) + '%)</span><span>- ' + fmtMoeda(kit.economia) + '</span></div>';
+    html += '<div class="kit-breakdown-linha kit-breakdown-total"><span>Preço do combo</span><span>' + fmtMoeda(kit.preco) + '</span></div>';
     if(kit.bonus){
-        html += '<div class="kitItem"><span class="kitItemIcon">🎁</span><b>Bônus</b><span>incluído</span></div>';
+        html += '<div class="kit-breakdown-bonus">🎁 <b>Bônus:</b> ' + escHtml(kit.bonus) + "</div>";
     }
     html += "</div>";
-
-    if(kit.bonus){
-        html += '<div class="kitModalBonus">🎁 <b>Bônus:</b> ' + escHtml(kit.bonus) + "</div>";
-    }
 
     html += '<div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:8px;">' +
         "⏱ Escolha a duração da licença (taxa única por pedido):</div>";

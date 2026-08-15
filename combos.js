@@ -112,6 +112,11 @@ module.exports = function criarModuloCombos(deps) {
                 preco        NUMERIC(10,2) NOT NULL,
                 espacos      INTEGER NOT NULL DEFAULT 0,
                 pacotes      JSONB NOT NULL DEFAULT '[]',
+                discount_percent NUMERIC(5,2) NOT NULL DEFAULT 0,
+                spaces_price NUMERIC(10,2) NOT NULL DEFAULT 0,
+                packs_price  NUMERIC(10,2) NOT NULL DEFAULT 0,
+                package_summary JSONB NOT NULL DEFAULT '[]',
+                total_cards  INTEGER NOT NULL DEFAULT 0,
                 bonus        TEXT,
                 is_active    BOOLEAN NOT NULL DEFAULT TRUE,
                 sort_order   INTEGER NOT NULL DEFAULT 0,
@@ -147,6 +152,15 @@ module.exports = function criarModuloCombos(deps) {
         /* Compatibilidade com bancos já existentes (estado de seleção
            manual de espaços dos kits, CORREÇÃO 7). */
         await pool.query(`
+            ALTER TABLE kits
+                ADD COLUMN IF NOT EXISTS discount_percent NUMERIC(5,2) NOT NULL DEFAULT 0,
+                ADD COLUMN IF NOT EXISTS spaces_price NUMERIC(10,2) NOT NULL DEFAULT 0,
+                ADD COLUMN IF NOT EXISTS packs_price NUMERIC(10,2) NOT NULL DEFAULT 0,
+                ADD COLUMN IF NOT EXISTS package_summary JSONB NOT NULL DEFAULT '[]',
+                ADD COLUMN IF NOT EXISTS total_cards INTEGER NOT NULL DEFAULT 0
+        `);
+
+        await pool.query(`
             ALTER TABLE kit_compras
                 ADD COLUMN IF NOT EXISTS espacos_confirmados BOOLEAN NOT NULL DEFAULT FALSE
         `);
@@ -170,13 +184,17 @@ module.exports = function criarModuloCombos(deps) {
        o preço do combo aplica o desconto real correspondente. */
     async function semearKits(pool) {
         const packQ = await pool.query(
-            `SELECT id, slug, price FROM sticker_packs`
+            `SELECT id, slug, name, price, sticker_quantity FROM sticker_packs`
         );
         const packId = {};
         const packPrice = {};
+        const packName = {};
+        const packCards = {};
         for (const p of packQ.rows) {
             packId[p.slug] = p.id;
             packPrice[p.slug] = Number(p.price);
+            packName[p.slug] = p.name;
+            packCards[p.slug] = Number(p.sticker_quantity);
         }
 
         const KITS_PADRAO = [
@@ -242,17 +260,37 @@ module.exports = function criarModuloCombos(deps) {
             }
         ];
 
-        function precoSeparado(kit) {
-            const espacos = Number(kit.espacos || 0) * PRECO_ESPACO_KIT;
-            const pacotes = (kit.pacotes || []).reduce((acc, p) => {
-                const preco = packPrice[p.pack_slug] || 0;
-                return acc + (preco * Number(p.quantidade || 1));
-            }, 0);
-            return Math.round((espacos + pacotes) * 100) / 100;
+        function calcularKit(kit) {
+            const spacesPrice = Number(kit.espacos || 0) * PRECO_ESPACO_KIT;
+            let packsPrice = 0;
+            let totalCards = 0;
+            const packageSummary = [];
+            for (const p of (kit.pacotes || [])) {
+                const qtd = Number(p.quantidade || 1);
+                const unit = packPrice[p.pack_slug] || 0;
+                const cards = packCards[p.pack_slug] || 0;
+                const total = Math.round(unit * qtd * 100) / 100;
+                packsPrice += total;
+                totalCards += cards * qtd;
+                packageSummary.push({
+                    pack_slug: p.pack_slug,
+                    pack_name: packName[p.pack_slug] || p.pack_slug,
+                    pack_id: packId[p.pack_slug] || null,
+                    quantidade: qtd,
+                    unit_price: unit,
+                    cards_count: cards,
+                    total_price: total
+                });
+            }
+            const subtotal = Math.round((spacesPrice + packsPrice) * 100) / 100;
+            const discountPercent = Math.round((DESCONTO_KIT[kit.slug] || 0.10) * 100);
+            const finalPrice = Math.round(subtotal * (1 - discountPercent / 100) * 100) / 100;
+            return { spacesPrice, packsPrice, subtotal, discountPercent, finalPrice, totalCards, packageSummary };
         }
 
         let ordem = 10;
         for (const k of KITS_PADRAO) {
+            const calc = calcularKit(k);
             const pacotes = (k.pacotes || [])
                 .map(p => ({
                     pack_id: packId[p.pack_slug],
@@ -260,16 +298,13 @@ module.exports = function criarModuloCombos(deps) {
                 }))
                 .filter(p => p.pack_id);
 
-            const separado = precoSeparado(k);
-            const desconto = DESCONTO_KIT[k.slug] || 0.10;
-            const combo = Math.round(separado * (1 - desconto) * 100) / 100;
-
             await pool.query(
                 `INSERT INTO kits
                     (slug, nome, descricao, destaque,
-                     preco_normal, preco, espacos, pacotes, bonus,
-                     is_active, sort_order)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,TRUE,$10)
+                     preco_normal, preco, espacos, pacotes,
+                     discount_percent, spaces_price, packs_price, package_summary, total_cards,
+                     bonus, is_active, sort_order)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,TRUE,$15)
                  ON CONFLICT (slug) DO UPDATE SET
                      nome = EXCLUDED.nome,
                      descricao = EXCLUDED.descricao,
@@ -278,12 +313,20 @@ module.exports = function criarModuloCombos(deps) {
                      preco = EXCLUDED.preco,
                      espacos = EXCLUDED.espacos,
                      pacotes = EXCLUDED.pacotes,
+                     discount_percent = EXCLUDED.discount_percent,
+                     spaces_price = EXCLUDED.spaces_price,
+                     packs_price = EXCLUDED.packs_price,
+                     package_summary = EXCLUDED.package_summary,
+                     total_cards = EXCLUDED.total_cards,
                      bonus = EXCLUDED.bonus,
                      updated_at = NOW()
                 `,
                 [k.slug, k.nome, k.descricao, k.destaque,
-                 separado, combo, k.espacos,
-                 JSON.stringify(pacotes), k.bonus, ordem]
+                 calc.subtotal, calc.finalPrice, k.espacos,
+                 JSON.stringify(pacotes),
+                 calc.discountPercent, calc.spacesPrice, calc.packsPrice,
+                 JSON.stringify(calc.packageSummary), calc.totalCards,
+                 k.bonus, ordem]
             );
             ordem += 10;
         }
@@ -640,6 +683,7 @@ module.exports = function criarModuloCombos(deps) {
             const q = await pg().query(
                 `SELECT id, slug, nome, descricao, destaque,
                         preco_normal, preco, espacos, pacotes, bonus,
+                        discount_percent, spaces_price, packs_price, package_summary, total_cards,
                         is_active, sort_order
                    FROM kits
                   WHERE is_active = TRUE
@@ -651,9 +695,10 @@ module.exports = function criarModuloCombos(deps) {
                     const precoNormal = Number(k.preco_normal);
                     const preco = Number(k.preco);
                     const economia = Math.round((precoNormal - preco) * 100) / 100;
-                    const pctDesconto = precoNormal > 0
+                    const pctDesconto = Number(k.discount_percent) || (precoNormal > 0
                         ? Math.round((economia / precoNormal) * 1000) / 10
-                        : 0;
+                        : 0);
+                    const summary = Array.isArray(k.package_summary) ? k.package_summary : [];
                     return {
                         id: k.id,
                         slug: k.slug,
@@ -667,8 +712,13 @@ module.exports = function criarModuloCombos(deps) {
                         pctDesconto,
                         espacos: k.espacos,
                         pacotes: Array.isArray(k.pacotes) ? k.pacotes : [],
-                        totalPacotes: (Array.isArray(k.pacotes) ? k.pacotes : [])
-                            .reduce((acc, p) => acc + (Number(p.quantidade) || 1), 0),
+                        totalPacotes: summary.reduce((acc, p) => acc + (Number(p.quantidade) || 0), 0),
+                        spacesPrice: Number(k.spaces_price),
+                        packsPrice: Number(k.packs_price),
+                        discountPercent: pctDesconto,
+                        discountAmount: economia,
+                        totalCards: Number(k.total_cards),
+                        packageSummary: summary,
                         bonus: k.bonus,
                         licencaIncluida: true,
                         licencas: LICENCAS_KIT

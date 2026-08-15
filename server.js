@@ -3137,7 +3137,7 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             orderId,
             mpOrderId: mp.orderId,
             orderToken,
-            accessCode,
+            accessCode: pagoInstantaneo ? accessCode : null,
             paymentId: mp.paymentId || paymentId,
             spaces: ids,
             total,
@@ -3811,6 +3811,8 @@ app.get(
             const chargeStatus = order.status || "unknown";
             const pago = statusOrderPago(chargeStatus);
 
+            let accessCode = null;
+
             if (pago) {
 
                 confirmarPagamentoOferta(orderId);
@@ -3856,6 +3858,10 @@ app.get(
                         db[id].paymentId === orderId
                     ) {
 
+                        if (db[id].accessCode) {
+                            accessCode = db[id].accessCode;
+                        }
+
                         if (
                             db[id].status ===
                             "reserved"
@@ -3879,7 +3885,8 @@ app.get(
 
             res.json({
                 status: pago ? "RECEIVED" : chargeStatus,
-                orderId: orderId
+                orderId: orderId,
+                accessCode: pago ? accessCode : null
             });
 
         } catch (error) {

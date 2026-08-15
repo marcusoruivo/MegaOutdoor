@@ -8532,13 +8532,42 @@ document.getElementById(
         :'')
      +'</span>'
     :'')+
-(ultimoIndicacaoRegistrada
-    ?'<br><br><b>🎟️ Indicação registrada!</b><br>'+
-     '<span style="font-size:12px;color:#aaa;">'+
-     'Quando esta compra for confirmada, você ganha 5% na sua próxima.</span>'
-    :'');
+    (ultimoIndicacaoRegistrada
+        ?'<br><br><b>🎟️ Indicação registrada!</b><br>'+
+         '<span style="font-size:12px;color:#aaa;">'+
+         'Quando esta compra for confirmada, você ganha 5% na sua próxima.</span>'
+        :'');
 
 document.getElementById("publicacao").style.display = "block";
+
+if(data.accessCode){
+
+    const accessCodeOut =
+        document.getElementById("accessCodeOut");
+
+    if(accessCodeOut){
+
+        accessCodeOut.value =
+            data.accessCode;
+
+    }
+
+    const accessArea =
+        document.getElementById("accessArea");
+
+    if(accessArea){
+
+        accessArea.style.display =
+            "block";
+
+    }
+
+    salvarAccessCodes(
+        [...sel],
+        data.accessCode
+    );
+
+}
 
 
 await load();

@@ -1805,6 +1805,17 @@ function formatarErroPagamento(erro) {
     return mapeada ? mapeada.msg : msg;
 }
 
+/* Remove dados sensíveis (CPF/CNPJ, e-mail, tokens) de qualquer texto
+   antes de gravar no log. Nunca logamos o corpo bruto da requisição. */
+function mascararSensivel(texto) {
+    return String(texto)
+        .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, "***.***.***-**")
+        .replace(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/g, "**.***.***/****-**")
+        .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "***@***.***")
+        .replace(/\b(APP_USR|TEST)-[A-Za-z0-9_-]+\b/g, "<TOKEN_MASCARADO>")
+        .replace(/\beyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\b/g, "<JWT_MASCARADO>");
+}
+
 async function mercadoPagoRequest(endpoint, options = {}) {
 
     if (!MERCADOPAGO_ACCESS_TOKEN) {
@@ -1826,17 +1837,80 @@ async function mercadoPagoRequest(endpoint, options = {}) {
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-        throw new Error(
-            data.message
-            || (data.errors && data.errors.map(e => e.message).join(", "))
-            || (data.cause && data.cause.map(c => c.description).join(", "))
-            || `Erro Mercado Pago HTTP ${response.status}`
+
+        const causa = Array.isArray(data.cause)
+            ? data.cause
+                .filter(c => c && (c.code || c.description))
+                .map(c => ({
+                    code: String(c.code || ""),
+                    description: String(c.description || "")
+                }))
+            : [];
+
+        const mensagem =
+            (data.message && String(data.message)) ||
+            (data.errors && data.errors.map(e => e.message).join(", ")) ||
+            causa.map(c => c.description).filter(Boolean).join(", ") ||
+            `Erro Mercado Pago HTTP ${response.status}`;
+
+        const erro = new Error(mensagem);
+
+        /* Preserva os dados estruturados do erro para quem chamar,
+           sem expor o corpo bruto (que pode conter e-mail/CPF). */
+        erro.status = response.status || 0;
+        erro.code = String(data.error || (causa[0] && causa[0].code) || "");
+        erro.cause = causa;
+        erro.mpMessage = String(data.message || "");
+
+        /* Log técnico seguro — sempre mascarado. */
+        const detalheLog = {
+            status: erro.status,
+            code: erro.code,
+            message: mascararSensivel(erro.mpMessage),
+            cause: causa.map(c => ({
+                code: c.code,
+                description: mascararSensivel(c.description)
+            }))
+        };
+
+        try {
+            registrarLog("mercadopago_erro", { endpoint, ...detalheLog });
+        } catch (eLog) {
+            /* nunca deixa o log quebrar o fluxo */
+        }
+
+        console.error(
+            "Mercado Pago erro:",
+            endpoint,
+            erro.status,
+            JSON.stringify(detalheLog)
         );
+
+        throw erro;
     }
 
     return data;
 }
 
+/* Busca o primeiro valor não vazio de um objeto seguindo caminhos
+   "a.b.c" — aceita as estruturas atuais e as de formatos legados. */
+function primeiroValorDe(objeto, caminhos) {
+    for (const caminho of caminhos) {
+        const valor = caminho
+            .split(".")
+            .reduce((o, k) => (o && o[k] !== undefined ? o[k] : undefined), objeto);
+        if (valor !== undefined && valor !== null && String(valor) !== "") {
+            return String(valor);
+        }
+    }
+    return "";
+}
+
+/* Extrai os dados de pagamento da resposta REAL da API Orders do
+   Mercado Pago. A API atual devolve qr_code / qr_code_base64 /
+   ticket_url diretamente dentro de transactions.payments[].payment_method.
+   Mantemos fallbacks para formatos legados (transaction_data e
+   point_of_interaction.transaction_data) para robustez. */
 function extrairDadosPagamento(order) {
 
     const payment =
@@ -1846,7 +1920,7 @@ function extrairDadosPagamento(order) {
 
     const method = payment.payment_method || {};
 
-    const transactionData = method.transaction_data || {};
+    const busca = caminhos => primeiroValorDe(method, caminhos);
 
     return {
         paymentId: String(payment.id || ""),
@@ -1854,9 +1928,21 @@ function extrairDadosPagamento(order) {
         statusDetail: payment.status_detail || "",
         paymentMethodId: method.id || "",
         paymentMethodType: method.type || "",
-        qrCodeBase64: transactionData.qr_code_base64 || "",
-        payload: transactionData.qr_code || "",
-        ticketUrl: transactionData.ticket_url || "",
+        qrCodeBase64: busca([
+            "qr_code_base64",
+            "transaction_data.qr_code_base64",
+            "point_of_interaction.transaction_data.qr_code_base64"
+        ]),
+        payload: busca([
+            "qr_code",
+            "transaction_data.qr_code",
+            "point_of_interaction.transaction_data.qr_code"
+        ]),
+        ticketUrl: busca([
+            "ticket_url",
+            "transaction_data.ticket_url",
+            "point_of_interaction.transaction_data.ticket_url"
+        ]),
         installments: method.installments || 1
     };
 }
@@ -1925,10 +2011,10 @@ async function criarOrderMercadoPago({
         }
     };
 
-    const webhookUrl = process.env.MERCADOPAGO_WEBHOOK_URL || "";
-    if (webhookUrl) {
-        body.notification_url = webhookUrl;
-    }
+    /* O OrderRequest da API Orders NÃO aceita notification_url
+       (gera o erro "unsupported_properties"). As notificações são
+       configuradas no painel do Mercado Pago (Webhooks -> Order) e
+       tratadas pelo endpoint /webhooks/mercadopago. */
 
     const order = await mercadoPagoRequest("/v1/orders", {
         method: "POST",
@@ -3054,10 +3140,10 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
 
     } catch (error) {
 
-        console.error("ERRO CHECKOUT:", error.message);
+        console.error("ERRO CHECKOUT:", mascararSensivel(error.message));
 
         res.status(500).json({
-            error: error.message
+            error: formatarErroPagamento(error)
         });
     }
 });
@@ -3293,10 +3379,10 @@ app.post("/api/renew", authUsuario, async (req, res) => {
 
     } catch (error) {
 
-        console.error("ERRO RENOVAÇÃO:", error.message);
+        console.error("ERRO RENOVAÇÃO:", mascararSensivel(error.message));
 
         res.status(500).json({
-            error: error.message
+            error: formatarErroPagamento(error)
         });
     }
 });
@@ -5156,10 +5242,10 @@ app.post("/api/offers/:id/accept", async (req, res) => {
 
     } catch (error) {
 
-        console.error("ERRO OFERTA ACEITA:", error.message);
+        console.error("ERRO OFERTA ACEITA:", mascararSensivel(error.message));
 
         res.status(500).json({
-            error: error.message
+            error: formatarErroPagamento(error)
         });
     }
 });

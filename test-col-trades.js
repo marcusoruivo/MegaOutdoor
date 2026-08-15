@@ -30,8 +30,8 @@ global.fetch = async (url, options = {}) => {
             transactions: { payments: [{ id: "pay-" + id, status: "pending",
                 status_detail: "pending_waiting_transfer",
                 payment_method: { id: "pix", type: "bank_transfer",
-                    transaction_data: { qr_code_base64: "bW9jaw==", qr_code: "000201mock",
-                        ticket_url: "https://mock.local/ticket/" + id } } }] }
+                    qr_code_base64: "bW9jaw==", qr_code: "000201mock",
+                        ticket_url: "https://mock.local/ticket/" + id } }] }
         };
         ordersCriadas.set(id, order);
         return { ok: true, status: 201, json: async () => order };

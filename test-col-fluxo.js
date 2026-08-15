@@ -43,11 +43,9 @@ global.fetch = async (url, options = {}) => {
                     payment_method: {
                         id: "pix",
                         type: "bank_transfer",
-                        transaction_data: {
-                            qr_code_base64: "bW9jaw==",
-                            qr_code: "000201mock",
-                            ticket_url: "https://mock.local/ticket/" + id
-                        }
+                        qr_code_base64: "bW9jaw==",
+                        qr_code: "000201mock",
+                        ticket_url: "https://mock.local/ticket/" + id
                     }
                 }]
             }

@@ -40,8 +40,8 @@ global.fetch = async (url, options = {}) => {
                 payment_method: isCard
                     ? { id: "master", type: "credit_card", installments: 1 }
                     : { id: "pix", type: "bank_transfer",
-                        transaction_data: { qr_code_base64: "bW9jaw==", qr_code: "000201mock",
-                            ticket_url: "https://mock.local/ticket/" + id } } }] }
+                        qr_code_base64: "bW9jaw==", qr_code: "000201mock",
+                            ticket_url: "https://mock.local/ticket/" + id } }] }
         };
         ordersCriadas.set(id, order);
         return { ok: true, status: 201, json: async () => order };

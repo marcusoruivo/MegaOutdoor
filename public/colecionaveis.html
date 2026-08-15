@@ -1020,7 +1020,7 @@ function authHeaders(extra){
 
 /* ===== API ===== */
 async function api(url, opts = {}) {
-    const res = await fetch(url, opts);
+    const res = await fetch(url, Object.assign({ credentials: "include" }, opts));
     let data = null;
     const texto = await res.text();
     try { data = JSON.parse(texto); } catch(e){ data = { raw: texto }; }

@@ -50,7 +50,7 @@ global.fetch = async (url, options = {}) => {
 
     if (u.endsWith("/v1/orders") && method === "POST") {
         const body = options.body ? JSON.parse(options.body) : null;
-        const id = String(900000 + seq++);
+        const id = "ORD01" + String(seq++).padStart(6, "0");
         const order = {
             id,
             status: "open",
@@ -199,6 +199,43 @@ async function main() {
     });
     t("4) data.id do corpo (divergente) -> 401", wBody.r.status === 401,
         "status=" + wBody.r.status);
+
+    /* 8) simulação do painel do Mercado Pago (data.id=123456): assinatura
+       VÁLIDA, mas sem formato de Order real -> 200 simulation:true, SEM
+       consultar /v1/orders/123456 (evita "path param order id is invalid"). */
+    const urlSim = BASE + "/webhooks/mercadopago?data.id=123456&type=order";
+    const tsSim = Math.floor(Date.now() / 1000);
+    const ridSim = "req-sim-" + Date.now();
+    const wSim = await reqJson(urlSim, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-signature": "ts=" + tsSim + ",v1=" + assinar("123456", tsSim, ridSim),
+            "x-request-id": ridSim
+        },
+        body: JSON.stringify({ type: "order", data: { id: "123456" } })
+    });
+    t("8) simulação (data.id=123456) -> 200 simulation:true",
+        wSim.r.status === 200 && wSim.body.simulation === true,
+        "status=" + wSim.r.status + " body=" + JSON.stringify(wSim.body));
+
+    /* 8b) identificador sem formato de Order (ex.: texto livre) também é
+       tratado como simulação/teste, sem consultar a API. */
+    const urlTexto = BASE + "/webhooks/mercadopago?data.id=texto-livre&type=order";
+    const tsTexto = Math.floor(Date.now() / 1000);
+    const ridTexto = "req-texto-" + Date.now();
+    const wTexto = await reqJson(urlTexto, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-signature": "ts=" + tsTexto + ",v1=" + assinar("texto-livre", tsTexto, ridTexto),
+            "x-request-id": ridTexto
+        },
+        body: JSON.stringify({ type: "order", data: { id: "texto-livre" } })
+    });
+    t("8b) id sem formato de Order -> 200 simulation:true",
+        wTexto.r.status === 200 && wTexto.body.simulation === true,
+        "status=" + wTexto.r.status + " body=" + JSON.stringify(wTexto.body));
 
     /* 1) assinatura válida (query data.id + secret correto) -> 200 + pago */
     const tsOk = Math.floor(Date.now() / 1000);

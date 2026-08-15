@@ -196,29 +196,105 @@ const LICENSE_PLANS = {
     }
 };
 
+/* =========================
+   VALORES MONETÁRIOS — CENTAVOS
+   Todo cálculo financeiro é feito em centavos (inteiros),
+   nunca com Number/float diretamente.
+   R$ 22,50 = 2250 centavos. NUNCA usar 22.5 / 22.5000001.
+========================= */
+
+function paraCentavos(valor) {
+    if (valor === undefined || valor === null || valor === "") {
+        return 0;
+    }
+    if (typeof valor === "number") {
+        if (!isFinite(valor)) {
+            return 0;
+        }
+        return Math.round(valor * 100);
+    }
+    let s = String(valor).trim();
+    if (!s) {
+        return 0;
+    }
+    const negativo = s.startsWith("-");
+    s = s.replace(/[^\d.,]/g, "");
+    if (!s) {
+        return 0;
+    }
+    const sep = Math.max(s.lastIndexOf(","), s.lastIndexOf("."));
+    let inteiros, decimais = "00";
+    if (sep !== -1) {
+        inteiros = s.slice(0, sep).replace(/[.,]/g, "") || "0";
+        decimais = s.slice(sep + 1).replace(/[.,]/g, "");
+    } else {
+        inteiros = s.replace(/[.,]/g, "") || "0";
+    }
+    decimais = (decimais + "00").slice(0, 2);
+    const cents = parseInt(inteiros, 10) * 100 + parseInt(decimais, 10);
+    return negativo ? -cents : cents;
+}
+
+function reaisDeCentavos(cents) {
+    return (Number(cents) || 0) / 100;
+}
+
+/* R$ 22,50 (exatamente 2 casas decimais). */
+function formatarReais(cents) {
+    const c = Math.round(Number(cents) || 0);
+    const neg = c < 0;
+    const abs = Math.abs(c);
+    return (
+        (neg ? "-" : "") +
+        "R$ " + Math.floor(abs / 100).toLocaleString("pt-BR") +
+        "," + String(abs % 100).padStart(2, "0")
+    );
+}
+
+/* Valor no formato esperado pela API do Mercado Pago (string "22.50"). */
+function reaisParaMercadoPago(cents) {
+    const c = Math.round(Number(cents) || 0);
+    return String((c / 100).toFixed(2));
+}
+
+/* Desconto percentual sobre um valor em centavos (arredondado). */
+function descontoEmCentavos(valorCents, pct) {
+    const p = Number(pct) || 0;
+    if (p <= 0) {
+        return 0;
+    }
+    if (p >= 100) {
+        return Math.round(Number(valorCents) || 0);
+    }
+    return Math.round((Number(valorCents) || 0) * p / 100);
+}
+
 function calcularLicenca(quantidade, planoKey) {
 
     const plano =
         LICENSE_PLANS[planoKey] ||
         LICENSE_PLANS["1_year"];
 
-    const baseAmount =
-        Math.round(
-            quantidade * BASE_PRICE_PER_BLOCK * 100
-        ) / 100;
+    const baseAmountCents =
+        Math.round(Number(quantidade) || 0) *
+        paraCentavos(BASE_PRICE_PER_BLOCK);
 
-    const totalAmount =
-        Math.round(
-            (baseAmount + plano.fee) * 100
-        ) / 100;
+    const feeCents =
+        paraCentavos(plano.fee);
+
+    const totalAmountCents =
+        baseAmountCents + feeCents;
 
     return {
         plan: planoKey,
         label: plano.label,
         months: plano.months,
         fee: plano.fee,
-        baseAmount,
-        totalAmount,
+        baseAmount: reaisDeCentavos(baseAmountCents),
+        totalAmount: reaisDeCentavos(totalAmountCents),
+        baseAmountCents,
+        feeCents,
+        totalAmountCents,
         basePricePerBlock: BASE_PRICE_PER_BLOCK
     };
 }
@@ -1974,7 +2050,7 @@ async function criarOrderMercadoPago({
     const isPix = paymentMethod === "pix";
 
     const paymentBody = {
-        amount: String(Number(value).toFixed(2)),
+        amount: reaisParaMercadoPago(paraCentavos(value)),
         payment_method: {
             type: isPix ? "bank_transfer" : "credit_card"
         }
@@ -2002,7 +2078,7 @@ async function criarOrderMercadoPago({
     const body = {
         type: "online",
         processing_mode: "automatic",
-        total_amount: String(Number(value).toFixed(2)),
+        total_amount: reaisParaMercadoPago(paraCentavos(value)),
         external_reference: id,
         description: description || `Pedido ${id}`,
         payer,
@@ -2877,17 +2953,20 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
 
         const licenca = calcularLicenca(total, licensePlanKey);
 
-        const baseComDesconto =
-            Math.round(
-                licenca.baseAmount *
-                (1 - descontoPct / 100) *
-                100
-            ) / 100;
+        /* Regra do desconto: incide APENAS sobre o valor base dos blocos
+           (produtos). A taxa única de licença é cobrada por pedido, sem
+           desconto e sem duplicação. Tudo calculado em centavos. */
+        const descontoCents =
+            descontoEmCentavos(licenca.baseAmountCents, descontoPct);
+
+        const baseComDescontoCents =
+            licenca.baseAmountCents - descontoCents;
+
+        const valorCobradoCents =
+            baseComDescontoCents + licenca.feeCents;
 
         const valorCobrado =
-            Math.round(
-                (baseComDesconto + licenca.fee) * 100
-            ) / 100;
+            reaisDeCentavos(valorCobradoCents);
 
         /* =========================
            CRIA ORDER NO MERCADO PAGO
@@ -3141,9 +3220,15 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             paymentId: mp.paymentId || paymentId,
             spaces: ids,
             total,
-            value: valorCobrado,
-            license: licenca,
+            subtotal: licenca.baseAmount,
+            subtotalCents: licenca.baseAmountCents,
             discountPercent: descontoPct,
+            discountCents: descontoCents,
+            licenseFee: licenca.fee,
+            licenseFeeCents: licenca.feeCents,
+            value: valorCobrado,
+            valueCents: valorCobradoCents,
+            license: licenca,
             paymentMethod: metodo,
             paymentStatus: mp.paymentStatus,
             paid: pagoInstantaneo,
@@ -6610,6 +6695,7 @@ function camposDebugWebhook(req) {
         ""
     );
     const mTs = ass.match(/(?:^|,)\s*ts=([^,]+)/);
+    const temV1 = /(?:^|,)\s*v1=([^,]+)/.test(ass);
     return {
         xRequestId: String(
             req.headers["x-request-id"] ||
@@ -6617,11 +6703,17 @@ function camposDebugWebhook(req) {
             ""
         ),
         dataId: String((req.query && req.query["data.id"]) ?? ""),
+        dataIdBody: String((req.body && req.body.data && req.body.data.id) ?? ""),
         queryType: String((req.query && req.query.type) ?? ""),
         queryAction: String((req.query && req.query.action) ?? ""),
         action: String((req.body && req.body.action) ?? ""),
         applicationId: String((req.body && req.body.application_id) ?? ""),
         liveMode: String((req.body && req.body.live_mode) ?? ""),
+        temTs: !!mTs,
+        temV1,
+        secretLength: MERCADOPAGO_WEBHOOK_SECRET
+            ? String(MERCADOPAGO_WEBHOOK_SECRET).length
+            : 0,
         timestamp: mTs ? mTs[1].trim() : new Date().toISOString()
     };
 }
@@ -6664,6 +6756,20 @@ app.post("/webhooks/mercadopago", async (req, res) => {
     /* Processamos apenas notificações de Order. */
     if (tipoEvento !== "order" || !dataIdWebhook) {
         return res.status(200).json({ received: true });
+    }
+
+    /* Guarda de formato de Order ID. A API Orders retorna IDs reais no
+       formato "ORD01..." (ex.: ORD01JSTXK4...). O teste manual do painel do
+       Mercado Pago usa data.id fictício ("123456"), que NÃO pode ser
+       consultado na API (gera "path param order id is invalid"). Aqui
+       identificamos a simulação/teste e encerramos com 200 sem consultar. */
+    if (!/^ORD\d{1,40}$/i.test(dataIdWebhook)) {
+        console.log(
+            "Webhook Mercado Pago: identificador sem formato de Order real " +
+            "(simulação/teste). Encerrando sem consultar a API.",
+            { orderId: dataIdWebhook, type: tipoEvento }
+        );
+        return res.status(200).json({ received: true, simulation: true });
     }
 
     try {

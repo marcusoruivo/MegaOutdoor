@@ -309,9 +309,17 @@ module.exports = function criarModuloCombos(deps) {
 
     function calcularTotal(kit, planoKey) {
         const licenca = escolherLicenca(planoKey);
-        const preco = Math.round(Number(kit.preco) * 100) / 100;
-        const total = Math.round((preco + licenca.fee) * 100) / 100;
-        return { licenca, preco, total };
+        const precoCents = Math.round(Number(kit.preco) * 100);
+        const feeCents = Math.round((Number(licenca.fee) || 0) * 100);
+        const totalCents = precoCents + feeCents;
+        return {
+            licenca,
+            preco: precoCents / 100,
+            total: totalCents / 100,
+            precoCents,
+            feeCents,
+            totalCents
+        };
     }
 
     /* Escolhe espaços livres para um kit. Se o usuário enviar
@@ -648,7 +656,7 @@ module.exports = function criarModuloCombos(deps) {
                 return res.status(400).json({ error: "Plano de licença inválido." });
             }
 
-            const { licenca, total } = calcularTotal(kit, planoKey);
+            const { licenca, total, totalCents } = calcularTotal(kit, planoKey);
 
             /* Espaços específicos opcionais (validados livres na entrega). */
             const espacosSugeridos = Array.isArray(req.body.spaces)
@@ -707,6 +715,7 @@ module.exports = function criarModuloCombos(deps) {
                 paymentStatus: mp.paymentStatus || "pending",
                 paid: statusOrderPago(mp.paymentStatus || "pending"),
                 valor: total,
+                valorCents: totalCents,
                 preco: Number(kit.preco),
                 licenca,
                 kitNome: kit.nome

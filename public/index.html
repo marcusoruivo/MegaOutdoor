@@ -4727,7 +4727,7 @@ function descontoProgressivo(quantidade){
 
 function calcularValorComDesconto(quantidade){
     const pct = descontoProgressivo(quantidade);
-    const valor = quantidade * (1 - pct / 100);
+    const valor = Math.round(quantidade * (1 - pct / 100) * 100) / 100;
     return { valor, pct };
 }
 
@@ -7534,10 +7534,7 @@ n.toLocaleString(
 document.getElementById(
 "total"
 ).textContent =
-"R$ "+
-n.toLocaleString(
-"pt-BR"
-)+",00";
+formatarReais(n * 100);
 
 
 const go =
@@ -7552,7 +7549,7 @@ go.disabled =
 
 go.textContent =
 n
-?`CONTINUAR — ${n} ESPAÇO${n>1?"S":""} — R$ ${n.toLocaleString("pt-BR")},00`
+?`CONTINUAR — ${n.toLocaleString("pt-BR")} ESPAÇO${n>1?"S":""} — ${formatarReais(n * 100)}`
 :"SELECIONE ESPAÇOS";
 
 
@@ -7652,28 +7649,44 @@ const LICENSE_PLANS_FRONT = {
     "5_years": { label: "5 ANOS", months: 60, fee: 40 }
 };
 
+function formatarMoeda(valor) {
+    return "R$ " + Number(valor || 0).toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+/* R$ 22,50 a partir de centavos inteiros (nunca float). */
+function formatarReais(cents) {
+    const c = Math.round(Number(cents) || 0);
+    const neg = c < 0;
+    const abs = Math.abs(c);
+    return (
+        (neg ? "-" : "") +
+        "R$ " + Math.floor(abs / 100).toLocaleString("pt-BR") +
+        "," + String(abs % 100).padStart(2, "0")
+    );
+}
+
 function calcularLicencaFront(quantidade, planoKey) {
 
     const plano = LICENSE_PLANS_FRONT[planoKey] || LICENSE_PLANS_FRONT["1_year"];
-    const baseAmount = quantidade * 1.00;
-    const totalAmount = baseAmount + plano.fee;
+    const baseAmountCents = Math.round(Number(quantidade) || 0) * 100;
+    const feeCents = Math.round((Number(plano.fee) || 0) * 100);
+    const totalAmountCents = baseAmountCents + feeCents;
 
     return {
         plan: planoKey,
         label: plano.label,
         months: plano.months,
         fee: plano.fee,
-        baseAmount,
-        totalAmount,
+        baseAmount: baseAmountCents / 100,
+        totalAmount: totalAmountCents / 100,
+        baseAmountCents,
+        feeCents,
+        totalAmountCents,
         basePricePerBlock: 1.00
     };
-}
-
-function formatarMoeda(valor) {
-    return "R$ " + Number(valor || 0).toLocaleString("pt-BR", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
 }
 
 function adicionarMesesFront(data, meses) {
@@ -7709,7 +7722,7 @@ function atualizarPlanoLicenca() {
 
         if (priceEl) {
             const lic = calcularLicencaFront(quantidade, key);
-            priceEl.textContent = formatarMoeda(lic.totalAmount);
+            priceEl.textContent = formatarReais(lic.totalAmountCents);
         }
     }
 
@@ -7721,6 +7734,37 @@ function atualizarPlanoLicenca() {
             dataExpiracao.toLocaleDateString("pt-BR") +
             " (" + lic.label.toLowerCase() + ")";
     }
+
+    renderResumoCheckout();
+}
+
+function renderResumoCheckout() {
+    const ci = document.getElementById("ci");
+    if (!ci || !sel || !sel.size) return;
+
+    const n = sel.size;
+    const planoKey =
+        (document.querySelector('input[name="licensePlan"]:checked') || {}).value ||
+        "1_year";
+    const resumo = calcularValorComDesconto(n);
+    const pct = resumo.pct;
+    const lic = calcularLicencaFront(n, planoKey);
+    const valorBaseCents = Math.round(Math.round(resumo.valor * 100));
+    const valorFinalCents = valorBaseCents + lic.feeCents;
+    const totalSemDescontoCents = lic.baseAmountCents + lic.feeCents;
+
+    ci.innerHTML =
+        `<b>${n.toLocaleString("pt-BR")} espaço(s) selecionado(s)</b><br>` +
+        `<span style="font-size:12px;color:#aaa;">Licença: ${escapeHtml(lic.label)}` +
+        (lic.feeCents > 0
+            ? " — taxa única de " + formatarReais(lic.feeCents)
+            : "") +
+        "</span><br>" +
+        (pct > 0
+            ? `<span style="color:#ffd400">Desconto progressivo de ${pct}% aplicado!</span><br>` +
+              `<span style="font-size:13px;color:#aaa;text-decoration:line-through;">${formatarReais(totalSemDescontoCents)}</span> ` +
+              `<span style="font-size:18px;color:#45df6f;font-weight:800;">${formatarReais(valorFinalCents)}</span>`
+            : `<span style="font-size:18px;color:#45df6f;font-weight:800;">${formatarReais(valorFinalCents)}</span>`);
 }
 
 function abrirRegrasLicenca(event) {
@@ -7808,22 +7852,7 @@ if(sel.size > 1000){
 }
 
 
-const resumo = calcularValorComDesconto(sel.size);
-const pct = resumo.pct;
-const licencaInicial = calcularLicencaFront(sel.size, "1_year");
-const valorBaseInicial = resumo.valor;
-const taxaInicial = licencaInicial.fee;
-const valorTotalInicial = valorBaseInicial + taxaInicial;
-const valorStr = valorTotalInicial.toLocaleString("pt-BR") + ",00";
-
-document.getElementById("ci").innerHTML =
-    `<b>${sel.size.toLocaleString("pt-BR")} espaço(s) selecionado(s)</b><br>` +
-    (pct > 0
-        ? `<span style="color:#ffd400">Desconto progressivo de ${pct}% aplicado!</span><br>` +
-          `<span style="font-size:13px;color:#aaa;text-decoration:line-through;">R$ ${licencaInicial.baseAmount.toLocaleString("pt-BR")},00</span> ` +
-          `<span style="font-size:18px;color:#45df6f;font-weight:800;">R$ ${valorStr}</span>`
-        : `<span style="font-size:18px;color:#45df6f;font-weight:800;">R$ ${valorStr}</span>`);
-
+document.getElementById("ci").innerHTML = "";
 
 document.getElementById(
 "formulario"
@@ -8164,8 +8193,13 @@ data.creditos || 0;
    EXIBE RESUMO
 */
 
-const totalValor = data.total.toLocaleString("pt-BR") + ",00";
-const cobradoValor = Number(data.value || 0).toLocaleString("pt-BR") + ",00";
+const totalSemDescCents = (data.license && data.license.totalAmountCents != null)
+    ? data.license.totalAmountCents
+    : Math.round((Number(data.total || 0)) * 100);
+const totalValor = formatarReais(totalSemDescCents);
+const cobradoValor = data.valueCents != null
+    ? formatarReais(data.valueCents)
+    : formatarMoeda(data.value);
 const pct = data.discountPercent || 0;
 const lic = data.license || { label: "1 ANO" };
 
@@ -13341,7 +13375,7 @@ function mostrarPagamentoRenovacao(data) {
         pixResumo.innerHTML =
             `<b>Renovação do espaço #${data.spaceId.toLocaleString("pt-BR")}</b><br>` +
             `<span style="font-size:12px;color:#aaa;">Licença: ${escapeHtml(data.license && data.license.label || "")}</span><br>` +
-            `<span style="font-size:20px;color:#45df6f;font-weight:900;">R$ ${Number(data.value || 0).toLocaleString("pt-BR")},00</span>`;
+            `<span style="font-size:20px;color:#45df6f;font-weight:900;">R$ ${Number(data.value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>`;
     }
 
     const qr = document.getElementById("qr");

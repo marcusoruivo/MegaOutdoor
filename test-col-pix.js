@@ -81,7 +81,7 @@ global.fetch = async (url, options = {}) => {
             };
         }
 
-        const id = String(900000 + seq++);
+        const id = "ORD01" + String(seq++).padStart(6, "0");
         const pagamento =
             body.transactions && body.transactions.payments &&
             body.transactions.payments[0];

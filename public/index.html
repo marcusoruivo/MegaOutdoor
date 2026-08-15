@@ -3839,6 +3839,13 @@ onclick="copiarPix()">
 COPIAR PIX
 </button>
 
+<button
+class="btn"
+id="btnJaPagueiPix"
+onclick="verificarPagamentoAgora()">
+Já paguei o PIX
+</button>
+
 </div>
 
 <div
@@ -8533,6 +8540,52 @@ data.status ===
 "CONFIRMED"
 ){
 
+await finalizarPagamentoConfirmado(data);
+
+}
+
+
+if(
+    data.status === "CANCELLED" ||
+    data.status === "DECLINED" ||
+    data.status === "REJECTED"
+){
+
+    clearInterval(monitorTimer);
+
+    document.getElementById(
+        "statusPix"
+    ).innerHTML =
+    '<span style="color:#ff4d4d;font-weight:800;">✗ PAGAMENTO RECUSADO</span><br><br>'+
+    'O pagamento não foi aprovado. Tente novamente ou use outro meio de pagamento.';
+}
+
+}catch(error){
+
+console.error(error);
+
+}
+
+},
+5000
+);
+
+}
+
+function exibirAreaPublicacao(){
+    const pub = document.getElementById("publicacao");
+    if(pub) pub.style.display = "block";
+}
+
+/* =========================
+   BOTÃO "JÁ PAGUEI O PIX"
+   Consulta manual imediata do status REAL no Mercado Pago.
+   NUNCA marca o pedido como pago por conta própria — o backend
+   consulta a API do MP e decide. Coexiste com o polling automático.
+========================= */
+
+async function finalizarPagamentoConfirmado(data){
+
 clearInterval(
 monitorTimer
 );
@@ -8566,11 +8619,11 @@ document.getElementById(
         :'')
      +'</span>'
     :'')+
-    (ultimoIndicacaoRegistrada
-        ?'<br><br><b>🎟️ Indicação registrada!</b><br>'+
-         '<span style="font-size:12px;color:#aaa;">'+
-         'Quando esta compra for confirmada, você ganha 5% na sua próxima.</span>'
-        :'');
+(ultimoIndicacaoRegistrada
+    ?'<br><br><b>🎟️ Indicação registrada!</b><br>'+
+     '<span style="font-size:12px;color:#aaa;">'+
+     'Quando esta compra for confirmada, você ganha 5% na sua próxima.</span>'
+    :'');
 
 document.getElementById("publicacao").style.display = "block";
 
@@ -8614,37 +8667,189 @@ sel.clear();
 updateCart();
 }
 
-
-if(
-    data.status === "CANCELLED" ||
-    data.status === "DECLINED" ||
-    data.status === "REJECTED"
-){
-
-    clearInterval(monitorTimer);
-
-    document.getElementById(
-        "statusPix"
-    ).innerHTML =
-    '<span style="color:#ff4d4d;font-weight:800;">✗ PAGAMENTO RECUSADO</span><br><br>'+
-    'O pagamento não foi aprovado. Tente novamente ou use outro meio de pagamento.';
+function mostrarStatusPix(html, tipo){
+    const el = document.getElementById("statusPix");
+    if(!el) return;
+    const cor =
+        tipo === "ok" ? "#45d66f" :
+        tipo === "err" ? "#ff4d4d" : "#ffd400";
+    el.innerHTML =
+        '<span style="color:' + cor + ';font-weight:800;">' +
+        html + "</span>";
 }
 
-}catch(error){
+let verificandoPagamento = false;
 
-console.error(error);
+async function verificarPagamentoAgora(){
 
+    const btn = document.getElementById("btnJaPagueiPix");
+    if(!btn || verificandoPagamento || !currentPayment) return;
+
+    /* Desabilita durante a requisição (impede clique duplicado). */
+    verificandoPagamento = true;
+    const textoOriginal = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Verificando pagamento...";
+
+    try{
+
+        const response = await fetch(
+            "/api/payment-status/" + currentPayment,
+            { headers: authHeaders({}) }
+        );
+
+        const data = await reqJSON(response);
+
+        if(response.status === 403 || response.status === 401){
+            mostrarStatusPix("Sessão expirada ou acesso negado. Faça login novamente.", "err");
+            return;
+        }
+
+        if(response.status === 404){
+            mostrarStatusPix("Pagamento não localizado. Aguarde e tente novamente.", "warn");
+            return;
+        }
+
+        if(response.status >= 500){
+            mostrarStatusPix("Erro ao verificar o pagamento. Tente novamente em instantes.", "err");
+            return;
+        }
+
+        if(data.status === "RECEIVED" || data.status === "CONFIRMED"){
+            await finalizarPagamentoConfirmado(data);
+            return;
+        }
+
+        const recusado =
+            data.status === "rejected" ||
+            data.status === "declined" ||
+            data.status === "cancelled" ||
+            data.status === "expired" ||
+            data.status === "REJECTED" ||
+            data.status === "DECLINED" ||
+            data.status === "CANCELLED";
+
+        if(recusado){
+            clearInterval(monitorTimer);
+            mostrarStatusPix(
+                "PAGAMENTO NÃO APROVADO — o pagamento foi rejeitado, " +
+                "cancelado ou expirou. Seus espaços voltaram ao mapa. " +
+                "Tente novamente ou use outro meio de pagamento.",
+                "err"
+            );
+            return;
+        }
+
+        mostrarStatusPix(
+            "Pagamento ainda não identificado. Aguarde alguns instantes e tente novamente.",
+            "warn"
+        );
+
+    }catch(error){
+        console.error(error);
+        mostrarStatusPix(
+            "Erro ao verificar o pagamento. Tente novamente.",
+            "err"
+        );
+    }finally{
+        verificandoPagamento = false;
+        if(btn && btn.isConnected){
+            btn.disabled = false;
+            btn.textContent = textoOriginal;
+        }
+    }
 }
 
-},
-5000
-);
+/* ---- Botão no checkout de Combos & Kits ---- */
 
+let currentKitPayment = null;
+let verificandoPagamentoKit = false;
+
+function mostrarStatusPixKit(html, tipo){
+    const el = document.getElementById("statusPixKit");
+    if(!el) return;
+    const cor =
+        tipo === "ok" ? "#45d66f" :
+        tipo === "err" ? "#ff4d4d" : "#ffd400";
+    el.innerHTML =
+        '<span style="color:' + cor + ';font-weight:800;">' +
+        html + "</span>";
 }
 
-function exibirAreaPublicacao(){
-    const pub = document.getElementById("publicacao");
-    if(pub) pub.style.display = "block";
+async function verificarPagamentoKitAgora(){
+
+    const btn = document.getElementById("btnJaPagueiPixKit");
+    if(!btn || verificandoPagamentoKit || !currentKitPayment) return;
+
+    verificandoPagamentoKit = true;
+    const textoOriginal = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Verificando pagamento...";
+
+    try{
+
+        const resp = await fetch(
+            "/api/combos/pagamento/" + encodeURIComponent(currentKitPayment),
+            { headers: authHeaders() }
+        );
+        const data = await reqJSON(resp);
+
+        if(resp.status === 403 || resp.status === 401){
+            mostrarStatusPixKit("Sessão expirada ou acesso negado. Faça login novamente.", "err");
+            return;
+        }
+
+        if(resp.status >= 500){
+            mostrarStatusPixKit("Erro ao verificar o pagamento. Tente novamente em instantes.", "err");
+            return;
+        }
+
+        if(data.ok && data.status === "RECEIVED"){
+            clearInterval(comprarKit._timer);
+            const conteudo = document.getElementById("kitModalConteudo");
+            if(conteudo){
+                conteudo.innerHTML =
+                    '<div style="text-align:center;padding:20px 0;">' +
+                    '<div style="font-size:48px;margin-bottom:10px;">🎉</div>' +
+                    "<h2 style=\"color:var(--success);\">PAGAMENTO CONFIRMADO!</h2>" +
+                    "<p style=\"font-size:13px;color:var(--text-secondary);margin:10px 0 16px;\">" +
+                    "Seus espaços e figurinhas foram liberados! Confira no mapa e no seu painel.</p>" +
+                    '<button class="btn" style="margin:0;" onclick="fecharKitModal()">FECHAR</button>' +
+                    "</div>";
+            }
+            moToast("Kit liberado com sucesso!", "ok");
+            setTimeout(atualizarStatusMapa, 1000);
+            return;
+        }
+
+        const recusado =
+            data.status === "rejected" ||
+            data.status === "declined" ||
+            data.status === "cancelled" ||
+            data.status === "expired" ||
+            data.status === "REJECTED" ||
+            data.status === "DECLINED" ||
+            data.status === "CANCELLED";
+
+        if(recusado){
+            mostrarStatusPixKit("PAGAMENTO NÃO APROVADO — tente novamente ou use outro meio de pagamento.", "err");
+            return;
+        }
+
+        mostrarStatusPixKit(
+            "Pagamento ainda não identificado. Aguarde alguns instantes e tente novamente.",
+            "warn"
+        );
+
+    }catch(error){
+        mostrarStatusPixKit("Erro ao verificar o pagamento. Tente novamente.", "err");
+    }finally{
+        verificandoPagamentoKit = false;
+        if(btn && btn.isConnected){
+            btn.disabled = false;
+            btn.textContent = textoOriginal;
+        }
+    }
 }
 
 // ==========================================
@@ -13783,7 +13988,7 @@ function abrirKit(kitId){
 
     document.getElementById("kitModalConteudo").innerHTML = html;
     document.getElementById("kitModal").style.display = "flex";
-    document.getElementById("kitModalLicencas").dataset.kitId = kit.id;
+    document.getElementById("kitLicencas").dataset.kitId = kit.id;
 }
 
 function alternarMetodoKit(){
@@ -13894,6 +14099,8 @@ function mostrarPagamentoKit(data){
                 '<button class="btn sec" onclick="copiarTexto(document.getElementById(\'codigoPixKit\').textContent)">COPIAR</button></div>';
         }
         html += '<div class="statusPix" id="statusPixKit">Aguardando pagamento...</div>';
+        html += '<button class="btn" id="btnJaPagueiPixKit" onclick="verificarPagamentoKitAgora()" style="margin-top:10px;">' +
+            "Já paguei o PIX</button>";
         html += '<p style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:8px;">' +
             "Você pode fechar esta janela; o kit será liberado automaticamente quando o pagamento confirmar.</p>";
     } else {
@@ -13908,9 +14115,9 @@ function mostrarPagamentoKit(data){
 
     /* Inicia o polling enquanto o modal estiver aberto. */
     clearInterval(comprarKit._timer);
-    const currentPayment = data.orderId || data.paymentId;
-    comprarKit._timer = setInterval(() => monitorarPagamentoKit(currentPayment), 5000);
-    monitorarPagamentoKit(currentPayment);
+    currentKitPayment = data.orderId || data.paymentId;
+    comprarKit._timer = setInterval(() => monitorarPagamentoKit(currentKitPayment), 5000);
+    monitorarPagamentoKit(currentKitPayment);
 }
 
 async function monitorarPagamentoKit(orderId){

@@ -68,6 +68,7 @@ module.exports = function criarModuloCombos(deps) {
         criarOrderMercadoPago,
         consultarOrderMercadoPago,
         statusOrderPago,
+        paraCentavos,
         registrarLog,
         obterPool,
         obterPgDisponivel,
@@ -510,7 +511,7 @@ module.exports = function criarModuloCombos(deps) {
        polling — duplicadas não geram entrega dupla.
     ========================================================= */
 
-    async function processarPagamento({ mpOrderId }) {
+    async function processarPagamento({ mpOrderId, totalCents }) {
         if (!pgOk()) return null;
 
         const q = await pg().query(
@@ -522,6 +523,30 @@ module.exports = function criarModuloCombos(deps) {
         );
         const compra = q.rows[0];
         if (!compra) return null;
+
+        /* Validação de valor: o total pago no MP precisa bater com o
+           total do kit gravado no pedido. Total divergente NÃO entrega. */
+        if (
+            totalCents != null &&
+            paraCentavos(compra.total) !== totalCents
+        ) {
+            registrarLog("combo_pagamento_valor_divergente", {
+                mpOrderId,
+                compraId: compra.id,
+                cobradoCents: paraCentavos(compra.total),
+                pagoCents: totalCents
+            });
+            console.error(
+                "[COMBO] VALOR DIVERGENTE entre o cobrado e o pago. Kit NÃO entregue.",
+                {
+                    mpOrderId,
+                    compraId: compra.id,
+                    cobradoCents: paraCentavos(compra.total),
+                    pagoCents: totalCents
+                }
+            );
+            return null;
+        }
 
         /* Reserva atômica: evita entrega dupla se o webhook e o
            polling chegarem ao mesmo tempo para o mesmo pedido. */
@@ -755,7 +780,10 @@ module.exports = function criarModuloCombos(deps) {
             const pago = statusOrderPago(ordem.status);
 
             if (pago) {
-                const resultado = await processarPagamento({ mpOrderId: mpConsultaId });
+                const resultado = await processarPagamento({
+                    mpOrderId: mpConsultaId,
+                    totalCents: paraCentavos(ordem.total_amount)
+                });
                 if (resultado) {
                     registrarLog("combo_pagamento_confirmado_polling", {
                         orderId: mpConsultaId,
@@ -771,6 +799,9 @@ module.exports = function criarModuloCombos(deps) {
                 entrega: pago ? "confirmada" : "aguardando"
             });
         } catch (error) {
+            if (error && error.status === 404) {
+                return res.status(404).json({ error: "Pedido não encontrado no Mercado Pago." });
+            }
             res.status(500).json({ error: error.message });
         }
     });

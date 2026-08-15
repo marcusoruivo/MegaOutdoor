@@ -4194,6 +4194,12 @@ app.get(
 
         } catch (error) {
 
+            if (error && error.status === 404) {
+                return res.status(404).json({
+                    error: "Pedido não encontrado no Mercado Pago."
+                });
+            }
+
             res.status(500).json({
                 error: error.message
             });
@@ -7071,12 +7077,18 @@ app.post("/webhooks/mercadopago", async (req, res) => {
         return res.status(200).json({ received: true });
     }
 
-    /* Guarda de formato de Order ID. A API Orders retorna IDs reais no
-       formato "ORD01..." (ex.: ORD01JSTXK4...). O teste manual do painel do
-       Mercado Pago usa data.id fictício ("123456"), que NÃO pode ser
-       consultado na API (gera "path param order id is invalid"). Aqui
-       identificamos a simulação/teste e encerramos com 200 sem consultar. */
-    if (!/^ORD\d{1,40}$/i.test(dataIdWebhook)) {
+    /* Guarda de formato de Order ID. As Orders reais do Mercado Pago têm
+       IDs gerados pela API no formato "ORD..." — alfanuméricos, sem
+       comprimento/caracteres previsíveis além do próprio prefixo ORD
+       (ex.: ORD01M0253SXFMB7N4T2RWDYKANH, ORD01JQ4S4KY8HWQ6NA5PXB65B3D3).
+       O teste manual do painel do MP usa data.id fictício SEM o prefixo
+       ORD ("123456", "5555"), que NÃO pode ser consultado na API (gera
+       "path param order id is invalid"). Aqui identificamos a
+       simulação/teste (sem prefixo ORD) e encerramos com 200 sem
+       consultar. Não restringimos comprimento/caracteres além de
+       alfanumérico: o HMAC já foi validado acima e a Order é sempre
+       reconsultada na API — essas são as proteções reais, não uma regex. */
+    if (!/^ORD[A-Z0-9]+$/i.test(dataIdWebhook)) {
         console.log(
             "Webhook Mercado Pago: identificador sem formato de Order real " +
             "(simulação/teste). Encerrando sem consultar a API.",

@@ -246,6 +246,7 @@ module.exports = function criarModuloColecionaveis(deps) {
         consultarOrderMercadoPago,
         extrairDadosPagamento,
         statusOrderPago,
+        paraCentavos,
         registrarLog,
         normalizarDadosComprador,
         validarDocumento,
@@ -821,12 +822,16 @@ module.exports = function criarModuloColecionaveis(deps) {
        Só executa após a Order estar paga.
     ========================================================= */
 
-    async function processarPagamento({ mpOrderId }) {
+    async function processarPagamento({ mpOrderId, totalCents }) {
         if (!pgOk()) return null;
 
         await expirarNegociacoesVencidas();
 
         const pool = pg();
+
+        const cobradoIgual = (valorReal) =>
+            totalCents == null ||
+            paraCentavos(valorReal) === totalCents;
 
         /* 1) Pacote de figurinhas */
         const packQ = await pool.query(
@@ -837,6 +842,20 @@ module.exports = function criarModuloColecionaveis(deps) {
             [mpOrderId]
         );
         if (packQ.rows[0]) {
+            if (!cobradoIgual(packQ.rows[0].price)) {
+                registrarLog("colecionavel_pagamento_valor_divergente", {
+                    mpOrderId,
+                    tipo: "pack",
+                    pedidoId: packQ.rows[0].id,
+                    cobradoCents: paraCentavos(packQ.rows[0].price),
+                    pagoCents: totalCents
+                });
+                console.error(
+                    "[COLECIONAVEL] VALOR DIVERGENTE (pacote). NÃO entregue.",
+                    { mpOrderId, cobradoCents: paraCentavos(packQ.rows[0].price), pagoCents: totalCents }
+                );
+                return null;
+            }
             await confirmarCompraPacote(packQ.rows[0], mpOrderId);
             return { tipo: "pack" };
         }
@@ -850,6 +869,20 @@ module.exports = function criarModuloColecionaveis(deps) {
             [mpOrderId]
         );
         if (orderQ.rows[0]) {
+            if (!cobradoIgual(orderQ.rows[0].total)) {
+                registrarLog("colecionavel_pagamento_valor_divergente", {
+                    mpOrderId,
+                    tipo: "purchase",
+                    pedidoId: orderQ.rows[0].id,
+                    cobradoCents: paraCentavos(orderQ.rows[0].total),
+                    pagoCents: totalCents
+                });
+                console.error(
+                    "[COLECIONAVEL] VALOR DIVERGENTE (mercado). NÃO entregue.",
+                    { mpOrderId, cobradoCents: paraCentavos(orderQ.rows[0].total), pagoCents: totalCents }
+                );
+                return null;
+            }
             await confirmarCompraMercado(orderQ.rows[0], mpOrderId);
             return { tipo: "purchase" };
         }
@@ -863,6 +896,20 @@ module.exports = function criarModuloColecionaveis(deps) {
             [mpOrderId]
         );
         if (tradeQ.rows[0]) {
+            if (!cobradoIgual(tradeQ.rows[0].cash_amount)) {
+                registrarLog("colecionavel_pagamento_valor_divergente", {
+                    mpOrderId,
+                    tipo: "trade",
+                    pedidoId: tradeQ.rows[0].id,
+                    cobradoCents: paraCentavos(tradeQ.rows[0].cash_amount),
+                    pagoCents: totalCents
+                });
+                console.error(
+                    "[COLECIONAVEL] VALOR DIVERGENTE (troca). NÃO confirmada.",
+                    { mpOrderId, cobradoCents: paraCentavos(tradeQ.rows[0].cash_amount), pagoCents: totalCents }
+                );
+                return null;
+            }
             await confirmarPagamentoTroca(tradeQ.rows[0], mpOrderId);
             return { tipo: "trade" };
         }
@@ -1605,7 +1652,10 @@ module.exports = function criarModuloColecionaveis(deps) {
             const pago = statusOrderPago(ordem.status);
 
             if (pago) {
-                const resultado = await processarPagamento({ mpOrderId: mpConsultaId });
+                const resultado = await processarPagamento({
+                    mpOrderId: mpConsultaId,
+                    totalCents: paraCentavos(ordem.total_amount)
+                });
                 if (resultado) {
                     registrarLog("colecionavel_pagamento_confirmado_polling", {
                         orderId: mpConsultaId,

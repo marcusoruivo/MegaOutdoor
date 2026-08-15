@@ -38,7 +38,10 @@ global.fetch = async (url, options = {}) => {
     const m = u.match(/\/v1\/orders\/([^/?#]+)/);
     if (m && method === "GET") {
         const id = m[1];
-        const order = ordersCriadas.get(id) || { id, status: "open", external_reference: "mock", transactions: { payments: [] } };
+        const order = ordersCriadas.get(id);
+        if (!order) {
+            return { ok: false, status: 404, json: async () => ({ message: "Order not found", status: 404, error: "not_found" }) };
+        }
         return { ok: true, status: 200, json: async () => order };
     }
     return { ok: false, status: 404, json: async () => ({ message: "Rota MP não encontrada " + u }) };
@@ -152,6 +155,93 @@ async function main() {
     const ck5b = await reqJson(BASE + "/api/combos/kits/" + premium.id + "/checkout",
         json("POST", userTok2, checkoutBody("5_years")));
     t("taxa única independe do usuário", ck5b.body.valor === 78.25, "valor=" + ck5b.body.valor);
+
+    /* ===== CORREÇÃO 4 — TOTAL DO KIT COM 1/3/5 ANOS =====
+       Taxa única por pedido: 1 ANO=0, 3 ANOS=+20, 5 ANOS=+40.
+       Fórmula: base (já com o desconto do kit) + taxa DA licença.
+       Frontend e backend usam a MESMA fórmula (base + fee uma vez). */
+    const frontendHtml = fs.readFileSync(path.join(__dirname, "public", "index.html"), "utf8");
+    t("C4) frontend usa base + fee UMA única vez (sem multiplicar)",
+        frontendHtml.includes("Number(kit.preco) + Number(lic.fee)"),
+        "formula=" + /Number\(kit\.preco\) \+ Number\(lic\.fee\)/.test(frontendHtml));
+    t("C4) dataset.kitId gravado no elemento correto (kitLicencas)",
+        frontendHtml.includes('document.getElementById("kitLicencas").dataset.kitId = kit.id;') &&
+        !frontendHtml.includes('getElementById("kitModalLicencas").dataset.kitId'),
+        "fix=" + frontendHtml.includes('document.getElementById("kitLicencas").dataset.kitId = kit.id;'));
+
+    const taxas = { "1_year": 0, "3_years": 20, "5_years": 40 };
+    for (const k of lista) {
+        for (const plano of ["1_year", "3_years", "5_years"]) {
+            const ckPlano = await reqJson(BASE + "/api/combos/kits/" + k.id + "/checkout",
+                json("POST", userTok, checkoutBody(plano)));
+            const esperado = Math.round((Number(k.preco) + taxas[plano]) * 100) / 100;
+            t("C4) kit '" + k.slug + "' " + plano + " -> base + taxa (frontend=backend)",
+                ckPlano.r.status === 200 && ckPlano.body.valor === esperado,
+                "valor=" + ckPlano.body.valor + " esperado=" + esperado +
+                " (preco=" + k.preco + " + taxa=" + taxas[plano] + ")");
+        }
+    }
+
+    /* Taxa aplicada SOMENTE uma vez: 3 anos = base + 20; 5 anos = base + 40
+       (NUNCA base + 20 + 40). */
+    const ckTres = await reqJson(BASE + "/api/combos/kits/" + premium.id + "/checkout",
+        json("POST", userTok, checkoutBody("3_years")));
+    t("C4) 3 anos soma a taxa UMA única vez (+20)",
+        ckTres.r.status === 200 && ckTres.body.valor === Math.round((premium.preco + 20) * 100) / 100,
+        "valor=" + ckTres.body.valor + " esperado=" + (Math.round((premium.preco + 20) * 100) / 100));
+    const ckCinco = await reqJson(BASE + "/api/combos/kits/" + premium.id + "/checkout",
+        json("POST", userTok, checkoutBody("5_years")));
+    t("C4) 5 anos soma a taxa UMA única vez (+40), sem acumular a de 3 anos",
+        ckCinco.r.status === 200 && ckCinco.body.valor === Math.round((premium.preco + 40) * 100) / 100 &&
+        (ckCinco.body.valor - premium.preco) === 40,
+        "valor=" + ckCinco.body.valor + " esperado=" + (Math.round((premium.preco + 40) * 100) / 100));
+
+    /* ===== BOTÃO "JÁ PAGUEI O PIX" — kits (/api/combos/pagamento/:id) ===== */
+    const ckBtn = await reqJson(BASE + "/api/combos/kits/" + premium.id + "/checkout",
+        json("POST", userTok, checkoutBody("1_year")));
+    const mpIdBtn = String(ckBtn.body.orderId);
+
+    /* pending: status real, entrega aguardando, NADA entregue */
+    const btnPend = await reqJson(BASE + "/api/combos/pagamento/" + ckBtn.body.externalReference, json("GET", userTok));
+    t("botão kit pending -> status real + entrega aguardando",
+        btnPend.r.status === 200 && btnPend.body.ok && btnPend.body.status !== "RECEIVED" &&
+        btnPend.body.entrega === "aguardando",
+        "status=" + btnPend.r.status + " st=" + btnPend.body.status);
+
+    /* approved: MP pago -> RECEIVED + entrega confirmada (idempotente) */
+    ordersCriadas.get(mpIdBtn).status = "paid";
+    const btnOk = await reqJson(BASE + "/api/combos/pagamento/" + ckBtn.body.externalReference, json("GET", userTok));
+    const btnOk2 = await reqJson(BASE + "/api/combos/pagamento/" + ckBtn.body.externalReference, json("GET", userTok));
+    t("botão kit approved -> RECEIVED + entrega confirmada (clique repetido idempotente)",
+        btnOk.r.status === 200 && btnOk.body.status === "RECEIVED" && btnOk.body.entrega === "confirmada" &&
+        btnOk2.r.status === 200 && btnOk2.body.status === "RECEIVED",
+        "st1=" + btnOk.body.status + " st2=" + btnOk2.body.status);
+
+    /* rejected: MP responde rejeitado -> status real retornado (nada entregue) */
+    const ckBtnRej = await reqJson(BASE + "/api/combos/kits/" + premium.id + "/checkout",
+        json("POST", userTok2, checkoutBody("1_year")));
+    ordersCriadas.get(String(ckBtnRej.body.orderId)).status = "rejected";
+    const btnRej = await reqJson(BASE + "/api/combos/pagamento/" + ckBtnRej.body.externalReference, json("GET", userTok2));
+    t("botão kit rejected -> status real retornado, nada entregue",
+        btnRej.r.status === 200 && btnRej.body.status === "rejected" && btnRej.body.entrega === "aguardando",
+        "status=" + btnRej.r.status + " st=" + btnRej.body.status);
+
+    /* Order inexistente (MP 404) -> 404, sem quebrar */
+    const ckBtnInex = await reqJson(BASE + "/api/combos/kits/" + premium.id + "/checkout",
+        json("POST", userTok, checkoutBody("1_year")));
+    ordersCriadas.delete(String(ckBtnInex.body.orderId));
+    const btnInex = await reqJson(BASE + "/api/combos/pagamento/" + ckBtnInex.body.externalReference, json("GET", userTok));
+    t("botão kit Order inexistente (404) -> 404",
+        btnInex.r.status === 404,
+        "status=" + btnInex.r.status + " body=" + JSON.stringify(btnInex.body));
+
+    /* Order de OUTRO usuário -> 403 */
+    const ckBtnOutro = await reqJson(BASE + "/api/combos/kits/" + premium.id + "/checkout",
+        json("POST", userTok, checkoutBody("1_year")));
+    const btnOutro = await reqJson(BASE + "/api/combos/pagamento/" + ckBtnOutro.body.externalReference, json("GET", userTok2));
+    t("botão kit order de outro usuário -> 403",
+        btnOutro.r.status === 403,
+        "status=" + btnOutro.r.status);
 
     /* ===== Status antes de pagar ===== */
     const antes = await reqJson(BASE + "/api/combos/pagamento/" + ck.body.externalReference, json("GET", userTok));

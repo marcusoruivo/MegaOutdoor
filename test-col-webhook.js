@@ -38,6 +38,7 @@ const BASE = "http://localhost:" + PORT;
 /* ---- Mock da API Orders do Mercado Pago ---- */
 let seq = 1;
 const ordersCriadas = new Map();
+const ordersInexistentes = new Set();
 
 const fetchOriginal = global.fetch;
 global.fetch = async (url, options = {}) => {
@@ -78,6 +79,39 @@ global.fetch = async (url, options = {}) => {
     const m = u.match(/\/v1\/orders\/([^/?#]+)/);
     if (m && method === "GET") {
         const id = m[1];
+        if (id.startsWith("ORD404")) {
+            return {
+                ok: false,
+                status: 404,
+                json: async () => ({
+                    message: "Order not found",
+                    status: 404,
+                    error: "not_found"
+                })
+            };
+        }
+        if (ordersInexistentes.has(id)) {
+            return {
+                ok: false,
+                status: 404,
+                json: async () => ({
+                    message: "Order not found",
+                    status: 404,
+                    error: "not_found"
+                })
+            };
+        }
+        const ordGet = ordersCriadas.get(id);
+        if (ordGet && ordGet._autoConfirm === false) {
+            return {
+                ok: true,
+                status: 200,
+                json: async () => ({
+                    ...ordGet,
+                    total_amount: ordGet.total_amount || "1.00"
+                })
+            };
+        }
         const order = ordersCriadas.get(id) || {
             id,
             status: "paid",
@@ -377,6 +411,298 @@ async function main() {
     t("23) REGRESSÃO: assinatura com data.id MAIÚSCULO no manifesto -> 401",
         wUpper.r.status === 401,
         "status=" + wUpper.r.status + " (validador exige id minúsculo no manifesto)");
+
+    /* 24) ORDER REAL (ID exato da notificação real de produção):
+       ORD01M0253SXFMB7N4T2RWDYKANH — ID alfanumérico documentado pelo MP.
+       NÃO pode ser tratado como simulação/teste: reconhecemos como Order
+       real, consultamos a API (mock) e liberamos o espaço. */
+    const espRealId = 999981;
+    const checkoutRealId = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espRealId], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const ordemRealId = "ORD01M0253SXFMB7N4T2RWDYKANH";
+    const dbRealId = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    const extRefReal = dbRealId[String(espRealId)] && dbRealId[String(espRealId)].orderId;
+    dbRealId[String(espRealId)].mpOrderId = ordemRealId;
+    fs.writeFileSync(SPACES_FILE, JSON.stringify(dbRealId));
+    ordersCriadas.set(ordemRealId, {
+        id: ordemRealId,
+        status: "paid",
+        total_amount: "1.00",
+        external_reference: extRefReal,
+        transactions: {
+            payments: [{
+                id: "pay-" + ordemRealId,
+                status: "paid",
+                status_detail: "accredited",
+                payment_method: { id: "pix", type: "bank_transfer" }
+            }]
+        }
+    });
+    const tsRealId = Math.floor(Date.now() / 1000);
+    const ridRealId = "req-real-id-" + Date.now();
+    const wRealId = await reqJson(
+        BASE + "/webhooks/mercadopago?data.id=" + ordemRealId + "&type=order",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-signature": "ts=" + tsRealId + ",v1=" + assinar(ordemRealId, tsRealId, ridRealId),
+                "x-request-id": ridRealId
+            },
+            body: JSON.stringify({
+                type: "order", action: "order.action_required", live_mode: true,
+                data: { id: ordemRealId }
+            })
+        });
+    await sleep(700);
+    const dbRealId2 = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("24) ORDER REAL (ORD01M0253SXFMB7N4T2RWDYKANH) -> consultada + espaço pago",
+        wRealId.r.status === 200 && wRealId.body.received === true &&
+        wRealId.body.simulation !== true &&
+        dbRealId2[String(espRealId)] &&
+        dbRealId2[String(espRealId)].status === "paid",
+        "status=" + wRealId.r.status + " body=" + JSON.stringify(wRealId.body) +
+        " espaço=" + (dbRealId2[String(espRealId)] && dbRealId2[String(espRealId)].status));
+
+    /* 25) SIMULAÇÃO do painel do MP (dataId=5555, como na simulação antiga):
+       sem prefixo ORD -> 200 simulation:true, SEM consultar a API. */
+    const url5555 = BASE + "/webhooks/mercadopago?data.id=5555&type=order";
+    const ts5555 = Math.floor(Date.now() / 1000);
+    const rid5555 = "req-5555-" + Date.now();
+    const w5555 = await reqJson(url5555, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-signature": "ts=" + ts5555 + ",v1=" + assinar("5555", ts5555, rid5555),
+            "x-request-id": rid5555
+        },
+        body: JSON.stringify({ type: "order", data: { id: "5555" } })
+    });
+    t("25) simulação (dataId=5555) -> 200 simulation:true (sem consultar API)",
+        w5555.r.status === 200 && w5555.body.simulation === true,
+        "status=" + w5555.r.status + " body=" + JSON.stringify(w5555.body));
+
+    /* 26) Order INEXISTENTE (formato ORD real, mas a API responde 404):
+       fluxo NÃO encerra como simulação — consulta a API, registra o erro e
+       devolve 200 received, sem liberar espaço e sem quebrar. */
+    const ordemInexistente = "ORD404NEXISTENTE00000000000000";
+    const tsInex = Math.floor(Date.now() / 1000);
+    const ridInex = "req-inex-" + Date.now();
+    const wInex = await reqJson(
+        BASE + "/webhooks/mercadopago?data.id=" + ordemInexistente + "&type=order",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-signature": "ts=" + tsInex + ",v1=" + assinar(ordemInexistente, tsInex, ridInex),
+                "x-request-id": ridInex
+            },
+            body: JSON.stringify({ type: "order", data: { id: ordemInexistente } })
+        });
+    t("26) Order inexistente (404) -> 200 received, sem simulação e sem liberar",
+        wInex.r.status === 200 && wInex.body.received === true &&
+        wInex.body.simulation !== true,
+        "status=" + wInex.r.status + " body=" + JSON.stringify(wInex.body));
+
+    /* 27) Order ORD em MINÚSCULO também é Order real (não é simulação):
+       o reconhecimento não depende de caixa alta. */
+    const ordemLower = "ord01testelowercase000000000000";
+    const tsLower = Math.floor(Date.now() / 1000);
+    const ridLower = "req-lower-" + Date.now();
+    const wLower = await reqJson(
+        BASE + "/webhooks/mercadopago?data.id=" + ordemLower + "&type=order",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-signature": "ts=" + tsLower + ",v1=" + assinar(ordemLower, tsLower, ridLower),
+                "x-request-id": ridLower
+            },
+            body: JSON.stringify({ type: "order", data: { id: ordemLower } })
+        });
+    t("27) ORD minúsculo -> Order real (não é simulação)",
+        wLower.r.status === 200 && wLower.body.received === true &&
+        wLower.body.simulation !== true,
+        "status=" + wLower.r.status + " body=" + JSON.stringify(wLower.body));
+
+    /* =====================================================
+       BOTÃO "JÁ PAGUEI O PIX" — GET /api/payment-status/:id
+       O backend consulta o Mercado Pago, valida posse, valor e
+       external_reference e só então marca como pago (idempotente).
+       ===================================================== */
+
+    const email2 = "webhook-btn-" + Date.now() + "@teste.com";
+    const reg2 = await reqJson(BASE + "/api/auth/registrar",
+        json("POST", null, { nome: "Webhook Btn 2", email: email2, senha: "senha-teste-123" }));
+    const userTok2 = (reg2.body && reg2.body.token) || "";
+    t("registro segundo usuário (botão)", !!userTok2);
+
+    /* 28) approved: consulta imediata (botão) -> 200 RECEIVED + espaço pago */
+    const espPollOk = 999980;
+    const ckPollOk = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espPollOk], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdPollOk = String(ckPollOk.body.mpOrderId);
+    ordersCriadas.get(dataIdPollOk).status = "paid";
+    const wPollOk = await reqJson(BASE + "/api/payment-status/" + dataIdPollOk, {
+        headers: { "Authorization": "Bearer " + userTok }
+    });
+    await sleep(700);
+    const dbPollOk = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("28) botão approved -> 200 RECEIVED + espaço pago",
+        wPollOk.r.status === 200 && wPollOk.body.status === "RECEIVED" &&
+        dbPollOk[String(espPollOk)] && dbPollOk[String(espPollOk)].status === "paid",
+        "status=" + wPollOk.r.status + " st=" + wPollOk.body.status +
+        " espaço=" + (dbPollOk[String(espPollOk)] && dbPollOk[String(espPollOk)].status));
+
+    /* 29) pending: consulta -> 200 com status real, espaço NÃO liberado */
+    const espPollPend = 999979;
+    const ckPollPend = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espPollPend], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdPollPend = String(ckPollPend.body.mpOrderId);
+    ordersCriadas.get(dataIdPollPend)._autoConfirm = false;
+    const wPollPend = await reqJson(BASE + "/api/payment-status/" + dataIdPollPend, {
+        headers: { "Authorization": "Bearer " + userTok }
+    });
+    await sleep(700);
+    const dbPollPend = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("29) botão pending -> status real, espaço NÃO liberado",
+        wPollPend.r.status === 200 && wPollPend.body.status !== "RECEIVED" &&
+        wPollPend.body.accessCode === null &&
+        dbPollPend[String(espPollPend)] &&
+        dbPollPend[String(espPollPend)].status === "reserved",
+        "status=" + wPollPend.r.status + " st=" + wPollPend.body.status +
+        " espaço=" + (dbPollPend[String(espPollPend)] && dbPollPend[String(espPollPend)].status));
+
+    /* 30) rejected: consulta -> 200, libera a reserva na hora (regra existente) */
+    const espPollRej = 999978;
+    const ckPollRej = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espPollRej], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdPollRej = String(ckPollRej.body.mpOrderId);
+    ordersCriadas.get(dataIdPollRej).status = "rejected";
+    const wPollRej = await reqJson(BASE + "/api/payment-status/" + dataIdPollRej, {
+        headers: { "Authorization": "Bearer " + userTok }
+    });
+    await sleep(700);
+    const dbPollRej = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("30) botão rejected -> 200, reserva liberada na hora",
+        wPollRej.r.status === 200 && wPollRej.body.status === "rejected" &&
+        !dbPollRej[String(espPollRej)],
+        "status=" + wPollRej.r.status + " st=" + wPollRej.body.status +
+        " existe=" + (!!dbPollRej[String(espPollRej)]));
+
+    /* 31) cancelled: consulta -> 200, reserva liberada (regra existente) */
+    const espPollCanc = 999977;
+    const ckPollCanc = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espPollCanc], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdPollCanc = String(ckPollCanc.body.mpOrderId);
+    ordersCriadas.get(dataIdPollCanc).status = "cancelled";
+    const wPollCanc = await reqJson(BASE + "/api/payment-status/" + dataIdPollCanc, {
+        headers: { "Authorization": "Bearer " + userTok }
+    });
+    await sleep(700);
+    const dbPollCanc = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("31) botão cancelled -> 200, reserva liberada",
+        wPollCanc.r.status === 200 && wPollCanc.body.status === "cancelled" &&
+        !dbPollCanc[String(espPollCanc)],
+        "status=" + wPollCanc.r.status + " st=" + wPollCanc.body.status +
+        " existe=" + (!!dbPollCanc[String(espPollCanc)]));
+
+    /* 32) Order inexistente no MP (404) -> 404, sem liberar nada */
+    const espPollInex = 999976;
+    const ckPollInex = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espPollInex], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdPollInex = String(ckPollInex.body.mpOrderId);
+    ordersInexistentes.add(dataIdPollInex);
+    const wPollInex = await reqJson(BASE + "/api/payment-status/" + dataIdPollInex, {
+        headers: { "Authorization": "Bearer " + userTok }
+    });
+    await sleep(700);
+    const dbPollInex = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("32) botão Order inexistente (404) -> 404 e nada liberado",
+        wPollInex.r.status === 404 &&
+        dbPollInex[String(espPollInex)] &&
+        dbPollInex[String(espPollInex)].status === "reserved",
+        "status=" + wPollInex.r.status + " body=" + JSON.stringify(wPollInex.body) +
+        " espaço=" + (dbPollInex[String(espPollInex)] && dbPollInex[String(espPollInex)].status));
+
+    /* 33) Order de OUTRO usuário -> 403 (acesso negado) */
+    const espPollOutro = 999975;
+    const ckPollOutro = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espPollOutro], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdPollOutro = String(ckPollOutro.body.mpOrderId);
+    const wPollOutro = await reqJson(BASE + "/api/payment-status/" + dataIdPollOutro, {
+        headers: { "Authorization": "Bearer " + userTok2 }
+    });
+    t("33) botão order de outro usuário -> 403",
+        wPollOutro.r.status === 403,
+        "status=" + wPollOutro.r.status + " body=" + JSON.stringify(wPollOutro.body));
+
+    /* 34) VALOR DIVERGENTE na consulta -> 200 divergencia + espaço NÃO pago */
+    const espPollDiv = 999974;
+    const ckPollDiv = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espPollDiv], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdPollDiv = String(ckPollDiv.body.mpOrderId);
+    const ordemPollDiv = ordersCriadas.get(dataIdPollDiv);
+    ordemPollDiv.status = "paid";
+    ordemPollDiv.total_amount = "0.50";
+    const wPollDiv = await reqJson(BASE + "/api/payment-status/" + dataIdPollDiv, {
+        headers: { "Authorization": "Bearer " + userTok }
+    });
+    await sleep(700);
+    const dbPollDiv = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("34) botão valor divergente -> 200 divergencia + espaço NÃO liberado",
+        wPollDiv.r.status === 200 && wPollDiv.body.divergencia === true &&
+        dbPollDiv[String(espPollDiv)] &&
+        dbPollDiv[String(espPollDiv)].status === "reserved",
+        "status=" + wPollDiv.r.status + " body=" + JSON.stringify(wPollDiv.body) +
+        " espaço=" + (dbPollDiv[String(espPollDiv)] && dbPollDiv[String(espPollDiv)].status));
+
+    /* 35) consulta repetida (clique duplicado) -> idempotente, MESMO paidAt */
+    const paidAtOk = dbPollOk[String(espPollOk)] && dbPollOk[String(espPollOk)].paidAt;
+    const wPollOk2 = await reqJson(BASE + "/api/payment-status/" + dataIdPollOk, {
+        headers: { "Authorization": "Bearer " + userTok }
+    });
+    await sleep(700);
+    const dbPollOk2 = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("35) consulta repetida idempotente -> 200 e paidAt inalterado",
+        wPollOk2.r.status === 200 && wPollOk2.body.status === "RECEIVED" &&
+        dbPollOk2[String(espPollOk)] && dbPollOk2[String(espPollOk)].status === "paid" &&
+        dbPollOk2[String(espPollOk)].paidAt === paidAtOk,
+        "status=" + wPollOk2.r.status + " st=" + wPollOk2.body.status);
+
+    /* 36) clique duplicado protegido no FRONTEND: botão desabilita durante a
+       requisição ("Verificando pagamento...") e só o backend decide pago. */
+    const htmlIdx = fs.readFileSync(path.join(__dirname, "public", "index.html"), "utf8");
+    t("36) botão no frontend: desabilita + 'Verificando pagamento...' + idempotente",
+        htmlIdx.includes('id="btnJaPagueiPix"') &&
+        htmlIdx.includes("Verificando pagamento...") &&
+        htmlIdx.includes("verificandoPagamento = true") &&
+        htmlIdx.includes("Já paguei o PIX"),
+        "btn=" + htmlIdx.includes('id="btnJaPagueiPix"'));
 
     /* 22) prova criptográfica do formato canônico do MP: o HMAC calculado
        sobre id:<data.id em minúsculo>;request-id:<rid>;ts:<ts>; gera

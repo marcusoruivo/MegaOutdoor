@@ -61,6 +61,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--laranja)
 }
 .topo .logo{display:flex;align-items:center;gap:10px;font-weight:800}
 .topo .logo img{width:auto;height:52px;max-width:220px;object-fit:contain}
+.mp-recebimentos-banner{display:none;max-width:1100px;margin:12px auto 0;padding:12px 16px;border:1px solid rgba(255,212,0,.3);border-radius:14px;background:linear-gradient(100deg,rgba(255,212,0,.1),rgba(255,122,0,.06));align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.mp-recebimentos-banner .titulo{font-weight:900;color:var(--amarelo);letter-spacing:.5px}
+.mp-recebimentos-banner .texto{font-size:12px;color:var(--muted);margin-top:3px}
+.mp-recebimentos-banner .status{font-size:12px;font-weight:800}
 .topo .logo .marca{
     font-family:'Orbitron',sans-serif;
     font-size:17px;letter-spacing:1px;
@@ -752,6 +756,11 @@ body{overflow-x:hidden}
     </div>
 </header>
 
+<section class="mp-recebimentos-banner" id="mpRecebimentosBanner" aria-label="Mercado Pago">
+    <div><div class="titulo">💳 MERCADO PAGO</div><div class="texto" id="mpRecebimentosTexto">Conecte seu Mercado Pago para vender suas figurinhas.</div></div>
+    <div id="mpRecebimentosAcao"></div>
+</section>
+
 <!-- ===== HERO ===== -->
 <section class="hero">
     <h1>ANIMAIS DO MUNDO</h1>
@@ -1069,6 +1078,7 @@ function atualizarHeader(){
     } else {
         bt.textContent = "👤 ENTRAR";
     }
+    carregarContaRecebimento();
 }
 
 /* ===== VALIDAÇÃO DE CPF/CNPJ (espelho do backend) ===== */
@@ -2321,15 +2331,34 @@ async function carregarPerfil(){
 
 async function carregarContaRecebimento(){
     const el = document.getElementById("recebimentosConteudo");
-    if(!el) return;
+    const banner = document.getElementById("mpRecebimentosBanner");
+    const bannerTexto = document.getElementById("mpRecebimentosTexto");
+    const bannerAcao = document.getElementById("mpRecebimentosAcao");
+    if(!minhaConta || !minhaConta.token){
+        if(banner) banner.style.display = "none";
+        if(el) el.textContent = "Entre na conta para consultar recebimentos.";
+        return;
+    }
+    if(banner) banner.style.display = "flex";
+    if(bannerAcao) bannerAcao.innerHTML = '<span class="status" style="color:var(--muted)">Consultando...</span>';
     try {
         const d = await apiGet("/api/marketplace/account");
         if(d.connected){
-            el.innerHTML = '<span style="color:var(--verde);font-weight:800">🟢 Mercado Pago conectado</span><br><small>Conta de recebimento vinculada.</small>';
+            const html = '<span style="color:var(--verde);font-weight:800">🟢 Mercado Pago conectado</span><br><small>Você já pode vender figurinhas, participar de negociações e receber seus pagamentos.</small>';
+            if(el) el.innerHTML = html;
+            if(bannerTexto) bannerTexto.textContent = "Você já pode vender figurinhas e receber seus pagamentos.";
+            if(bannerAcao) bannerAcao.innerHTML = '<span class="status" style="color:var(--verde)">✅ CONECTADO</span>';
         }else{
-            el.innerHTML = '<span style="color:var(--vermelho);font-weight:800">🔴 Mercado Pago não conectado</span><br><button class="btn btn-amarelo" style="margin-top:10px" onclick="conectarMercadoPago()">🟡 CONECTAR MERCADO PAGO</button>';
+            const html = '<span style="color:var(--vermelho);font-weight:800">🔴 Mercado Pago não conectado</span><br><button class="btn btn-amarelo" style="margin-top:10px" onclick="conectarMercadoPago()">🟡 CONECTAR MERCADO PAGO</button>';
+            if(el) el.innerHTML = html;
+            if(bannerTexto) bannerTexto.textContent = "Conecte seu Mercado Pago para vender suas figurinhas.";
+            if(bannerAcao) bannerAcao.innerHTML = '<button class="btn btn-amarelo" style="margin:0" onclick="conectarMercadoPago()">CONECTAR MERCADO PAGO</button>';
         }
-    } catch(e){ el.textContent = "Não foi possível consultar a conta de recebimento."; }
+    } catch(e){
+        if(el) el.textContent = e.status === 401 || e.status === 403 ? "Entre na conta para consultar recebimentos." : "Não foi possível consultar a conta de recebimento.";
+        if(banner) banner.style.display = e.status === 401 || e.status === 403 ? "none" : "flex";
+        if(bannerAcao && banner.style.display !== "none") bannerAcao.innerHTML = '<span class="status" style="color:var(--vermelho)">Indisponível</span>';
+    }
 }
 
 function conectarMercadoPago(){ window.location.href = "/api/marketplace/oauth/connect"; }

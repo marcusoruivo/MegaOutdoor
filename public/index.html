@@ -14087,9 +14087,9 @@ function mostrarPagamentoKit(data){
     if(data.paid){
         html += '<div class="sucesso">✅ Pagamento aprovado! Liberando seu kit...</div>';
     } else if(metodo === "pix" || data.qrCodeBase64 || data.payload){
-        html += '<div class="pix">';
+        html += '<div class="pix" style="display:block;">';
         if(data.qrCodeBase64){
-            html += '<img src="data:image/png;base64,' + data.qrCodeBase64 + '" alt="QR Code">';
+            html += '<img src="' + qrCodeUrl(data.qrCodeBase64) + '" alt="QR Code">';
         } else if(data.payload){
             html += '<p>Escaneie ou copie o código:</p>';
         }

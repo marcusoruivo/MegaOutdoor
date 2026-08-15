@@ -169,6 +169,47 @@ async function main() {
         !frontendHtml.includes('getElementById("kitModalLicencas").dataset.kitId'),
         "fix=" + frontendHtml.includes('document.getElementById("kitLicencas").dataset.kitId = kit.id;'));
 
+    /* ===== QR CODE DO PIX NO MODAL DE KIT (CORREÇÃO 5) =====
+       Causa raiz: o modal injeta '<div class="pix">' mas o CSS global
+       .pix{display:none} (linha ~570) escondia o bloco inteiro. O fluxo
+       individual mostra via getElementById("pix").style.display="block";
+       o modal de kit nunca mostrava. Correção: style="display:block" no
+       próprio bloco injetado + qrCodeUrl() (mesmo helper do fluxo
+       individual, robusto a base64 puro / data URL / http). */
+    t("QR kit) bloco .pix injetado com display:block (não fica escondido pelo CSS)",
+        frontendHtml.includes('<div class="pix" style="display:block;">'),
+        "fix=" + frontendHtml.includes('<div class="pix" style="display:block;">'));
+    t("QR kit) img do QR usa qrCodeUrl() (mesmo helper do fluxo individual)",
+        frontendHtml.includes('qrCodeUrl(data.qrCodeBase64)'),
+        "fix=" + frontendHtml.includes('qrCodeUrl(data.qrCodeBase64)'));
+    t("QR kit) NÃO duplica prefixo data:image/png;base64 no kit",
+        !/src=["']data:image\/png;base64,' \+ data\.qrCodeBase64/.test(frontendHtml),
+        "ok");
+    t("QR kit) fluxo individual também usa qrCodeUrl() (paridade)",
+        frontendHtml.includes("qrCodeUrl(data.qrCode)"),
+        "ok");
+    t("QR kit) .pix img tem tamanho definido no CSS",
+        /\.pix img\s*\{[^}]*width:260px/s.test(frontendHtml),
+        "ok");
+    t("QR kit) modal do kit tem: copia e cola + COPIAR + status + botão Já paguei o PIX",
+        frontendHtml.includes('id="codigoPixKit"') &&
+        frontendHtml.includes("copiarTexto") &&
+        frontendHtml.includes('id="statusPixKit"') &&
+        frontendHtml.includes("Aguardando pagamento...") &&
+        frontendHtml.includes('id="btnJaPagueiPixKit"') &&
+        frontendHtml.includes("Já paguei o PIX"),
+        "ok");
+    t("QR kit) backend /kits/:id/checkout retorna qrCodeBase64 + payload + paymentId + orderId + expiresDate",
+        (() => {
+            const cb = fs.readFileSync(path.join(__dirname, "combos.js"), "utf8");
+            return cb.includes("qrCodeBase64: mp.qrCodeBase64") &&
+                cb.includes("payload: mp.payload") &&
+                cb.includes("paymentId: mp.paymentId") &&
+                cb.includes("orderId: String(mp.orderId)") &&
+                cb.includes("expiresDate: mp.expirationDate");
+        })(),
+        "ok");
+
     const taxas = { "1_year": 0, "3_years": 20, "5_years": 40 };
     for (const k of lista) {
         for (const plano of ["1_year", "3_years", "5_years"]) {

@@ -3145,20 +3145,20 @@ async function obterContaMarketplacePrivada(usuarioId) {
     };
 }
 
-app.get("/api/marketplace/oauth/connect", authUsuario, (req, res) => {
+app.get("/api/marketplace/oauth/connect", authUsuario, async (req, res) => {
     if (!MERCADOPAGO_CLIENT_ID || !MERCADOPAGO_CLIENT_SECRET || !MERCADOPAGO_REDIRECT_URI || !pgDisponivel || !pgPool) {
         return res.status(503).json({ error: "OAuth do Mercado Pago ainda não foi configurado no ambiente." });
     }
     const state = crypto.randomBytes(32).toString("base64url");
     const verifier = crypto.randomBytes(32).toString("base64url");
     const challenge = crypto.createHash("sha256").update(verifier).digest("base64url");
-    pgPool.query(
-        `DELETE FROM marketplace_oauth_states WHERE expires_at <= NOW()`
-    ).then(() => pgPool.query(
+    try {
+        await pgPool.query(`DELETE FROM marketplace_oauth_states WHERE expires_at <= NOW()`);
+        await pgPool.query(
         `INSERT INTO marketplace_oauth_states (state, usuario_id, verifier_enc, expires_at)
          VALUES ($1,$2,$3,NOW() + INTERVAL '10 minutes')`,
         [state, req.usuario.id, criptografarMarketplace(verifier)]
-    )).then(() => {
+        );
         const params = new URLSearchParams({
             client_id: MERCADOPAGO_CLIENT_ID,
             response_type: "code",
@@ -3168,11 +3168,15 @@ app.get("/api/marketplace/oauth/connect", authUsuario, (req, res) => {
             code_challenge: challenge,
             code_challenge_method: "S256"
         });
-        res.redirect("https://auth.mercadopago.com.br/authorization?" + params.toString());
-    }).catch(error => {
+        const authorizationUrl = "https://auth.mercadopago.com.br/authorization?" + params.toString();
+        if (String(req.headers.accept || "").includes("application/json")) {
+            return res.json({ ok: true, authorizationUrl });
+        }
+        return res.redirect(authorizationUrl);
+    } catch (error) {
         console.error("ERRO ao iniciar OAuth Mercado Pago:", error.message);
-        res.status(500).json({ error: "Não foi possível iniciar a conexão Mercado Pago." });
-    });
+        return res.status(500).json({ error: "Não foi possível iniciar a conexão Mercado Pago." });
+    }
 });
 
 app.get("/api/marketplace/oauth/callback", async (req, res) => {

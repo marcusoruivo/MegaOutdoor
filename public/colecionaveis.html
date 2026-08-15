@@ -2361,7 +2361,32 @@ async function carregarContaRecebimento(){
     }
 }
 
-function conectarMercadoPago(){ window.location.href = "/api/marketplace/oauth/connect"; }
+async function conectarMercadoPago(){
+    try {
+        const response = await fetch("/api/marketplace/oauth/connect", {
+            method: "GET",
+            credentials: "include",
+            headers: authHeaders({ Accept: "application/json" })
+        });
+        const data = await response.json().catch(() => ({}));
+        if(response.status === 401){
+            toast("Sua sessão expirou. Faça login novamente para continuar.", "erro");
+            abrirModalLogin();
+            return;
+        }
+        if(response.status === 403){
+            toast("Você não tem permissão para conectar esta conta.", "erro");
+            return;
+        }
+        if(!response.ok || !data.authorizationUrl){
+            toast(data.error || "Não foi possível iniciar a conexão com o Mercado Pago.", "erro");
+            return;
+        }
+        window.location.assign(data.authorizationUrl);
+    } catch(error){
+        toast("Não foi possível conectar ao Mercado Pago. Tente novamente.", "erro");
+    }
+}
 
 /* =========================================================
    LOGIN / CONTA

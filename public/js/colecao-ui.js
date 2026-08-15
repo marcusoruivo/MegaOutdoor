@@ -15,6 +15,13 @@
 (function (global) {
     "use strict";
 
+    /* ===== dados externos (imagens + regiões) ===== */
+    const ANIMAIS_DADOS = (typeof module !== "undefined" && module.exports)
+        ? require("./imagens-animais.js")
+        : (global.ANIMAIS_DADOS || {});
+    const IMAGENS_ANIMAIS = ANIMAIS_DADOS.IMAGENS_ANIMAIS || {};
+    const REGIOES_ANIMAIS = ANIMAIS_DADOS.REGIOES_ANIMAIS || {};
+
     /* ===== utilitários ===== */
     function esc(s) {
         return String(s == null ? "" : s)
@@ -33,7 +40,17 @@
 
     function emojiRaridade(r) {
         return { COMUM: "⚪", INCOMUM: "🟢", RARA: "🔵", EPICA: "🟣",
-                 LENDARIA: "🟡", MITICA: "🔴" }[r] || "🃏";
+                 LENDARIA: "🟡", MITICA: "🔴" }[r] || "🐾";
+    }
+
+    function corRaridade(r) {
+        return { COMUM: "#9aa0a6", INCOMUM: "#2ecc71", RARA: "#3b82f6",
+                 EPICA: "#a855f7", LENDARIA: "#ffbf40", MITICA: "#d7263d" }[r] || "#9aa0a6";
+    }
+
+    function simboloCard(r, finish) {
+        const cor = finish === "ouro" ? "#ffd700" : finish === "cromada" ? "#dbe4ff" : corRaridade(r);
+        return '<span class="cc-paw" style="color:' + cor + '">🐾</span>';
     }
 
     /* ===== ACABAMENTO OURO / CROMADA =====
@@ -197,6 +214,14 @@
         return EMOJI_FALLBACK_BIOMA[chave] || "🐾";
     }
 
+    function imagemAnimal(card) {
+        return ((card && card.image_url) || IMAGENS_ANIMAIS[(card && card.name) || ""] || null);
+    }
+
+    function regiaoAnimal(card) {
+        return ((card && card.regiao) || REGIOES_ANIMAIS[(card && card.name) || ""] || "");
+    }
+
     /* ===== BIOMA VISUAL ===== */
     function classeBioma(habitat) {
         const h = String(habitat || "").toLowerCase();
@@ -231,9 +256,10 @@
         const bio = classeBioma(card.habitat);
         const finish = finishDeCard(card);
         const cls = ["cc-arte", bio, "cc-fin-" + finish, extraClass || ""].join(" ");
+        const imgUrl = imagemAnimal(card);
         let conteudo;
-        if (card.image_url) {
-            conteudo = '<img class="cc-img" src="' + esc(card.image_url) + '" alt="' + esc(card.name || "") + '" loading="lazy" decoding="async">';
+        if (imgUrl) {
+            conteudo = '<img class="cc-img" src="' + esc(imgUrl) + '" alt="' + esc(card.name || "") + '" loading="lazy" decoding="async">';
         } else {
             conteudo = '<span class="cc-emoji">' + emojiAnimal(card) + '</span>';
         }
@@ -252,6 +278,8 @@
 
     function metaHtml(card) {
         const partes = [];
+        const regiao = regiaoAnimal(card);
+        if (regiao) partes.push('🌎 ' + esc(regiao));
         if (card.habitat) partes.push('🌍 ' + esc(card.habitat));
         if (card.peso) partes.push('⚖️ ' + esc(card.peso));
         return partes.length ? '<div class="cc-meta">' + partes.join('<span class="cc-meta-sep">•</span>') + '</div>' : "";
@@ -274,10 +302,13 @@
         if (!tem) {
             return '<div class="colecao-card cc-bloqueada" data-nome="" data-rarity="' + esc(r) + '" data-finish="' + finish + '" onclick="mostrarBloqueada()">' +
                 '<div class="cc-topo">' +
+                    simboloCard(r, finish) +
                     '<span class="cc-num">' + numero + '</span>' +
-                    '<span class="cc-simbolo">' + (finish === "ouro" ? "◈" : finish === "cromada" ? "◇" : "?" ) + '</span>' +
                 '</div>' +
-                '<div class="cc-arte cc-arte-bloq bio-generico"><span class="cc-emoji cc-silhueta">' + emojiAnimal(card) + '</span><span class="cc-lock">🔒</span></div>' +
+                '<div class="cc-arte cc-arte-bloq bio-generico">' +
+                    '<span class="cc-paw-marca">🐾</span>' +
+                    '<span class="cc-lock">🔒</span>' +
+                '</div>' +
                 '<div class="cc-info">' +
                     '<div class="cc-nome cc-nome-bloq">???</div>' +
                     '<div class="cc-sn">Figurinha bloqueada</div>' +
@@ -287,8 +318,8 @@
 
         return '<div class="colecao-card ' + clsRaridade(r) + ' cc-fin-' + finish + '" data-nome="' + esc(String(card.name || "").toLowerCase()) + '" data-rarity="' + esc(r) + '" data-finish="' + finish + '" onclick="abrirModalFigurinha(' + card.id + ')">' +
             '<div class="cc-topo">' +
+                simboloCard(r, finish) +
                 '<span class="cc-num">' + numero + '</span>' +
-                '<span class="cc-simbolo">' + (finish === "ouro" ? "◈" : finish === "cromada" ? "◇" : emojiRaridade(r)) + '</span>' +
             '</div>' +
             arteHtml(card) +
             '<div class="cc-info">' +
@@ -296,7 +327,10 @@
                 '<div class="cc-nome">' + esc(card.name) + '</div>' +
                 '<div class="cc-sn">' + esc(card.scientific_name || "") + '</div>' +
                 metaHtml(card) +
-                '<div class="cc-qtd">Possui: <b>' + card.quantidade + 'x</b>' + (Number(card.quantidade) > 1 ? ' <span class="cc-rep">🔁 repetida</span>' : '') + '</div>' +
+                '<div class="cc-qtd">Possui: <b>' + card.quantidade + 'x</b>' +
+                    (Number(card.disponivel) > 0 ? ' · Disponível: <b>' + card.disponivel + '</b>' : '') +
+                    (Number(card.quantidade) > 1 ? ' <span class="cc-rep">🔁 repetida</span>' : '') +
+                '</div>' +
             '</div>' +
         '</div>';
     }
@@ -308,7 +342,10 @@
         const nova = marcacao && marcacao.nova;
         return '<div class="rev-card ' + clsRaridade(r) + ' cc-fin-' + finish + ' rev-novo" style="animation-delay:' + (i * 80) + 'ms">' +
             '<div class="shine"></div>' +
-            '<div class="rev-num">' + padNum(card.number) + '</div>' +
+            '<div class="cc-topo">' +
+                simboloCard(r, finish) +
+                '<span class="cc-num">' + padNum(card.number) + '</span>' +
+            '</div>' +
             arteHtml(card, "cc-arte-rev", { particulas: 2 }) +
             '<div class="rev-info">' +
                 '<div class="rev-info-row">' + pillRaridade(r) +
@@ -333,8 +370,8 @@
             : "";
         return '<div class="colecao-card cc-grande ' + clsRaridade(r) + ' cc-fin-' + finish + '">' +
             '<div class="cc-topo">' +
+                simboloCard(r, finish) +
                 '<span class="cc-num">' + padNum(card.number) + '</span>' +
-                '<span class="cc-simbolo">' + (finish === "ouro" ? "◈" : finish === "cromada" ? "◇" : emojiRaridade(r)) + '</span>' +
             '</div>' +
             arteHtml(card, "cc-arte-grande", { particulas: 4 }) +
             '<div class="cc-info">' +
@@ -342,6 +379,36 @@
                 '<div class="cc-nome">' + esc(card.name) + '</div>' +
                 '<div class="cc-sn">' + esc(card.scientific_name || "") + '</div>' +
                 metaHtml(card) +
+            '</div>' +
+        '</div>';
+    }
+
+    /* Verso da figurinha (modal). Mostra os dados reais disponíveis.
+       Campos ainda não cadastrados no banco aparecem como "—". */
+    function cardVersoHtml(card) {
+        const r = card.rarity || "COMUM";
+        const finish = finishDeCard(card);
+        const regiao = regiaoAnimal(card);
+        const traco = "—";
+        return '<div class="colecao-card cc-grande cc-verso-card ' + clsRaridade(r) + ' cc-fin-' + finish + '">' +
+            '<div class="cc-topo">' +
+                simboloCard(r, finish) +
+                '<span class="cc-num">' + padNum(card.number) + '</span>' +
+            '</div>' +
+            '<div class="cc-info">' +
+                '<div class="cc-info-row">' + pillRaridade(r) + '</div>' +
+                '<div class="cc-nome">' + esc(card.name) + '</div>' +
+                '<div class="cc-sn">' + esc(card.scientific_name || "") + '</div>' +
+                '<div class="cc-verso-lista">' +
+                    '<div><b>Classe:</b> ' + esc(card.classe || traco) + '</div>' +
+                    '<div><b>Dieta:</b> ' + esc(card.dieta || traco) + '</div>' +
+                    '<div><b>Peso:</b> ' + esc(card.peso || traco) + '</div>' +
+                    '<div><b>Comprimento:</b> ' + esc(card.comprimento || traco) + '</div>' +
+                    '<div><b>Conservação:</b> ' + esc(card.conservacao || traco) + '</div>' +
+                    '<div><b>Habitat:</b> ' + esc(card.habitat || traco) + '</div>' +
+                    '<div><b>Região:</b> ' + esc(regiao || traco) + '</div>' +
+                '</div>' +
+                '<div class="cc-curiosidade"><b>Curiosidade:</b> ' + esc(card.description || traco) + '</div>' +
             '</div>' +
             '<div class="cc-rodape">MILHÃO DOOR · ANIMAIS DO MUNDO</div>' +
         '</div>';
@@ -362,7 +429,7 @@
                 return false;
             }
             if (busca) {
-                const alvo = (String(c.name || "") + " " + String(c.scientific_name || "") + " " + String(c.habitat || "")).toLowerCase();
+                const alvo = (String(c.name || "") + " " + String(c.scientific_name || "") + " " + String(c.habitat || "") + " " + String(c.number || "")).toLowerCase();
                 if (alvo.indexOf(busca) === -1) return false;
             }
             return true;
@@ -446,7 +513,11 @@
         finishDeCard: finishDeCard,
         finishNome: finishNome,
         EMOJI_ANIMAIS: EMOJI_ANIMAIS,
+        IMAGENS_ANIMAIS: IMAGENS_ANIMAIS,
+        REGIOES_ANIMAIS: REGIOES_ANIMAIS,
         emojiAnimal: emojiAnimal,
+        imagemAnimal: imagemAnimal,
+        regiaoAnimal: regiaoAnimal,
         classeBioma: classeBioma,
         arteHtml: arteHtml,
         clsRaridade: clsRaridade,
@@ -455,6 +526,7 @@
         cardColecaoHtml: cardColecaoHtml,
         cardRevelacaoHtml: cardRevelacaoHtml,
         cardGrandeHtml: cardGrandeHtml,
+        cardVersoHtml: cardVersoHtml,
         filtrarCards: filtrarCards,
         resumoColecao: resumoColecao,
         marcarNovidades: marcarNovidades,

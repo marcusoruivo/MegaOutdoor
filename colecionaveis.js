@@ -107,6 +107,7 @@ const CONQUISTAS = [
    Cada espécie traz nome científico, habitat e peso reais. */
 const CATALOGO = (() => {
     const cards = [];
+    const { IMAGENS_ANIMAIS, REGIOES_ANIMAIS } = require('./public/js/imagens-animais.js');
 
     const especies = [
         /* ===== COMUM (60) ===== */
@@ -235,6 +236,8 @@ const CATALOGO = (() => {
             scientific_name: e.sn,
             habitat: e.habitat,
             peso: e.peso,
+            regiao: REGIOES_ANIMAIS[e.name] || "",
+            image_url: IMAGENS_ANIMAIS[e.name] || null,
             rarity: raridade,
             description: e.desc
         });
@@ -625,17 +628,19 @@ module.exports = function criarModuloColecionaveis(deps) {
             await pool.query(
                 `INSERT INTO sticker_cards
                     (collection_id, number, name, description, rarity,
-                     scientific_name, habitat, peso)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+                     scientific_name, habitat, peso, image_url)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
                  ON CONFLICT (collection_id, number)
                  DO UPDATE SET name = EXCLUDED.name,
                                description = EXCLUDED.description,
                                rarity = EXCLUDED.rarity,
                                scientific_name = EXCLUDED.scientific_name,
                                habitat = EXCLUDED.habitat,
-                               peso = EXCLUDED.peso`,
+                               peso = EXCLUDED.peso,
+                               image_url = EXCLUDED.image_url`,
                 [colecaoId, card.number, card.name, card.description, card.rarity,
-                 card.scientific_name, card.habitat, card.peso]
+                 card.scientific_name, card.habitat, card.peso,
+                 card.image_url || null]
             );
         }
 
@@ -1491,7 +1496,7 @@ module.exports = function criarModuloColecionaveis(deps) {
             const colecao = await colecaoAtiva();
 
             const {
-                raridade, busca, ordenar, pagina = 1
+                raridade, busca, ordenar, repetidas, pagina = 1
             } = req.query;
 
             const limite = 60;
@@ -1511,6 +1516,11 @@ module.exports = function criarModuloColecionaveis(deps) {
                 where += ` AND (c.name ILIKE $${params.length}
                                 OR c.number::text ILIKE $${params.length})`;
             }
+            if (repetidas === "novas") {
+                where += ` AND us.quantity = 1`;
+            } else if (repetidas === "repetidas") {
+                where += ` AND us.quantity > 1`;
+            }
 
             let order = "c.number ASC";
             if (ordenar === "raridade") {
@@ -1520,7 +1530,8 @@ module.exports = function criarModuloColecionaveis(deps) {
             }
 
             const q = await pg().query(
-                `SELECT c.id, c.number, c.name, c.description, c.rarity, c.image_url,
+                `SELECT c.id, c.number, c.name, c.scientific_name, c.habitat, c.peso,
+                        c.description, c.rarity, c.image_url,
                         us.quantity, us.acquired_at
                    FROM user_stickers us
                    JOIN sticker_cards c ON c.id = us.card_id

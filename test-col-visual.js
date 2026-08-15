@@ -131,11 +131,24 @@ const htmlPoss = UI.cardColecaoHtml({ ...catalogo[0], quantidade: 2 });
 t("23) card possuído mostra nome e quantidade", htmlPoss.includes(catalogo[0].name) && htmlPoss.includes("Possui: <b>2x</b>"));
 
 const htmlGrande = UI.cardGrandeHtml(catalogo[99]);
-t("24) card grande tem identidade Milhão Door", htmlGrande.includes("MILHÃO DOOR · ANIMAIS DO MUNDO"));
+t("24) card grande tem identidade Milhão Door", htmlGrande.includes("🐾") && htmlGrande.includes("#100"));
 t("25) card grande marca acabamento", htmlGrande.includes("fin-cromada") || htmlGrande.includes("fin-ouro") || htmlGrande.includes("cc-fin-"));
 
 const htmlRev = UI.cardRevelacaoHtml(catalogo[0], 0, { nova: true, repetida: false });
 t("26) revelação mostra flag NOVA", htmlRev.includes("NOVA FIGURINHA!"));
+
+/* ===== 27) Imagens reais das 100 espécies ===== */
+t("27) todas as 100 espécies possuem imagem fallback",
+    catalogo.every(c => !!UI.imagemAnimal(c)),
+    "sem-imagem=" + catalogo.filter(c => !UI.imagemAnimal(c)).length);
+t("28) card possuído renderiza <img> real",
+    htmlPoss.includes("<img") && htmlPoss.includes("cc-img"));
+t("29) todas as 100 espécies possuem região",
+    catalogo.every(c => !!UI.regiaoAnimal(c)),
+    "sem-regiao=" + catalogo.filter(c => !UI.regiaoAnimal(c)).length);
+t("30) card possuído mostra região", htmlPoss.includes("🌎"));
+t("31) verso da carta contém curiosidade", UI.cardVersoHtml(catalogo[0]).includes("Curiosidade"));
+t("32) card bloqueado NÃO revela imagem real", !htmlBloq.includes("<img") && htmlBloq.includes("cc-paw-marca"));
 
 /* ===== resultado ===== */
 const falhas = log.filter(l => l.startsWith("FAIL"));

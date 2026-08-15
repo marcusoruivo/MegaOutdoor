@@ -136,6 +136,8 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
 .colpv-fechar:hover{color:#fff}
 .colpv-detalhes{margin-top:14px;font-size:12px;color:#bbb;line-height:1.7}
 .colpv-detalhes b{color:#ffd400;font-weight:800}
+.btn-secundario{background:#1a1a26;border:1px solid #444;color:#e8e8ee;padding:8px 16px;border-radius:10px;cursor:pointer;font-weight:700;font-size:12px}
+.btn-secundario:hover{background:#252530;border-color:#666}
 </style>
 <link rel="stylesheet" href="/css/colecao.css">
 </head>
@@ -653,6 +655,7 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
     </main>
 </div>
 
+<script src="/js/imagens-animais.js"></script>
 <script src="/js/colecao-ui.js"></script>
 <script>
 const LS = "mega_admin_token";
@@ -1951,7 +1954,18 @@ function previewColCard(id){
     const c = colCardsCache.find(x => x.id === id);
     if(!c){ alert("Figurinha não encontrada no cache."); return; }
     const finish = ColecaoUI.finishDeCard(c);
-    const html = ColecaoUI.cardGrandeHtml(c) +
+    const html =
+        '<div style="height:480px;margin-bottom:16px;">' +
+            '<div class="cc-flip-container" id="adminFlipContainer">' +
+                '<div class="cc-flipper" id="adminFlipper">' +
+                    '<div class="cc-frente">' + ColecaoUI.cardGrandeHtml(c) + '</div>' +
+                    '<div class="cc-verso">' + ColecaoUI.cardVersoHtml(c) + '</div>' +
+                '</div>' +
+            '</div>' +
+        '</div>' +
+        '<div style="text-align:center;margin-bottom:12px;">' +
+            '<button class="btn-secundario" type="button" onclick="document.getElementById(\'adminFlipper\').classList.toggle(\'virado\')">🔄 VIRAR CARTA</button>' +
+        '</div>' +
         '<div class="colpv-detalhes">' +
             '<div><b>Raridade:</b> ' + ColecaoUI.nomeRaridade(c.rarity) + '</div>' +
             (finish !== "normal" ? '<div><b>Acabamento:</b> ' + ColecaoUI.finishNome(finish) + '</div>' : '') +

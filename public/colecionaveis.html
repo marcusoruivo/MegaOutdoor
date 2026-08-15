@@ -396,9 +396,10 @@ body{overflow-x:hidden}
     background:radial-gradient(circle at 30% 20%, rgba(255,255,255,.3), transparent 55%);
     pointer-events:none;
 }
-.modal-arte-premium{background:transparent;height:230px;padding:16px 16px 0}
+.modal-arte-premium{background:transparent;height:260px;padding:16px 16px 0}
 .modal-arte-premium::after{display:none}
 .modal-arte-premium .cc-arte{height:100%;aspect-ratio:auto;margin:0;border-radius:18px}
+.cc-curiosidade{font-size:11px;color:var(--muted);line-height:1.5;margin-top:10px;font-style:italic}
 .modal-body{padding:22px}
 .modal-body h2{font-size:22px;margin:10px 0 4px}
 .modal-body .num{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:1px}
@@ -787,7 +788,8 @@ body{overflow-x:hidden}
     <!-- ACERVO -->
     <section class="secao" id="secao-acervo">
         <div class="secao-titulo">Meu Acervo</div>
-        <div class="secao-sub">Sua coleção de repetidas. Venda ou troque as que tiver em excesso.</div>
+        <div class="secao-sub">Sua coleção de figurinhas. Venda ou troque as repetidas em excesso.</div>
+        <div class="acervo-stats" id="acervoStats"></div>
         <div class="filtros">
             <input id="acervoBusca" placeholder="🔎 Buscar figurinha..." oninput="carregarAcervo()">
             <select id="acervoRaridade" onchange="carregarAcervo()">
@@ -805,7 +807,12 @@ body{overflow-x:hidden}
                 <option value="recentes">Recentes</option>
             </select>
             <div class="spacer"></div>
-            <div class="resultado" id="acervoResultado"></div>
+            <button class="btn btn-laranja" onclick="negociarRepetidas()">🤝 NEGOCIAR REPETIDAS</button>
+        </div>
+        <div class="filtro-chips" id="acervoRepetidasChips" style="margin-bottom:14px">
+            <button class="filtro-chip ativa" data-f="todas" onclick="setAcervoRepetidas('todas',this)">TODAS</button>
+            <button class="filtro-chip" data-f="novas" onclick="setAcervoRepetidas('novas',this)">NOVAS</button>
+            <button class="filtro-chip" data-f="repetidas" onclick="setAcervoRepetidas('repetidas',this)">🔁 REPETIDAS</button>
         </div>
         <div class="grid-cards" id="acervoGrid"></div>
         <div class="paginacao" id="acervoPag"></div>
@@ -891,6 +898,7 @@ body{overflow-x:hidden}
     </div>
 </div>
 
+<script src="/js/imagens-animais.js"></script>
 <script src="/js/colecao-ui.js"></script>
 <script>
 /* =========================================================
@@ -959,9 +967,18 @@ function nomeRaridade(r){
 }
 function cardModalArte(card){
     const r = card.rarity;
-    return '<div class="modal-arte modal-arte-premium r-' + r + '">' +
-        ColecaoUI.arteHtml(card, "cc-arte-grande", { particulas: 2 }) +
+    return '<div class="modal-arte modal-arte-premium r-' + r + '" id="modalArteFlip">' +
+        '<div class="cc-flip-container" id="modalFlipContainer">' +
+            '<div class="cc-flipper">' +
+                '<div class="cc-frente">' + ColecaoUI.cardGrandeHtml(card) + '</div>' +
+                '<div class="cc-verso">' + ColecaoUI.cardVersoHtml(card) + '</div>' +
+            '</div>' +
+        '</div>' +
     '</div>';
+}
+function toggleModalFlip(){
+    const el = document.getElementById("modalFlipContainer");
+    if (el) el.classList.toggle("virado");
 }
 
 function atualizarHeader(){
@@ -1107,6 +1124,22 @@ function esc(s){
 /* =========================================================
    ACERVO
 ========================================================= */
+let acervoFiltroRepetidas = "todas";
+function setAcervoRepetidas(f, btn){
+    acervoFiltroRepetidas = f;
+    document.querySelectorAll("#acervoRepetidasChips .filtro-chip").forEach(b => b.classList.toggle("ativa", b === btn));
+    estado.acervo.pagina = 1;
+    carregarAcervo();
+}
+function negociarRepetidas(){
+    acervoFiltroRepetidas = "repetidas";
+    document.querySelectorAll("#acervoRepetidasChips .filtro-chip").forEach(b =>
+        b.classList.toggle("ativa", b.getAttribute("data-f") === "repetidas"));
+    estado.acervo.pagina = 1;
+    carregarAcervo();
+    document.getElementById("secao-acervo").scrollIntoView({ behavior: "smooth" });
+}
+
 async function carregarAcervo(){
     if (!exigirLogin()) return;
     const busca = document.getElementById("acervoBusca").value.trim();
@@ -1117,29 +1150,24 @@ async function carregarAcervo(){
     if (busca) q.set("busca", busca);
     if (raridade) q.set("raridade", raridade);
     if (ordenar !== "numero") q.set("ordenar", ordenar);
+    if (acervoFiltroRepetidas !== "todas") q.set("repetidas", acervoFiltroRepetidas);
     try {
         const d = await apiGet("/api/colecionaveis/acervo?" + q.toString());
+        const stats = d.stats || {};
+        const paraTroca = Math.max(0, Number(stats.repetidas || 0) - (d.cards || []).reduce((a,c)=>a+Math.max(0, c.quantidade - 1 - (c.disponivel||0)), 0));
+        document.getElementById("acervoStats").innerHTML =
+            '<span class="as-box"><b>' + (stats.total || 0) + '</b> figurinha(s)</span>' +
+            '<span class="as-box"><b>' + (stats.diferentes || 0) + '</b> espécie(s)</span>' +
+            '<span class="as-box"><b>' + (stats.repetidas || 0) + '</b> unidade(s) repetida(s)</span>' +
+            '<span class="as-box"><b>' + paraTroca + '</b> disponível(is) para troca</span>';
         document.getElementById("acervoGrid").innerHTML = d.cards.length
-            ? d.cards.map(c => acervoCardHtml(c)).join("")
-            : '<div style="color:var(--muted);padding:16px">Nenhuma figurinha em estoque ainda. Abra pacotes para começar!</div>';
-        document.getElementById("acervoResultado").textContent = d.totalItems + " figurinha(s) em estoque";
+            ? d.cards.map(c => ColecaoUI.cardColecaoHtml(c)).join("")
+            : '<div style="color:var(--muted);padding:16px">Nenhuma figurinha encontrada com esse filtro.</div>';
         renderPag(d, "acervo");
         carregarMinhasVendas();
     } catch(e){
         document.getElementById("acervoGrid").innerHTML = '<div style="color:var(--muted);padding:16px">' + esc(e.message) + '</div>';
     }
-}
-
-function acervoCardHtml(c){
-    const r = c.rarity;
-    return '<div class="card-col r-' + r + '" onclick="abrirModalFigurinha(' + c.id + ')">' +
-        '<div class="card-arte">' + emojiRaridade(r) + '</div>' +
-        '<div class="card-info">' +
-            '<div class="pill-raridade pill-' + r + '">' + nomeRaridade(r) + '</div>' +
-            '<div class="card-numero">#' + String(c.number).padStart(3,"0") + '</div>' +
-            '<div class="card-nome">' + esc(c.name) + '</div>' +
-            '<div class="card-qtd">Tenho: <b>' + c.quantidade + 'x</b> • Disponível: <b>' + c.disponivel + '</b></div>' +
-        '</div></div>';
 }
 
 async function carregarMinhasVendas(){
@@ -1444,7 +1472,10 @@ async function abrirModalFigurinha(cardId){
                 html += '<div style="font-size:12px;color:var(--muted)">Você tem ' + c.quantidade + 'x desta figurinha, mas nenhuma disponível no momento.</div>';
             }
         }
-        html += '<div class="modal-acoes"><button class="btn btn-ghost" onclick="fecharModal()">Fechar</button></div>';
+        html += '<div class="modal-acoes">' +
+            '<button class="btn btn-amarelo" onclick="toggleModalFlip()">🔄 VIRAR CARTA</button>' +
+            '<button class="btn btn-ghost" onclick="fecharModal()">Fechar</button>' +
+        '</div>';
         corpo.innerHTML = html;
     } catch(e){
         toast(e.message, "erro");
@@ -1727,6 +1758,7 @@ function revelarPacote(pacote){
         melhor: melhor,
         melhorMarc: marcadas[iMelhor] || { nova: false, repetida: true },
         etapa: "fechado",
+        modo: null,
         nome: (pacote && pacote.nome) || "Pacote"
     };
     const overlay = document.getElementById("packOverlay");
@@ -1735,15 +1767,29 @@ function revelarPacote(pacote){
     renderPackFechado();
 }
 
+function iniciarModoManual(){
+    if (!pacoteEstado || pacoteEstado.modo) return;
+    pacoteEstado.modo = "manual";
+    rasgarPacote();
+}
+function iniciarModoAuto(){
+    if (!pacoteEstado || pacoteEstado.modo) return;
+    pacoteEstado.modo = "auto";
+    rasgarPacote();
+}
+function rasgarPacote(){
+    pacoteEstado.etapa = "rasgando";
+    const pf = document.getElementById("packFechado");
+    if (pf) pf.classList.add("rasgando");
+    document.getElementById("packOverlay").classList.add("abrindo");
+    pacoteRoda(renderPackLuz, 520);
+}
+
 function packEtapaClicada(){
     if (!pacoteEstado) return;
     const etapa = pacoteEstado.etapa;
     if (etapa === "fechado") {
-        pacoteEstado.etapa = "rasgando";
-        const pf = document.getElementById("packFechado");
-        if (pf) pf.classList.add("rasgando");
-        document.getElementById("packOverlay").classList.add("abrindo");
-        pacoteRoda(renderPackLuz, 520);
+        /* aguarda escolha do modo via botões */
     } else if (etapa === "rasgando" || etapa === "luz") {
         /* avança sozinho pelos timers */
     } else if (etapa === "slotBack") {
@@ -1759,13 +1805,16 @@ function packEtapaClicada(){
 
 function renderPackFechado(){
     const stage = document.getElementById("packStage");
-    stage.innerHTML = '<div class="pack-titulo">🎁 ' + esc(pacoteEstado.nome) + '</div>' +
+        stage.innerHTML = '<div class="pack-titulo">🎁 ' + esc(pacoteEstado.nome) + '</div>' +
         '<div class="pack-fechado" id="packFechado">' +
-            '<span class="pf-icone">🃏</span>' +
+            '<span class="pf-icone">🐾</span>' +
             '<span class="pf-nome">MILHÃO DOOR</span>' +
             '<span class="pf-sub">ANIMAIS DO MUNDO</span>' +
             '<span class="pf-qtd">' + pacoteEstado.figs.length + ' FIGURINHAS</span>' +
-            '<span class="pf-tap">TOQUE PARA RASGAR ✂️</span>' +
+        '</div>' +
+        '<div class="pack-modo" style="margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">' +
+            '<button class="btn btn-amarelo" onclick="iniciarModoManual()">📱 ABRIR UMA POR UMA</button>' +
+            '<button class="btn btn-ghost" onclick="iniciarModoAuto()">⚡ ABRIR TODAS</button>' +
         '</div>';
 }
 
@@ -1785,18 +1834,19 @@ function renderSlotBack(){
         '</div>' +
         '<div class="pack-contagem">Figurinha ' + (pacoteEstado.idx + 1) + ' de ' + pacoteEstado.figs.length + '</div>';
     pacoteEstado.etapa = "slotBack";
-    pacoteRoda(revelarSlot, 8000);
+    if (pacoteEstado.modo !== "manual") pacoteRoda(revelarSlot, 8000);
 }
 
 function revelarSlot(){
     if (!pacoteEstado || (pacoteEstado.etapa !== "slotBack" && pacoteEstado.etapa !== "slotReveal")) return;
     const item = pacoteEstado.figs[pacoteEstado.idx];
     const stage = document.getElementById("packStage");
+    const dica = pacoteEstado.modo === "manual" ? "Toque para virar a próxima" : "Toque para acelerar";
     stage.innerHTML = '<div class="pack-titulo">🎁 ' + esc(pacoteEstado.nome) + '</div>' +
         ColecaoUI.cardRevelacaoHtml(item.card, pacoteEstado.idx, item.marc) +
-        '<div class="pack-contagem">Figurinha ' + (pacoteEstado.idx + 1) + ' de ' + pacoteEstado.figs.length + ' · Toque para continuar</div>';
+        '<div class="pack-contagem">Figurinha ' + (pacoteEstado.idx + 1) + ' de ' + pacoteEstado.figs.length + ' · ' + dica + '</div>';
     pacoteEstado.etapa = "slotReveal";
-    pacoteRoda(avancarPacote, 6500);
+    if (pacoteEstado.modo !== "manual") pacoteRoda(avancarPacote, 6500);
 }
 
 function avancarPacote(){
@@ -1805,7 +1855,7 @@ function avancarPacote(){
     if (pacoteEstado.idx >= pacoteEstado.figs.length) {
         const m = pacoteEstado.melhor;
         const fin = m ? ColecaoUI.finishDeCard(m) : "normal";
-        const especial = m && (fin !== "normal" || m.rarity === "LENDARIA" || m.rarity === "MITICA");
+        const especial = m && (fin !== "normal" || ["RARA","EPICA","LENDARIA","MITICA"].includes(m.rarity));
         if (especial) { renderPackGrande(); } else { renderPackResumo(); }
         return;
     }
@@ -1815,22 +1865,26 @@ function avancarPacote(){
 function renderPackGrande(){
     pacoteEstado.etapa = "grande";
     const m = pacoteEstado.melhor;
+    const r = m.rarity;
     const fin = ColecaoUI.finishDeCard(m);
-    let msg, msgCls;
-    if (fin === "ouro") { msg = "✨ VOCÊ ENCONTROU UMA FIGURINHA OURO!"; msgCls = "grande-msg-ouro"; }
-    else if (fin === "cromada") { msg = "🪩 VOCÊ ENCONTROU UMA FIGURINHA CROMADA!"; msgCls = "grande-msg-cromada"; }
-    else { msg = "🏆 FIGURINHA " + ColecaoUI.nomeRaridade(m.rarity).toUpperCase() + "!"; msgCls = "grande-msg-lendaria"; }
+    let tipo, msg, msgCls;
+    if (fin === "ouro") { tipo = "ouro"; msg = "✨ VOCÊ ENCONTROU UMA FIGURINHA OURO!"; msgCls = "grande-msg-ouro"; }
+    else if (fin === "cromada") { tipo = "cromada"; msg = "🪩 VOCÊ ENCONTROU UMA FIGURINHA CROMADA!"; msgCls = "grande-msg-cromada"; }
+    else if (r === "MITICA") { tipo = "mitica"; msg = "🔥 FIGURINHA MÍTICA!"; msgCls = "grande-msg-lendaria"; }
+    else if (r === "LENDARIA") { tipo = "lendaria"; msg = "🏆 FIGURINHA LENDÁRIA!"; msgCls = "grande-msg-lendaria"; }
+    else if (r === "EPICA") { tipo = "epica"; msg = "🌟 FIGURINHA ÉPICA!"; msgCls = "grande-msg-epica"; }
+    else { tipo = "rara"; msg = "💎 FIGURINHA RARA!"; msgCls = "grande-msg-rara"; }
     const badge = pacoteEstado.melhorMarc.nova
         ? '<span class="grande-nova">✨ NOVA!</span>'
         : '<span class="grande-rep">🔁 REPETIDA</span>';
     const overlay = document.getElementById("packOverlay");
     overlay.classList.add("escuro");
     const gp = [];
-    const qtd = fin === "cromada" ? 30 : 20;
+    const qtd = fin === "cromada" ? 34 : 26;
     for (let i = 0; i < qtd; i++) {
         const dx = ((i * 53) % 360) - 180;
         const dy = -60 - ((i * 31) % 220);
-        gp.push('<span class="gp gp-' + (fin === "cromada" ? "cromada" : "ouro") + '" style="left:50%;top:38%;--dx:' + dx + 'px;--dy:' + dy + 'px;animation-delay:' + ((i % 6) * 0.08).toFixed(2) + 's;width:' + (6 + (i % 5)) + 'px;height:' + (6 + (i % 5)) + 'px"></span>');
+        gp.push('<span class="gp gp-' + tipo + '" style="left:50%;top:38%;--dx:' + dx + 'px;--dy:' + dy + 'px;animation-delay:' + ((i % 6) * 0.08).toFixed(2) + 's;width:' + (6 + (i % 5)) + 'px;height:' + (6 + (i % 5)) + 'px"></span>');
     }
     const stage = document.getElementById("packStage");
     stage.innerHTML = gp.join("") +

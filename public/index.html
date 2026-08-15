@@ -13951,8 +13951,9 @@ function abrirKit(kitId){
 
     html += '<div class="kitModalItens">';
     html += '<div class="kitItem"><span class="kitItemIcon">🧩</span><b>' + kit.espacos + "</b><span>espaço(s)</span></div>";
-    if(kit.pacotes && kit.pacotes.length){
-        html += '<div class="kitItem"><span class="kitItemIcon">🎴</span><b>' + kit.pacotes.length + "</b><span>pacote(s)</span></div>";
+    const totalPacotesModal = kit.totalPacotes || (kit.pacotes || []).length;
+    if(totalPacotesModal){
+        html += '<div class="kitItem"><span class="kitItemIcon">🎴</span><b>' + totalPacotesModal + "</b><span>pacote(s)</span></div>";
     }
     if(kit.bonus){
         html += '<div class="kitItem"><span class="kitItemIcon">🎁</span><b>Bônus</b><span>incluído</span></div>';

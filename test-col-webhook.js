@@ -54,7 +54,8 @@ global.fetch = async (url, options = {}) => {
         const order = {
             id,
             status: "open",
-            external_reference: body.external_reference,
+            total_amount: body && body.total_amount ? String(body.total_amount) : "1.00",
+            external_reference: body && body.external_reference,
             transactions: {
                 payments: [{
                     id: "pay-" + id,
@@ -80,13 +81,18 @@ global.fetch = async (url, options = {}) => {
         const order = ordersCriadas.get(id) || {
             id,
             status: "paid",
+            total_amount: "1.00",
             external_reference: "mock",
             transactions: { payments: [{ id: "pay-" + id, status: "paid", status_detail: "accredited", payment_method: { id: "pix", type: "bank_transfer" } }] }
         };
         return {
             ok: true,
             status: 200,
-            json: async () => ({ ...order, status: "paid" })
+            json: async () => ({
+                ...order,
+                status: order.status === "open" ? "paid" : order.status,
+                total_amount: order.total_amount || "1.00"
+            })
         };
     }
 
@@ -130,8 +136,12 @@ const json = (method, token, payload) => ({
 });
 
 const SECRET = process.env.MERCADOPAGO_WEBHOOK_SECRET;
+/* Assina como o Mercado Pago ASSINA: o data.id é normalizado para MINÚSCULO
+   no manifesto (o MP entrega ORD... em MAIÚSCULO na query, mas assina com
+   o id em minúsculo). */
 const assinar = (idManifest, ts, rid) => {
-    const manifest = "id:" + idManifest + ";request-id:" + rid + ";ts:" + ts + ";";
+    const manifest = "id:" + String(idManifest).toLowerCase() +
+        ";request-id:" + rid + ";ts:" + ts + ";";
     return crypto.createHmac("sha256", SECRET).update(manifest).digest("hex");
 };
 
@@ -259,6 +269,127 @@ async function main() {
         dbEsp[String(espId)] && dbEsp[String(espId)].status === "paid",
         "status=" + (dbEsp[String(espId)] && dbEsp[String(espId)].status));
 
+    /* 20) WEBHOOK REAL DE ORDER (formato de produção): corpo COMPLETO do
+       Mercado Pago (type, action, live_mode, application_id, data.id),
+       assinatura calculada SOMENTE sobre
+       id:<query data.id>;request-id:<x-request-id>;ts:<ts>;
+       (campos extras NÃO entram no manifesto oficial) -> 200 + espaço pago. */
+    const espReal = 999984;
+    const checkoutReal = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espReal], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdReal = String(checkoutReal.body.mpOrderId);
+    const tsReal = Math.floor(Date.now() / 1000);
+    const ridReal = "req-real-order-" + Date.now();
+    const corpoReal = {
+        type: "order",
+        action: "order.action_required",
+        live_mode: true,
+        application_id: 123456789,
+        user_id: 987654321,
+        api_version: "v1",
+        date_created: new Date().toISOString(),
+        data: { id: dataIdReal }
+    };
+    const wReal = await reqJson(
+        BASE + "/webhooks/mercadopago?data.id=" + dataIdReal + "&type=order",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-signature": "ts=" + tsReal + ",v1=" + assinar(dataIdReal, tsReal, ridReal),
+                "x-request-id": ridReal
+            },
+            body: JSON.stringify(corpoReal)
+        });
+    await sleep(700);
+    const dbReal = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("20) webhook REAL de Order (corpo completo) -> 200 + espaço pago",
+        wReal.r.status === 200 && wReal.body.received === true &&
+        dbReal[String(espReal)] && dbReal[String(espReal)].status === "paid",
+        "status=" + wReal.r.status + " body=" + JSON.stringify(wReal.body) +
+        " espaço=" + (dbReal[String(espReal)] && dbReal[String(espReal)].status));
+
+    /* 21) CORREÇÃO HMAC APLICADA: o Mercado Pago ENTREGA data.id=ORD... em
+       MAIÚSCULO na query, mas ASSINA o manifesto com o data.id em MINÚSCULO.
+       O validador normaliza o data.id para lowercase antes do HMAC ->
+       notificação REAL agora é VÁLIDA: 200 received + espaço pago. */
+    const espCase = 999983;
+    const checkoutCase = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espCase], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdCase = String(checkoutCase.body.mpOrderId);
+    const tsCase = Math.floor(Date.now() / 1000);
+    const ridCase = "req-case-" + Date.now();
+    const assinaturaMpLower = (id, ts, rid) => {
+        const m = "id:" + String(id).toLowerCase() + ";request-id:" + rid + ";ts:" + ts + ";";
+        return crypto.createHmac("sha256", SECRET).update(m).digest("hex");
+    };
+    const wCase = await reqJson(
+        BASE + "/webhooks/mercadopago?data.id=" + dataIdCase + "&type=order",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-signature": "ts=" + tsCase + ",v1=" + assinaturaMpLower(dataIdCase, tsCase, ridCase),
+                "x-request-id": ridCase
+            },
+            body: JSON.stringify({
+                type: "order", action: "order.action_required", live_mode: true,
+                data: { id: dataIdCase }
+            })
+        });
+    await sleep(700);
+    const dbCase = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("21) CORREÇÃO: notificação real (data.id minúsculo no manifesto) -> 200 + espaço pago",
+        wCase.r.status === 200 && wCase.body.received === true &&
+        dbCase[String(espCase)] && dbCase[String(espCase)].status === "paid",
+        "status=" + wCase.r.status + " body=" + JSON.stringify(wCase.body) +
+        " espaço=" + (dbCase[String(espCase)] && dbCase[String(espCase)].status));
+
+    /* 23) REGRESSÃO: assinatura com data.id em MAIÚSCULO no manifesto
+       (como o validador ANTIGO fazia) -> 401. O validador agora normaliza
+       para lowercase; a assinatura deve ser a do MP (id minúsculo). */
+    const tsUpper = Math.floor(Date.now() / 1000);
+    const ridUpper = "req-upper-" + Date.now();
+    const assinaturaMpUpper = (id, ts, rid) => {
+        const m = "id:" + id + ";request-id:" + rid + ";ts:" + ts + ";";
+        return crypto.createHmac("sha256", SECRET).update(m).digest("hex");
+    };
+    const wUpper = await reqJson(
+        BASE + "/webhooks/mercadopago?data.id=" + dataIdCase + "&type=order",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-signature": "ts=" + tsUpper + ",v1=" + assinaturaMpUpper(dataIdCase, tsUpper, ridUpper),
+                "x-request-id": ridUpper
+            },
+            body: JSON.stringify({
+                type: "order", action: "order.action_required", live_mode: true,
+                data: { id: dataIdCase }
+            })
+        });
+    t("23) REGRESSÃO: assinatura com data.id MAIÚSCULO no manifesto -> 401",
+        wUpper.r.status === 401,
+        "status=" + wUpper.r.status + " (validador exige id minúsculo no manifesto)");
+
+    /* 22) prova criptográfica do formato canônico do MP: o HMAC calculado
+       sobre id:<data.id em minúsculo>;request-id:<rid>;ts:<ts>; gera
+       exatamente o v1 recebido (len 64). */
+    const manifestLowerCase = "id:" + dataIdCase.toLowerCase() +
+        ";request-id:" + ridCase + ";ts:" + tsCase + ";";
+    const v1Case = assinaturaMpLower(dataIdCase, tsCase, ridCase);
+    const esperadoLower = crypto.createHmac("sha256", SECRET)
+        .update(manifestLowerCase).digest("hex");
+    t("22) manifesto minúsculo = forma canônica (v1 len 64)",
+        esperadoLower === v1Case && esperadoLower.length === 64,
+        "len=" + esperadoLower.length);
+
     /* approved: o polling (consulta real do MP) devolve o accessCode */
     const poll = await reqJson(BASE + "/api/payment-status/" + dataId, {
         headers: { "Authorization": "Bearer " + userTok }
@@ -306,6 +437,122 @@ async function main() {
         dbEsp2[String(espId)] && dbEsp2[String(espId)].status === "paid" &&
         dbEsp2[String(espId)].paidAt === paidAt1,
         "status=" + (dbEsp2[String(espId)] && dbEsp2[String(espId)].status));
+
+    /* 9) VALOR DIVERGENTE: total_amount diferente do cobrado
+       no checkout -> webhook 200 com divergencia, espaço NÃO liberado. */
+    const espDiv = 999989;
+    const checkoutDiv = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espDiv], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdDiv = String(checkoutDiv.body.mpOrderId);
+    ordersCriadas.get(dataIdDiv).total_amount = "0.50";
+    const tsDiv = Math.floor(Date.now() / 1000);
+    const ridDiv = "req-div-" + Date.now();
+    const wDiv = await reqJson(BASE + "/webhooks/mercadopago?data.id=" + dataIdDiv + "&type=order", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-signature": "ts=" + tsDiv + ",v1=" + assinar(dataIdDiv, tsDiv, ridDiv),
+            "x-request-id": ridDiv
+        },
+        body: JSON.stringify({ type: "order", data: { id: dataIdDiv } })
+    });
+    await sleep(700);
+    const dbDiv = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("9) valor divergente -> 200 divergencia + espaço NÃO liberado",
+        wDiv.r.status === 200 && wDiv.body.divergencia === true &&
+        dbDiv[String(espDiv)] && dbDiv[String(espDiv)].status === "reserved",
+        "status=" + wDiv.r.status + " body=" + JSON.stringify(wDiv.body) +
+        " espaço=" + (dbDiv[String(espDiv)] && dbDiv[String(espDiv)].status));
+
+    /* 18) external_reference DIVERGENTE: assinatura HMAC VÁLIDA, mas o
+       external_reference da Order (eco do MP) não bate com o orderId
+       interno do espaço -> 200 externalReferenceDivergencia:true, espaço
+       NÃO liberado (vínculo pagamento -> pedido). */
+    const espExt = 999986;
+    const checkoutExt = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espExt], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdExt = String(checkoutExt.body.mpOrderId);
+    ordersCriadas.get(dataIdExt).external_reference = "MEGA-ORDEM-ALHEIA";
+    const tsExt = Math.floor(Date.now() / 1000);
+    const ridExt = "req-ext-" + Date.now();
+    const wExt = await reqJson(BASE + "/webhooks/mercadopago?data.id=" + dataIdExt + "&type=order", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-signature": "ts=" + tsExt + ",v1=" + assinar(dataIdExt, tsExt, ridExt),
+            "x-request-id": ridExt
+        },
+        body: JSON.stringify({ type: "order", data: { id: dataIdExt } })
+    });
+    await sleep(700);
+    const dbExt = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("18) external_reference divergente -> NÃO libera espaço",
+        wExt.r.status === 200 && wExt.body.externalReferenceDivergencia === true &&
+        dbExt[String(espExt)] && dbExt[String(espExt)].status === "reserved",
+        "status=" + wExt.r.status + " body=" + JSON.stringify(wExt.body) +
+        " espaço=" + (dbExt[String(espExt)] && dbExt[String(espExt)].status));
+
+    /* 19) Order CANCELLED com external_reference DIVERGENTE -> espaço
+       NÃO liberado (não devolve espaço de outra venda). */
+    const espExtCanc = 999985;
+    const checkoutExtCanc = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espExtCanc], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdExtCanc = String(checkoutExtCanc.body.mpOrderId);
+    const ordemExtCanc = ordersCriadas.get(dataIdExtCanc);
+    ordemExtCanc.status = "cancelled";
+    ordemExtCanc.external_reference = "MEGA-ORDEM-ALHEIA-2";
+    const tsExtCanc = Math.floor(Date.now() / 1000);
+    const ridExtCanc = "req-ext-canc-" + Date.now();
+    const wExtCanc = await reqJson(BASE + "/webhooks/mercadopago?data.id=" + dataIdExtCanc + "&type=order", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-signature": "ts=" + tsExtCanc + ",v1=" + assinar(dataIdExtCanc, tsExtCanc, ridExtCanc),
+            "x-request-id": ridExtCanc
+        },
+        body: JSON.stringify({ type: "order", data: { id: dataIdExtCanc } })
+    });
+    await sleep(700);
+    const dbExtCanc = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("19) CANCELLED com external_reference divergente -> NÃO libera",
+        wExtCanc.r.status === 200 && dbExtCanc[String(espExtCanc)] &&
+        dbExtCanc[String(espExtCanc)].status === "reserved",
+        "status=" + wExtCanc.r.status +
+        " espaço=" + (dbExtCanc[String(espExtCanc)] && dbExtCanc[String(espExtCanc)].status));
+
+    /* 17) Order CANCELLED -> espaço liberado imediatamente (sem esperar TTL). */
+    const espCanc = 999987;    const checkoutCanc = await reqJson(BASE + "/api/checkout",
+        json("POST", userTok, {
+            spaces: [espCanc], aceiteRegras: true, name: "Webhook Test", email,
+            cpfCnpj: cpfValido, paymentMethod: "pix", licensePlan: "1_year"
+        }));
+    const dataIdCanc = String(checkoutCanc.body.mpOrderId);
+    ordersCriadas.get(dataIdCanc).status = "cancelled";
+    const tsCanc = Math.floor(Date.now() / 1000);
+    const ridCanc = "req-canc-" + Date.now();
+    const wCanc = await reqJson(BASE + "/webhooks/mercadopago?data.id=" + dataIdCanc + "&type=order", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-signature": "ts=" + tsCanc + ",v1=" + assinar(dataIdCanc, tsCanc, ridCanc),
+            "x-request-id": ridCanc
+        },
+        body: JSON.stringify({ type: "order", data: { id: dataIdCanc } })
+    });
+    await sleep(700);
+    const dbCanc = JSON.parse(fs.readFileSync(SPACES_FILE, "utf8"));
+    t("17) order CANCELLED -> espaço liberado imediatamente",
+        wCanc.r.status === 200 && !dbCanc[String(espCanc)],
+        "status=" + wCanc.r.status + " existe=" + (!!dbCanc[String(espCanc)]));
 
     /* ---- resultado ---- */
     const falhas = log.filter(l => l.startsWith("FAIL"));

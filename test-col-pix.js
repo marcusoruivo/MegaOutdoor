@@ -92,6 +92,7 @@ global.fetch = async (url, options = {}) => {
         const order = {
             id,
             status: "open",
+            total_amount: body && body.total_amount ? String(body.total_amount) : "1.00",
             external_reference: body.external_reference,
             transactions: {
                 payments: [{
@@ -122,13 +123,18 @@ global.fetch = async (url, options = {}) => {
         const order = ordersCriadas.get(id) || {
             id,
             status: "paid",
+            total_amount: "1.00",
             external_reference: "mock",
             transactions: { payments: [{ id: "pay-" + id, status: "paid", status_detail: "accredited", payment_method: { id: "pix", type: "bank_transfer", qr_code_base64: "bW9jaw==", qr_code: "000201mock" } }] }
         };
         return {
             ok: true,
             status: 200,
-            json: async () => ({ ...order, status: "paid" })
+            json: async () => ({
+                ...order,
+                status: order.status === "open" ? "paid" : order.status,
+                total_amount: order.total_amount || "1.00"
+            })
         };
     }
 
@@ -358,7 +364,8 @@ async function main() {
     const evento = { type: "order", data: { id: dataId } };
     const urlWebhook = BASE + "/webhooks/mercadopago?data.id=" + dataId + "&type=order";
     const assinatura = (idManifest, ts, rid) => {
-        const manifest = "id:" + idManifest + ";request-id:" + rid + ";ts:" + ts + ";";
+        const manifest = "id:" + String(idManifest).toLowerCase() +
+            ";request-id:" + rid + ";ts:" + ts + ";";
         return crypto
             .createHmac("sha256", process.env.MERCADOPAGO_WEBHOOK_SECRET)
             .update(manifest)

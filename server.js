@@ -2130,6 +2130,79 @@ function statusOrderPago(status) {
     return status === "paid" || status === "approved";
 }
 
+/* Orders que NUNCA serão pagas: libera a reserva imediatamente
+   (em vez de esperar o TTL) para o comprador poder tentar de novo. */
+function statusOrderRejeitada(status) {
+    return (
+        status === "rejected" ||
+        status === "declined" ||
+        status === "cancelled" ||
+        status === "expired"
+    );
+}
+
+/* Libera na hora os espaços reservados de uma Order que foi
+   rejeitada/cancelada/expirada, devolvendo-os ao mapa de venda.
+   Se `externalReference` for informado (não vazio), exige que o
+   orderId interno do espaço bata com ele — nunca libera um espaço
+   de outra Order mesmo com assinatura HMAC válida. */
+function liberarEspacosRejeitados(mpOrderId, status, externalReference) {
+    const db = readDB();
+    const liberados = [];
+
+    for (const id of Object.keys(db)) {
+        if (
+            db[id].mpOrderId === mpOrderId &&
+            db[id].status === "reserved" &&
+            (!externalReference || db[id].orderId === externalReference)
+        ) {
+            delete db[id];
+            liberados.push(id);
+        }
+    }
+
+    if (!liberados.length) {
+        return;
+    }
+
+    writeDB(db);
+
+    registrarLog("pagamento_rejeitado_espacos_liberados", {
+        mpOrderId,
+        status,
+        espacos: liberados
+    });
+
+    console.log(
+        `[PAGAMENTO] Order ${mpOrderId} (${status}): ` +
+        `${liberados.length} espaço(s) liberado(s) imediatamente.`
+    );
+}
+
+/* Vínculo de ordem: espaços reservados de uma Order cujo
+   external_reference retornado pelo Mercado Pago NÃO corresponde ao
+   orderId interno gravado. Ordem alheia/forjada não pode liberar
+   espaço de outra venda, mesmo com assinatura HMAC válida. */
+function referenciasExternasDivergentes(orderId, externalReference, db) {
+    const divergentes = [];
+    for (const id of Object.keys(db)) {
+        const space = db[id];
+        if (
+            space.mpOrderId === orderId &&
+            space.status === "reserved" &&
+            externalReference &&
+            space.orderId !== externalReference
+        ) {
+            divergentes.push({
+                espaco: id,
+                interno: space.orderId,
+                externo: externalReference
+            });
+        }
+    }
+    return divergentes;
+}
+
 function validarAssinaturaWebhook(req) {
 
     if (!MERCADOPAGO_WEBHOOK_SECRET) {
@@ -2210,9 +2283,15 @@ function validarAssinaturaWebhook(req) {
         return false;
     }
 
+    /* O Mercado Pago ENTREGA data.id em MAIÚSCULO (ex.: ORD01...) na query,
+       mas ASSINA o manifesto com o data.id normalizado para MINÚSCULO.
+       A normalização é aplicada SOMENTE ao data.id (nunca ao x-request-id,
+       ao ts, ao segredo ou ao v1), conforme comprovado pelo diagnóstico. */
+    const dataIdParaAssinatura = String(dataId || "").toLowerCase();
+
     const trechos = [];
-    if (dataId) {
-        trechos.push(`id:${dataId}`);
+    if (dataIdParaAssinatura) {
+        trechos.push(`id:${dataIdParaAssinatura}`);
     }
     if (requestId) {
         trechos.push(`request-id:${requestId}`);
@@ -2987,32 +3066,6 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
 
         const metodoPagamento = metodo;
 
-        const mp = await criarOrderMercadoPago({
-            idempotencyKey: orderId,
-            externalReference: orderId,
-            value: valorCobrado,
-            description: `Milhão Door - ${total} espaço(s)`,
-            customer: {
-                name: name.trim(),
-                taxID: document,
-                email: email.trim()
-            },
-            paymentMethod: metodoPagamento,
-            paymentMethodId: req.body.paymentMethodId,
-            cardToken: metodo === "credit_card" ? cardToken : undefined,
-            installments: metodo === "credit_card" ? installments : undefined
-        });
-
-        const qrCodeBase64 = mp.qrCodeBase64;
-        const brCode = mp.payload;
-        const expiresDate = mp.expirationDate;
-
-        /* =========================
-           RESERVA
-           Expira no menor prazo entre o TTL
-           (padrão 10 min) e o vencimento do QR Code.
-        ========================= */
-
         const reservedAt = new Date();
 
         let expiresAt =
@@ -3020,18 +3073,21 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
                 reservedAt.getTime() + RESERVA_TTL_MS
             );
 
-        if (expiresDate) {
+        /* =========================
+           RESERVA ANTES DE CRIAR A ORDER
+           A checagem de disponibilidade acima e a gravação da reserva
+           acontecem sem nenhum `await` entre elas, então dois pedidos
+           concorrentes para o mesmo espaço não podem passar juntos
+           (evita venda em dobro / cobrança duplicada). Se a criação
+           da Order no Mercado Pago falhar, a reserva é desfeita
+           (rollback) abaixo. O vencimento (menor prazo entre o TTL e
+           o QR Code) é ajustado após a resposta do MP.
+        ========================= */
 
-            const pixExpiresAt =
-                new Date(String(expiresDate).replace(" ", "T"));
-
-            if (
-                !isNaN(pixExpiresAt.getTime()) &&
-                pixExpiresAt.getTime() < expiresAt.getTime()
-            ) {
-                expiresAt = pixExpiresAt;
-            }
-        }
+        const valoresPedido = {
+            chargedAmountCents: valorCobradoCents,
+            chargedValue: valorCobrado
+        };
 
         for (const id of ids) {
 
@@ -3042,16 +3098,13 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
                     reservedAt.toISOString(),
                 expiresAt:
                     expiresAt.toISOString(),
-                pixExpiresAt:
-                    expiresDate
-                        ? String(expiresDate)
-                        : undefined,
+                pixExpiresAt: undefined,
                 orderId,
-                mpOrderId: mp.orderId,
+                mpOrderId: "",
                 orderToken,
                 accessCode,
                 customerId: "",
-                paymentId: mp.paymentId || paymentId,
+                paymentId,
                 paymentMethod: metodo,
                 usuarioId: req.usuario.id,
                 name: name.trim(),
@@ -3068,8 +3121,87 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
                 originalLicensePlan: licenca.plan,
                 originalLicenseDurationMonths: licenca.months,
                 originalBasePricePerBlock: licenca.basePricePerBlock,
-                originalLicenseFee: licenca.fee
+                originalLicenseFee: licenca.fee,
+                ...valoresPedido
             };
+        }
+
+        writeDB(db);
+
+        const rollbackReserva = () => {
+            const dbAtual = readDB();
+            let limpo = false;
+            for (const id of ids) {
+                if (
+                    dbAtual[id] &&
+                    dbAtual[id].orderId === orderId &&
+                    dbAtual[id].status === "reserved" &&
+                    !dbAtual[id].mpOrderId
+                ) {
+                    delete dbAtual[id];
+                    limpo = true;
+                }
+            }
+            if (limpo) {
+                writeDB(dbAtual);
+            }
+        };
+
+        let mp;
+
+        try {
+
+            mp = await criarOrderMercadoPago({
+                idempotencyKey: orderId,
+                externalReference: orderId,
+                value: valorCobrado,
+                description: `Milhão Door - ${total} espaço(s)`,
+                customer: {
+                    name: name.trim(),
+                    taxID: document,
+                    email: email.trim()
+                },
+                paymentMethod: metodoPagamento,
+                paymentMethodId: req.body.paymentMethodId,
+                cardToken: metodo === "credit_card" ? cardToken : undefined,
+                installments: metodo === "credit_card" ? installments : undefined
+            });
+
+        } catch (error) {
+
+            rollbackReserva();
+            throw error;
+        }
+
+        const qrCodeBase64 = mp.qrCodeBase64;
+        const brCode = mp.payload;
+        const expiresDate = mp.expirationDate;
+
+        /* Ajusta o vencimento para o menor prazo entre o TTL
+           e o vencimento do QR Code, e vincula a Order real. */
+
+        if (expiresDate) {
+
+            const pixExpiresAt =
+                new Date(String(expiresDate).replace(" ", "T"));
+
+            if (
+                !isNaN(pixExpiresAt.getTime()) &&
+                pixExpiresAt.getTime() < expiresAt.getTime()
+            ) {
+                expiresAt = pixExpiresAt;
+            }
+        }
+
+        for (const id of ids) {
+            if (db[id] && db[id].orderId === orderId) {
+                db[id].mpOrderId = mp.orderId;
+                db[id].paymentId = mp.paymentId || paymentId;
+                db[id].expiresAt = expiresAt.toISOString();
+                if (expiresDate) {
+                    db[id].pixExpiresAt = String(expiresDate);
+                }
+            }
         }
 
         writeDB(db);
@@ -3896,9 +4028,91 @@ app.get(
             const chargeStatus = order.status || "unknown";
             const pago = statusOrderPago(chargeStatus);
 
+            /* external_reference: vínculo definitivo entre o pagamento
+               consultado no MP e o orderId interno (nunca só o id do webhook). */
+            const externalReference =
+                String(order.external_reference || "").trim();
+
+            /* Rejeitado/cancelado/expirado: libera a reserva na hora
+               para o comprador poder tentar novamente. */
+            if (statusOrderRejeitada(chargeStatus)) {
+                liberarEspacosRejeitados(
+                    orderId,
+                    chargeStatus,
+                    externalReference
+                );
+            }
+
             let accessCode = null;
 
             if (pago) {
+
+                const totalPagoCents = paraCentavos(order.total_amount);
+
+                /* Validação de valor: não marca como pago (RECEIVED)
+                   se o valor pago no MP não bater com o cobrado. */
+                let divergencia = false;
+
+                for (const id of Object.keys(db)) {
+                    const space = db[id];
+                    if (
+                        space.chargedAmountCents != null &&
+                        space.chargedAmountCents !== totalPagoCents &&
+                        (
+                            space.mpOrderId === orderId ||
+                            space.paymentId === orderId
+                        )
+                    ) {
+                        divergencia = true;
+                        console.error(
+                            "[MP] VALOR DIVERGENTE (polling). Espaço NÃO marcado como pago.",
+                            { mpOrderId: orderId, espaco: id, cobradoCents: space.chargedAmountCents, pagoCents: totalPagoCents }
+                        );
+                    }
+                }
+
+                if (divergencia) {
+                    registrarLog("pagamento_valor_divergente_polling", {
+                        mpOrderId: orderId,
+                        totalPagoCents
+                    });
+                    /* NÃO reporta RECEIVED: evitaria o frontend mostrar
+                       "Pagamento confirmado" com espaços ainda reservados.
+                       Mantém o polling ativo até revisão manual. */
+                    return res.json({
+                        status: chargeStatus,
+                        orderId,
+                        accessCode: null,
+                        divergencia: true
+                    });
+                }
+
+                /* Vínculo de ordem: external_reference do MP deve bater
+                   com o orderId interno dos espaços reservados. */
+                const refsDivergentes = referenciasExternasDivergentes(
+                    orderId,
+                    externalReference,
+                    db
+                );
+
+                if (refsDivergentes.length) {
+                    console.error(
+                        "[MP] external_reference DIVERGENTE (polling). " +
+                        "Espaços NÃO marcados como pago.",
+                        { mpOrderId: orderId, externalReference, refsDivergentes }
+                    );
+                    registrarLog("pagamento_external_reference_divergente_polling", {
+                        mpOrderId: orderId,
+                        externalReference,
+                        refsDivergentes
+                    });
+                    return res.json({
+                        status: chargeStatus,
+                        orderId,
+                        accessCode: null,
+                        externalReferenceDivergencia: true
+                    });
+                }
 
                 confirmarPagamentoOferta(orderId);
 
@@ -3908,7 +4122,7 @@ app.get(
                    compras no mercado e diferenças de troca. */
                 try {
                     if (typeof colecionaveis?.processarPagamento === "function") {
-                        await colecionaveis.processarPagamento({ mpOrderId: orderId });
+                        await colecionaveis.processarPagamento({ mpOrderId: orderId, totalCents: totalPagoCents });
                     }
                 } catch (eColecionaveis) {
                     console.error(
@@ -3920,7 +4134,7 @@ app.get(
                 /* Módulo de Combos & Kits (idempotente). */
                 try {
                     if (typeof combos?.processarPagamento === "function") {
-                        await combos.processarPagamento({ mpOrderId: orderId });
+                        await combos.processarPagamento({ mpOrderId: orderId, totalCents: totalPagoCents });
                     }
                 } catch (eCombos) {
                     console.error(
@@ -3939,8 +4153,12 @@ app.get(
                 for (const id of Object.keys(db)) {
 
                     if (
-                        db[id].mpOrderId === orderId ||
-                        db[id].paymentId === orderId
+                        (
+                            db[id].mpOrderId === orderId ||
+                            db[id].paymentId === orderId
+                        ) &&
+                        (!externalReference ||
+                            db[id].orderId === externalReference)
                     ) {
 
                         if (db[id].accessCode) {
@@ -6598,7 +6816,7 @@ app.post("/api/link", (req, res) => {
    estende a validade do espaço original.
 ========================= */
 
-async function processarRenovacaoPagamento(mpOrderId) {
+async function processarRenovacaoPagamento(mpOrderId, totalCents) {
 
     if (!pgDisponivel) {
         return false;
@@ -6618,6 +6836,30 @@ async function processarRenovacaoPagamento(mpOrderId) {
         const transacao = result.rows[0];
 
         if (!transacao) {
+            return false;
+        }
+
+        /* Validação de valor: o pago no MP precisa bater com o
+           valor da renovação registrado na transação. */
+        if (
+            totalCents != null &&
+            paraCentavos(transacao.valor_total) !== totalCents
+        ) {
+            console.error(
+                "[MP] VALOR DIVERGENTE na renovação. Renovação NÃO aplicada.",
+                {
+                    mpOrderId,
+                    transacaoId: transacao.id,
+                    cobradoCents: paraCentavos(transacao.valor_total),
+                    pagoCents: totalCents
+                }
+            );
+            registrarLog("renovacao_valor_divergente", {
+                mpOrderId,
+                transacaoId: transacao.id,
+                cobradoCents: paraCentavos(transacao.valor_total),
+                pagoCents: totalCents
+            });
             return false;
         }
 
@@ -6718,11 +6960,82 @@ function camposDebugWebhook(req) {
     };
 }
 
+/* [MP WEBHOOK DIAGNOSTICO] — TEMPORÁRIO. Executado apenas quando a
+   validação manual falha. Recalcula o HMAC com o MESMO segredo configurado
+   em várias variantes do manifesto e registra APENAS quais coincidem com o
+   v1 recebido (booleans). NUNCA loga o segredo, o x-signature completo, o
+   v1 nem o HMAC calculado. Finalidade: distinguir entre (a) segredo
+   divergente e (b) case do data.id no manifesto (o MP entrega ORD... em
+   MAIÚSCULO mas assina o manifesto com o data.id em MINÚSCULO). Remover
+   após o diagnóstico. */
+function diagnosticarAssinaturaWebhook(req) {
+    try {
+        const lixo = (valor) => {
+            if (valor === undefined || valor === null) return "";
+            const bruto = Array.isArray(valor) ? valor[0] : valor;
+            return String(bruto).trim();
+        };
+        const ass = lixo(req.headers["x-signature"]);
+        const rid = lixo(req.headers["x-request-id"]);
+        const query = req.query || {};
+        const dataId = lixo(query["data.id"]);
+        const mTs = ass.match(/(?:^|,)\s*ts=([^,]+)/);
+        const mV1 = ass.match(/(?:^|,)\s*v1=([^,]+)/);
+        const ts = mTs ? mTs[1].trim() : "";
+        const v1 = mV1 ? mV1[1].trim() : "";
+        const secret = MERCADOPAGO_WEBHOOK_SECRET || "";
+
+        const calc = (manifest) =>
+            crypto.createHmac("sha256", secret).update(manifest).digest("hex");
+
+        const montar = (id) => {
+            const partes = [];
+            if (id) partes.push("id:" + id);
+            if (rid) partes.push("request-id:" + rid);
+            partes.push("ts:" + ts);
+            return partes.join(";") + ";";
+        };
+
+        const manifestAsIs = montar(dataId);
+        const manifestLowerId = montar(dataId.toLowerCase());
+        const manifestLowerTudo = dataId || rid
+            ? "id:" + dataId.toLowerCase() + ";request-id:" + rid.toLowerCase() + ";ts:" + ts + ";"
+            : "ts:" + ts + ";";
+
+        const igual = (esperado) =>
+            v1 && Buffer.byteLength(esperado) === Buffer.byteLength(v1) &&
+            crypto.timingSafeEqual(Buffer.from(esperado), Buffer.from(v1));
+
+        console.warn("[MP WEBHOOK DIAGNOSTICO]", {
+            xSignaturePresente: !!ass,
+            temTs: !!ts,
+            temV1: !!v1,
+            v1Tamanho: v1 ? v1.length : 0,
+            xRequestIdPresente: !!rid,
+            dataIdQueryPresente: !!dataId,
+            dataIdBodyPresente: !!((req.body && req.body.data && req.body.data.id)),
+            queryChaves: Object.keys(query),
+            dataId: dataId || "(ausente)",
+            xRequestId: rid || "(ausente)",
+            timestamp: ts || "(ausente)",
+            secretConfigurado: !!secret,
+            secretLength: secret ? String(secret).length : 0,
+            manifestoUsado: manifestAsIs,
+            bateComoVeio: igual(calc(manifestAsIs)),
+            bateMinusculoId: igual(calc(manifestLowerId)),
+            bateMinusculoTudo: igual(calc(manifestLowerTudo))
+        });
+    } catch (e) {
+        console.warn("[MP WEBHOOK DIAGNOSTICO] erro:", e.message);
+    }
+}
+
 app.post("/webhooks/mercadopago", async (req, res) => {
 
     /* Validação obrigatória da assinatura do Mercado Pago. */
     if (!validarAssinaturaWebhook(req)) {
         console.warn("[MP WEBHOOK DEBUG] INVALID", camposDebugWebhook(req));
+        diagnosticarAssinaturaWebhook(req);
         console.warn("Webhook Mercado Pago rejeitado: assinatura inválida.");
         return res.status(401).json({ error: "Unauthorized" });
     }
@@ -6780,18 +7093,87 @@ app.post("/webhooks/mercadopago", async (req, res) => {
            Nunca confiamos apenas no payload recebido. */
         const order = await consultarOrderMercadoPago(orderId);
 
+        /* external_reference: eco do que enviamos no checkout (o orderId
+           interno, ex.: MEGA-...). Usado como vínculo definitivo entre o
+           pagamento real e o pedido — nunca confiamos só no id do webhook. */
+        const externalReference = String(order.external_reference || "").trim();
+
         console.log("Order consultada:", order.id, order.status);
 
         /* Só liberamos espaços se a Order estiver efetivamente paga. */
         if (!statusOrderPago(order.status)) {
-            console.log(`Order ${orderId} não está paga. Status: ${order.status}`);
+
+            if (statusOrderRejeitada(order.status)) {
+                liberarEspacosRejeitados(orderId, order.status, externalReference);
+            } else {
+                console.log(`Order ${orderId} não está paga. Status: ${order.status}`);
+            }
+
             return res.status(200).json({ received: true });
         }
 
         const dados = extrairDadosPagamento(order);
+        const totalPagoCents = paraCentavos(order.total_amount);
+        const db = readDB();
+
+        /* Vínculo de ordem: o pagamento consultado pertence ao pedido
+           correto? O external_reference do MP precisa bater com o orderId
+           interno dos espaços reservados. Se divergir, NÃO libera. */
+        const refsDivergentes =
+            referenciasExternasDivergentes(orderId, externalReference, db);
+
+        if (refsDivergentes.length) {
+            console.error(
+                "[MP] external_reference DIVERGENTE. Espaços NÃO liberados.",
+                { mpOrderId: orderId, externalReference, refsDivergentes }
+            );
+            registrarLog("pagamento_external_reference_divergente", {
+                mpOrderId: orderId,
+                externalReference,
+                refsDivergentes
+            });
+            return res.status(200).json({
+                received: true,
+                externalReferenceDivergencia: true
+            });
+        }
+
+        /* Validação de valor: o total pago na Order do Mercado Pago
+           precisa bater com o valor efetivamente cobrado no checkout.
+           Reservas antigas (sem chargedAmountCents) não são bloqueadas. */
+        const divergentes = [];
+
+        for (const id of Object.keys(db)) {
+            const space = db[id];
+            if (
+                space.mpOrderId === orderId &&
+                space.status === "reserved" &&
+                space.chargedAmountCents != null &&
+                space.chargedAmountCents !== totalPagoCents
+            ) {
+                divergentes.push({
+                    espaco: id,
+                    cobradoCents: space.chargedAmountCents,
+                    pagoCents: totalPagoCents
+                });
+            }
+        }
+
+        if (divergentes.length) {
+            console.error(
+                "[MP] VALOR DIVERGENTE entre o cobrado e o pago. " +
+                "Espaços NÃO liberados.",
+                { mpOrderId: orderId, totalPagoCents, divergentes }
+            );
+            registrarLog("pagamento_valor_divergente", {
+                mpOrderId: orderId,
+                totalPagoCents,
+                divergentes
+            });
+            return res.status(200).json({ received: true, divergencia: true });
+        }
 
         /* Liberação idempotente: só altera espaços reservados. */
-        const db = readDB();
         let alterado = false;
         const paidAt = new Date();
 
@@ -6800,7 +7182,8 @@ app.post("/webhooks/mercadopago", async (req, res) => {
 
             if (
                 space.mpOrderId === orderId &&
-                space.status === "reserved"
+                space.status === "reserved" &&
+                (!externalReference || space.orderId === externalReference)
             ) {
                 const months =
                     space.licenseDurationMonths || 12;
@@ -6821,14 +7204,14 @@ app.post("/webhooks/mercadopago", async (req, res) => {
 
         confirmarPagamentoOferta(orderId);
         pgPagamentoPago({ mpOrderId: orderId });
-        await processarRenovacaoPagamento(orderId);
+        await processarRenovacaoPagamento(orderId, totalPagoCents);
 
         /* Pagamentos do módulo de colecionáveis (pacotes, compras
            no mercado e diferenças de troca). Independente e
            idempotente — só processa pedidos pendentes. */
         try {
             if (typeof colecionaveis?.processarPagamento === "function") {
-                await colecionaveis.processarPagamento({ mpOrderId: orderId });
+                await colecionaveis.processarPagamento({ mpOrderId: orderId, totalCents: totalPagoCents });
             }
         } catch (eColecionaveis) {
             console.error(
@@ -6841,7 +7224,7 @@ app.post("/webhooks/mercadopago", async (req, res) => {
            só processa pedidos pendentes, sem entregar em dobro. */
         try {
             if (typeof combos?.processarPagamento === "function") {
-                await combos.processarPagamento({ mpOrderId: orderId });
+                await combos.processarPagamento({ mpOrderId: orderId, totalCents: totalPagoCents });
             }
         } catch (eCombos) {
             console.error(
@@ -6863,7 +7246,11 @@ app.post("/webhooks/mercadopago", async (req, res) => {
         const liberadas = readReservasLiberadas();
         const antiga = liberadas[orderId];
 
-        if (antiga && !db[antiga.id]) {
+        if (
+            antiga &&
+            !db[antiga.id] &&
+            (!externalReference || antiga.orderId === externalReference)
+        ) {
 
             db[antiga.id] = {
                 ...antiga,
@@ -7868,6 +8255,7 @@ const colecionaveis = criarColecionaveis({
     consultarOrderMercadoPago,
     extrairDadosPagamento,
     statusOrderPago,
+    paraCentavos,
     registrarLog,
     obterPool: () => pgPool,
     obterPgDisponivel: () => pgDisponivel,
@@ -7897,6 +8285,7 @@ const combos = criarCombos({
     criarOrderMercadoPago,
     consultarOrderMercadoPago,
     statusOrderPago,
+    paraCentavos,
     registrarLog,
     obterPool: () => pgPool,
     obterPgDisponivel: () => pgDisponivel,

@@ -6600,13 +6600,42 @@ async function processarRenovacaoPagamento(mpOrderId) {
    INICIAR SERVIDOR
 ========================= */
 
+/* [MP WEBHOOK DEBUG] — logging TEMPORÁRIO para identificar a aplicação
+   de origem das notificações do Mercado Pago. NÃO registra x-signature,
+   secret, nem token de acesso. Remover após o diagnóstico. */
+function camposDebugWebhook(req) {
+    const ass = String(
+        req.headers["x-signature"] ||
+        req.headers["X-Signature"] ||
+        ""
+    );
+    const mTs = ass.match(/(?:^|,)\s*ts=([^,]+)/);
+    return {
+        xRequestId: String(
+            req.headers["x-request-id"] ||
+            req.headers["X-Request-Id"] ||
+            ""
+        ),
+        dataId: String((req.query && req.query["data.id"]) ?? ""),
+        queryType: String((req.query && req.query.type) ?? ""),
+        queryAction: String((req.query && req.query.action) ?? ""),
+        action: String((req.body && req.body.action) ?? ""),
+        applicationId: String((req.body && req.body.application_id) ?? ""),
+        liveMode: String((req.body && req.body.live_mode) ?? ""),
+        timestamp: mTs ? mTs[1].trim() : new Date().toISOString()
+    };
+}
+
 app.post("/webhooks/mercadopago", async (req, res) => {
 
     /* Validação obrigatória da assinatura do Mercado Pago. */
     if (!validarAssinaturaWebhook(req)) {
+        console.warn("[MP WEBHOOK DEBUG] INVALID", camposDebugWebhook(req));
         console.warn("Webhook Mercado Pago rejeitado: assinatura inválida.");
         return res.status(401).json({ error: "Unauthorized" });
     }
+
+    console.log("[MP WEBHOOK DEBUG] VALID", camposDebugWebhook(req));
 
     const evento = req.body || {};
     const query = req.query || {};

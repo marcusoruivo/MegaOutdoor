@@ -30,6 +30,14 @@ const PRODUCAO =
 const ALLOW_TEST_MODE =
     process.env.ALLOW_TEST_MODE === "true";
 
+/* Configuração central dos destaques patrocinados. */
+const STORY_PRICING = Object.freeze({
+    "5h": Number(process.env.STORY_PRICE_5H || 15.00),
+    "7h": Number(process.env.STORY_PRICE_7H || 20.00),
+    "12h": Number(process.env.STORY_PRICE_12H || 30.00),
+    "24h": Number(process.env.STORY_PRICE_24H || 45.00)
+});
+
 const MAX_CREDITOS_INDICACAO = 4;
 
 const limiterGlobal = rateLimit({
@@ -125,6 +133,12 @@ const limiterBugs = rateLimit({
 
 const MERCADOPAGO_ACCESS_TOKEN =
     process.env.MERCADOPAGO_ACCESS_TOKEN || "";
+
+const MERCADOPAGO_CLIENT_ID = process.env.MERCADOPAGO_CLIENT_ID || "";
+const MERCADOPAGO_CLIENT_SECRET = process.env.MERCADOPAGO_CLIENT_SECRET || "";
+const MERCADOPAGO_REDIRECT_URI = process.env.MERCADOPAGO_REDIRECT_URI || "";
+const MERCADOPAGO_MARKETPLACE_FEE_PERCENT = Number(process.env.MERCADOPAGO_MARKETPLACE_FEE_PERCENT || 10);
+const MERCADOPAGO_MARKETPLACE_SPLIT_ENABLED = process.env.MERCADOPAGO_MARKETPLACE_SPLIT_ENABLED === "true";
 
 const MERCADOPAGO_PUBLIC_KEY =
     process.env.MERCADOPAGO_PUBLIC_KEY || "";
@@ -337,6 +351,28 @@ if (!JWT_SECRET) {
     }
 }
 
+function chaveCriptografiaMarketplace() {
+    return crypto.createHash("sha256").update(String(JWT_SECRET) + ":marketplace").digest();
+}
+
+function criptografarMarketplace(valor) {
+    if (!valor) return null;
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv("aes-256-gcm", chaveCriptografiaMarketplace(), iv);
+    const encrypted = Buffer.concat([cipher.update(String(valor), "utf8"), cipher.final()]);
+    return [iv.toString("base64url"), cipher.getAuthTag().toString("base64url"), encrypted.toString("base64url")].join(".");
+}
+
+function descriptografarMarketplace(valor) {
+    if (!valor) return null;
+    try {
+        const [ivRaw, tagRaw, dataRaw] = String(valor).split(".");
+        const decipher = crypto.createDecipheriv("aes-256-gcm", chaveCriptografiaMarketplace(), Buffer.from(ivRaw, "base64url"));
+        decipher.setAuthTag(Buffer.from(tagRaw, "base64url"));
+        return Buffer.concat([decipher.update(Buffer.from(dataRaw, "base64url")), decipher.final()]).toString("utf8");
+    } catch (error) { return null; }
+}
+
 /* =========================
    LOG DO SITE
    Registra eventos em um arquivo JSONL
@@ -465,6 +501,45 @@ semearDadosIniciais();
 let pgPool = null;
 let pgDisponivel = false;
 
+async function registrarStoryEvento({
+    eventKey, kind, title, subtitle, actionType = null,
+    actionId = null, metadata = {}
+} = {}) {
+    if (!pgDisponivel || !pgPool || !eventKey || !title) return false;
+    try {
+        await pgPool.query(
+            `INSERT INTO story_events
+                (event_key, kind, title, subtitle, action_type, action_id, metadata, expires_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,NOW() + INTERVAL '24 hours')
+             ON CONFLICT (event_key) DO NOTHING`,
+            [eventKey, kind || "purchase", title, subtitle || null,
+             actionType, actionId, JSON.stringify(metadata || {})]
+        );
+        return true;
+    } catch (error) {
+        console.error("ERRO ao registrar Story:", error.message);
+        return false;
+    }
+}
+
+async function registrarStoryDaTransacao(transacao) {
+    if (!transacao || !transacao.story_opt_in || transacao.status !== "pago") return;
+    const ids = Array.isArray(transacao.espacos) ? transacao.espacos.map(Number).filter(Number.isFinite) : [];
+    const qtd = Number(transacao.quantidade || ids.length || 0);
+    const isSingle = ids.length === 1;
+    await registrarStoryEvento({
+        eventKey: `purchase:${transacao.order_id}`,
+        kind: isSingle ? "space" : "purchase",
+        title: isSingle ? "🟡 NOVO ESPAÇO" : "🟡 NOVA COMPRA",
+        subtitle: isSingle
+            ? `#${String(ids[0]).padStart(4, "0")}`
+            : `${qtd} espaço${qtd === 1 ? "" : "s"} comprado${qtd === 1 ? "" : "s"}`,
+        actionType: isSingle ? "space" : (ids.length > 1 ? "block" : "purchase"),
+        actionId: ids.length ? ids[0] : null,
+        metadata: { spaces: ids.slice(0, 1000), quantity: qtd }
+    });
+}
+
 async function initBanco() {
 
     const url = process.env.DATABASE_URL;
@@ -524,6 +599,49 @@ async function initBanco() {
                 ultimo_login TIMESTAMPTZ
             )
         `);
+
+        await pgPool.query(`
+            CREATE TABLE IF NOT EXISTS story_events (
+                id           SERIAL PRIMARY KEY,
+                event_key    VARCHAR(180) UNIQUE NOT NULL,
+                kind         VARCHAR(30) NOT NULL,
+                title        VARCHAR(180) NOT NULL,
+                subtitle     VARCHAR(240),
+                action_type  VARCHAR(30),
+                action_id    INTEGER,
+                metadata     JSONB NOT NULL DEFAULT '{}',
+                created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                expires_at   TIMESTAMPTZ NOT NULL
+            )
+        `);
+        await pgPool.query(
+            "CREATE INDEX IF NOT EXISTS idx_story_events_expiry ON story_events(expires_at)"
+        );
+
+        await pgPool.query(`
+            CREATE TABLE IF NOT EXISTS marketplace_accounts (
+                id               SERIAL PRIMARY KEY,
+                usuario_id       INTEGER UNIQUE NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                provider         VARCHAR(30) NOT NULL DEFAULT 'mercadopago',
+                seller_user_id   VARCHAR(80) NOT NULL,
+                access_token_enc TEXT NOT NULL,
+                refresh_token_enc TEXT,
+                public_key       VARCHAR(200),
+                expires_at       TIMESTAMPTZ,
+                connected_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        `);
+        await pgPool.query(`
+            CREATE TABLE IF NOT EXISTS marketplace_oauth_states (
+                state          VARCHAR(180) PRIMARY KEY,
+                usuario_id     INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                verifier_enc   TEXT NOT NULL,
+                expires_at     TIMESTAMPTZ NOT NULL,
+                used_at        TIMESTAMPTZ
+            )
+        `);
+        await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_marketplace_oauth_expiry ON marketplace_oauth_states(expires_at)`);
 
         await pgPool.query(`
             CREATE TABLE IF NOT EXISTS usuario_chaves (
@@ -615,6 +733,11 @@ async function initBanco() {
         await pgPool.query(
             "ALTER TABLE transacoes " +
             "ADD COLUMN IF NOT EXISTS aceite_regras BOOLEAN NOT NULL DEFAULT FALSE"
+        );
+
+        await pgPool.query(
+            "ALTER TABLE transacoes " +
+            "ADD COLUMN IF NOT EXISTS story_opt_in BOOLEAN NOT NULL DEFAULT FALSE"
         );
 
         await pgPool.query(
@@ -747,7 +870,8 @@ function registrarTransacao({
     originalBasePricePerBlock,
     originalLicenseFee,
     operationType,
-    aceiteRegras = false
+    aceiteRegras = false,
+    storyOptIn = false
 }) {
 
     if (!pgDisponivel) {
@@ -765,9 +889,9 @@ function registrarTransacao({
              purchased_at, expires_at,
              original_license_plan, original_license_duration_months,
              original_base_price_per_block, original_license_fee,
-             operation_type, aceite_regras)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,
-                 $18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30)`,
+             operation_type, aceite_regras, story_opt_in)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,
+                  $18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31)`,
         [
             tipo,
             accessCode,
@@ -797,10 +921,22 @@ function registrarTransacao({
             originalLicenseDurationMonths || null,
             originalBasePricePerBlock || null,
             originalLicenseFee || null,
-            operationType || "purchase",
-            aceiteRegras === true || aceiteRegras === "true"
+             operationType || "purchase",
+             aceiteRegras === true || aceiteRegras === "true",
+             storyOptIn === true || storyOptIn === "true"
         ]
-    ).catch((err) => {
+    ).then(async (result) => {
+        if (status === "pago" && (storyOptIn === true || storyOptIn === "true")) {
+            await registrarStoryDaTransacao({
+                order_id: orderId,
+                status,
+                story_opt_in: true,
+                espacos,
+                quantidade: espacos.length
+            });
+        }
+        return result;
+    }).catch((err) => {
         console.error("ERRO ao registrar transação:", err.message);
         return false;
     });
@@ -833,9 +969,15 @@ function pgPagamentoPago({ paymentId, mpOrderId } = {}) {
                     ELSE NULL
                 END
           WHERE ${whereClause}
-            AND status = 'pendente'`,
+            AND status = 'pendente'
+          RETURNING order_id, status, story_opt_in, espacos, quantidade`,
         [param]
-    ).catch((err) => {
+    ).then(async (result) => {
+        if (result.rows && result.rows[0]) {
+            await registrarStoryDaTransacao(result.rows[0]);
+        }
+        return result;
+    }).catch((err) => {
         console.error("ERRO ao atualizar transação:", err.message);
         return false;
     });
@@ -1968,6 +2110,66 @@ async function mercadoPagoRequest(endpoint, options = {}) {
     return data;
 }
 
+async function mercadoPagoRequestComToken(accessToken, endpoint, options = {}) {
+    if (!accessToken) throw new Error("Conta Mercado Pago do vendedor não conectada.");
+    const response = await fetch(MERCADOPAGO_API + endpoint, {
+        ...options,
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+            ...(options.headers || {})
+        }
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(`Mercado Pago Marketplace ${response.status}: ${mascararSensivel(data.message || data.error || "erro")}`);
+    return data;
+}
+
+/* Checkout Pro Marketplace 1:1. A preferência é criada com o access token
+   OAuth do vendedor; marketplace_fee é enviado ao gateway, não é repasse interno. */
+async function criarOrderMercadoPagoSplit({
+    sellerAccount, idempotencyKey, externalReference, value, description, customer, platformFee
+}) {
+    if (!MERCADOPAGO_MARKETPLACE_SPLIT_ENABLED) throw new Error("Split Marketplace desativado.");
+    if (!sellerAccount || !sellerAccount.accessToken) throw new Error("Conta Mercado Pago do vendedor não conectada.");
+    const preference = await mercadoPagoRequestComToken(sellerAccount.accessToken, "/checkout/preferences", {
+        method: "POST",
+        headers: { "X-Idempotency-Key": String(idempotencyKey || externalReference) },
+        body: JSON.stringify({
+            items: [{
+                id: String(externalReference),
+                title: description || "Compra no marketplace",
+                quantity: 1,
+                currency_id: "BRL",
+                unit_price: Number(value)
+            }],
+            payer: { email: customer && customer.email ? String(customer.email).trim() : undefined },
+            external_reference: String(externalReference),
+            marketplace_fee: Number(platformFee),
+            notification_url: process.env.MERCADOPAGO_WEBHOOK_URL || undefined,
+            back_urls: {
+                success: process.env.SITE_URL || "https://milhaodoor.com.br",
+                failure: process.env.SITE_URL || "https://milhaodoor.com.br",
+                pending: process.env.SITE_URL || "https://milhaodoor.com.br"
+            },
+            auto_return: "approved"
+        })
+    });
+    return {
+        orderId: String(preference.id),
+        externalReference: String(externalReference),
+        paymentStatus: "pending",
+        ticketUrl: preference.init_point || preference.sandbox_init_point || "",
+        preferenceId: String(preference.id),
+        marketplaceFee: Number(platformFee),
+        raw: preference
+    };
+}
+
+async function consultarMercadoPagoPayment(accessToken, paymentId) {
+    return mercadoPagoRequestComToken(accessToken, `/v1/payments/${encodeURIComponent(paymentId)}`, { method: "GET" });
+}
+
 /* Busca o primeiro valor não vazio de um objeto seguindo caminhos
    "a.b.c" — aceita as estruturas atuais e as de formatos legados. */
 function primeiroValorDe(objeto, caminhos) {
@@ -2829,6 +3031,41 @@ app.get("/api/status", (req, res) => {
     });
 });
 
+/* Stories públicos: somente eventos autorizados, confirmados e ainda válidos. */
+app.get("/api/stories", async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.json({ ok: true, stories: [] });
+    try {
+        await pgPool.query("DELETE FROM story_events WHERE expires_at <= NOW()");
+        const result = await pgPool.query(
+            `SELECT id, kind, title, subtitle, action_type, action_id, metadata, created_at
+               FROM story_events
+              WHERE expires_at > NOW()
+              ORDER BY created_at DESC
+              LIMIT 30`
+        );
+        res.json({
+            ok: true,
+            stories: result.rows.map(row => ({
+                id: row.id,
+                kind: row.kind,
+                title: row.title,
+                subtitle: row.subtitle,
+                actionType: row.action_type,
+                actionId: row.action_id,
+                metadata: row.metadata || {},
+                createdAt: row.created_at
+            }))
+        });
+    } catch (error) {
+        console.error("ERRO ao carregar Stories:", error.message);
+        res.json({ ok: true, stories: [] });
+    }
+});
+
+app.get("/api/stories/config", (req, res) => {
+    res.json({ ok: true, pricing: STORY_PRICING });
+});
+
 /* =========================
    CONFIGURAÇÃO PÚBLICA
 ========================= */
@@ -2850,6 +3087,160 @@ app.get("/api/config", (req, res) => {
             MERCADOPAGO_SANDBOX === true,
         allowTestMode: ALLOW_TEST_MODE === true
     });
+});
+
+async function obterContaMarketplace(usuarioId) {
+    if (!pgDisponivel || !pgPool || !usuarioId) return null;
+    const q = await pgPool.query(
+        `SELECT id, usuario_id, seller_user_id, public_key, expires_at, connected_at,
+                access_token_enc, refresh_token_enc
+           FROM marketplace_accounts WHERE usuario_id = $1`,
+        [usuarioId]
+    );
+    const account = q.rows[0] || null;
+    if (!account) return null;
+    if (account.expires_at && new Date(account.expires_at).getTime() <= Date.now() + 60000 && account.refresh_token_enc && MERCADOPAGO_CLIENT_ID && MERCADOPAGO_CLIENT_SECRET) {
+        const refreshToken = descriptografarMarketplace(account.refresh_token_enc);
+        if (refreshToken) {
+            try {
+                const response = await fetch("https://api.mercadopago.com/oauth/token", {
+                    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: new URLSearchParams({ client_id: MERCADOPAGO_CLIENT_ID, client_secret: MERCADOPAGO_CLIENT_SECRET, grant_type: "refresh_token", refresh_token: refreshToken }).toString()
+                });
+                const data = await response.json();
+                if (response.ok && data.access_token) {
+                    await pgPool.query(
+                        `UPDATE marketplace_accounts SET access_token_enc = $2, refresh_token_enc = COALESCE($3, refresh_token_enc), expires_at = NOW() + ($4 || ' seconds')::interval, updated_at = NOW() WHERE usuario_id = $1`,
+                        [usuarioId, criptografarMarketplace(data.access_token), data.refresh_token ? criptografarMarketplace(data.refresh_token) : null, Number(data.expires_in || 15552000)]
+                    );
+                    account.expires_at = new Date(Date.now() + Number(data.expires_in || 15552000) * 1000);
+                }
+            } catch (error) { console.error("ERRO ao renovar conexão Mercado Pago:", error.message); }
+        }
+    }
+    delete account.access_token_enc;
+    delete account.refresh_token_enc;
+    return account;
+}
+
+async function obterContaMarketplacePrivada(usuarioId) {
+    await obterContaMarketplace(usuarioId);
+    if (!pgDisponivel || !pgPool || !usuarioId) return null;
+    const q = await pgPool.query(
+        `SELECT id, usuario_id, seller_user_id, public_key, expires_at, connected_at,
+                access_token_enc, refresh_token_enc
+           FROM marketplace_accounts WHERE usuario_id = $1`,
+        [usuarioId]
+    );
+    const account = q.rows[0];
+    if (!account) return null;
+    return {
+        id: account.id,
+        usuarioId: account.usuario_id,
+        sellerUserId: account.seller_user_id,
+        publicKey: account.public_key,
+        expiresAt: account.expires_at,
+        accessToken: descriptografarMarketplace(account.access_token_enc),
+        refreshToken: descriptografarMarketplace(account.refresh_token_enc)
+    };
+}
+
+app.get("/api/marketplace/oauth/connect", authUsuario, (req, res) => {
+    if (!MERCADOPAGO_CLIENT_ID || !MERCADOPAGO_CLIENT_SECRET || !MERCADOPAGO_REDIRECT_URI || !pgDisponivel || !pgPool) {
+        return res.status(503).json({ error: "OAuth do Mercado Pago ainda não foi configurado no ambiente." });
+    }
+    const state = crypto.randomBytes(32).toString("base64url");
+    const verifier = crypto.randomBytes(32).toString("base64url");
+    const challenge = crypto.createHash("sha256").update(verifier).digest("base64url");
+    pgPool.query(
+        `DELETE FROM marketplace_oauth_states WHERE expires_at <= NOW()`
+    ).then(() => pgPool.query(
+        `INSERT INTO marketplace_oauth_states (state, usuario_id, verifier_enc, expires_at)
+         VALUES ($1,$2,$3,NOW() + INTERVAL '10 minutes')`,
+        [state, req.usuario.id, criptografarMarketplace(verifier)]
+    )).then(() => {
+        const params = new URLSearchParams({
+            client_id: MERCADOPAGO_CLIENT_ID,
+            response_type: "code",
+            platform_id: "mp",
+            redirect_uri: MERCADOPAGO_REDIRECT_URI,
+            state,
+            code_challenge: challenge,
+            code_challenge_method: "S256"
+        });
+        res.redirect("https://auth.mercadopago.com.br/authorization?" + params.toString());
+    }).catch(error => {
+        console.error("ERRO ao iniciar OAuth Mercado Pago:", error.message);
+        res.status(500).json({ error: "Não foi possível iniciar a conexão Mercado Pago." });
+    });
+});
+
+app.get("/api/marketplace/oauth/callback", async (req, res) => {
+    let oauthClient = null;
+    try {
+        const code = String(req.query.code || "");
+        const state = String(req.query.state || "");
+        if (!code || !state) return res.status(400).send("Autorização inválida.");
+        if (!MERCADOPAGO_CLIENT_ID || !MERCADOPAGO_CLIENT_SECRET || !MERCADOPAGO_REDIRECT_URI || !pgDisponivel || !pgPool) return res.status(503).send("OAuth não configurado.");
+        oauthClient = await pgPool.connect();
+        await oauthClient.query("BEGIN");
+        const stateQ = await oauthClient.query(
+            `SELECT state, usuario_id, verifier_enc FROM marketplace_oauth_states
+              WHERE state = $1 AND used_at IS NULL AND expires_at > NOW() FOR UPDATE`,
+            [state]
+        );
+        if (!stateQ.rows[0]) {
+            await oauthClient.query("ROLLBACK");
+            return res.status(400).send("Estado OAuth inválido ou já utilizado.");
+        }
+        const oauthState = stateQ.rows[0];
+        const verifier = descriptografarMarketplace(oauthState.verifier_enc);
+        if (!verifier) {
+            await oauthClient.query("ROLLBACK");
+            return res.status(400).send("Estado OAuth inválido.");
+        }
+        await oauthClient.query("UPDATE marketplace_oauth_states SET used_at = NOW() WHERE state = $1", [state]);
+        await oauthClient.query("COMMIT");
+        oauthClient.release();
+        oauthClient = null;
+        const response = await fetch("https://api.mercadopago.com/oauth/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+                client_id: MERCADOPAGO_CLIENT_ID,
+                client_secret: MERCADOPAGO_CLIENT_SECRET,
+                code,
+                grant_type: "authorization_code",
+                redirect_uri: MERCADOPAGO_REDIRECT_URI,
+                code_verifier: verifier
+            }).toString()
+        });
+        const data = await response.json();
+        if (!response.ok || !data.access_token || !data.user_id) return res.status(502).send("Não foi possível concluir a conexão Mercado Pago.");
+        await pgPool.query(
+            `INSERT INTO marketplace_accounts
+                (usuario_id, seller_user_id, access_token_enc, refresh_token_enc, public_key, expires_at)
+             VALUES ($1,$2,$3,$4,$5,NOW() + ($6 || ' seconds')::interval)
+             ON CONFLICT (usuario_id) DO UPDATE SET
+                seller_user_id = EXCLUDED.seller_user_id,
+                access_token_enc = EXCLUDED.access_token_enc,
+                refresh_token_enc = EXCLUDED.refresh_token_enc,
+                public_key = EXCLUDED.public_key,
+                expires_at = EXCLUDED.expires_at,
+                updated_at = NOW()`,
+            [oauthState.usuario_id, String(data.user_id), criptografarMarketplace(data.access_token), criptografarMarketplace(data.refresh_token), data.public_key || null, Number(data.expires_in || 15552000)]
+        );
+        res.redirect("/colecionaveis.html?mercadopago=connected");
+    } catch (error) {
+        if (oauthClient) { try { await oauthClient.query("ROLLBACK"); } catch(e) {} oauthClient.release(); }
+        console.error("ERRO no callback OAuth Mercado Pago:", error.message);
+        res.status(400).send("Não foi possível concluir a autorização Mercado Pago.");
+    }
+});
+
+app.get("/api/marketplace/account", authUsuario, async (req, res) => {
+    const account = await obterContaMarketplace(req.usuario.id);
+    res.json({ ok: true, connected: !!account, account: account ? { sellerUserId: account.seller_user_id, connectedAt: account.connected_at } : null });
 });
 
 /* =========================
@@ -3271,7 +3662,8 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             originalBasePricePerBlock: licenca.basePricePerBlock,
             originalLicenseFee: licenca.fee,
             operationType: "purchase",
-            aceiteRegras
+            aceiteRegras,
+            storyOptIn: req.body.storyOptIn === true || req.body.storyOptIn === "true"
         });
 
         await salvarChaveUsuario(
@@ -7108,7 +7500,17 @@ app.post("/webhooks/mercadopago", async (req, res) => {
         orderId: dataIdWebhook
     });
 
-    /* Processamos apenas notificações de Order. */
+    if (tipoEvento === "payment" && dataIdWebhook) {
+        try {
+            const resultadoMarketplace = await colecionaveis.processarMarketplacePayment(dataIdWebhook);
+            return res.status(200).json({ received: true, marketplace: !!resultadoMarketplace, approved: !!resultadoMarketplace?.approved });
+        } catch (error) {
+            console.error("ERRO ao processar pagamento marketplace:", mascararSensivel(error.message));
+            return res.status(200).json({ received: true, marketplace: true });
+        }
+    }
+
+    /* Processamos notificações de Order dos produtos próprios. */
     if (tipoEvento !== "order" || !dataIdWebhook) {
         return res.status(200).json({ received: true });
     }
@@ -8314,14 +8716,21 @@ const colecionaveis = criarColecionaveis({
     authUsuario,
     authAdmin,
     criarOrderMercadoPago,
+    criarOrderMercadoPagoSplit,
+    consultarMercadoPagoPayment,
     consultarOrderMercadoPago,
     extrairDadosPagamento,
     statusOrderPago,
     orderPagaMercadoPago,
     paraCentavos,
     registrarLog,
+    registrarStoryEvento,
     obterPool: () => pgPool,
     obterPgDisponivel: () => pgDisponivel,
+    obterContaMarketplace,
+    obterContaMarketplacePrivada,
+    mercadopagoMarketplaceFeePercent: MERCADOPAGO_MARKETPLACE_FEE_PERCENT,
+    mercadopagoMarketplaceSplitEnabled: MERCADOPAGO_MARKETPLACE_SPLIT_ENABLED,
     obterAuthUsuario: () => authUsuario,
     normalizarDadosComprador,
     validarDocumento,
@@ -8346,11 +8755,14 @@ const combos = criarCombos({
     authUsuario,
     authAdmin,
     criarOrderMercadoPago,
+    criarOrderMercadoPagoSplit,
+    consultarMercadoPagoPayment,
     consultarOrderMercadoPago,
     statusOrderPago,
     orderPagaMercadoPago,
     paraCentavos,
     registrarLog,
+    registrarStoryEvento,
     obterPool: () => pgPool,
     obterPgDisponivel: () => pgDisponivel,
     obterAuthUsuario: () => authUsuario,

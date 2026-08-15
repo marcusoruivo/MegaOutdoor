@@ -160,10 +160,14 @@ async function main() {
     /* Confirma pagamentos dos pacotes para popular os álbuns. */
     await reqJson(BASE + "/api/colecionaveis/test/confirm/" + packOk.body.externalReference,
         json("POST", userTok, {}));
+    const packPago1 = await reqJson(BASE + "/api/colecionaveis/pagamento/" + packOk.body.externalReference, json("GET", userTok));
+    await reqJson(BASE + "/api/colecionaveis/packs/purchases/" + packPago1.body.pacote.purchaseId + "/open", json("POST", userTok, {}));
     const packOk2 = await reqJson(BASE + "/api/colecionaveis/packs/" + pack.id + "/checkout",
         json("POST", userTok2, packBody()));
     await reqJson(BASE + "/api/colecionaveis/test/confirm/" + packOk2.body.externalReference,
         json("POST", userTok2, {}));
+    const packPago2 = await reqJson(BASE + "/api/colecionaveis/pagamento/" + packOk2.body.externalReference, json("GET", userTok2));
+    await reqJson(BASE + "/api/colecionaveis/packs/purchases/" + packPago2.body.pacote.purchaseId + "/open", json("POST", userTok2, {}));
 
     /* ===== 4) Espaço checkout: CPF e regras ===== */
     const spaceBody = (extra) => Object.assign({

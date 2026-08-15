@@ -79,6 +79,10 @@ async function comprarPacote(h, quem) {
     });
     if (c.r.status !== 200) return null;
     await reqJson(BASE + "/api/colecionaveis/test/confirm/" + c.body.externalReference, { method: "POST", headers: h });
+    const pago = await reqJson(BASE + "/api/colecionaveis/pagamento/" + c.body.externalReference, { headers: h });
+    if (pago.body.pacote && pago.body.pacote.purchaseId) {
+        await reqJson(BASE + "/api/colecionaveis/packs/purchases/" + pago.body.pacote.purchaseId + "/open", { method: "POST", headers: h, body: "{}" });
+    }
     const al = await reqJson(BASE + "/api/colecionaveis/meu-album", { headers: h });
     return al.body.cards.filter(x => x.quantidade > 0);
 }
@@ -233,6 +237,8 @@ async function main() {
         let antes = await reqJson(BASE + "/api/colecionaveis/meu-album", { headers: h1 });
         const totalAntes = antes.body.cards.reduce((a, c) => a + c.quantidade, 0);
         await reqJson(BASE + "/api/colecionaveis/test/confirm/" + ext, { method: "POST", headers: h1 });
+        const pago = await reqJson(BASE + "/api/colecionaveis/pagamento/" + ext, { headers: h1 });
+        await reqJson(BASE + "/api/colecionaveis/packs/purchases/" + pago.body.pacote.purchaseId + "/open", { method: "POST", headers: h1, body: "{}" });
         let depois = await reqJson(BASE + "/api/colecionaveis/meu-album", { headers: h1 });
         const totalDepois = depois.body.cards.reduce((a, c) => a + c.quantidade, 0);
         t("pacote entrega 3 novas figurinhas", totalDepois === totalAntes + 3, "antes=" + totalAntes + " depois=" + totalDepois);

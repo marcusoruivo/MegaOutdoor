@@ -566,6 +566,34 @@ html,body{
     z-index:9999;
 }
 .auth-box{background:linear-gradient(180deg,#111 0%,#0a0a0a 100%);border:1px solid rgba(255,212,0,.25);box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 40px rgba(255,212,0,.08)}
+.story-consent{margin:12px 0 16px;padding:12px;border:1px solid rgba(255,212,0,.22);border-radius:10px;background:rgba(255,212,0,.05)}
+.story-consent label{display:flex;align-items:flex-start;gap:9px;cursor:pointer}
+.story-consent input{width:auto;margin-top:3px;accent-color:#ffd400}
+.story-consent b{display:block;color:#ffd400;font-size:11px;letter-spacing:.3px}
+.story-consent small{display:block;color:#aaa;font-size:11px;line-height:1.4;margin-top:3px}
+.stories-shell{display:none;max-width:1180px;margin:14px auto 0;padding:12px 16px;background:rgba(17,17,17,.88);border:1px solid rgba(255,212,0,.18);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.stories-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;font-size:10px;font-weight:900;letter-spacing:1.4px;color:var(--accent)}
+.stories-ticker{font-size:11px;color:var(--text-secondary);font-weight:600;letter-spacing:0;text-transform:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.story-sponsor{border:1px solid rgba(255,212,0,.45);border-radius:999px;background:rgba(255,212,0,.08);color:var(--accent);padding:5px 9px;font-size:9px;font-weight:800;white-space:nowrap;cursor:pointer}
+.stories-list{display:flex;gap:14px;overflow-x:auto;padding:2px 2px 5px;scrollbar-width:thin}
+.story-bubble{flex:0 0 76px;border:0;background:none;color:var(--texto);cursor:pointer;padding:0;text-align:center}
+.story-ring{width:58px;height:58px;margin:0 auto 5px;border-radius:50%;padding:3px;background:linear-gradient(135deg,#ffd400,#ff7a00,#b06bff)}
+.story-bubble.seen .story-ring{background:#454545}
+.story-face{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#111;border:2px solid #171717;font-size:23px}
+.story-label{display:block;font-size:10px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.story-viewer{display:none;position:fixed;inset:0;z-index:1800;background:rgba(0,0,0,.92);align-items:center;justify-content:center;padding:18px}
+.story-viewer.open{display:flex}
+.story-card{position:relative;width:min(420px,94vw);min-height:520px;max-height:88vh;overflow:auto;border:1px solid rgba(255,212,0,.55);border-radius:24px;padding:28px 22px;background:radial-gradient(circle at 50% 10%,rgba(255,212,0,.18),transparent 40%),linear-gradient(160deg,#17130a,#08080b 65%);box-shadow:0 0 60px rgba(255,212,0,.18);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.story-progress{position:absolute;top:12px;left:18px;right:18px;height:3px;background:#ffffff33;border-radius:99px;overflow:hidden}
+.story-progress span{display:block;height:100%;width:100%;background:var(--accent);transform-origin:left;animation:storyProgress 6s linear forwards}
+@keyframes storyProgress{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.story-close{position:absolute;top:20px;right:18px;border:0;background:none;color:#fff;font-size:24px;cursor:pointer}
+.story-kicker{font-size:11px;letter-spacing:2px;color:var(--accent);font-weight:900;margin-bottom:12px}
+.story-icon{font-size:62px;line-height:1;margin-bottom:18px;filter:drop-shadow(0 0 16px rgba(255,212,0,.35))}
+.story-title{font-size:24px;font-weight:900;line-height:1.15;color:#fff}
+.story-subtitle{font-size:15px;color:#bbb;margin-top:10px;line-height:1.5}
+.story-action{margin-top:24px;min-width:190px}
+@media(max-width:640px){.stories-shell{margin:10px 10px 0;padding:11px}.stories-head{align-items:flex-start;flex-direction:column;gap:4px}.story-card{min-height:460px}.story-title{font-size:21px}}
 .auth-header{position:relative;text-align:center;padding:28px 20px 18px;margin:-25px -25px 18px;border-radius:14px 14px 0 0;background:linear-gradient(135deg,#1a1a1a,#0d0d0d);overflow:hidden}
 .auth-logo{font-size:46px;line-height:1;margin-bottom:4px;filter:drop-shadow(0 0 8px rgba(255,212,0,.4))}
 .auth-title{font-size:22px;font-weight:900;letter-spacing:2px;background:linear-gradient(90deg,#ffd400,#ff9d00);-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -1513,6 +1541,7 @@ body.has-benefits{
     object-fit:contain;
     display:block
 }
+.topo-colecionaveis{background:linear-gradient(135deg,#ffd400,#ff9d00)!important;color:#111!important;border-color:#ffd400!important;box-shadow:0 0 14px rgba(255,212,0,.2)}
 
 .nav-desktop{
     display:flex;
@@ -2905,8 +2934,8 @@ body.footer-visible #area{
 /* --- BOTÃO BUG / SUGESTÃO --- */
 .bug-fab{
     position:fixed;
-    right:18px;
-    bottom:76px;
+    left:max(12px,calc(50% - 590px));
+    bottom:14px;
     z-index:65;
     display:flex;
     align-items:center;
@@ -2915,8 +2944,11 @@ body.footer-visible #area{
     color:#fff;
     border:0;
     border-radius:30px;
-    padding:12px 18px;
-    font-size:13px;
+    width:34px;
+    height:34px;
+    justify-content:center;
+    padding:0;
+    font-size:11px;
     font-weight:800;
     cursor:pointer;
     box-shadow:0 8px 24px rgba(0,0,0,.4);
@@ -2929,8 +2961,9 @@ body.footer-visible #area{
 }
 
 .bug-fab .bug-icone{
-    font-size:18px
+    font-size:16px
 }
+.bug-fab .bug-label{display:none}
 
 /* Modal de bug/sugestão */
 .bugModal .box{
@@ -3080,9 +3113,8 @@ body.footer-visible #area{
 
 @media(max-width:980px){
     .bug-fab{
-        right:12px;
-        bottom:12px;
-        padding:11px 14px
+        left:12px;
+        bottom:12px
     }
     .bug-fab .bug-label{
         display:none
@@ -3101,8 +3133,10 @@ body.footer-visible #area{
         display:none
     }
     .bug-fab{
-        right:12px;
-        bottom:12px
+        left:10px;
+        bottom:10px;
+        width:30px;
+        height:30px
     }
     .kit-list{
         max-height:320px;
@@ -3141,7 +3175,7 @@ body.footer-visible #area{
         <a href="#precos" onclick="abrirPrecos(event)">PREÇOS</a>
         <a href="#combos" onclick="verTodosKits(event)">COMBOS & KITS</a>
         <a href="#faq" onclick="abrirFaq(event)">FAQ</a>
-        <a href="/colecionaveis.html" target="_blank">🃏 COLECIONÁVEIS</a>
+        <a class="topo-colecionaveis" href="/colecionaveis.html">🟡 COLECIONÁVEIS</a>
         <a href="#contato" onclick="scrollToFooter(event)">CONTATO</a>
     </nav>
 
@@ -3178,7 +3212,7 @@ body.footer-visible #area{
         <a href="#precos" onclick="abrirPrecos(event);fecharMenuMobile()">PREÇOS</a>
         <a href="#combos" onclick="verTodosKits(event);fecharMenuMobile()">COMBOS & KITS</a>
         <a href="#faq" onclick="abrirFaq(event);fecharMenuMobile()">FAQ</a>
-        <a href="/colecionaveis.html" target="_blank" onclick="fecharMenuMobile()">🃏 COLECIONÁVEIS</a>
+        <a class="topo-colecionaveis" href="/colecionaveis.html" onclick="fecharMenuMobile()">🟡 COLECIONÁVEIS</a>
         <a href="#contato" onclick="scrollToFooter(event);fecharMenuMobile()">CONTATO</a>
         <button
             class="btn-entrar"
@@ -3310,6 +3344,15 @@ LIMPAR
     title="Fechar">×</button>
 </div>
 
+
+<section class="stories-shell" id="storiesShell" aria-label="Stories do Milhão Door">
+    <div class="stories-head">
+        <span>STORIES DO MILHÃO DOOR · 🔥 ÚLTIMAS ATIVIDADES</span>
+        <span class="stories-ticker" id="storiesTicker"></span>
+        <button class="story-sponsor" onclick="abrirDestaqueStory()">✨ DESTAQUE NO STORY</button>
+    </div>
+    <div class="stories-list" id="storiesList"></div>
+</section>
 
 <main class="main-layout" id="mainLayout">
 
@@ -3773,6 +3816,10 @@ placeholder="Cupom de indicação (opcional)">
     </span>
   </label>
   <input type="hidden" id="regrasVisualizadas" value="false">
+</div>
+
+<div class="story-consent">
+  <label><input type="checkbox" id="storyOptIn"> <span><b>📣 QUER DESTACAR SUA COMPRA?</b><small>Permitir que esta compra apareça nos Stories do Milhão Door. É opcional e nenhum dado pessoal será exibido.</small></span></label>
 </div>
 
 <div style="margin:16px 0 8px 0;">
@@ -4404,6 +4451,18 @@ style="font-size:13px;color:#ccc;">
   </div>
 </div>
 
+<div class="story-viewer" id="storyViewer" onclick="if(event.target===this)fecharStory()">
+    <div class="story-card">
+        <div class="story-progress"><span id="storyProgress"></span></div>
+        <button class="story-close" onclick="fecharStory()" title="Fechar">×</button>
+        <div class="story-kicker" id="storyKicker"></div>
+        <div class="story-icon" id="storyIcon"></div>
+        <div class="story-title" id="storyTitle"></div>
+        <div class="story-subtitle" id="storySubtitle"></div>
+        <button class="btn story-action" id="storyAction" onclick="executarAcaoStory()"></button>
+    </div>
+</div>
+
 <!-- MODAL DE KIT (COMPRA) -->
 <div class="modal kitModal" id="kitModal" onclick="if(event.target===this)fecharKitModal()">
   <div class="box" style="max-width:520px;">
@@ -4793,6 +4852,160 @@ function fecharInfoModal(){
     const modal = document.getElementById("infoModal");
     if(modal) modal.style.display = "none";
 }
+
+let storiesState = [];
+let storyAtual = null;
+let storyTimer = null;
+let storyTickerTimer = null;
+let storyPricing = { "5h": null, "7h": null, "12h": null, "24h": null };
+
+function storyIcon(kind){
+    return { space: "🗺️", purchase: "🟡", pack: "🎁", card: "✨" }[kind] || "✨";
+}
+
+function storiesLidos(){
+    try { return JSON.parse(localStorage.getItem("mega_stories_lidos") || "[]"); }
+    catch(e){ return []; }
+}
+
+function marcarStoryLido(id){
+    const lidos = storiesLidos().filter(x => x !== id);
+    lidos.push(id);
+    try { localStorage.setItem("mega_stories_lidos", JSON.stringify(lidos.slice(-100))); }
+    catch(e){}
+}
+
+function carregarStories(){
+    return fetch("/api/stories", { cache: "no-store" })
+        .then(reqJSON)
+        .then(data => {
+            storiesState = Array.isArray(data.stories) ? data.stories : [];
+            renderizarStories();
+        })
+        .catch(() => {});
+}
+
+function carregarStoryConfig(){
+    return fetch("/api/stories/config", { cache: "no-store" })
+        .then(reqJSON)
+        .then(data => { if(data && data.pricing) storyPricing = data.pricing; })
+        .catch(() => {});
+}
+
+function abrirDestaqueStory(){
+    const opcoes = [["5h", "5 HORAS"], ["7h", "7 HORAS"], ["12h", "12 HORAS"], ["24h", "24 HORAS"]];
+    const linhas = opcoes.map(([key, label]) => {
+        const preco = storyPricing[key];
+        return '<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border-color)">' +
+            '<b>' + label + '</b><span style="color:var(--accent);font-weight:800">' +
+            (preco == null ? "Preço a configurar" : fmtMoeda(preco)) + '</span></div>';
+    }).join("");
+    abrirInfoModal("✨ DESTAQUE NO STORY", '<p>Escolha a duração para destacar uma compra autorizada. O evento só fica público após a confirmação do pagamento.</p>' + linhas + '<p style="font-size:11px;color:var(--text-muted);margin-top:12px">A contratação do destaque será habilitada quando a configuração comercial estiver definida.</p>');
+}
+
+function renderizarStories(){
+    const shell = document.getElementById("storiesShell");
+    const list = document.getElementById("storiesList");
+    if(!shell || !list) return;
+    shell.style.display = storiesState.length ? "block" : "none";
+    if(!storiesState.length){
+        if(storyTickerTimer) clearInterval(storyTickerTimer);
+        return;
+    }
+    const lidos = storiesLidos();
+    list.innerHTML = storiesState.map((story, index) =>
+        '<button class="story-bubble ' + (lidos.includes(story.id) ? "seen" : "") + '" onclick="abrirStory(' + index + ')" aria-label="' + escHtml(story.title) + '">' +
+            '<span class="story-ring"><span class="story-face">' + storyIcon(story.kind) + '</span></span>' +
+            '<span class="story-label">' + escHtml((story.title || "STORY").replace(/^[^A-Z0-9À-ÿ]+/i, "").slice(0, 18)) + '</span>' +
+        '</button>'
+    ).join("");
+    let tickerIndex = 0;
+    const ticker = document.getElementById("storiesTicker");
+    const updateTicker = () => {
+        if(ticker && storiesState.length){
+            const story = storiesState[tickerIndex % storiesState.length];
+            ticker.textContent = (story.title || "Alguém fez uma conquista") + (story.subtitle ? " · " + story.subtitle : "");
+            tickerIndex++;
+        }
+    };
+    updateTicker();
+    if(storyTickerTimer) clearInterval(storyTickerTimer);
+    storyTickerTimer = setInterval(updateTicker, 5000);
+}
+
+function abrirStory(index){
+    const story = storiesState[index];
+    if(!story) return;
+    storyAtual = story;
+    marcarStoryLido(story.id);
+    document.getElementById("storyKicker").textContent = story.kind === "card" ? "CONQUISTA" : "MILHÃO DOOR";
+    document.getElementById("storyIcon").textContent = storyIcon(story.kind);
+    document.getElementById("storyTitle").textContent = story.title || "Story";
+    document.getElementById("storySubtitle").textContent = story.subtitle || "Um novo evento acaba de acontecer.";
+    const action = document.getElementById("storyAction");
+    const hasAction = story.actionType === "space" || story.actionType === "block" || story.actionType === "card";
+    action.style.display = hasAction ? "inline-block" : "none";
+    action.textContent = story.actionType === "card" ? "VER FIGURINHA →" : "VER NO MAPA →";
+    document.getElementById("storyProgress").style.animation = "none";
+    void document.getElementById("storyProgress").offsetWidth;
+    document.getElementById("storyProgress").style.animation = "storyProgress 6s linear forwards";
+    document.getElementById("storyViewer").classList.add("open");
+    clearTimeout(storyTimer);
+    storyTimer = setTimeout(fecharStory, 6000);
+    renderizarStories();
+}
+
+function fecharStory(){
+    clearTimeout(storyTimer);
+    storyAtual = null;
+    const viewer = document.getElementById("storyViewer");
+    if(viewer) viewer.classList.remove("open");
+}
+
+function executarAcaoStory(){
+    const story = storyAtual;
+    if(!story) return;
+    fecharStory();
+    if(story.actionType === "block" && story.metadata && Array.isArray(story.metadata.spaces)){
+        focusMapOnBlock(story.metadata.spaces);
+    }else if((story.actionType === "space" || story.actionType === "block") && Number(story.actionId)){
+        navegarParaEspaco(Number(story.actionId));
+    }else if(story.actionType === "card" && Number(story.actionId)){
+        window.open("/colecionaveis.html#figurinha-" + Number(story.actionId), "_blank");
+    }
+}
+
+function navegarParaEspaco(espacoId){
+    const id = Number(espacoId);
+    if(!Number.isInteger(id) || id < 1 || id > 1000000) return;
+    centralizarNoEspaco(id);
+    storyHighlightIds = new Set([id]);
+    const main = document.getElementById("mainLayout");
+    if(main) main.scrollIntoView({ behavior: "smooth", block: "start" });
+    clearTimeout(navegarParaEspaco._timer);
+    navegarParaEspaco._timer = setTimeout(() => {
+        searchTarget = null;
+        storyHighlightIds.clear();
+        draw();
+    }, 5000);
+}
+
+function focusMapOnSpace(spaceId){
+    navegarParaEspaco(spaceId);
+}
+
+function focusMapOnBlock(blockId){
+    const ids = (Array.isArray(blockId) ? blockId : [blockId])
+        .map(Number).filter(id => Number.isInteger(id) && id >= 1 && id <= 1000000);
+    if(!ids.length) return;
+    focusMapOnSpace(ids[0]);
+    storyHighlightIds = new Set(ids);
+    clearTimeout(focusMapOnBlock._timer);
+    focusMapOnBlock._timer = setTimeout(() => { storyHighlightIds.clear(); draw(); }, 5000);
+    draw();
+}
+
+setInterval(carregarStories, 60000);
 
 function abrirPrecos(event){
     if(event) event.preventDefault();
@@ -5465,6 +5678,7 @@ orderTokens[id] === s.orderToken
 let searchTarget = null;
 
 let primeiraCarga = true;
+let storyHighlightIds = new Set();
 
 let meusBlocosMode = false;
 
@@ -6083,22 +6297,27 @@ T-2,
 T-2
 );
 
-if(sc>.32){
+if(sc>.14){
 
+ctx.save();
+const fonteNumero = Math.max(20, Math.min(52, 8 / sc));
 ctx.font =
-"13px 'Arial Rounded MT Bold', Arial";
+fonteNumero + "px 'Arial Rounded MT Bold', Arial";
 
 ctx.textAlign =
 "center";
 
 ctx.fillStyle =
-"#ffd400";
+sel.has(id) ? "#111" : (v ? "#fff3a6" : "#ffd400");
+ctx.shadowColor = "rgba(0,0,0,.9)";
+ctx.shadowBlur = 3 / sc;
 
 ctx.fillText(
 "#"+id,
 px+50,
 py+55
 );
+ctx.restore();
 
 }
 
@@ -6184,6 +6403,16 @@ if(searchTarget === id){
     T - 4
   );
 
+  ctx.restore();
+}
+
+if(storyHighlightIds.has(id)){
+  ctx.save();
+  ctx.strokeStyle = "#ff9d00";
+  ctx.lineWidth = 8 / sc;
+  ctx.shadowColor = "#ffd400";
+  ctx.shadowBlur = 18 / sc;
+  ctx.strokeRect(px + 3, py + 3, T - 6, T - 6);
   ctx.restore();
 }
 
@@ -6296,6 +6525,11 @@ async function reqJSON(resposta){
 }
 
 function iniciarVista(){
+    setInitialMapViewport();
+    draw();
+}
+
+function setInitialMapViewport(){
 
     const blocos = meusBlocos();
 
@@ -6313,11 +6547,17 @@ function iniciarVista(){
 
     const linha = Math.floor(indice / C);
 
-    x = canvas.width / 2 - (coluna * T + T / 2) * sc;
-
-    y = canvas.height / 2 - (linha * T + T / 2) * sc;
-
-    draw();
+    if(temBloco){
+        x = canvas.width / 2 - (coluna * T + T / 2) * sc;
+        y = canvas.height / 2 - (linha * T + T / 2) * sc;
+    }else{
+        /* A primeira célula fica junto ao canto inicial do mural,
+           em vez de começar no centro do milhão de espaços. */
+        sc = .16;
+        const margem = Math.max(18, Math.min(64, Math.min(canvas.width, canvas.height) * .08));
+        x = margem - (coluna * T + T / 2) * sc;
+        y = margem - (linha * T + T / 2) * sc;
+    }
 
 }
 
@@ -8185,6 +8425,8 @@ installments,
 
 aceiteRegras: true,
 
+storyOptIn: !!(document.getElementById("storyOptIn") && document.getElementById("storyOptIn").checked),
+
 regrasVisualizadas: regrasVistas && regrasVistas.value === "true"
 
 })
@@ -9098,6 +9340,8 @@ center();
 load();
 
 mostrarTutorial();
+carregarStories();
+carregarStoryConfig();
 
 /* =========================
    ATRIBUIR IMAGENS AOS ESPAÇOS
@@ -13210,6 +13454,15 @@ function carregarMeusBlocos(){
     });
 }
 
+function dimensoesBloco(bloco){
+    const linhas = (bloco || []).map(id => Math.floor((Number(id) - 1) / C));
+    const colunas = (bloco || []).map(id => (Number(id) - 1) % C);
+    return {
+        largura: colunas.length ? Math.max(...colunas) - Math.min(...colunas) + 1 : 0,
+        altura: linhas.length ? Math.max(...linhas) - Math.min(...linhas) + 1 : 0
+    };
+}
+
 function renderMeusBlocos(list, blocos){
 
     if(!blocos.length){
@@ -13245,7 +13498,10 @@ function renderMeusBlocos(list, blocos){
             ? "#" + b[0].toLocaleString("pt-BR") +
               " → #" +
               b[b.length - 1].toLocaleString("pt-BR")
-            : "#" + b[0].toLocaleString("pt-BR");
+              : "#" + b[0].toLocaleString("pt-BR");
+        const dimensoes = dimensoesBloco(b);
+        const tituloBloco = "BLOCO #" + String(b[0]).padStart(4, "0") +
+            " — " + dimensoes.largura + "x" + dimensoes.altura;
 
         html += `
           <div style="border:1px solid #333;border-radius:12px;
@@ -13253,16 +13509,16 @@ function renderMeusBlocos(list, blocos){
                       background:#161616;">
             <div style="display:flex;justify-content:space-between;
                         align-items:center;">
-              <b style="color:#45d66f;">${label}</b>
+              <b style="color:#45d66f;">${tituloBloco}</b>
             </div>
             <div style="color:#aaa;margin-top:4px;font-size:12px;">
               ${intervalo}
             </div>
             <div style="margin-top:8px;">
               <button class="btn"
-                      onclick="verBlocoNoMapa(${b[0]})"
-                      style="margin:0;padding:8px 12px;font-size:12px;">
-                👁 VER NO MAPA
+                       onclick="verBlocoNoMapa(${b[0]})"
+                       style="margin:0;padding:8px 12px;font-size:12px;">
+                 🗺️ IR PARA MEU BLOCO
               </button>
               <button class="btn sec"
                       onclick="editarLink(${b[0]})"
@@ -13297,7 +13553,7 @@ function verBlocoNoMapa(primeiro){
 
     closeOwner();
 
-    centralizarNoEspaco(primeiro);
+    focusMapOnSpace(primeiro);
 }
 
 async function carregarAbaPix(){
@@ -14075,7 +14331,11 @@ function abrirKit(kitId){
         html += '<div id="kitCardFields" style="display:none;">' +
             '<p style="font-size:12px;color:var(--text-muted);margin:8px 0;">' +
             'Pagamento com cartão será habilitado em breve. Por enquanto, use Pix.</p>' +
-        '</div>';
+            '</div>';
+        html += '<label class="story-consent" style="display:block;">' +
+            '<span><input type="checkbox" id="kitStoryOptIn"> <b>📣 QUER DESTACAR SUA COMPRA?</b>' +
+            '<small>Permitir que este kit apareça nos Stories. Nenhum dado pessoal será exibido.</small></span>' +
+            '</label>';
         html += '<label class="kitRegrasWrap">' +
             '<input type="checkbox" id="kitAceiteRegras" onchange="atualizarBotaoComprarKit()">' +
             '<span>Li e concordo com as ' +
@@ -14169,7 +14429,8 @@ async function comprarKit(kitId){
                 licensePlan,
                 cpfCnpj,
                 paymentMethod: metodo,
-                aceiteRegras: true
+                aceiteRegras: true,
+                storyOptIn: !!(document.getElementById("kitStoryOptIn") && document.getElementById("kitStoryOptIn").checked)
             })
         });
         const data = await resp.json();
@@ -14449,6 +14710,11 @@ async function confirmarEspacosKit(){
         }
         moToast("Espaços confirmados com sucesso!", "ok");
         sairModoSelecaoKit();
+        if(data.orderToken && data.accessCode){
+            salvarTokens(data.espacos || [], data.orderToken);
+            salvarAccessCodes(data.espacos || [], data.accessCode);
+        }
+        await load();
         if(typeof stats === "function"){
             try{ stats(); }catch(e){}
         }

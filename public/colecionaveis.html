@@ -60,6 +60,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--laranja)
     padding:12px 22px;
 }
 .topo .logo{display:flex;align-items:center;gap:10px;font-weight:800}
+.topo .logo img{width:auto;height:52px;max-width:220px;object-fit:contain}
 .topo .logo .marca{
     font-family:'Orbitron',sans-serif;
     font-size:17px;letter-spacing:1px;
@@ -265,6 +266,12 @@ body{overflow-x:hidden}
 
 /* ===== PACOTES ===== */
 .grid-packs{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.meus-pacotes{margin:18px 0;padding:16px;background:var(--painel);border:1px solid rgba(255,212,0,.28);border-radius:16px}
+.meus-pacotes h4{margin:0 0 10px;color:var(--amarelo);font-size:15px}
+.meus-pacotes-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.meu-pacote{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;border:1px solid var(--borda);border-radius:10px;background:var(--painel2)}
+.meu-pacote b{font-size:12px;color:var(--texto)}
+.meu-pacote small{display:block;color:var(--muted);font-size:10px;margin-top:2px}
 .pack-card{
     background:var(--painel);border:1px solid var(--borda);
     border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:10px;
@@ -321,6 +328,9 @@ body{overflow-x:hidden}
     width:52px;height:52px;border-radius:10px;
     display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;
 }
+.listing-arte-grande{width:100%;height:150px;border-radius:12px;overflow:hidden;background:var(--painel2);border:1px solid var(--borda);display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.listing-arte-grande img{width:100%;height:100%;object-fit:cover;display:block}
+.listing-arte-grande .fallback{font-size:48px}
 .listing-top .info{flex:1;min-width:0}
 .listing-top .info .n{font-weight:700;font-size:14px;line-height:1.2}
 .listing-top .info .muted{font-size:11px;color:var(--muted)}
@@ -391,12 +401,13 @@ body{overflow-x:hidden}
 .modal-overlay{
     position:fixed;inset:0;z-index:100;
     background:rgba(0,0,0,.7);backdrop-filter:blur(4px);
-    display:flex;align-items:center;justify-content:center;padding:20px;
+    display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto;
 }
 .modal{
     background:var(--painel);border:1px solid var(--borda);
     border-radius:18px;max-width:460px;width:100%;
-    overflow:hidden;animation:pop .18s ease;
+    max-height:calc(100vh - 32px);overflow:hidden;animation:pop .18s ease;
+    position:relative;display:flex;flex-direction:column;min-width:0;
 }
 @keyframes pop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
 .modal-arte{
@@ -408,12 +419,12 @@ body{overflow-x:hidden}
     background:radial-gradient(circle at 30% 20%, rgba(255,255,255,.3), transparent 55%);
     pointer-events:none;
 }
-.modal-arte-premium{background:transparent;height:260px;padding:16px 16px 0}
+.modal-arte-premium{background:transparent;height:clamp(170px,34vh,260px);padding:12px 14px 0;flex:0 0 auto;min-height:0}
 .modal-arte-premium::after{display:none}
-.modal-arte-premium .cc-arte{height:100%;aspect-ratio:auto;margin:0;border-radius:18px}
+.modal-arte-premium .cc-arte{height:100%;max-height:100%;aspect-ratio:auto;margin:0;border-radius:18px;min-height:0}
 .cc-curiosidade{font-size:11px;color:var(--muted);line-height:1.5;margin-top:10px;font-style:italic}
-.modal-body{padding:22px}
-.modal-body h2{font-size:22px;margin:10px 0 4px}
+.modal-body{padding:18px 20px 20px;min-width:0;overflow:auto;overscroll-behavior:contain}
+.modal-body h2{font-size:clamp(18px,4vw,22px);line-height:1.2;margin:8px 0 4px;overflow-wrap:anywhere}
 .modal-body .num{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:1px}
 .modal-body .desc{font-size:13px;color:var(--muted);line-height:1.6;margin:10px 0}
 .modal-body .qtd-linha{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
@@ -422,6 +433,15 @@ body{overflow-x:hidden}
     position:absolute;top:12px;right:12px;z-index:2;
     background:rgba(0,0,0,.4);border:none;color:#fff;
     width:32px;height:32px;border-radius:50%;font-size:16px;
+}
+.modal-body button{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:640px){
+    .modal-overlay{padding:8px}
+    .modal{max-height:calc(100vh - 16px);border-radius:14px}
+    .modal-arte-premium{height:clamp(150px,30vh,210px)}
+    .modal-body{padding:14px 16px 16px}
+    .modal-acoes{flex-direction:column}
+    .modal-acoes .btn{width:100%;margin:0}
 }
 .modal-form{display:flex;flex-direction:column;gap:10px;margin-top:14px}
 .modal-form label{font-size:12px;font-weight:700;color:var(--muted)}
@@ -719,13 +739,14 @@ body{overflow-x:hidden}
 <!-- ===== HEADER ===== -->
 <header class="topo">
     <div class="logo">
-        <span style="font-size:24px">🃏</span>
+        <img src="/logo-milhao-door.png" alt="Milhão Door">
         <div>
             <div class="marca">MILHÃO DOOR</div>
             <div class="sub">ANIMAIS DO MUNDO · COLECIONÁVEIS</div>
         </div>
     </div>
     <div class="topo-actions">
+        <a class="btn btn-amarelo topo-espacos" href="/" style="text-decoration:none">🟡 MEUS ESPAÇOS</a>
         <button class="btn btn-amarelo" id="btnConta" onclick="abrirConta()">👤 ENTRAR</button>
         <a class="btn btn-ghost" href="/" style="text-decoration:none">← Voltar</a>
     </div>
@@ -771,6 +792,7 @@ body{overflow-x:hidden}
     <button class="aba-btn" data-aba="acervo" onclick="mudarAba('acervo')">🗂️ ACERVO</button>
     <button class="aba-btn" data-aba="packs" onclick="mudarAba('packs')">🎁 PACOTES</button>
     <button class="aba-btn" data-aba="mercado" onclick="mudarAba('mercado')">🏪 MERCADO</button>
+    <button class="aba-btn" data-aba="leiloes" onclick="mudarAba('leiloes')">🔨 LEILÕES</button>
     <button class="aba-btn" data-aba="trocas" onclick="mudarAba('trocas')">🤝 TROCAS</button>
     <button class="aba-btn" data-aba="perfil" onclick="mudarAba('perfil')">👤 PERFIL</button>
 </nav>
@@ -819,6 +841,13 @@ body{overflow-x:hidden}
             </select>
             <div class="resultado" id="completaResultado"></div>
         </div>
+        <div class="filtro-chips" id="completaFiltroChips" style="margin-bottom:14px">
+            <button class="filtro-chip ativa" onclick="setColecaoCompletaFiltro('todas',this)">TODAS</button>
+            <button class="filtro-chip" onclick="setColecaoCompletaFiltro('novas',this)">NOVAS</button>
+            <button class="filtro-chip" onclick="setColecaoCompletaFiltro('repetidas',this)">🔁 REPETIDAS</button>
+            <button class="filtro-chip" onclick="setColecaoCompletaFiltro('ouro',this)">◈ OURO</button>
+            <button class="filtro-chip" onclick="setColecaoCompletaFiltro('cromada',this)">◇ CROMADAS</button>
+        </div>
         <div class="grid-cards" id="completaGrid"></div>
     </section>
 
@@ -863,8 +892,9 @@ body{overflow-x:hidden}
     <!-- PACOTES -->
     <section class="secao" id="secao-packs">
         <div class="secao-titulo">Pacotes de Figurinhas</div>
-        <div class="secao-sub">Escolha um pacote e abra na hora. Cada figurinha é revelada automaticamente ao confirmar o pagamento.</div>
+        <div class="secao-sub">Escolha um pacote, confirme o pagamento e abra suas figurinhas quando quiser.</div>
         <div class="grid-packs" id="packsGrid"></div>
+        <div class="meus-pacotes" id="meusPacotes" style="display:none"></div>
         <button class="btn btn-ghost" onclick="abrirModalProbabilidades()" style="margin-top:14px">🔍 VEJA O QUE PODE SAIR</button>
         <div class="prob-wrap" id="probWrap"></div>
     </section>
@@ -891,6 +921,15 @@ body{overflow-x:hidden}
         <div class="paginacao" id="mkPag"></div>
     </section>
 
+    <!-- LEILÕES: não inicia checkout; vencedor aguarda pagamento -->
+    <section class="secao" id="secao-leiloes">
+        <div class="secao-titulo">Leilões de Figurinhas</div>
+        <div class="secao-sub">Uma unidade possuída fica reservada durante o leilão. O vencedor fica com pagamento pendente, sem cobrança automática.</div>
+        <button class="btn btn-laranja" onclick="criarLeilaoPrompt()">+ Criar leilão do meu acervo</button>
+        <div style="height:14px"></div>
+        <div class="grid-listing" id="leiloesGrid"></div>
+    </section>
+
     <!-- TROCAS -->
     <section class="secao" id="secao-trocas">
         <div class="secao-titulo">Negociações</div>
@@ -906,6 +945,10 @@ body{overflow-x:hidden}
         <div class="secao-sub">Estatísticas, conquistas e histórico completo da sua jornada.</div>
         <div class="perfil-wrap">
             <div class="perfil-card" id="perfilStatsCard"></div>
+            <div class="perfil-card" id="recebimentosCard">
+                <h4>💰 Recebimentos</h4>
+                <div id="recebimentosConteudo" style="color:var(--muted);font-size:12px">Carregando...</div>
+            </div>
             <div class="perfil-card">
                 <h4>🏆 Conquistas</h4>
                 <div id="conquistasLista"></div>
@@ -1005,7 +1048,7 @@ function nomeRaridade(r){
 }
 function cardModalArte(card){
     const r = card.rarity;
-    return '<div class="modal-arte modal-arte-premium r-' + r + '" id="modalArteFlip">' +
+    return '<div class="modal-arte modal-arte-premium r-' + r + '" id="modalArte">' +
         '<div class="cc-flip-container" id="modalFlipContainer">' +
             '<div class="cc-flipper">' +
                 '<div class="cc-frente">' + ColecaoUI.cardGrandeHtml(card) + '</div>' +
@@ -1078,6 +1121,7 @@ function mudarAba(aba){
     if (aba === "acervo") carregarAcervo();
     if (aba === "packs") carregarPacks();
     if (aba === "mercado") carregarMercado(1);
+    if (aba === "leiloes") carregarLeiloes();
     if (aba === "trocas") carregarTrocas();
     if (aba === "perfil") carregarPerfil();
 }
@@ -1171,6 +1215,13 @@ function completaCardHtml(card){
         '<div class="completa-meta">' + (owned ? '✅ Na sua coleção' : '🔒 Ainda não descoberta') + '</div></div></article>';
 }
 
+let completaFiltro = "todas";
+function setColecaoCompletaFiltro(filtro, btn){
+    completaFiltro = filtro;
+    document.querySelectorAll("#completaFiltroChips .filtro-chip").forEach(b => b.classList.toggle("ativa", b === btn));
+    carregarColecaoCompleta();
+}
+
 async function carregarColecaoCompleta(){
     const grid = document.getElementById("completaGrid");
     if (!grid) return;
@@ -1190,6 +1241,14 @@ async function carregarColecaoCompleta(){
         const raridade = document.getElementById("completaRaridade").value;
         cards = cards.filter(c => (!raridade || c.rarity === raridade) &&
             (!busca || String(c.number).includes(busca) || String(c.name || "").toLowerCase().includes(busca)));
+        cards = cards.filter(c => {
+            const owned = Number(c.quantidade || 0);
+            if(completaFiltro === "novas") return owned === 1;
+            if(completaFiltro === "repetidas") return owned > 1;
+            if(completaFiltro === "ouro") return ColecaoUI.finishDeCard(c) === "ouro";
+            if(completaFiltro === "cromada") return ColecaoUI.finishDeCard(c) === "cromada";
+            return true;
+        });
         document.getElementById("completaResultado").textContent = cards.length + " espécie(s)";
         grid.innerHTML = cards.length ? cards.map(completaCardHtml).join("") : '<div style="color:var(--muted);padding:20px">Nenhuma espécie encontrada.</div>';
     } catch(e) {
@@ -1330,9 +1389,35 @@ async function carregarPacks(){
                     '</div>';
                 }).join("") +
             '<div class="prob-aviso">⚠️ As probabilidades representam as chances de cada figurinha sair em um pacote. Não há garantia de raridade nem promessa de valorização. Colecione por diversão!</div>';
+        carregarMeusPacotes();
     } catch(e){
         document.getElementById("packsGrid").innerHTML = '<div style="color:var(--muted);padding:16px">' + esc(e.message) + '</div>';
     }
+}
+
+async function carregarMeusPacotes(){
+    const box = document.getElementById("meusPacotes");
+    if (!box || !minhaConta || !minhaConta.token) { if(box) box.style.display = "none"; return; }
+    try {
+        const d = await apiGet("/api/colecionaveis/meus-pacotes");
+        const pacotes = d.pacotes || [];
+        box.style.display = pacotes.length ? "block" : "none";
+        if(!pacotes.length) return;
+        box.innerHTML = '<h4>🎁 PACOTES NÃO ABERTOS: ' + pacotes.length + '</h4><div class="meus-pacotes-lista">' +
+            pacotes.map(p => '<div class="meu-pacote"><span><b>' + esc(p.nome) + '</b><small>' + (p.tipo === "kit" ? "Incluído em KIT" : "Compra confirmada") + '</small></span>' +
+                '<button class="btn btn-amarelo" style="margin:0;padding:8px 10px;font-size:11px" onclick="abrirPacoteDisponivel(\'' + p.tipo + '\',' + p.id + ')">ABRIR</button></div>').join("") +
+            '</div>';
+    } catch(e) { box.style.display = "none"; }
+}
+
+async function abrirPacoteDisponivel(tipo, id){
+    try {
+        const rota = tipo === "kit" ? "/api/colecionaveis/packs/inventory/" + id + "/open" : "/api/colecionaveis/packs/purchases/" + id + "/open";
+        const d = await apiPost(rota, {});
+        if(!d.ok || !d.pacote) throw new Error(d.error || "Não foi possível abrir o pacote.");
+        revelarPacote(Object.assign({}, d.pacote, { aberto: true }));
+        carregarMeusPacotes();
+    } catch(e) { toast(e.message || "Não foi possível abrir o pacote.", "erro"); }
 }
 
 async function comprarPacote(packId){
@@ -1396,25 +1481,117 @@ function mkPagGo(p){ carregarMercado(p); window.scrollTo({top:0, behavior:"smoot
 
 function listingHtml(l){
     const ehMeu = minhaConta && minhaConta.usuario && l.seller_id === minhaConta.usuario.id;
+    const finish = ColecaoUI.finishDeCard({ id: l.card_id, rarity: l.rarity });
+    const finishLabel = finish === "ouro" ? "🏆 OURO" : finish === "cromada" ? "🪞 CROMADA" : "NORMAL";
+    const resumo = JSON.stringify({
+        number: l.number, name: l.name, rarity: l.rarity,
+        finish: finishLabel, image_url: l.image_url, seller_nome: l.seller_nome
+    }).replace(/"/g, "&quot;");
+    const image = l.image_url
+        ? '<img src="' + esc(l.image_url) + '" alt="' + esc(l.name) + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'
+        : '';
     return '<div class="listing-card">' +
+        '<div class="listing-arte-grande">' + image + '<span class="fallback" style="' + (image ? 'display:none' : '') + '">' + emojiRaridade(l.rarity) + '</span></div>' +
         '<div class="listing-top">' +
-            '<div class="listing-mini-arte r-' + l.rarity + '">' + emojiRaridade(l.rarity) + '</div>' +
             '<div class="info">' +
                 '<div class="n">#' + String(l.number).padStart(3,"0") + ' — ' + esc(l.name) + '</div>' +
-                '<div class="muted">' + nomeRaridade(l.rarity) + ' • ' + l.quantity + ' disponível(is)</div>' +
+                '<div class="muted">' + nomeRaridade(l.rarity) + ' • ' + finishLabel + ' • ' + l.quantity + ' disponível(is)</div>' +
             '</div>' +
         '</div>' +
         '<div class="listing-preco">' + fmtR$(l.unit_price) + ' <small>/ cada</small></div>' +
         '<div class="listing-vendedor">Vendedor: ' + esc(l.seller_nome || "—") + '</div>' +
         (ehMeu
             ? '<button class="btn btn-ghost" onclick="cancelarVenda(' + l.id + ')">Meu anúncio — cancelar</button>'
-            : '<button class="btn btn-laranja" onclick="comprarDoMercado(' + l.id + ',' + l.unit_price + ',' + l.quantity + ')">COMPRAR</button>') +
+            : '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-laranja" onclick="comprarDoMercado(' + l.id + ',' + l.unit_price + ',' + l.quantity + ',' + resumo + ')">COMPRAR</button><button class="btn btn-ghost" onclick="verPerfilColecionador(' + l.seller_id + ')">VER PERFIL</button><button class="btn btn-ghost" onclick="abrirChatAnuncio(' + l.id + ')">NEGOCIAR</button></div>') +
     '</div>';
 }
 
-async function comprarDoMercado(listingId, preco, qtdDisp){
+async function comprarDoMercado(listingId, preco, qtdDisp, detalhe){
     if (!exigirLogin()) return;
-    abrirModalPagamento("mercado", { listingId, preco, qtdDisp });
+    abrirModalPagamento("mercado", Object.assign({ listingId, preco, qtdDisp }, detalhe || {}));
+}
+
+async function abrirChatAnuncio(listingId, buyerId){
+    try {
+        const query = buyerId ? "?buyerId=" + encodeURIComponent(buyerId) : "";
+        const d = await apiGet("/api/colecionaveis/listings/" + listingId + "/chat" + query);
+        document.getElementById("modalBody").innerHTML = '<h2>💬 NEGOCIAR ANÚNCIO #' + listingId + '</h2>' +
+            '<div class="chat-box" id="listingChatMessages">' + (d.messages || []).map(m => '<div class="chat-msg ' + (m.author_id === minhaConta.usuario.id ? "minha" : "deles") + '"><span class="quem">' + esc(m.autor_nome || "") + '</span>' + esc(m.text) + '</div>').join("") + '</div>' +
+            '<div class="chat-input"><input id="listingChatInput" maxlength="500" placeholder="Escreva sua mensagem..."><button class="btn btn-laranja" onclick="enviarChatAnuncio(' + listingId + ',' + d.buyerId + ')">ENVIAR</button></div>' +
+            '<button class="btn btn-ghost" onclick="fecharModal()">Fechar</button>';
+        document.getElementById("modalOverlay").classList.remove("hidden");
+        document.getElementById("listingChatInput").focus();
+    } catch(e) { toast(e.message, "erro"); }
+}
+
+async function verPerfilColecionador(usuarioId){
+    try {
+        const d = await apiGet("/api/colecionaveis/colecionador/" + usuarioId);
+        const p = d.perfil || {};
+        document.getElementById("modalBody").innerHTML = '<h2>👤 ' + esc(p.nome || "Colecionador") + '</h2>' +
+            '<div class="perfil-stats" style="margin:12px 0"><div class="stat-box"><div class="v">' + (p.diferentes || 0) + '</div><div class="l">DIFERENTES</div></div><div class="stat-box"><div class="v">' + (p.total || 0) + '</div><div class="l">FIGURINHAS</div></div><div class="stat-box"><div class="v">' + (p.vendas || 0) + '</div><div class="l">VENDAS</div></div></div>' +
+            '<button class="btn btn-ghost" onclick="fecharModal()">Fechar</button>';
+        document.getElementById("modalOverlay").classList.remove("hidden");
+    } catch(e) { toast(e.message, "erro"); }
+}
+
+async function enviarChatAnuncio(listingId, buyerId){
+    const input = document.getElementById("listingChatInput");
+    const text = input ? input.value.trim() : "";
+    if(!text) return;
+    try { await apiPost("/api/colecionaveis/listings/" + listingId + "/chat", { text, buyerId }); await abrirChatAnuncio(listingId, buyerId); }
+    catch(e) { toast(e.message, "erro"); }
+}
+
+/* =========================================================
+   LEILÕES
+========================================================= */
+async function carregarLeiloes(){
+    try {
+        const d = await apiGet("/api/colecionaveis/auctions");
+        const lista = d.auctions || [];
+        document.getElementById("leiloesGrid").innerHTML = lista.length ? lista.map(leilaoHtml).join("") :
+            '<div style="color:var(--muted);padding:16px">Nenhum leilão ativo.</div>';
+    } catch(e) { document.getElementById("leiloesGrid").innerHTML = '<div style="color:var(--muted);padding:16px">' + esc(e.message) + '</div>'; }
+}
+function leilaoHtml(a){
+    const meu = minhaConta && minhaConta.usuario && a.seller_id === minhaConta.usuario.id;
+    const vencedor = minhaConta && minhaConta.usuario && a.winner_id === minhaConta.usuario.id;
+    const valor = a.current_bid == null ? a.minimum_bid : Number(a.current_bid) + 0.01;
+    const arte = a.image_url ? '<img src="' + esc(a.image_url) + '" alt="' + esc(a.name) + '" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' + '<span class="fallback" style="display:none">' + emojiRaridade(a.rarity) + '</span>' : '<span class="fallback">' + emojiRaridade(a.rarity) + '</span>';
+    return '<div class="listing-card"><div class="listing-arte-grande">' + arte + '</div>' +
+        '<div class="listing-top"><div class="info"><div class="n">#' + String(a.number).padStart(3,"0") + ' — ' + esc(a.name) + '</div>' +
+        '<div class="muted">' + nomeRaridade(a.rarity) + ' • ' + a.bid_count + ' lance(s) • ' + esc(a.seller_nome || "—") + '</div></div></div>' +
+        '<div class="listing-preco">' + fmtR$(a.current_bid == null ? a.minimum_bid : a.current_bid) + ' <small>' + (a.current_bid == null ? 'lance mínimo' : 'lance atual') + '</small></div>' +
+        '<div class="muted">Encerra: ' + new Date(a.ends_at).toLocaleString() + ' • ' + esc(a.status) + '</div>' +
+        (a.status === "active" && !meu ? '<button class="btn btn-laranja" onclick="darLance(' + a.id + ',' + valor + ')">DAR LANCE (' + fmtR$(valor) + ')</button>' : '') +
+        (meu && a.status === "active" ? '<button class="btn btn-ghost" onclick="encerrarLeilaoUI(' + a.id + ')">ENCERRAR</button>' : '') +
+        (vencedor && a.status === "payment_pending" ? '<button class="btn btn-amarelo" onclick="pagarLeilao(' + a.id + ',' + Number(a.current_bid || 0) + ')">💳 PAGAR LANCE</button>' : '') +
+        '</div>';
+}
+function pagarLeilao(id, valor){
+    if (!exigirLogin()) return;
+    abrirModalPagamento("auction", { auctionId: id, valor });
+}
+async function darLance(id, sugerido){
+    if (!exigirLogin()) return;
+    const valor = prompt("Informe seu lance (mínimo " + fmtR$(sugerido) + "):", Number(sugerido).toFixed(2));
+    if (valor === null) return;
+    try { await apiPost("/api/colecionaveis/auctions/" + id + "/bids", { amount: Number(valor) }); toast("Lance registrado. Pagamento só será tratado após o encerramento.", "ok"); carregarLeiloes(); }
+    catch(e) { toast(e.message, "erro"); }
+}
+async function criarLeilaoPrompt(){
+    if (!exigirLogin()) return;
+    const cardId = prompt("ID da figurinha no acervo:");
+    const minimo = prompt("Lance mínimo (R$):", "1.00");
+    if (cardId === null || minimo === null) return;
+    try { await apiPost("/api/colecionaveis/auctions", { cardId: Number(cardId), minimumBid: Number(minimo) }); toast("Leilão criado e unidade reservada.", "ok"); carregarLeiloes(); carregarAcervo(); }
+    catch(e) { toast(e.message, "erro"); }
+}
+async function encerrarLeilaoUI(id){
+    if (!confirm("Encerrar este leilão? O vencedor ficará com pagamento pendente.")) return;
+    try { const d = await apiPost("/api/colecionaveis/auctions/" + id + "/close", {}); toast(d.status === "payment_pending" ? "Encerrado: pagamento do vencedor pendente." : "Leilão encerrado e unidade liberada.", "ok"); carregarLeiloes(); carregarAcervo(); }
+    catch(e) { toast(e.message, "erro"); }
 }
 
 /* =========================================================
@@ -1660,8 +1837,8 @@ async function abrirModalTrocaCom(trade, meuAcervo){
         '<button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>' +
     '</div>';
     document.getElementById("modalBody").innerHTML = html;
-    renderSelFig(meuAcervo, "trocaOfereco", "ofereco");
-    renderSelFig(meuAcervo, "trocaRecebo", "recebo");
+    renderSelFig(meuAcervo.cards || meuAcervo, "trocaOfereco", "ofereco");
+    renderSelFig(meuAcervo.cards || meuAcervo, "trocaRecebo", "recebo");
 }
 
 function renderSelFig(cards, alvoId, nome){
@@ -1725,7 +1902,7 @@ async function confirmarContraproposta(tradeId){
 async function abrirModalPagamento(tipo, dados){
     document.getElementById("modalOverlay").classList.remove("hidden");
     const corpo = document.getElementById("modalBody");
-    const titulo = tipo === "pack" ? "Abrir Pacote" : tipo === "mercado" ? "Comprar no Mercado" : "Diferença de Troca";
+    const titulo = tipo === "pack" ? "Abrir Pacote" : tipo === "mercado" ? "Comprar no Mercado" : tipo === "auction" ? "Pagar Lance Vencedor" : "Diferença de Troca";
     let html = '<div class="num">💳 CONFIRMAR PAGAMENTO</div>';
     html += '<h2>' + esc(titulo) + '</h2>';
 
@@ -1736,7 +1913,12 @@ async function abrirModalPagamento(tipo, dados){
             '<div class="produto-detalhe">' + (dados.figurinhas || 0) + ' figurinha(s)</div>' +
         '</div>';
     } else if (tipo === "mercado") {
+        if (dados.image_url) {
+            html += '<div style="height:170px;border-radius:12px;overflow:hidden;margin-bottom:12px;background:var(--painel2)"><img src="' + esc(dados.image_url) + '" alt="' + esc(dados.name || "Figurinha") + '" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\'"></div>';
+        }
         html += '<div class="produto-resumo">' +
+            '<div class="produto-nome">#' + String(dados.number || "").padStart(3,"0") + ' — ' + esc(dados.name || "Figurinha") + '</div>' +
+            '<div class="produto-detalhe">' + esc(dados.rarity || "") + ' • ' + esc(dados.finish || "NORMAL") + ' • Vendedor: ' + esc(dados.seller_nome || "—") + '</div>' +
             '<div class="produto-preco">' + fmtR$(dados.preco) + '</div>' +
             '<div class="produto-detalhe">Quantidade: ' + (dados.qtdDisp || 1) + '</div>' +
         '</div>';
@@ -1745,6 +1927,8 @@ async function abrirModalPagamento(tipo, dados){
             '<div class="produto-preco">' + fmtR$(dados.valor) + '</div>' +
             '<div class="produto-detalhe">Diferença a pagar</div>' +
         '</div>';
+    } else if (tipo === "auction") {
+        html += '<div class="produto-resumo"><div class="produto-preco">' + fmtR$(dados.valor) + '</div><div class="produto-detalhe">Lance vencedor do leilão</div></div>';
     }
 
     html += '<div class="desc">Escolha como deseja pagar. O pagamento é processado com segurança pelo Mercado Pago.</div>';
@@ -1752,6 +1936,7 @@ async function abrirModalPagamento(tipo, dados){
         '<label>Forma de pagamento</label>' +
         '<select id="pgMetodo"><option value="pix">💠 Pix</option><option value="credit_card">💳 Cartão de crédito</option></select>' +
         '<label>CPF/CNPJ</label><input id="pgCpf" placeholder="Somente números" maxlength="18">' +
+        (tipo === "pack" ? '<label style="display:flex;align-items:flex-start;gap:8px;margin-top:10px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="pgStoryOptIn" style="margin-top:2px"><span><b style="color:var(--amarelo)">📣 QUER DESTACAR SUA COMPRA?</b><br>Permitir que este pacote apareça nos Stories. É opcional e sem dados pessoais.</span></label>' : '') +
         '<button class="btn btn-amarelo" onclick="iniciarPagamento(\'' + tipo + '\',' + JSON.stringify(dados).replace(/"/g,"&quot;") + ')">Gerar pagamento</button>' +
         '<button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>' +
     '</div>';
@@ -1766,12 +1951,15 @@ async function iniciarPagamento(tipo, dados){
     let url, body;
     if (tipo === "pack") {
         url = "/api/colecionaveis/packs/" + dados.packId + "/checkout";
-        body = { paymentMethod: metodo, cpfCnpj: cpf };
+        body = { paymentMethod: metodo, cpfCnpj: cpf, storyOptIn: !!(document.getElementById("pgStoryOptIn") && document.getElementById("pgStoryOptIn").checked) };
     } else if (tipo === "mercado") {
         url = "/api/colecionaveis/listings/" + dados.listingId + "/buy";
         body = { quantidade: 1, paymentMethod: metodo, cpfCnpj: cpf };
     } else if (tipo === "trade") {
         url = "/api/colecionaveis/trades/" + dados.tradeId + "/accept";
+        body = { paymentMethod: metodo, cpfCnpj: cpf };
+    } else if (tipo === "auction") {
+        url = "/api/colecionaveis/auctions/" + dados.auctionId + "/pay";
         body = { paymentMethod: metodo, cpfCnpj: cpf };
     }
     try {
@@ -1783,7 +1971,7 @@ async function iniciarPagamento(tipo, dados){
 function mostrarQr(d, tipo){
     const corpo = document.getElementById("modalBody");
     let html = '<div class="num">✅ PEDIDO CRIADO</div>';
-    html += '<h2>' + (tipo === "pack" ? "Pacote reservado" : tipo === "mercado" ? "Compra reservada" : "Diferença de troca") + '</h2>';
+    html += '<h2>' + (tipo === "pack" ? "Pacote reservado" : tipo === "mercado" ? "Compra reservada" : tipo === "auction" ? "Lance reservado" : "Diferença de troca") + '</h2>';
     html += '<div class="desc" style="text-align:center;margin-bottom:10px;">' +
         '⏳ Aguardando confirmação do pagamento. Não entregamos o produto antes do pagamento ser confirmado.' +
     '</div>';
@@ -1829,6 +2017,7 @@ async function iniciarPolling(orderId, tipo){
                     carregarAcervo();
                     carregarTrocas();
                     carregarMercado(1);
+                    carregarLeiloes();
                 }
                 return;
             }
@@ -1865,6 +2054,9 @@ function revelarPacote(pacote){
         melhorMarc: marcadas[iMelhor] || { nova: false, repetida: true },
         etapa: "fechado",
         modo: null,
+        purchaseId: Number(pacote && pacote.purchaseId) || null,
+        aberto: !!(pacote && pacote.aberto),
+        aberturaSolicitada: false,
         nome: (pacote && pacote.nome) || "Pacote"
     };
     const overlay = document.getElementById("packOverlay");
@@ -1873,13 +2065,32 @@ function revelarPacote(pacote){
     renderPackFechado();
 }
 
-function iniciarModoManual(){
+async function abrirPacoteNoBackend(){
+    if (!pacoteEstado || pacoteEstado.aberto || !pacoteEstado.purchaseId) return true;
+    if (pacoteEstado.aberturaSolicitada) return false;
+    pacoteEstado.aberturaSolicitada = true;
+    try {
+        const d = await apiPost("/api/colecionaveis/packs/purchases/" + pacoteEstado.purchaseId + "/open", {});
+        if (!d.ok) throw new Error(d.error || "Não foi possível abrir o pacote.");
+        pacoteEstado.aberto = true;
+        pacoteEstado.aberturaSolicitada = false;
+        return true;
+    } catch (error) {
+        pacoteEstado.aberturaSolicitada = false;
+        toast(error.message || "Não foi possível abrir o pacote.", "erro");
+        return false;
+    }
+}
+
+async function iniciarModoManual(){
     if (!pacoteEstado || pacoteEstado.modo) return;
+    if (!(await abrirPacoteNoBackend())) return;
     pacoteEstado.modo = "manual";
     rasgarPacote();
 }
-function iniciarModoAuto(){
+async function iniciarModoAuto(){
     if (!pacoteEstado || pacoteEstado.modo) return;
+    if (!(await abrirPacoteNoBackend())) return;
     pacoteEstado.modo = "auto";
     rasgarPacote();
 }
@@ -2024,7 +2235,7 @@ function renderPackResumo(){
                 '<span class="pr-box pr-col">📖 Na coleção<br><b>' + res.diferentes + '/' + (res.total || 100) + '</b></span>' +
             '</div>' +
             '<div class="modal-acoes" style="margin-top:18px">' +
-                '<button class="btn btn-amarelo" onclick="verMinhasFigurinhas()">🗂️ VER MINHAS FIGURINHAS</button>' +
+                '<button class="btn btn-amarelo" onclick="verMinhasFigurinhas()">🗂️ IR PARA MEU ACERVO</button>' +
                 '<button class="btn btn-ghost" onclick="abrirOutroPacote()">🎁 ABRIR OUTRO PACOTE</button>' +
             '</div>' +
         '</div>';
@@ -2063,6 +2274,7 @@ async function carregarPerfil(){
     if (!exigirLogin()) return;
     try {
         const d = await apiGet("/api/colecionaveis/perfil");
+        carregarContaRecebimento();
         const p = d.perfil;
         let stats = '<h4>📊 Estatísticas</h4>';
         stats += '<div class="perfil-stats">' +
@@ -2073,6 +2285,10 @@ async function carregarPerfil(){
             '<div class="stat-box"><div class="v">' + (p.album_completo ? "✅" : "❌") + '</div><div class="l">ÁLBUM</div></div>' +
             '<div class="stat-box"><div class="v">' + p.ranking + '</div><div class="l">RANKING</div></div>' +
         '</div>';
+        stats += '<div style="margin-top:12px;padding:10px;border:1px solid rgba(255,212,0,.25);border-radius:10px;color:var(--muted);font-size:12px">' +
+            '🏆 Álbum completo: <b style="color:var(--amarelo)">' + p.diferentes + '/100</b>' +
+            (p.recompensa_mensal ? ' · Recompensa mensal registrada: <b style="color:var(--verde)">✅</b>' : '') +
+            '</div>';
         document.getElementById("perfilStatsCard").innerHTML = stats;
 
         /* conquistas */
@@ -2102,6 +2318,21 @@ async function carregarPerfil(){
         document.getElementById("perfilStatsCard").innerHTML = '<div style="color:var(--muted)">' + esc(e.message) + '</div>';
     }
 }
+
+async function carregarContaRecebimento(){
+    const el = document.getElementById("recebimentosConteudo");
+    if(!el) return;
+    try {
+        const d = await apiGet("/api/marketplace/account");
+        if(d.connected){
+            el.innerHTML = '<span style="color:var(--verde);font-weight:800">🟢 Mercado Pago conectado</span><br><small>Conta de recebimento vinculada.</small>';
+        }else{
+            el.innerHTML = '<span style="color:var(--vermelho);font-weight:800">🔴 Mercado Pago não conectado</span><br><button class="btn btn-amarelo" style="margin-top:10px" onclick="conectarMercadoPago()">🟡 CONECTAR MERCADO PAGO</button>';
+        }
+    } catch(e){ el.textContent = "Não foi possível consultar a conta de recebimento."; }
+}
+
+function conectarMercadoPago(){ window.location.href = "/api/marketplace/oauth/connect"; }
 
 /* =========================================================
    LOGIN / CONTA
@@ -2188,6 +2419,8 @@ window.addEventListener("load", () => {
     atualizarHeader();
     carregarInfo().then(() => {
         mudarAba("album");
+        const match = window.location.hash.match(/^#figurinha-(\d+)$/);
+        if (match) setTimeout(() => abrirModalFigurinha(Number(match[1])), 250);
     });
 });
 </script>

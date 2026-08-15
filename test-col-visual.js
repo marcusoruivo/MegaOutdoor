@@ -16,15 +16,15 @@ function t(nome, cond, extra) {
 }
 
 /* Monta um catálogo de 100 cartas a partir do dicionário de emojis,
-   respeitando a distribuição 60/25/9/4/1/1. */
+   respeitando a distribuição 60/25/5/2/5/3. */
 const nomes = Object.keys(UI.EMOJI_ANIMAIS);
 const raridades = [
     ...Array(60).fill("COMUM"),
     ...Array(25).fill("INCOMUM"),
-    ...Array(9).fill("RARA"),
-    ...Array(4).fill("EPICA"),
-    "LENDARIA",
-    "MITICA"
+    ...Array(5).fill("RARA"),
+    ...Array(2).fill("EPICA"),
+    ...Array(5).fill("LENDARIA"),
+    ...Array(3).fill("MITICA")
 ];
 const catalogo = nomes.map((name, i) => ({
     id: 1000 + i,
@@ -52,9 +52,9 @@ function qtdPorFinish(cards) {
 t("1) EMOJI_ANIMAIS possui 100 espécies", nomes.length === 100, "n=" + nomes.length);
 t("2) catalogo montado com 100 cartas", catalogo.length === 100);
 const contRar = qtdPorRaridade(catalogo);
-t("3) distribuição 60/25/9/4/1/1",
-    contRar.COMUM === 60 && contRar.INCOMUM === 25 && contRar.RARA === 9 &&
-    contRar.EPICA === 4 && contRar.LENDARIA === 1 && contRar.MITICA === 1,
+t("3) distribuição 60/25/5/2/5/3",
+    contRar.COMUM === 60 && contRar.INCOMUM === 25 && contRar.RARA === 5 &&
+    contRar.EPICA === 2 && contRar.LENDARIA === 5 && contRar.MITICA === 3,
     JSON.stringify(contRar));
 
 /* ===== 4) Cada espécie tem emoji ===== */
@@ -63,32 +63,33 @@ t("4) todas as espécies possuem emoji",
     "sem-emoji=" + catalogo.filter(c => !UI.emojiAnimal(c)).length);
 
 /* ===== 5) Acabamento OURO/CROMADA ===== */
-t("5) MITICA é sempre cromada",
-    catalogo.filter(c => c.rarity === "MITICA").every(c => UI.finishDeCard(c) === "cromada"));
+t("5) MITICA mantém raridade e acabamento válido",
+    catalogo.filter(c => c.rarity === "MITICA").every(c => ["normal","ouro","cromada"].includes(UI.finishDeCard(c))));
 
 const lendarias = catalogo.filter(c => c.rarity === "LENDARIA");
-t("6) LENDARIA tem acabamento especial",
-    lendarias.every(c => UI.finishDeCard(c) === "ouro" || UI.finishDeCard(c) === "cromada"),
+t("6) LENDARIA mantém raridade e acabamento válido",
+    lendarias.every(c => ["normal","ouro","cromada"].includes(UI.finishDeCard(c))),
     JSON.stringify(qtdPorFinish(lendarias)));
 
 const epicas = catalogo.filter(c => c.rarity === "EPICA");
 const finEpicas = qtdPorFinish(epicas);
-t("7) EPICAS podem ser ouro, cromada ou normal", finEpicas.ouro + finEpicas.cromada + finEpicas.normal === 4, JSON.stringify(finEpicas));
+t("7) EPICAS usam acabamento válido", finEpicas.ouro + finEpicas.cromada + finEpicas.normal === 2, JSON.stringify(finEpicas));
 
 const raras = catalogo.filter(c => c.rarity === "RARA");
 const finRaras = qtdPorFinish(raras);
-t("8) RARAS podem ter acabamento especial", finRaras.ouro + finRaras.cromada + finRaras.normal === 9, JSON.stringify(finRaras));
+t("8) RARAS usam acabamento válido", finRaras.ouro + finRaras.cromada + finRaras.normal === 5, JSON.stringify(finRaras));
 
 const comuns = catalogo.filter(c => c.rarity === "COMUM" || c.rarity === "INCOMUM");
-t("9) COMUM/INCOMUM nunca têm acabamento especial",
-    comuns.every(c => UI.finishDeCard(c) === "normal"),
+t("9) COMUM/INCOMUM também usam acabamento válido",
+    comuns.every(c => ["normal","ouro","cromada"].includes(UI.finishDeCard(c))),
     "especiais=" + comuns.filter(c => UI.finishDeCard(c) !== "normal").length);
 
 t("10) acabamento é determinístico (mesmo id = mesmo finish)",
     UI.finishDeCard(catalogo[0]) === UI.finishDeCard(catalogo[0]));
+t("10b) todas as raridades aceitam acabamento", catalogo.every(c => ["normal","ouro","cromada"].includes(UI.finishDeCard(c))));
 
 /* ===== 11) Filtros e pesquisa ===== */
-t("11) filtrar por raridade RARA", UI.filtrarCards(catalogo, { filtro: "RARA" }).length === 9);
+t("11) filtrar por raridade RARA", UI.filtrarCards(catalogo, { filtro: "RARA" }).length === 5);
 t("12) filtrar por acabamento OURO", UI.filtrarCards(catalogo, { filtro: "ouro" }).every(c => UI.finishDeCard(c) === "ouro"));
 t("13) filtrar por acabamento CROMADA", UI.filtrarCards(catalogo, { filtro: "cromada" }).every(c => UI.finishDeCard(c) === "cromada"));
 t("14) pesquisa por nome funciona", UI.filtrarCards(catalogo, { busca: "leão" }).length > 0);

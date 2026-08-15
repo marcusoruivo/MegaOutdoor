@@ -81,6 +81,8 @@ async function main() {
         body: JSON.stringify({ paymentMethod: "pix", cpfCnpj: "12345678909" })
     });
     await reqJson(BASE + "/api/colecionaveis/test/confirm/" + ck.body.externalReference, { method: "POST", headers: h });
+    const pagoPacote = await reqJson(BASE + "/api/colecionaveis/pagamento/" + ck.body.externalReference, { headers: h });
+    await reqJson(BASE + "/api/colecionaveis/packs/purchases/" + pagoPacote.body.pacote.purchaseId + "/open", { method: "POST", headers: h, body: "{}" });
 
     /* /figurinha/:id shape */
     let f = await reqJson(BASE + "/api/colecionaveis/figurinha/1", { headers: h });

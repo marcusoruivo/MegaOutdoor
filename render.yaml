@@ -22,6 +22,24 @@ services:
         sync: false
       - key: MERCADOPAGO_WEBHOOK_SECRET
         sync: false
+      - key: MERCADOPAGO_CLIENT_ID
+        sync: false
+      - key: MERCADOPAGO_CLIENT_SECRET
+        sync: false
+      - key: MERCADOPAGO_REDIRECT_URI
+        sync: false
+      - key: MERCADOPAGO_MARKETPLACE_FEE_PERCENT
+        value: "10"
+      - key: MERCADOPAGO_MARKETPLACE_SPLIT_ENABLED
+        value: "true"
+      - key: STORY_PRICE_5H
+        value: "15.00"
+      - key: STORY_PRICE_7H
+        value: "20.00"
+      - key: STORY_PRICE_12H
+        value: "30.00"
+      - key: STORY_PRICE_24H
+        value: "45.00"
       - key: RESERVA_TTL_MINUTOS
         sync: false
       - key: RESEND_API_KEY

@@ -112,6 +112,11 @@
 .fin-cromada{background:linear-gradient(90deg,#7c8ee0,#dfe7ff);color:#141a38;box-shadow:0 0 8px rgba(180,200,255,.55)}
 .cc-rodape{font-family:'Orbitron',sans-serif;font-size:8px;letter-spacing:1.2px;color:var(--muted);text-align:center;padding:6px}
 .cc-grande{width:min(300px,86vw);margin:0 auto}
+.cc-grande{max-width:100%;min-width:0;box-sizing:border-box;overflow:hidden}
+.cc-grande .cc-info{min-width:0;overflow:hidden}
+.cc-grande .cc-nome,.cc-grande .cc-sn{overflow-wrap:anywhere;word-break:break-word}
+.cc-verso-lista{display:grid;gap:5px;max-height:150px;overflow:auto;font-size:11px;line-height:1.35;color:var(--muted);word-break:break-word}
+.cc-verso-lista b{color:var(--texto)}
 .cc-arte-grande{aspect-ratio:1/1;margin:0 14px}
 .colecao-card.cc-bloqueada{opacity:.85;cursor:pointer;border-style:dashed}
 .colecao-card.cc-bloqueada:hover{border-color:var(--laranja)}

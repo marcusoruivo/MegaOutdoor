@@ -89,7 +89,10 @@ async function comprarPacote(userTok, packId) {
         ordem.transactions.payments[0].status = "paid";
         ordem.transactions.payments[0].status_detail = "accredited";
     }
-    await reqJson(BASE + "/api/colecionaveis/pagamento/" + ext, json("GET", userTok));
+    const pago = await reqJson(BASE + "/api/colecionaveis/pagamento/" + ext, json("GET", userTok));
+    if (pago.body.pacote && pago.body.pacote.purchaseId) {
+        await reqJson(BASE + "/api/colecionaveis/packs/purchases/" + pago.body.pacote.purchaseId + "/open", json("POST", userTok, {}));
+    }
     return ck;
 }
 

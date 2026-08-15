@@ -345,7 +345,16 @@ async function main() {
 
     const acervo = await reqJson(BASE + "/api/colecionaveis/acervo", json("GET", userTok));
     const totalUser = (acervo.body.stats && acervo.body.stats.total) || 0;
-    t("figurinhas entregues do kit (premium: 1 ouro + 2 prata)", totalUser > 0, "total=" + totalUser);
+    const pacotesKit = await reqJson(BASE + "/api/colecionaveis/meus-pacotes", json("GET", userTok));
+    const pacotesSomenteKit = (pacotesKit.body.pacotes || []).filter(p => p.tipo === "kit");
+    t("kit disponibiliza pacotes fechados", pacotesKit.r.status === 200 && pacotesSomenteKit.length >= 3,
+        "n=" + pacotesSomenteKit.length);
+    for (const pacote of pacotesSomenteKit) {
+        await reqJson(BASE + "/api/colecionaveis/packs/inventory/" + pacote.id + "/open", json("POST", userTok));
+    }
+    const acervoAberto = await reqJson(BASE + "/api/colecionaveis/acervo", json("GET", userTok));
+    const totalAberto = (acervoAberto.body.stats && acervoAberto.body.stats.total) || 0;
+    t("figurinhas do kit só entram após abrir pacotes", totalUser === 0 && totalAberto > 0, "antes=" + totalUser + " depois=" + totalAberto);
 
     /* ===== /meus bloqueia outro usuário? ===== */
     const meus2 = await reqJson(BASE + "/api/combos/meus", json("GET", userTok2));

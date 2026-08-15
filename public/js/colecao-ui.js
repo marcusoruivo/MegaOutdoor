@@ -69,11 +69,12 @@
     }
 
     function calcularFinish(id, rarity) {
-        const h = hashCardId(id) % 100;
-        if (rarity === "MITICA") return "cromada";
-        if (rarity === "LENDARIA") return h < 50 ? "ouro" : "cromada";
-        if (rarity === "EPICA") return h < 55 ? "ouro" : (h < 80 ? "cromada" : "normal");
-        if (rarity === "RARA") return h < 35 ? "ouro" : (h < 50 ? "cromada" : "normal");
+        /* Acabamento é uma variante rara, independente da espécie e
+           sem substituir a raridade original. Aproximadamente 2,5%.
+           A mesma entrada sempre produz o mesmo acabamento. */
+        const h = hashCardId(id) % 1000;
+        if (h < 13) return "ouro";
+        if (h < 25) return "cromada";
         return "normal";
     }
 

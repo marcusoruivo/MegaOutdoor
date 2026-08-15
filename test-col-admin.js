@@ -116,6 +116,8 @@ async function main() {
     /* Compra de pacote para gerar dados */
     const ck = await reqJson(BASE + "/api/colecionaveis/packs/1/checkout", json("POST", userTok, { paymentMethod: "pix", cpfCnpj: "12345678909" }));
     await reqJson(BASE + "/api/colecionaveis/test/confirm/" + ck.body.externalReference, json("POST", userTok));
+    const pk = await reqJson(BASE + "/api/colecionaveis/pagamento/" + ck.body.externalReference, json("GET", userTok));
+    await reqJson(BASE + "/api/colecionaveis/packs/purchases/" + pk.body.pacote.purchaseId + "/open", json("POST", userTok, {}));
 
     /* ===== Álbum de um usuário (admin) ===== */
     const album = await reqJson(BASE + "/api/colecionaveis/admin/usuario/" + reg.body.usuario.id, json("GET", adminTok));

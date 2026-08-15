@@ -259,6 +259,11 @@ async function main() {
     t("I) confirmação da 1ª vez", conf1.r.status === 200,
         "status=" + conf1.r.status + " body=" + JSON.stringify(conf1.body));
 
+    const pagoPacote = await reqJson(BASE + "/api/colecionaveis/pagamento/" + p1.body.externalReference,
+        json("GET", userTok));
+    await reqJson(BASE + "/api/colecionaveis/packs/purchases/" + pagoPacote.body.pacote.purchaseId + "/open",
+        json("POST", userTok, {}));
+
     const albumApos1 = await reqJson(BASE + "/api/colecionaveis/meu-album", json("GET", userTok));
     const total1 = (albumApos1.body.cards || []).reduce((s, c) => s + Number(c.quantidade || 0), 0);
 

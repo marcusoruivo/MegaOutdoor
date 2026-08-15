@@ -6,7 +6,7 @@
    as MESMAS figurinhas). Backend é a autoridade do resultado.
 
    Cenários:
-   1) catálogo: 100 cartas, distribuição 60/25/9/4/1/1
+    1) catálogo: 100 cartas, distribuição 60/25/5/2/5/3
    2) dados científicos presentes (scientific_name/habitat/peso)
    3) pacote pago: sorteio persistido e idempotente
    4) /pagamento devolve o pacote já sorteado
@@ -128,10 +128,10 @@ async function main() {
 
     const contagem = {};
     for (const c of cards) contagem[c.rarity] = (contagem[c.rarity] || 0) + 1;
-    t("6) distribuição de raridade 60/25/9/4/1/1",
+    t("6) distribuição de raridade 60/25/5/2/5/3",
         contagem.COMUM === 60 && contagem.INCOMUM === 25 &&
-        contagem.RARA === 9 && contagem.EPICA === 4 &&
-        contagem.LENDARIA === 1 && contagem.MITICA === 1,
+        contagem.RARA === 5 && contagem.EPICA === 2 &&
+        contagem.LENDARIA === 5 && contagem.MITICA === 3,
         "c=" + JSON.stringify(contagem));
 
     t("7) todas as cartas com nome científico",
@@ -146,16 +146,16 @@ async function main() {
         " sem-peso=" + cards.filter(c => !c.peso).length);
 
     const lendaria = cards.find(c => c.rarity === "LENDARIA");
-    t("9) LENDÁRIA é a Baleia-azul (Balaenoptera musculus)",
-        !!lendaria && lendaria.name === "Baleia-azul" &&
-        lendaria.scientific_name === "Balaenoptera musculus",
-        "name=" + (lendaria && lendaria.name) + " sn=" + (lendaria && lendaria.scientific_name));
+    t("9) existem 5 LENDÁRIAS e Baleia-azul é uma delas",
+        cards.filter(c => c.rarity === "LENDARIA").length === 5 &&
+        !!lendaria && cards.some(c => c.name === "Baleia-azul" && c.rarity === "LENDARIA"),
+        "lendarias=" + cards.filter(c => c.rarity === "LENDARIA").map(c => c.name).join(","));
 
     const mitica = cards.find(c => c.rarity === "MITICA");
-    t("10) MÍTICA é a Lula-colossal (Mesonychoteuthis hamiltoni)",
-        !!mitica && mitica.name === "Lula-colossal" &&
-        mitica.scientific_name === "Mesonychoteuthis hamiltoni",
-        "name=" + (mitica && mitica.name));
+    t("10) existem 3 MÍTICAS e Lula-colossal é uma delas",
+        cards.filter(c => c.rarity === "MITICA").length === 3 &&
+        !!mitica && cards.some(c => c.name === "Lula-colossal" && c.rarity === "MITICA"),
+        "miticas=" + cards.filter(c => c.rarity === "MITICA").map(c => c.name).join(","));
 
     /* ===== 11) Compra e confirmação do pacote ===== */
     const email = "anim-" + Date.now() + "@teste.com";
@@ -173,7 +173,7 @@ async function main() {
 
     const conf = await reqJson(BASE + "/api/colecionaveis/test/confirm/" + extRef, json("POST", userTok));
     t("13) confirmação do pagamento (sorteio)", conf.r.status === 200 && conf.body.tipo === "pack",
-        "status=" + conf.r.status);
+        "status=" + conf.r.status + " err=" + (conf.body.error || ""));
 
     /* Reflete o que acontece no mundo real: pagamento aprovado no MP
        -> a Order fica paid. O test/confirm grava a compra; aqui também
@@ -209,10 +209,19 @@ async function main() {
         JSON.stringify(idsMp) === JSON.stringify(ids1),
         "status=" + pollMp.r.status + " mp=" + pollMp.body.status);
 
-    /* ===== 17) Figurinhas no álbum ===== */
+    /* ===== 17) Pagamento deixa o pacote fechado ===== */
+    t("17) pacote pago ainda não credita figurinhas antes da abertura",
+        !!pacote1 && pacote1.aberto === false,
+        "aberto=" + (pacote1 && pacote1.aberto));
+    const abertura = await reqJson(BASE + "/api/colecionaveis/packs/purchases/" + pacote1.purchaseId + "/open",
+        json("POST", userTok, {}));
+    t("18) abertura explícita credita o pacote", abertura.r.status === 200 && abertura.body.ok && abertura.body.pacote.figurinhas.length === 3,
+        "status=" + abertura.r.status + " err=" + (abertura.body.error || "") + " body=" + JSON.stringify(abertura.body));
+
+    /* ===== 19) Figurinhas no álbum ===== */
     const album = await reqJson(BASE + "/api/colecionaveis/meu-album", json("GET", userTok));
     const totalAlbum = (album.body.cards || []).reduce((s, c) => s + Number(c.quantidade || 0), 0);
-    t("17) álbum recebeu 3 figurinhas do pacote", totalAlbum === 3, "total=" + totalAlbum);
+    t("19) álbum recebeu 3 figurinhas após abertura", totalAlbum === 3, "total=" + totalAlbum);
 
     const alguma = (album.body.cards || []).find(c => c.quantidade > 0);
     t("18) dados científicos no meu-album",
@@ -221,7 +230,9 @@ async function main() {
         "sn=" + (alguma && alguma.scientific_name));
 
     /* ===== 19) /figurinha expõe dados científicos ===== */
-    const fig = await reqJson(BASE + "/api/colecionaveis/figurinha/" + alguma.id, json("GET", userTok));
+    const fig = alguma
+        ? await reqJson(BASE + "/api/colecionaveis/figurinha/" + alguma.id, json("GET", userTok))
+        : { r: { status: 0 }, body: {} };
     t("19) /figurinha expõe scientific_name/habitat/peso",
         fig.r.status === 200 &&
         typeof fig.body.card.scientific_name === "string" &&

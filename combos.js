@@ -83,7 +83,8 @@ module.exports = function criarModuloCombos(deps) {
         obterColecionaveis,
         normalizarDadosComprador,
         validarDocumento,
-        formatarErroPagamento
+        formatarErroPagamento,
+        registrarStoryEvento
     } = deps;
 
     const router = express.Router();
@@ -162,7 +163,8 @@ module.exports = function criarModuloCombos(deps) {
 
         await pool.query(`
             ALTER TABLE kit_compras
-                ADD COLUMN IF NOT EXISTS espacos_confirmados BOOLEAN NOT NULL DEFAULT FALSE
+                ADD COLUMN IF NOT EXISTS espacos_confirmados BOOLEAN NOT NULL DEFAULT FALSE,
+                ADD COLUMN IF NOT EXISTS story_opt_in BOOLEAN NOT NULL DEFAULT FALSE
         `);
 
         await pool.query(
@@ -477,7 +479,7 @@ module.exports = function criarModuloCombos(deps) {
             }
 
             writeDB(db);
-            return ids;
+            return { ids, orderToken, accessCode };
         });
     }
 
@@ -662,6 +664,26 @@ module.exports = function criarModuloCombos(deps) {
             [compra.id, mpOrderId]
         );
 
+        if (compra.story_opt_in && typeof registrarStoryEvento === "function") {
+            const kit = await kitPorId(compra.kit_id);
+            if (!kit) return { tipo: "kit", ...entregue };
+            let summary = kit && kit.package_summary;
+            if (typeof summary === "string") {
+                try { summary = JSON.parse(summary); } catch(e) { summary = []; }
+            }
+            if (!Array.isArray(summary)) summary = [];
+            const totalPacotes = summary.reduce((sum, item) => sum + (Number(item.quantidade) || 0), 0);
+            await registrarStoryEvento({
+                eventKey: `kit:${compra.order_id}`,
+                kind: "purchase",
+                title: "🟡 NOVA COMPRA",
+                subtitle: `${Number(kit.espacos) || 0} espaços • ${totalPacotes} pacotes`,
+                actionType: "purchase",
+                actionId: kit.id,
+                metadata: { kitId: kit.id, spaces: Number(kit.espacos) || 0, packs: totalPacotes }
+            });
+        }
+
         registrarLog("combo_pagamento_confirmado", {
             compraId: compra.id,
             mpOrderId
@@ -796,13 +818,14 @@ module.exports = function criarModuloCombos(deps) {
                 `INSERT INTO kit_compras
                     (usuario_id, kit_id, order_id, mp_order_id, payment_id,
                      license_plan, license_months, license_fee,
-                     preco, total, espacos, status, test)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending',$12)`,
+                     preco, total, espacos, status, test, story_opt_in)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending',$12,$13)`,
                 [req.usuario.id, kit.id, orderId, String(mp.orderId), paymentId,
                  planoKey, licenca.months, licenca.fee,
                  Number(kit.preco), total,
                  espacosSugeridos,
-                 !!process.env.ALLOW_TEST_MODE]
+                 !!process.env.ALLOW_TEST_MODE,
+                 req.body.storyOptIn === true || req.body.storyOptIn === "true"]
             );
 
             registrarLog("combo_pedido_criado", {
@@ -1035,7 +1058,7 @@ module.exports = function criarModuloCombos(deps) {
 
             let alocados;
             try {
-                alocados = await alocarEspacosConfirmados(beneficio);
+            alocados = await alocarEspacosConfirmados(beneficio);
             } catch (eConf) {
                 return res.status(409).json({ error: eConf.message });
             }
@@ -1057,7 +1080,9 @@ module.exports = function criarModuloCombos(deps) {
 
             res.json({
                 ok: true,
-                espacos: alocados,
+                espacos: alocados.ids,
+                orderToken: alocados.orderToken,
+                accessCode: alocados.accessCode,
                 espacosConfirmados: true,
                 kitNome: beneficio.kit_nome
             });

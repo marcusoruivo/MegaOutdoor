@@ -161,6 +161,11 @@ async function main() {
     t("polling com externalReference responde", poll2.r.status === 200,
         "status=" + poll2.r.status + " err=" + (poll2.body.error || ""));
 
+    const abertura = await reqJson(BASE + "/api/colecionaveis/packs/purchases/" + poll2.body.pacote.purchaseId + "/open", {
+        method: "POST", headers: h1, body: JSON.stringify({})
+    });
+    t("abertura explícita do pacote", abertura.r.status === 200 && abertura.body.ok);
+
     let album = await reqJson(BASE + "/api/colecionaveis/meu-album", { headers: h1 });
     const totalU1 = album.body.cards.reduce((a, c) => a + c.quantidade, 0);
     t("pacote entregou 3 figurinhas", totalU1 === 3, "total=" + totalU1);
@@ -245,6 +250,8 @@ async function main() {
     });
     const extRef2 = check2.body.externalReference;
     await reqJson(BASE + "/api/colecionaveis/test/confirm/" + extRef2, { method: "POST", headers: h2 });
+    const pollU2Pack = await reqJson(BASE + "/api/colecionaveis/pagamento/" + extRef2, { method: "GET", headers: h2 });
+    await reqJson(BASE + "/api/colecionaveis/packs/purchases/" + pollU2Pack.body.pacote.purchaseId + "/open", { method: "POST", headers: h2, body: JSON.stringify({}) });
 
     let albumU2b = await reqJson(BASE + "/api/colecionaveis/meu-album", { headers: h2 });
     const u2Cards = albumU2b.body.cards.filter(c => c.quantidade > 0);
@@ -257,6 +264,8 @@ async function main() {
         body: JSON.stringify({ paymentMethod: "pix", cpfCnpj: "12345678909" })
     });
     await reqJson(BASE + "/api/colecionaveis/test/confirm/" + check3.body.externalReference, { method: "POST", headers: h1 });
+    const pollU1Pack = await reqJson(BASE + "/api/colecionaveis/pagamento/" + check3.body.externalReference, { method: "GET", headers: h1 });
+    await reqJson(BASE + "/api/colecionaveis/packs/purchases/" + pollU1Pack.body.pacote.purchaseId + "/open", { method: "POST", headers: h1, body: JSON.stringify({}) });
     let albumU1c = await reqJson(BASE + "/api/colecionaveis/meu-album", { headers: h1 });
     const u1Cards = albumU1c.body.cards.filter(c => c.quantidade > 0);
     const u1Repetido = u1Cards.find(c => c.quantidade > 1) || u1Cards[0];

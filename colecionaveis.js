@@ -18,12 +18,12 @@ const crypto = require("crypto");
 ========================================================= */
 
 const RARIDADES = {
-    COMUM:    { chave: "COMUM",    nome: "COMUM",    icone: "⚪", cor: "#9e9e9e", peso: 65 },
+    COMUM:    { chave: "COMUM",    nome: "COMUM",    icone: "⚪", cor: "#9e9e9e", peso: 55 },
     INCOMUM:  { chave: "INCOMUM",  nome: "INCOMUM",  icone: "🟢", cor: "#4caf50", peso: 20 },
-    RARA:     { chave: "RARA",     nome: "RARA",     icone: "🔵", cor: "#2196f3", peso: 10 },
-    EPICA:    { chave: "EPICA",    nome: "ÉPICA",    icone: "🟣", cor: "#9c27b0", peso: 4 },
-    LENDARIA: { chave: "LENDARIA", nome: "LENDÁRIA", icone: "🟡", cor: "#ffb300", peso: 0.9 },
-    MITICA:   { chave: "MITICA",   nome: "MÍTICA",   icone: "🔴", cor: "#e53935", peso: 0.1 }
+    RARA:     { chave: "RARA",     nome: "RARA",     icone: "🔵", cor: "#2196f3", peso: 12 },
+    EPICA:    { chave: "EPICA",    nome: "ÉPICA",    icone: "🟣", cor: "#9c27b0", peso: 7 },
+    LENDARIA: { chave: "LENDARIA", nome: "LENDÁRIA", icone: "🟡", cor: "#ffb300", peso: 5 },
+    MITICA:   { chave: "MITICA",   nome: "MÍTICA",   icone: "🔴", cor: "#e53935", peso: 1 }
 };
 
 const RARIDADE_ORDEM = [
@@ -33,12 +33,20 @@ const RARIDADE_ORDEM = [
 /* Probabilidades em % (somam 100%). Informadas ao usuário
    antes da compra. Configuráveis. */
 const PROBABILIDADES = {
-    COMUM: 65,
+    COMUM: 55,
     INCOMUM: 20,
-    RARA: 10,
-    EPICA: 4,
-    LENDARIA: 0.9,
-    MITICA: 0.1
+    RARA: 12,
+    EPICA: 7,
+    LENDARIA: 5,
+    MITICA: 1
+};
+
+/* Recompensa mensal configurável pelo ambiente/admin. Sem período
+   configurado, nenhuma recompensa comercial é criada por padrão. */
+const MONTHLY_ALBUM_REWARD = {
+    start: process.env.MONTHLY_ALBUM_START || null,
+    end: process.env.MONTHLY_ALBUM_END || null,
+    reward: process.env.MONTHLY_ALBUM_REWARD || "badge_album_completo_mes"
 };
 
 const PACKS_PADRAO = [
@@ -103,7 +111,7 @@ const CONQUISTAS = [
 
 /* Catálogo de 100 FIGURINHAS DE ANIMAIS REAIS do mundo.
    Distribuição por raridade:
-   COMUM 60 · INCOMUM 25 · RARA 9 · ÉPICA 4 · LENDÁRIA 1 · MÍTICA 1 = 100
+   COMUM 60 · INCOMUM 25 · RARA 5 · ÉPICA 2 · LENDÁRIA 5 · MÍTICA 3 = 100
    Cada espécie traz nome científico, habitat e peso reais. */
 const CATALOGO = (() => {
     const cards = [];
@@ -224,12 +232,22 @@ const CATALOGO = (() => {
     ];
 
     especies.forEach((e, i) => {
-        const raridade =
+        const raridadesEspeciais = {
+            "Condor-andino": "LENDARIA",
+            "Rinoceronte-de-sumatra": "LENDARIA",
+            "Vaquita": "LENDARIA",
+            "Lince-ibérico": "LENDARIA",
+            "Leopardo-das-neves": "MITICA",
+            "Tigre-de-bengala": "MITICA",
+            "Lula-colossal": "MITICA"
+        };
+        const raridade = raridadesEspeciais[e.name] || (
             i < 60 ? "COMUM" :
             i < 85 ? "INCOMUM" :
             i < 94 ? "RARA" :
-            i < 98 ? "EPICA" :
-            i < 99 ? "LENDARIA" : "MITICA";
+            i < 96 ? "EPICA" :
+            i < 99 ? "LENDARIA" : "MITICA"
+        );
         cards.push({
             number: i + 1,
             name: e.name,
@@ -243,6 +261,13 @@ const CATALOGO = (() => {
         });
     });
 
+    const contagem = cards.reduce((acc, card) => {
+        acc[card.rarity] = (acc[card.rarity] || 0) + 1;
+        return acc;
+    }, {});
+    if (cards.length !== 100 || contagem.LENDARIA !== 5 || contagem.MITICA !== 3) {
+        throw new Error("Catálogo inválido: esperado 100 cartas, 5 lendárias e 3 míticas.");
+    }
     return cards;
 })();
 
@@ -319,6 +344,13 @@ module.exports = function criarModuloColecionaveis(deps) {
         orderPagaMercadoPago,
         paraCentavos,
         registrarLog,
+        registrarStoryEvento,
+        obterContaMarketplace,
+        obterContaMarketplacePrivada,
+        consultarMercadoPagoPayment,
+        mercadopagoMarketplaceFeePercent = 10,
+        mercadopagoMarketplaceSplitEnabled = false,
+        criarOrderMercadoPagoSplit = null,
         normalizarDadosComprador,
         validarDocumento,
         formatarErroPagamento
@@ -334,6 +366,9 @@ module.exports = function criarModuloColecionaveis(deps) {
 
     const pg = () => obterPool();
     const pgOk = () => !!obterPgDisponivel();
+    const marketplaceConta = usuarioId => typeof obterContaMarketplacePrivada === "function"
+        ? obterContaMarketplacePrivada(usuarioId)
+        : (typeof obterContaMarketplace === "function" ? obterContaMarketplace(usuarioId) : null);
 
     /* Validação unificada dos dados do comprador para todos os
        checkouts de colecionáveis (pacotes, mercado e trocas). */
@@ -427,13 +462,37 @@ module.exports = function criarModuloColecionaveis(deps) {
                 status        VARCHAR(20) NOT NULL DEFAULT 'pending',
                 test          BOOLEAN NOT NULL DEFAULT FALSE,
                 created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                paid_at       TIMESTAMPTZ
+                paid_at       TIMESTAMPTZ,
+                open_status   VARCHAR(20) NOT NULL DEFAULT 'unopened',
+                opened_at     TIMESTAMPTZ
             )
         `);
 
         /* Sorteio persistido do pacote (abre UMA vez; refresh devolve
            as MESMAS figurinhas — CORREÇÃO 7 / ANIMAIS DO MUNDO). */
         await pool.query(`ALTER TABLE sticker_pack_purchases ADD COLUMN IF NOT EXISTS figurinhas INTEGER[]`);
+        await pool.query(`ALTER TABLE sticker_pack_purchases ADD COLUMN IF NOT EXISTS story_opt_in BOOLEAN NOT NULL DEFAULT FALSE`);
+        await pool.query(`ALTER TABLE sticker_pack_purchases ADD COLUMN IF NOT EXISTS open_status VARCHAR(20) NOT NULL DEFAULT 'unopened'`);
+        await pool.query(`ALTER TABLE sticker_pack_purchases ADD COLUMN IF NOT EXISTS opened_at TIMESTAMPTZ`);
+        await pool.query(`
+            UPDATE sticker_pack_purchases
+               SET open_status = 'opened', opened_at = COALESCE(opened_at, paid_at, NOW())
+             WHERE status = 'paid' AND figurinhas IS NOT NULL AND open_status = 'unopened'
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS sticker_pack_inventory (
+                id          SERIAL PRIMARY KEY,
+                usuario_id  INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                pack_id     INTEGER NOT NULL REFERENCES sticker_packs(id),
+                source_ref  VARCHAR(120) UNIQUE NOT NULL,
+                figurinhas  INTEGER[],
+                status      VARCHAR(20) NOT NULL DEFAULT 'unopened',
+                created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                opened_at   TIMESTAMPTZ
+            )
+        `);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_pack_inventory_user ON sticker_pack_inventory(usuario_id, status)`);
 
         await pool.query(`
             CREATE TABLE IF NOT EXISTS user_stickers (
@@ -459,6 +518,72 @@ module.exports = function criarModuloColecionaveis(deps) {
                 quantity    INTEGER NOT NULL,
                 status      VARCHAR(20) NOT NULL DEFAULT 'active',
                 created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS sticker_listing_messages (
+                id          SERIAL PRIMARY KEY,
+                listing_id  INTEGER NOT NULL REFERENCES sticker_listings(id) ON DELETE CASCADE,
+                seller_id   INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                buyer_id    INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                author_id   INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                text        VARCHAR(500) NOT NULL,
+                created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        `);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_listing_messages ON sticker_listing_messages(listing_id, created_at)`);
+
+        /* Leilões são independentes do checkout existente. A reserva
+           permanece até o pagamento futuro do vencedor. */
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS sticker_auctions (
+                id             SERIAL PRIMARY KEY,
+                seller_id      INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                card_id        INTEGER NOT NULL REFERENCES sticker_cards(id) ON DELETE CASCADE,
+                minimum_bid    NUMERIC(10,2) NOT NULL,
+                current_bid    NUMERIC(10,2),
+                winner_id      INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+                status         VARCHAR(30) NOT NULL DEFAULT 'active',
+                payment_status VARCHAR(30) NOT NULL DEFAULT 'not_applicable',
+                ends_at        TIMESTAMPTZ NOT NULL,
+                created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                closed_at      TIMESTAMPTZ
+            )
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS sticker_auction_bids (
+                id          SERIAL PRIMARY KEY,
+                auction_id  INTEGER NOT NULL REFERENCES sticker_auctions(id) ON DELETE CASCADE,
+                bidder_id   INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                amount      NUMERIC(10,2) NOT NULL,
+                created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS sticker_auction_reservations (
+                id          SERIAL PRIMARY KEY,
+                auction_id  INTEGER UNIQUE NOT NULL REFERENCES sticker_auctions(id) ON DELETE CASCADE,
+                owner_id    INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                card_id     INTEGER NOT NULL REFERENCES sticker_cards(id) ON DELETE CASCADE,
+                status      VARCHAR(20) NOT NULL DEFAULT 'reserved',
+                reserved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                released_at TIMESTAMPTZ
+            )
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS sticker_auction_orders (
+                id            SERIAL PRIMARY KEY,
+                auction_id    INTEGER UNIQUE NOT NULL REFERENCES sticker_auctions(id) ON DELETE CASCADE,
+                buyer_id      INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                order_id      VARCHAR(60) UNIQUE NOT NULL,
+                mp_order_id   VARCHAR(60),
+                payment_id    VARCHAR(60),
+                total         NUMERIC(10,2) NOT NULL,
+                fee           NUMERIC(10,2) NOT NULL DEFAULT 0,
+                seller_amount NUMERIC(10,2) NOT NULL DEFAULT 0,
+                status        VARCHAR(20) NOT NULL DEFAULT 'pending',
+                created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                paid_at       TIMESTAMPTZ
             )
         `);
 
@@ -570,12 +695,27 @@ module.exports = function criarModuloColecionaveis(deps) {
         `);
 
         await pool.query(`
+            CREATE TABLE IF NOT EXISTS sticker_monthly_rewards (
+                id           SERIAL PRIMARY KEY,
+                usuario_id   INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                period_key   VARCHAR(80) NOT NULL,
+                reward_key   VARCHAR(120) NOT NULL,
+                completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (usuario_id, period_key)
+            )
+        `);
+
+        await pool.query(`
             CREATE INDEX IF NOT EXISTS idx_user_stickers_usuario
                 ON user_stickers(usuario_id)
         `);
         await pool.query(`
             CREATE INDEX IF NOT EXISTS idx_listings_status
                 ON sticker_listings(status)
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_auctions_status_ends
+                ON sticker_auctions(status, ends_at)
         `);
         await pool.query(`
             CREATE INDEX IF NOT EXISTS idx_trades_status
@@ -741,12 +881,28 @@ module.exports = function criarModuloColecionaveis(deps) {
         return Number(q.rows[0]?.qtd || 0);
     }
 
+    /* Cada leilão reserva uma única unidade. O vencedor continua
+       reservado em payment_pending, sem iniciar qualquer pagamento. */
+    async function bloqueadoPorLeilao(usuarioId, cardId) {
+        const q = await pg().query(
+            `SELECT COUNT(*)::int AS qtd
+               FROM sticker_auction_reservations r
+               JOIN sticker_auctions a ON a.id = r.auction_id
+              WHERE r.owner_id = $1 AND r.card_id = $2
+                AND r.status = 'reserved'
+                AND a.status IN ('active', 'payment_pending')`,
+            [usuarioId, cardId]
+        );
+        return Number(q.rows[0]?.qtd || 0);
+    }
+
     /* Quantidade disponível (possui - bloqueada). */
     async function quantidadeDisponivel(usuarioId, cardId, excluirTradeId = null) {
         const possui = await quantidadePossuida(usuarioId, cardId);
         const bloqListagem = await bloqueadoPorListagem(usuarioId, cardId);
         const bloqTrocas = await bloqueadoPorTrocas(usuarioId, cardId, excluirTradeId);
-        return Math.max(0, possui - bloqListagem - bloqTrocas);
+        const bloqLeilao = await bloqueadoPorLeilao(usuarioId, cardId);
+        return Math.max(0, possui - bloqListagem - bloqTrocas - bloqLeilao);
     }
 
     async function registrarTransacaoCol(usuarioId, tipo, detalhe, valor = 0, refId = null) {
@@ -890,9 +1046,28 @@ module.exports = function criarModuloColecionaveis(deps) {
         if (diferentes >= 100) {
             const ok = await desbloquearConquista(usuarioId, "album_completo");
             if (ok) desbloqueadas.push("album_completo");
+            if (await verificarRecompensaMensal(usuarioId, diferentes)) {
+                desbloqueadas.push("album_completo_mes");
+            }
         }
 
         return desbloqueadas;
+    }
+
+    async function verificarRecompensaMensal(usuarioId, diferentes) {
+        if (!pgOk() || diferentes < 100 || !MONTHLY_ALBUM_REWARD.start || !MONTHLY_ALBUM_REWARD.end) return false;
+        const agora = Date.now();
+        const inicio = new Date(MONTHLY_ALBUM_REWARD.start).getTime();
+        const fim = new Date(MONTHLY_ALBUM_REWARD.end).getTime();
+        if (!Number.isFinite(inicio) || !Number.isFinite(fim) || agora < inicio || agora > fim) return false;
+        const periodKey = `${MONTHLY_ALBUM_REWARD.start}:${MONTHLY_ALBUM_REWARD.end}`;
+        const result = await pg().query(
+            `INSERT INTO sticker_monthly_rewards (usuario_id, period_key, reward_key)
+             VALUES ($1,$2,$3) ON CONFLICT (usuario_id, period_key) DO NOTHING RETURNING id`,
+            [usuarioId, periodKey, MONTHLY_ALBUM_REWARD.reward]
+        );
+        if (result.rows.length) registrarLog("colecionavel_recompensa_album_mensal", { usuarioId, periodKey, reward: MONTHLY_ALBUM_REWARD.reward });
+        return result.rows.length > 0;
     }
 
     /* =========================================================
@@ -962,6 +1137,16 @@ module.exports = function criarModuloColecionaveis(deps) {
             return { tipo: "pack" };
         }
 
+        const auctionQ = await pool.query(
+            `SELECT * FROM sticker_auction_orders WHERE (mp_order_id = $1 OR order_id = $1) AND status = 'pending' LIMIT 1`,
+            [mpOrderId]
+        );
+        if (auctionQ.rows[0]) {
+            if (!cobradoIgual(auctionQ.rows[0].total)) return null;
+            await confirmarCompraLeilao(auctionQ.rows[0], mpOrderId);
+            return { tipo: "auction" };
+        }
+
         /* 2) Compra no mercado (anúncio) */
         const orderQ = await pool.query(
             `SELECT * FROM sticker_orders
@@ -1019,6 +1204,61 @@ module.exports = function criarModuloColecionaveis(deps) {
         return null;
     }
 
+    async function processarMarketplacePayment(paymentId) {
+        if (!pgOk() || typeof consultarMercadoPagoPayment !== "function") return null;
+        const orders = await pg().query(
+            `SELECT * FROM sticker_orders WHERE status = 'pending' AND payment_type = 'STICKER_MARKETPLACE_SPLIT' ORDER BY created_at ASC LIMIT 100`
+        );
+        for (const order of orders.rows) {
+            const account = await marketplaceConta(order.seller_id);
+            if (!account || !account.accessToken) continue;
+            let payment;
+            try { payment = await consultarMercadoPagoPayment(account.accessToken, paymentId); } catch(e) { continue; }
+            if (String(payment.external_reference || "") !== String(order.order_id)) continue;
+            const status = String(payment.status || "").toLowerCase();
+            const paidAmount = Number(payment.transaction_amount ?? payment.transaction_details?.total_paid_amount ?? 0);
+            if (!["approved", "accredited", "processed"].includes(status)) return { status, approved: false };
+            if (Math.round(paidAmount * 100) !== Math.round(Number(order.total) * 100)) return { status, approved: false, amountMismatch: true };
+            await confirmarCompraMercado(order, paymentId);
+            return { status, approved: true, orderId: order.order_id };
+        }
+        const auctionOrders = await pg().query(
+            `SELECT * FROM sticker_auction_orders WHERE status = 'pending' ORDER BY created_at ASC LIMIT 100`
+        );
+        for (const order of auctionOrders.rows) {
+            const auction = await pg().query(`SELECT seller_id FROM sticker_auctions WHERE id = $1`, [order.auction_id]);
+            const account = auction.rows[0] ? await marketplaceConta(auction.rows[0].seller_id) : null;
+            if (!account || !account.accessToken) continue;
+            let payment;
+            try { payment = await consultarMercadoPagoPayment(account.accessToken, paymentId); } catch(e) { continue; }
+            if (String(payment.external_reference || "") !== String(order.order_id)) continue;
+            const status = String(payment.status || "").toLowerCase();
+            const paidAmount = Number(payment.transaction_amount ?? payment.transaction_details?.total_paid_amount ?? 0);
+            if (!["approved", "accredited", "processed"].includes(status)) return { status, approved: false };
+            if (Math.round(paidAmount * 100) !== Math.round(Number(order.total) * 100)) return { status, approved: false, amountMismatch: true };
+            await confirmarCompraLeilao(order, paymentId);
+            return { status, approved: true, orderId: order.order_id };
+        }
+        const splitTrades = await pg().query(
+            `SELECT * FROM sticker_trades WHERE status = 'WAITING_PAYMENT' AND payment_type = 'STICKER_TRADE_SPLIT' LIMIT 100`
+        );
+        for (const trade of splitTrades.rows) {
+            const sellerId = trade.cash_direction === "proposer_pays" ? trade.receiver_id : trade.proposer_id;
+            const account = await marketplaceConta(sellerId);
+            if (!account || !account.accessToken) continue;
+            let payment;
+            try { payment = await consultarMercadoPagoPayment(account.accessToken, paymentId); } catch(e) { continue; }
+            if (String(payment.external_reference || "") !== String(trade.order_id)) continue;
+            const status = String(payment.status || "").toLowerCase();
+            const paidAmount = Number(payment.transaction_amount ?? payment.transaction_details?.total_paid_amount ?? 0);
+            if (!["approved", "accredited", "processed"].includes(status)) return { status, approved: false };
+            if (Math.round(paidAmount * 100) !== Math.round(Number(trade.cash_amount) * 100)) return { status, approved: false, amountMismatch: true };
+            await confirmarPagamentoTroca(trade, paymentId);
+            return { status, approved: true, orderId: trade.order_id };
+        }
+        return null;
+    }
+
     /* Entrega figurinhas de um pacote diretamente ao acervo do usuário,
        SEM passar por cobrança (usada pelos Combos & Kits). Idempotente:
        chamada apenas uma vez por pedido pago. */
@@ -1038,31 +1278,18 @@ module.exports = function criarModuloColecionaveis(deps) {
             throw new Error("Pacote de figurinhas não encontrado.");
         }
 
-        const colQ = await pool.query(
-            `SELECT * FROM sticker_cards
-              WHERE collection_id = $1 AND is_active = TRUE
-              ORDER BY id`,
-            [pack.collection_id]
-        );
-        const cards = colQ.rows;
-
-        const sorteadas = sortearCards(cards, quantidade);
-
         const client = await pool.connect();
         try {
             await client.query("BEGIN");
-
-            for (const card of sorteadas) {
+            const origem = String(refId || `kit-${usuarioId}-${packId}`);
+            for (let i = 0; i < quantidade; i++) {
                 await client.query(
-                    `INSERT INTO user_stickers (usuario_id, card_id, quantity)
-                     VALUES ($1,$2,1)
-                     ON CONFLICT (usuario_id, card_id)
-                     DO UPDATE SET quantity =
-                         user_stickers.quantity + 1`,
-                    [usuarioId, card.id]
+                    `INSERT INTO sticker_pack_inventory (usuario_id, pack_id, source_ref)
+                     VALUES ($1,$2,$3)
+                     ON CONFLICT (source_ref) DO NOTHING`,
+                    [usuarioId, packId, `${origem}:pack:${packId}:unit:${i}`]
                 );
             }
-
             await client.query("COMMIT");
         } catch (e) {
             await client.query("ROLLBACK");
@@ -1074,41 +1301,48 @@ module.exports = function criarModuloColecionaveis(deps) {
         await registrarTransacaoCol(
             usuarioId,
             "PACOTE_KIT_RECEBIDO",
-            `Recebeu ${sorteadas.length} figurinha(s) do pacote ${pack.name} (Kit).`,
+            `Recebeu ${quantidade} pacote(s) de figurinhas ${pack.name} (Kit).`,
             0,
             refId
         );
 
-        const colecao = await colecaoAtiva();
-        if (colecao) {
-            await verificarConquistas(usuarioId, colecao.id);
-        }
-
         return {
             packId: pack.id,
             packName: pack.name,
-            figurinhas: sorteadas.length,
-            cards: sorteadas.map(c => c.id)
+            figurinhas: 0,
+            cards: [],
+            pacotes: quantidade
         };
     }
 
     async function confirmarCompraPacote(compra, mpOrderId) {
         const pool = pg();
 
-        /* CORREÇÃO 7: se o sorteio já foi persistido, nada a refazer
-           (idempotência — o refresh volta a MESMA resposta). */
-        if (compra.figurinhas && compra.figurinhas.length) {
-            return { jaConfirmado: true };
-        }
+        const client = await pool.connect();
+        let compraAtual;
+        let pack;
+        let sorteadas;
+        try {
+            await client.query("BEGIN");
+            const compraQ = await client.query(
+                `SELECT * FROM sticker_pack_purchases WHERE id = $1 FOR UPDATE`,
+                [compra.id]
+            );
+            compraAtual = compraQ.rows[0];
+            if (!compraAtual) throw new Error("Compra de pacote não encontrada.");
+            if (compraAtual.status === "paid" && compraAtual.figurinhas && compraAtual.figurinhas.length) {
+                await client.query("COMMIT");
+                return { jaConfirmado: true, aberto: compraAtual.open_status === "opened" };
+            }
 
-        const packQ = await pool.query(
+        const packQ = await client.query(
             `SELECT * FROM sticker_packs WHERE id = $1`,
-            [compra.pack_id]
+            [compraAtual.pack_id]
         );
-        const pack = packQ.rows[0];
-        if (!pack) return;
+        pack = packQ.rows[0];
+        if (!pack) throw new Error("Pacote não encontrado.");
 
-        const colQ = await pool.query(
+        const colQ = await client.query(
             `SELECT * FROM sticker_cards
               WHERE collection_id = $1 AND is_active = TRUE
               ORDER BY id`,
@@ -1116,30 +1350,16 @@ module.exports = function criarModuloColecionaveis(deps) {
         );
         const cards = colQ.rows;
 
-        const sorteadas = sortearCards(cards, compra.quantity);
-
-        const client = await pool.connect();
-        try {
-            await client.query("BEGIN");
-
-            for (const card of sorteadas) {
-                await client.query(
-                    `INSERT INTO user_stickers (usuario_id, card_id, quantity)
-                     VALUES ($1,$2,1)
-                     ON CONFLICT (usuario_id, card_id)
-                     DO UPDATE SET quantity =
-                         user_stickers.quantity + 1`,
-                    [compra.usuario_id, card.id]
-                );
-            }
+        sorteadas = sortearCards(cards, compraAtual.quantity);
 
             await client.query(
                 `UPDATE sticker_pack_purchases
                     SET status = 'paid', paid_at = NOW(),
                         mp_order_id = COALESCE(mp_order_id, $2),
-                        figurinhas = $3
+                        figurinhas = $3,
+                        open_status = 'unopened', opened_at = NULL
                   WHERE id = $1`,
-                [compra.id, mpOrderId, sorteadas.map((c) => c.id)]
+                [compraAtual.id, mpOrderId, sorteadas.map((c) => c.id)]
             );
 
             await client.query("COMMIT");
@@ -1150,35 +1370,219 @@ module.exports = function criarModuloColecionaveis(deps) {
             client.release();
         }
 
+        const compraBase = compraAtual || compra;
+
+        if (compraBase.story_opt_in && typeof registrarStoryEvento === "function") {
+            await registrarStoryEvento({
+                eventKey: `pack:${compraBase.order_id}`,
+                kind: "pack",
+                title: "🎁 NOVO PACOTE",
+                subtitle: `${pack.name} • ${sorteadas.length} figurinhas`,
+                actionType: "pack",
+                actionId: pack.id,
+                metadata: { packId: pack.id, quantity: sorteadas.length }
+            });
+        }
+
         await registrarTransacaoCol(
-            compra.usuario_id,
+            compraBase.usuario_id,
             "PACOTE_COMPRADO",
             `Comprou o pacote ${pack.name} com ${sorteadas.length} figurinhas.`,
             Number(pack.price),
-            compra.order_id
+            compraBase.order_id
         );
 
-        for (const card of sorteadas) {
-            await registrarTransacaoCol(
-                compra.usuario_id,
-                "FIGURINHA_RECEBIDA",
-                `Recebeu a figurinha #${String(card.number).padStart(3, "0")} ${card.name}.`,
-                0,
-                compra.order_id
-            );
-        }
-
-        const colecao = await colecaoAtiva();
-        if (colecao) {
-            await verificarConquistas(compra.usuario_id, colecao.id);
-        }
-
         registrarLog("colecionavel_pacote_pago", {
-            compraId: compra.id,
+            compraId: compraBase.id,
             mpOrderId,
-            usuarioId: compra.usuario_id,
+            usuarioId: compraBase.usuario_id,
             figurinhas: sorteadas.length
         });
+    }
+
+    router.post("/packs/purchases/:id/open", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        const client = await pg().connect();
+        try {
+            await client.query("BEGIN");
+            const purchaseQ = await client.query(
+                `SELECT spp.*, pk.name AS pack_name
+                   FROM sticker_pack_purchases spp
+                   JOIN sticker_packs pk ON pk.id = spp.pack_id
+                  WHERE spp.id = $1 AND spp.usuario_id = $2
+                  FOR UPDATE`,
+                [Number(req.params.id), req.usuario.id]
+            );
+            const purchase = purchaseQ.rows[0];
+            if (!purchase) {
+                await client.query("ROLLBACK");
+                return res.status(404).json({ error: "Pacote não encontrado." });
+            }
+            if (purchase.status !== "paid") {
+                await client.query("ROLLBACK");
+                return res.status(400).json({ error: "O pagamento deste pacote ainda não foi confirmado." });
+            }
+            if (!Array.isArray(purchase.figurinhas) || !purchase.figurinhas.length) {
+                await client.query("ROLLBACK");
+                return res.status(409).json({ error: "O sorteio deste pacote ainda não está disponível." });
+            }
+
+            const ids = purchase.figurinhas.map(Number);
+            const cardQ = await client.query(
+                `SELECT id, number, name, rarity, scientific_name, habitat, peso
+                   FROM sticker_cards
+                  WHERE collection_id = (SELECT collection_id FROM sticker_packs WHERE id = $1)
+                    AND is_active = TRUE`,
+                [purchase.pack_id]
+            );
+            const porId = new Map(cardQ.rows.map(card => [card.id, card]));
+            const cards = ids.map(id => porId.get(id)).filter(Boolean);
+
+            if (purchase.open_status !== "opened") {
+                for (const card of cards) {
+                    await client.query(
+                        `INSERT INTO user_stickers (usuario_id, card_id, quantity)
+                         VALUES ($1,$2,1)
+                         ON CONFLICT (usuario_id, card_id)
+                         DO UPDATE SET quantity = user_stickers.quantity + 1`,
+                        [req.usuario.id, card.id]
+                    );
+                }
+                await client.query(
+                    `UPDATE sticker_pack_purchases
+                        SET open_status = 'opened', opened_at = NOW()
+                      WHERE id = $1 AND open_status = 'unopened'`,
+                    [purchase.id]
+                );
+            }
+            await client.query("COMMIT");
+
+            for (const card of cards) {
+                await registrarTransacaoCol(
+                    req.usuario.id,
+                    "FIGURINHA_RECEBIDA",
+                    `Recebeu a figurinha #${String(card.number).padStart(3, "0")} ${card.name}.`,
+                    0,
+                    purchase.order_id
+                );
+                if (purchase.story_opt_in && typeof registrarStoryEvento === "function" && ["RARA", "EPICA", "LENDARIA", "MITICA"].includes(card.rarity)) {
+                    await registrarStoryEvento({
+                        eventKey: `pack:${purchase.order_id}:card:${card.id}`,
+                        kind: "card",
+                        title: `✨ NOVA FIGURINHA ${card.rarity}`,
+                        subtitle: `${card.name} • #${String(card.number).padStart(3, "0")}`,
+                        actionType: "card",
+                        actionId: card.id,
+                        metadata: { cardId: card.id, rarity: card.rarity, number: Number(card.number) }
+                    });
+                }
+            }
+            const colecao = await colecaoAtiva();
+            if (colecao) await verificarConquistas(req.usuario.id, colecao.id);
+            res.json({ ok: true, aberto: true, purchaseId: purchase.id, pacote: { nome: purchase.pack_name, quantidade: purchase.quantity, figurinhas: cards } });
+        } catch (error) {
+            try { await client.query("ROLLBACK"); } catch(e) {}
+            res.status(500).json({ error: error.message });
+        } finally {
+            client.release();
+        }
+    });
+
+    router.get("/meus-pacotes", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            const direct = await pg().query(
+                `SELECT spp.id, spp.quantity, spp.open_status, spp.opened_at, pk.name AS pack_name
+                   FROM sticker_pack_purchases spp JOIN sticker_packs pk ON pk.id = spp.pack_id
+                  WHERE spp.usuario_id = $1 AND spp.status = 'paid' AND spp.open_status <> 'opened'
+                  ORDER BY spp.paid_at ASC, spp.id ASC`,
+                [req.usuario.id]
+            );
+            const kits = await pg().query(
+                `SELECT inv.id, pk.name AS pack_name, 'kit' AS origem
+                   FROM sticker_pack_inventory inv JOIN sticker_packs pk ON pk.id = inv.pack_id
+                  WHERE inv.usuario_id = $1 AND inv.status = 'unopened'
+                  ORDER BY inv.created_at ASC, inv.id ASC`,
+                [req.usuario.id]
+            );
+            res.json({ ok: true, pacotes: [
+                ...direct.rows.map(row => ({ id: row.id, tipo: "purchase", nome: row.pack_name, quantidade: row.quantity })),
+                ...kits.rows.map(row => ({ id: row.id, tipo: "kit", nome: row.pack_name, quantidade: 1 }))
+            ] });
+        } catch (error) { res.status(500).json({ error: error.message }); }
+    });
+
+    router.post("/packs/inventory/:id/open", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        const client = await pg().connect();
+        try {
+            await client.query("BEGIN");
+            const invQ = await client.query(
+                `SELECT inv.*, pk.name AS pack_name, pk.collection_id, pk.sticker_quantity
+                   FROM sticker_pack_inventory inv JOIN sticker_packs pk ON pk.id = inv.pack_id
+                  WHERE inv.id = $1 AND inv.usuario_id = $2 FOR UPDATE`,
+                [Number(req.params.id), req.usuario.id]
+            );
+            const inv = invQ.rows[0];
+            if (!inv) { await client.query("ROLLBACK"); return res.status(404).json({ error: "Pacote do kit não encontrado." }); }
+            if (inv.status === "opened" && Array.isArray(inv.figurinhas)) {
+                await client.query("ROLLBACK");
+                return res.json({ ok: true, aberto: true, pacote: { nome: inv.pack_name, figurinhas: [] } });
+            }
+            const cardsQ = await client.query(
+                `SELECT id, number, name, rarity, scientific_name, habitat, peso
+                   FROM sticker_cards WHERE collection_id = $1 AND is_active = TRUE ORDER BY id`,
+                [inv.collection_id]
+            );
+            const sorteadas = sortearCards(cardsQ.rows, Number(inv.sticker_quantity) || 3);
+            for (const card of sorteadas) {
+                await client.query(
+                    `INSERT INTO user_stickers (usuario_id, card_id, quantity) VALUES ($1,$2,1)
+                     ON CONFLICT (usuario_id, card_id) DO UPDATE SET quantity = user_stickers.quantity + 1`,
+                    [req.usuario.id, card.id]
+                );
+            }
+            await client.query(
+                `UPDATE sticker_pack_inventory SET status = 'opened', opened_at = NOW(), figurinhas = $2 WHERE id = $1`,
+                [inv.id, sorteadas.map(card => card.id)]
+            );
+            await client.query("COMMIT");
+            for (const card of sorteadas) {
+                await registrarTransacaoCol(req.usuario.id, "FIGURINHA_RECEBIDA", `Recebeu a figurinha #${String(card.number).padStart(3, "0")} ${card.name}.`, 0, `KIT-PACK-${inv.id}`);
+            }
+            const colecao = await colecaoAtiva();
+            if (colecao) await verificarConquistas(req.usuario.id, colecao.id);
+            res.json({ ok: true, aberto: true, pacote: { nome: inv.pack_name, quantidade: sorteadas.length, figurinhas: sorteadas } });
+        } catch (error) {
+            try { await client.query("ROLLBACK"); } catch(e) {}
+            res.status(500).json({ error: error.message });
+        } finally { client.release(); }
+    });
+
+    async function confirmarCompraLeilao(order, mpOrderId) {
+        const client = await pg().connect();
+        try {
+            await client.query("BEGIN");
+            const q = await client.query(`SELECT * FROM sticker_auctions WHERE id = $1 FOR UPDATE`, [order.auction_id]);
+            const auction = q.rows[0];
+            if (!auction || auction.status !== "payment_pending" || auction.winner_id !== order.buyer_id) throw new Error("Leilão não está aguardando pagamento deste vencedor.");
+            const reservation = await client.query(`SELECT * FROM sticker_auction_reservations WHERE auction_id = $1 AND status = 'reserved' FOR UPDATE`, [auction.id]);
+            if (!reservation.rows[0]) throw new Error("Reserva do leilão não encontrada.");
+            const removed = await client.query(`UPDATE user_stickers SET quantity = quantity - 1 WHERE usuario_id = $1 AND card_id = $2 AND quantity >= 1`, [auction.seller_id, auction.card_id]);
+            if (!removed.rowCount) throw new Error("O vendedor não possui mais a figurinha reservada.");
+            await client.query(`INSERT INTO user_stickers (usuario_id, card_id, quantity) VALUES ($1,$2,1) ON CONFLICT (usuario_id, card_id) DO UPDATE SET quantity = user_stickers.quantity + 1`, [order.buyer_id, auction.card_id]);
+            await client.query(`UPDATE sticker_auction_orders SET status = 'paid', paid_at = NOW(), mp_order_id = COALESCE(mp_order_id, $2) WHERE id = $1`, [order.id, mpOrderId]);
+            await client.query(`UPDATE sticker_auctions SET status = 'paid', payment_status = 'paid', closed_at = COALESCE(closed_at, NOW()) WHERE id = $1`, [auction.id]);
+            await client.query(`UPDATE sticker_auction_reservations SET status = 'transferred', released_at = NOW() WHERE auction_id = $1`, [auction.id]);
+            await client.query("COMMIT");
+            const card = await cardPorId(auction.card_id);
+            const label = card ? `#${String(card.number).padStart(3, "0")} ${card.name}` : `#${auction.card_id}`;
+            await registrarTransacaoCol(order.buyer_id, "LEILAO_COMPRADO", `Arrematou ${label} por R$ ${Number(order.total).toFixed(2)}.`, Number(order.total), order.order_id);
+            await registrarTransacaoCol(auction.seller_id, "LEILAO_VENDIDO", `Vendeu ${label} por R$ ${Number(order.seller_amount).toFixed(2)} após taxa.`, Number(order.seller_amount), order.order_id);
+        } catch (error) {
+            try { await client.query("ROLLBACK"); } catch(e) {}
+            throw error;
+        } finally { client.release(); }
     }
 
     async function confirmarCompraMercado(order, mpOrderId) {
@@ -1222,13 +1626,16 @@ module.exports = function criarModuloColecionaveis(deps) {
             }
 
             /* Transfere do vendedor para o comprador */
-            await client.query(
+            const retirada = await client.query(
                 `UPDATE user_stickers
                     SET quantity = quantity - $3
                   WHERE usuario_id = $1 AND card_id = $2
                     AND quantity >= $3`,
                 [listing.seller_id, order.card_id, order.quantity]
             );
+            if (!retirada.rowCount) {
+                throw new Error("O vendedor não possui mais a quantidade anunciada.");
+            }
 
             await client.query(
                 `INSERT INTO user_stickers (usuario_id, card_id, quantity)
@@ -1699,11 +2106,12 @@ module.exports = function criarModuloColecionaveis(deps) {
             await pg().query(
                 `INSERT INTO sticker_pack_purchases
                     (usuario_id, pack_id, order_id, mp_order_id, payment_id,
-                     payment_type, price, quantity, status, test)
-                 VALUES ($1,$2,$3,$4,$5,'STICKER_PACK',$6,$7,'pending',$8)`,
+                     payment_type, price, quantity, status, test, story_opt_in)
+                 VALUES ($1,$2,$3,$4,$5,'STICKER_PACK',$6,$7,'pending',$8,$9)`,
                 [req.usuario.id, pack.id, orderId, String(mp.orderId), paymentId,
                  valor, Number(pack.sticker_quantity),
-                 !!process.env.ALLOW_TEST_MODE]
+                  !!process.env.ALLOW_TEST_MODE,
+                  req.body.storyOptIn === true || req.body.storyOptIn === "true"]
             );
 
             await registrarTransacaoCol(
@@ -1747,8 +2155,8 @@ module.exports = function criarModuloColecionaveis(deps) {
     async function obterResultadoPacotePersistido(usuarioId, orderId) {
         const pool = pg();
         const detQ = await pool.query(
-            `SELECT spp.id, spp.quantity, spp.figurinhas,
-                    pk.name AS pack_name
+            `SELECT spp.id, spp.quantity, spp.figurinhas, spp.open_status, spp.opened_at,
+                    pk.name AS pack_name, pk.collection_id
                FROM sticker_pack_purchases spp
                JOIN sticker_packs pk ON pk.id = spp.pack_id
               WHERE (spp.mp_order_id = $1 OR spp.order_id = $1)
@@ -1761,19 +2169,21 @@ module.exports = function criarModuloColecionaveis(deps) {
         const det = detQ.rows[0];
         if (!det) return null;
 
-        const ids = det.figurinhas;
+        const ids = det.figurinhas.map(Number);
         if (!Array.isArray(ids) || !ids.length) return null;
 
         const cardQ = await pool.query(
             `SELECT id, number, name, rarity, scientific_name, habitat, peso
-               FROM sticker_cards
-              WHERE id = ANY($1::int[])`,
-            [ids]
+               FROM sticker_cards WHERE collection_id = $1 AND is_active = TRUE`,
+            [det.collection_id]
         );
         const porId = new Map(cardQ.rows.map((r) => [r.id, r]));
 
         return {
             nome: det.pack_name,
+            purchaseId: det.id,
+            aberto: det.open_status === "opened",
+            abertoEm: det.opened_at,
             quantidade: det.quantity,
             figurinhas: ids.map((id) => {
                 const c = porId.get(id) || {};
@@ -1811,12 +2221,32 @@ module.exports = function criarModuloColecionaveis(deps) {
                  UNION ALL
                  SELECT proposer_id, mp_order_id, order_id, status, 'trade' AS tipo
                    FROM sticker_trades
-                  WHERE (mp_order_id = $1 OR order_id = $1) AND proposer_id = $2`,
+                  WHERE (mp_order_id = $1 OR order_id = $1) AND proposer_id = $2
+                 UNION ALL
+                 SELECT buyer_id, mp_order_id, order_id, status, 'auction' AS tipo
+                   FROM sticker_auction_orders
+                  WHERE (mp_order_id = $1 OR order_id = $1) AND buyer_id = $2`,
                 [orderId, req.usuario.id]
             );
 
             if (!dono.rows.length) {
                 return res.status(403).json({ error: "Acesso negado a este pedido." });
+            }
+
+            const splitOrder = await pg().query(
+                `SELECT status FROM sticker_orders
+                  WHERE (mp_order_id = $1 OR order_id = $1)
+                    AND buyer_id = $2 AND payment_type = 'STICKER_MARKETPLACE_SPLIT'
+                  LIMIT 1`,
+                [orderId, req.usuario.id]
+            );
+            if (splitOrder.rows[0]) {
+                return res.json({
+                    ok: true,
+                    status: splitOrder.rows[0].status === "paid" ? "RECEIVED" : "pending",
+                    orderId,
+                    marketplace: true
+                });
             }
 
             /* Consulta no MP pelo id numérico real da Order. */
@@ -1846,6 +2276,260 @@ module.exports = function criarModuloColecionaveis(deps) {
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
+    });
+
+    /* =========================================================
+       LEILÕES DE FIGURINHAS
+       Sem checkout: o encerramento com lance vencedor fica em
+       payment_pending e a unidade permanece reservada.
+       ========================================================= */
+
+    async function expirarLeiloesVencidos() {
+        if (!pgOk()) return;
+        const vencidos = await pg().query(
+            `SELECT id FROM sticker_auctions
+              WHERE status = 'active' AND ends_at <= NOW()`
+        );
+        for (const row of vencidos.rows) {
+            const client = await pg().connect();
+            try {
+                await client.query("BEGIN");
+                const aq = await client.query(
+                    `SELECT * FROM sticker_auctions
+                      WHERE id = $1 AND status = 'active' FOR UPDATE`,
+                    [row.id]
+                );
+                const auction = aq.rows[0];
+                if (!auction) { await client.query("ROLLBACK"); continue; }
+                const bq = await client.query(
+                    `SELECT bidder_id, amount FROM sticker_auction_bids
+                      WHERE auction_id = $1
+                      ORDER BY amount DESC, id ASC LIMIT 1`,
+                    [auction.id]
+                );
+                if (bq.rows[0]) {
+                    await client.query(
+                        `UPDATE sticker_auctions
+                            SET status = 'payment_pending', payment_status = 'pending',
+                                current_bid = $2, winner_id = $3, closed_at = NOW()
+                          WHERE id = $1`,
+                        [auction.id, bq.rows[0].amount, bq.rows[0].bidder_id]
+                    );
+                } else {
+                    await client.query(
+                        `UPDATE sticker_auctions SET status = 'expired', closed_at = NOW() WHERE id = $1`,
+                        [auction.id]
+                    );
+                    await client.query(
+                        `UPDATE sticker_auction_reservations
+                            SET status = 'released', released_at = NOW()
+                          WHERE auction_id = $1 AND status = 'reserved'`,
+                        [auction.id]
+                    );
+                }
+                await client.query("COMMIT");
+            } catch (error) {
+                try { await client.query("ROLLBACK"); } catch (e) {}
+                throw error;
+            } finally { client.release(); }
+        }
+    }
+
+    function formatarLeilao(row) {
+        return {
+            id: row.id,
+            seller_id: row.seller_id,
+            seller_nome: row.seller_nome,
+            card_id: row.card_id,
+            number: Number(row.number),
+            name: row.name,
+            rarity: row.rarity,
+            image_url: row.image_url,
+            minimum_bid: Number(row.minimum_bid),
+            current_bid: row.current_bid == null ? null : Number(row.current_bid),
+            winner_id: row.winner_id,
+            status: row.status,
+            payment_status: row.payment_status,
+            bid_count: Number(row.bid_count || 0),
+            ends_at: row.ends_at,
+            created_at: row.created_at,
+            closed_at: row.closed_at
+        };
+    }
+
+    const auctionSelect = `
+        SELECT a.id, a.seller_id, a.card_id, a.minimum_bid, a.current_bid,
+               a.winner_id, a.status, a.payment_status, a.ends_at,
+               a.created_at, a.closed_at,
+               c.id AS card_id, c.number, c.name, c.rarity, c.image_url,
+               u.nome AS seller_nome
+          FROM sticker_auctions a
+          JOIN sticker_cards c ON c.id = a.card_id
+          JOIN usuarios u ON u.id = a.seller_id`;
+
+    async function comContagemLances(rows) {
+        for (const row of rows) {
+            const count = await pg().query(
+                `SELECT COUNT(*)::int AS qtd FROM sticker_auction_bids WHERE auction_id = $1`,
+                [row.id]
+            );
+            row.bid_count = count.rows[0]?.qtd || 0;
+        }
+        return rows;
+    }
+
+    router.get("/auctions", async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            await expirarLeiloesVencidos();
+            const status = req.query.status === "all" ? null : (req.query.status || "active");
+            const params = [];
+            let where = "c.is_active = TRUE";
+            if (status) { params.push(status); where += ` AND a.status = $${params.length}`; }
+            const q = await pg().query(`${auctionSelect} WHERE ${where} ORDER BY a.created_at DESC`, params);
+            res.json({ ok: true, auctions: (await comContagemLances(q.rows)).map(formatarLeilao) });
+        } catch (error) { res.status(500).json({ error: error.message }); }
+    });
+
+    router.get("/auctions/mine", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            await expirarLeiloesVencidos();
+            const q = await pg().query(`${auctionSelect} WHERE a.seller_id = $1 ORDER BY a.created_at DESC`, [req.usuario.id]);
+            res.json({ ok: true, auctions: (await comContagemLances(q.rows)).map(formatarLeilao) });
+        } catch (error) { res.status(500).json({ error: error.message }); }
+    });
+
+    router.get("/auctions/:id", async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            await expirarLeiloesVencidos();
+            const q = await pg().query(`${auctionSelect} WHERE a.id = $1`, [Number(req.params.id)]);
+            if (!q.rows[0]) return res.status(404).json({ error: "Leilão não encontrado." });
+            const bids = await pg().query(
+                `SELECT b.id, b.bidder_id, u.nome AS bidder_nome, b.amount, b.created_at
+                   FROM sticker_auction_bids b JOIN usuarios u ON u.id = b.bidder_id
+                  WHERE b.auction_id = $1 ORDER BY b.amount DESC, b.id ASC`,
+                [Number(req.params.id)]
+            );
+            q.rows[0].bid_count = bids.rows.length;
+            res.json({ ok: true, auction: formatarLeilao(q.rows[0]), bids: bids.rows.map(b => ({ ...b, amount: Number(b.amount) })) });
+        } catch (error) { res.status(500).json({ error: error.message }); }
+    });
+
+    router.post("/auctions", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        const contaRecebimento = await marketplaceConta(req.usuario.id);
+        if (!contaRecebimento && process.env.ALLOW_TEST_MODE !== "true") {
+            return res.status(400).json({ error: "Para vender ou leiloar figurinhas, conecte sua conta de recebimento." });
+        }
+        const cardId = Number(req.body.cardId);
+        const minimumBid = Math.round(Number(req.body.minimumBid ?? req.body.lanceMinimo) * 100) / 100;
+        const endsAt = req.body.endsAt ? new Date(req.body.endsAt) : new Date(Date.now() + 48 * 3600 * 1000);
+        if (!Number.isInteger(cardId) || cardId < 1 || !isFinite(minimumBid) || minimumBid <= 0 || minimumBid > 99999) {
+            return res.status(400).json({ error: "Figurinha ou lance mínimo inválido." });
+        }
+        if (Number.isNaN(endsAt.getTime()) || endsAt.getTime() <= Date.now()) {
+            return res.status(400).json({ error: "A data de encerramento deve estar no futuro." });
+        }
+        const client = await pg().connect();
+        try {
+            await client.query("BEGIN");
+            const cardQ = await client.query(`SELECT * FROM sticker_cards WHERE id = $1 AND is_active = TRUE`, [cardId]);
+            if (!cardQ.rows[0]) { await client.query("ROLLBACK"); return res.status(400).json({ error: "Figurinha inválida." }); }
+            const ownQ = await client.query(`SELECT quantity FROM user_stickers WHERE usuario_id = $1 AND card_id = $2 FOR UPDATE`, [req.usuario.id, cardId]);
+            const possui = Number(ownQ.rows[0]?.quantity || 0);
+            const blockedQ = await client.query(
+                `SELECT
+                    (SELECT COALESCE(SUM(quantity),0) FROM sticker_listings WHERE seller_id = $1 AND card_id = $2 AND status = 'active') AS listings,
+                    (SELECT COUNT(*) FROM sticker_trade_items ti JOIN sticker_trades t ON t.id = ti.trade_id WHERE ti.owner_id = $1 AND ti.card_id = $2 AND t.status IN ('PENDING','COUNTER_OFFER','ACCEPTED','WAITING_PAYMENT','PAID','PROCESSING')) AS trades,
+                    (SELECT COUNT(*) FROM sticker_auction_reservations r JOIN sticker_auctions a ON a.id = r.auction_id WHERE r.owner_id = $1 AND r.card_id = $2 AND r.status = 'reserved' AND a.status IN ('active','payment_pending')) AS auctions`,
+                [req.usuario.id, cardId]
+            );
+            const blocked = Number(blockedQ.rows[0].listings) + Number(blockedQ.rows[0].trades) + Number(blockedQ.rows[0].auctions);
+            if (possui - blocked < 1) {
+                await client.query("ROLLBACK");
+                return res.status(400).json({ error: "Você não possui uma unidade disponível desta figurinha." });
+            }
+            const inserted = await client.query(
+                `INSERT INTO sticker_auctions (seller_id, card_id, minimum_bid, ends_at)
+                 VALUES ($1,$2,$3,$4) RETURNING id`,
+                [req.usuario.id, cardId, minimumBid, endsAt]
+            );
+            await client.query(
+                `INSERT INTO sticker_auction_reservations (auction_id, owner_id, card_id) VALUES ($1,$2,$3)`,
+                [inserted.rows[0].id, req.usuario.id, cardId]
+            );
+            await client.query("COMMIT");
+            res.status(201).json({ ok: true, auctionId: inserted.rows[0].id, status: "active", reserved: true, paymentStatus: "not_applicable" });
+        } catch (error) {
+            try { await client.query("ROLLBACK"); } catch (e) {}
+            res.status(500).json({ error: error.message });
+        } finally { client.release(); }
+    });
+
+    router.post("/auctions/:id/bids", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        await expirarLeiloesVencidos();
+        const amount = Math.round(Number(req.body.amount ?? req.body.lance) * 100) / 100;
+        if (!isFinite(amount) || amount <= 0) return res.status(400).json({ error: "Valor do lance inválido." });
+        const client = await pg().connect();
+        try {
+            await client.query("BEGIN");
+            const q = await client.query(`SELECT * FROM sticker_auctions WHERE id = $1 FOR UPDATE`, [Number(req.params.id)]);
+            const auction = q.rows[0];
+            if (!auction) { await client.query("ROLLBACK"); return res.status(404).json({ error: "Leilão não encontrado." }); }
+            if (auction.status !== "active" || new Date(auction.ends_at).getTime() <= Date.now()) {
+                await client.query("ROLLBACK"); return res.status(400).json({ error: "Este leilão não está ativo." });
+            }
+            if (auction.seller_id === req.usuario.id) { await client.query("ROLLBACK"); return res.status(400).json({ error: "O vendedor não pode dar lance." }); }
+            const minimum = Math.max(Number(auction.minimum_bid), Number(auction.current_bid || 0) + 0.01);
+            if (amount < minimum) { await client.query("ROLLBACK"); return res.status(400).json({ error: `O lance mínimo é R$ ${minimum.toFixed(2)}.` }); }
+            await client.query(`INSERT INTO sticker_auction_bids (auction_id, bidder_id, amount) VALUES ($1,$2,$3)`, [auction.id, req.usuario.id, amount]);
+            await client.query(`UPDATE sticker_auctions SET current_bid = $2, winner_id = $3 WHERE id = $1`, [auction.id, amount, req.usuario.id]);
+            await client.query("COMMIT");
+            res.status(201).json({ ok: true, auctionId: auction.id, amount, status: "active", paymentStatus: "not_applicable" });
+        } catch (error) {
+            try { await client.query("ROLLBACK"); } catch (e) {}
+            res.status(500).json({ error: error.message });
+        } finally { client.release(); }
+    });
+
+    async function encerrarLeilao(id, usuarioId, forcarExpiracao) {
+        const client = await pg().connect();
+        try {
+            await client.query("BEGIN");
+            const q = await client.query(`SELECT * FROM sticker_auctions WHERE id = $1 FOR UPDATE`, [id]);
+            const auction = q.rows[0];
+            if (!auction) { await client.query("ROLLBACK"); return { error: "Leilão não encontrado.", code: 404 }; }
+            if (auction.seller_id !== usuarioId) { await client.query("ROLLBACK"); return { error: "Este leilão não é seu.", code: 403 }; }
+            if (auction.status !== "active") { await client.query("ROLLBACK"); return { error: "Este leilão não está ativo.", code: 400 }; }
+            const bq = await client.query(`SELECT bidder_id, amount FROM sticker_auction_bids WHERE auction_id = $1 ORDER BY amount DESC, id ASC LIMIT 1`, [id]);
+            const bid = forcarExpiracao ? null : bq.rows[0];
+            if (bid) {
+                await client.query(`UPDATE sticker_auctions SET status = 'payment_pending', payment_status = 'pending', current_bid = $2, winner_id = $3, closed_at = NOW() WHERE id = $1`, [id, bid.amount, bid.bidder_id]);
+            } else {
+                await client.query(`UPDATE sticker_auctions SET status = $2, closed_at = NOW() WHERE id = $1`, [id, forcarExpiracao ? "expired" : "closed"]);
+                await client.query(`UPDATE sticker_auction_reservations SET status = 'released', released_at = NOW() WHERE auction_id = $1 AND status = 'reserved'`, [id]);
+            }
+            await client.query("COMMIT");
+            return { ok: true, status: bid ? "payment_pending" : (forcarExpiracao ? "expired" : "closed"), winnerId: bid?.bidder_id || null, paymentStatus: bid ? "pending" : "not_applicable" };
+        } catch (error) {
+            try { await client.query("ROLLBACK"); } catch (e) {}
+            throw error;
+        } finally { client.release(); }
+    }
+
+    router.post("/auctions/:id/close", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try { const result = await encerrarLeilao(Number(req.params.id), req.usuario.id, false); res.status(result.code || 200).json(result); }
+        catch (error) { res.status(500).json({ error: error.message }); }
+    });
+
+    router.post("/auctions/:id/expire", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try { const result = await encerrarLeilao(Number(req.params.id), req.usuario.id, true); res.status(result.code || 200).json(result); }
+        catch (error) { res.status(500).json({ error: error.message }); }
     });
 
     /* =========================================================
@@ -1938,6 +2622,10 @@ module.exports = function criarModuloColecionaveis(deps) {
             return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
         }
         try {
+            const contaRecebimento = await marketplaceConta(req.usuario.id);
+            if (!contaRecebimento && process.env.ALLOW_TEST_MODE !== "true") {
+                return res.status(400).json({ error: "Para vender ou leiloar figurinhas, conecte sua conta de recebimento." });
+            }
             const { cardId, quantidade, preco } = req.body;
 
             const card = await cardPorId(cardId);
@@ -2025,6 +2713,47 @@ module.exports = function criarModuloColecionaveis(deps) {
         }
     });
 
+    router.get("/listings/:id/chat", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            const listingQ = await pg().query(`SELECT id, seller_id FROM sticker_listings WHERE id = $1`, [Number(req.params.id)]);
+            const listing = listingQ.rows[0];
+            if (!listing) return res.status(404).json({ error: "Anúncio não encontrado." });
+            const buyerId = listing.seller_id === req.usuario.id ? Number(req.query.buyerId) : req.usuario.id;
+            if (!buyerId || buyerId === listing.seller_id) return res.status(400).json({ error: "Informe o interessado da conversa." });
+            const allowed = listing.seller_id === req.usuario.id || buyerId === req.usuario.id;
+            if (!allowed) return res.status(403).json({ error: "Acesso negado à conversa." });
+            const messages = await pg().query(
+                `SELECT m.id, m.author_id, u.nome AS autor_nome, m.text, m.created_at
+                   FROM sticker_listing_messages m JOIN usuarios u ON u.id = m.author_id
+                  WHERE m.listing_id = $1 AND m.seller_id = $2 AND m.buyer_id = $3
+                  ORDER BY m.created_at ASC`,
+                [listing.id, listing.seller_id, buyerId]
+            );
+            res.json({ ok: true, listingId: listing.id, sellerId: listing.seller_id, buyerId, messages: messages.rows });
+        } catch (error) { res.status(500).json({ error: error.message }); }
+    });
+
+    router.post("/listings/:id/chat", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            const text = String(req.body.text || "").trim();
+            if (!text || text.length > 500) return res.status(400).json({ error: "Mensagem inválida." });
+            const listingQ = await pg().query(`SELECT id, seller_id FROM sticker_listings WHERE id = $1`, [Number(req.params.id)]);
+            const listing = listingQ.rows[0];
+            if (!listing) return res.status(404).json({ error: "Anúncio não encontrado." });
+            const buyerId = listing.seller_id === req.usuario.id ? Number(req.body.buyerId) : req.usuario.id;
+            if (!buyerId || buyerId === listing.seller_id) return res.status(400).json({ error: "Conversa inválida." });
+            if (listing.seller_id !== req.usuario.id && buyerId !== req.usuario.id) return res.status(403).json({ error: "Acesso negado à conversa." });
+            const inserted = await pg().query(
+                `INSERT INTO sticker_listing_messages (listing_id, seller_id, buyer_id, author_id, text)
+                 VALUES ($1,$2,$3,$4,$5) RETURNING id, author_id, text, created_at`,
+                [listing.id, listing.seller_id, buyerId, req.usuario.id, text]
+            );
+            res.status(201).json({ ok: true, message: inserted.rows[0] });
+        } catch (error) { res.status(500).json({ error: error.message }); }
+    });
+
     /* Cancela anúncio (devolve figurinhas à disponibilidade). */
     router.delete("/listings/:id", obterAuthUsuario(), async (req, res) => {
         if (!pgOk()) {
@@ -2091,11 +2820,20 @@ module.exports = function criarModuloColecionaveis(deps) {
                 return res.status(400).json({ error: "Você não pode comprar do próprio anúncio." });
             }
 
+            const contaVendedor = await marketplaceConta(listing.seller_id);
+            if (!contaVendedor && process.env.ALLOW_TEST_MODE !== "true") {
+                return res.status(400).json({ error: "O vendedor ainda não conectou uma conta de recebimento." });
+            }
+            if ((!mercadopagoMarketplaceSplitEnabled || typeof criarOrderMercadoPagoSplit !== "function") && process.env.ALLOW_TEST_MODE !== "true") {
+                return res.status(503).json({ error: "O split oficial do marketplace ainda não foi configurado no Mercado Pago." });
+            }
+
             const qtd = Math.max(1, Math.min(Number(req.body.quantidade) || 1, Number(listing.quantity)));
 
             const total = Math.round(listing.unit_price * qtd * 100) / 100;
             const fee = Math.round(total * MARKETPLACE_FEE_PERCENT) / 100;
             const netSeller = Math.round((total - fee) * 100) / 100;
+            const splitUsado = mercadopagoMarketplaceSplitEnabled && typeof criarOrderMercadoPagoSplit === "function" && !!contaVendedor;
 
             const usuario = await usuarioPorId(req.usuario.id);
             if (!usuario) {
@@ -2105,10 +2843,14 @@ module.exports = function criarModuloColecionaveis(deps) {
             const orderId = gerarOrderId("COL-BUY");
             const paymentId = crypto.randomUUID();
 
-            const mp = await criarOrderMercadoPago({
+            const criarOrder = mercadopagoMarketplaceSplitEnabled && typeof criarOrderMercadoPagoSplit === "function"
+                ? criarOrderMercadoPagoSplit : criarOrderMercadoPago;
+            const mp = await criarOrder({
                 idempotencyKey: orderId,
                 externalReference: orderId,
                 value: total,
+                sellerAccount: contaVendedor,
+                platformFee: fee,
                 description: `MegaOutdoor Colecionáveis — Compra no mercado`,
                 customer: {
                     name: comprador.nome || usuario.nome,
@@ -2124,13 +2866,13 @@ module.exports = function criarModuloColecionaveis(deps) {
             await pg().query(
                 `INSERT INTO sticker_orders
                     (buyer_id, seller_id, card_id, listing_id, quantity,
-                     unit_price, total, fee, net_seller, order_id, mp_order_id, payment_id,
-                     payment_type, status, test)
+                      unit_price, total, fee, net_seller, order_id, mp_order_id, payment_id,
+                      payment_type, status, test)
                  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
-                         'STICKER_PURCHASE','pending',$13)`,
+                         $13,'pending',$14)`,
                 [req.usuario.id, listing.seller_id, listing.card_id, listing.id,
                  qtd, Number(listing.unit_price), total, fee, netSeller,
-                 orderId, String(mp.orderId), paymentId, !!process.env.ALLOW_TEST_MODE]
+                 orderId, String(mp.orderId), paymentId, splitUsado ? "STICKER_MARKETPLACE_SPLIT" : "STICKER_PURCHASE", !!process.env.ALLOW_TEST_MODE]
             );
 
             await registrarTransacaoCol(
@@ -2168,6 +2910,47 @@ module.exports = function criarModuloColecionaveis(deps) {
             });
             res.status(500).json({ error: formatarErroPagamento(error) });
         }
+    });
+
+    router.post("/auctions/:id/pay", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        const validacao = validarComprador(req);
+        if (!validacao.ok) return res.status(400).json({ error: validacao.error });
+        try {
+            const q = await pg().query(
+                `SELECT a.*, u.nome AS seller_nome
+                   FROM sticker_auctions a JOIN usuarios u ON u.id = a.seller_id
+                  WHERE a.id = $1 AND a.status = 'payment_pending'`,
+                [Number(req.params.id)]
+            );
+            const auction = q.rows[0];
+            if (!auction || auction.winner_id !== req.usuario.id) return res.status(403).json({ error: "Somente o vencedor pode pagar este leilão." });
+            const contaVendedor = await marketplaceConta(auction.seller_id);
+            const splitDisponivel = mercadopagoMarketplaceSplitEnabled && typeof criarOrderMercadoPagoSplit === "function";
+            if ((!contaVendedor || !splitDisponivel) && process.env.ALLOW_TEST_MODE !== "true") {
+                return res.status(503).json({ error: "O split oficial do marketplace ainda não está disponível para este leilão." });
+            }
+            const orderId = gerarOrderId("COL-AUCTION");
+            const total = Number(auction.current_bid);
+            const criarOrder = splitDisponivel ? criarOrderMercadoPagoSplit : criarOrderMercadoPago;
+            const mp = await criarOrder({
+                idempotencyKey: orderId, externalReference: orderId, value: total,
+                sellerAccount: contaVendedor,
+                platformFee: Math.round(total * mercadopagoMarketplaceFeePercent) / 100,
+                description: "Milhão Door Colecionáveis — Leilão",
+                customer: { name: validacao.comprador.nome || req.usuario.nome, taxID: validacao.comprador.documento, email: validacao.comprador.email || req.usuario.email },
+                paymentMethod: req.body.paymentMethod || "pix",
+                paymentMethodId: req.body.paymentMethodId,
+                cardToken: req.body.cardToken,
+                installments: req.body.installments
+            });
+            await pg().query(
+                `INSERT INTO sticker_auction_orders (auction_id, buyer_id, order_id, mp_order_id, payment_id, total, fee, seller_amount)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+                [auction.id, req.usuario.id, orderId, String(mp.orderId), mp.paymentId || null, total, Math.round(total * 0.1 * 100) / 100, Math.round(total * 0.9 * 100) / 100]
+            );
+            res.json({ ok: true, orderId: String(mp.orderId), externalReference: orderId, qrCodeBase64: mp.qrCodeBase64, payload: mp.payload, ticketUrl: mp.ticketUrl, valor: total });
+        } catch (error) { res.status(500).json({ error: formatarErroPagamento(error) }); }
     });
 
     /* =========================================================
@@ -2499,12 +3282,15 @@ module.exports = function criarModuloColecionaveis(deps) {
         try {
             await expirarNegociacoesVencidas();
 
-            const { trade, ok } = await podeAtualizarTrade(
-                req.params.id, req.usuario.id, { proposer: false, receiver: true }
+            const { trade } = await podeAtualizarTrade(
+                req.params.id, req.usuario.id, { proposer: true, receiver: true }
             );
 
             if (!trade) return res.status(404).json({ error: "Negociação não encontrada." });
-            if (!ok) return res.status(403).json({ error: "Somente o destinatário pode aceitar." });
+            const podeAceitar = trade.status === "COUNTER_OFFER"
+                ? trade.proposer_id === req.usuario.id
+                : trade.receiver_id === req.usuario.id;
+            if (!podeAceitar) return res.status(403).json({ error: "Este usuário não pode aceitar a etapa atual." });
 
             if (trade.status !== "PENDING" && trade.status !== "COUNTER_OFFER") {
                 return res.status(400).json({ error: "Esta proposta não pode mais ser aceita." });
@@ -2541,11 +3327,20 @@ module.exports = function criarModuloColecionaveis(deps) {
 
                 const pagante = await usuarioPorId(paganteId);
                 const orderId = trade.order_id || gerarOrderId("COL-TRADE-PAY");
+                const sellerId = trade.cash_direction === "proposer_pays" ? trade.receiver_id : trade.proposer_id;
+                const sellerAccount = await marketplaceConta(sellerId);
+                const splitUsado = mercadopagoMarketplaceSplitEnabled && typeof criarOrderMercadoPagoSplit === "function" && !!sellerAccount;
+                if (!splitUsado && process.env.ALLOW_TEST_MODE !== "true") {
+                    return res.status(503).json({ error: "O split oficial do marketplace ainda não está disponível para esta negociação." });
+                }
 
-                const mp = await criarOrderMercadoPago({
+                const criarOrder = splitUsado ? criarOrderMercadoPagoSplit : criarOrderMercadoPago;
+                const mp = await criarOrder({
                     idempotencyKey: orderId,
                     externalReference: orderId,
                     value: Number(trade.cash_amount),
+                    sellerAccount: sellerAccount,
+                    platformFee: Math.round(Number(trade.cash_amount) * mercadopagoMarketplaceFeePercent) / 100,
                     description: `MegaOutdoor Colecionáveis — Diferença de troca`,
                     customer: {
                         name: comprador.nome || pagante.nome,
@@ -2563,9 +3358,10 @@ module.exports = function criarModuloColecionaveis(deps) {
                         SET status = 'WAITING_PAYMENT',
                             order_id = $2,
                             mp_order_id = $3,
+                            payment_type = $4,
                             updated_at = NOW()
                       WHERE id = $1`,
-                    [trade.id, orderId, String(mp.orderId)]
+                    [trade.id, orderId, String(mp.orderId), splitUsado ? "STICKER_TRADE_SPLIT" : "STICKER_TRADE"]
                 );
 
                 await registrarHistoricoTrade(trade.id, `[ACEITA] Negociação aceita. Aguardando pagamento da diferença.`);
@@ -2850,7 +3646,13 @@ module.exports = function criarModuloColecionaveis(deps) {
             const pacotesQ = await pg().query(
                 `SELECT COUNT(*)::int AS pacotes
                    FROM sticker_pack_purchases
-                  WHERE usuario_id = $1 AND status = 'paid'`,
+                  WHERE usuario_id = $1 AND status = 'paid' AND open_status = 'opened'`,
+                [req.usuario.id]
+            );
+
+            const mensalQ = await pg().query(
+                `SELECT reward_key, completed_at FROM sticker_monthly_rewards
+                  WHERE usuario_id = $1 ORDER BY completed_at DESC LIMIT 1`,
                 [req.usuario.id]
             );
 
@@ -2914,6 +3716,10 @@ module.exports = function criarModuloColecionaveis(deps) {
                     vendas: Number(vendasQ.rows[0]?.vendas || 0),
                     compras: Number(comprasQ.rows[0]?.compras || 0),
                     pacotes_abertos: Number(pacotesQ.rows[0]?.pacotes || 0),
+                    recompensa_mensal: mensalQ.rows[0] ? {
+                        reward: mensalQ.rows[0].reward_key,
+                        completedAt: mensalQ.rows[0].completed_at
+                    } : null,
                     ranking: Number(rankQ.rows[0]?.posicao || 1),
                     total_colecionadores: Number(totalColecionadores.rows[0]?.total || 0),
                     stats: {
@@ -3459,6 +4265,17 @@ module.exports = function criarModuloColecionaveis(deps) {
                 if (!RARIDADES[rarity]) {
                     return res.status(400).json({ error: "Raridade inválida." });
                 }
+                const limite = rarity === "LENDARIA" ? 5 : rarity === "MITICA" ? 3 : null;
+                if (limite && card.rarity !== rarity) {
+                    const qtdQ = await pg().query(
+                        `SELECT COUNT(*)::int AS qtd FROM sticker_cards
+                          WHERE collection_id = $1 AND rarity = $2 AND is_active = TRUE`,
+                        [card.collection_id, rarity]
+                    );
+                    if (Number(qtdQ.rows[0]?.qtd || 0) >= limite) {
+                        return res.status(400).json({ error: `A edição deve manter no máximo ${limite} ${rarity}.` });
+                    }
+                }
                 params.push(rarity);
                 campos.push(`rarity = $${params.length}`);
             }
@@ -3689,6 +4506,7 @@ module.exports = function criarModuloColecionaveis(deps) {
         router,
         migrar,
         processarPagamento,
+        processarMarketplacePayment,
         sortearRaridade,
         sortearCards,
         entregarPacoteParaUsuario

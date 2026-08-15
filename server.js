@@ -2061,75 +2061,104 @@ function validarAssinaturaWebhook(req) {
         return false;
     }
 
+    /* Implementação equivalente ao WebhookSignatureValidator oficial
+       do Mercado Pago (sdk-nodejs/src/utils/webhook):
+       - lê req.headers["x-signature"] e req.headers["x-request-id"];
+       - para a API Orders, o id da Order chega no QUERY parameter
+         data.id (ex.: POST /webhooks/mercadopago?data.id=...&type=order),
+         NÃO no campo data.id do corpo da requisição;
+       - manifesto assinado: id:<data.id>;request-id:<x-request-id>;ts:<ts>;
+         pares ausentes são omitidos;
+       - compara o HMAC-SHA256 (hex) em tempo constante. */
+
+    const normalizar = (valor) => {
+        if (valor === undefined || valor === null) {
+            return "";
+        }
+        const bruto = Array.isArray(valor) ? valor[0] : valor;
+        if (bruto === undefined || bruto === null) {
+            return "";
+        }
+        return String(bruto).trim();
+    };
+
     const signatureHeader =
-        req.headers["x-signature"] ||
-        req.headers["X-Signature"] ||
-        "";
+        normalizar(req.headers["x-signature"]) ||
+        normalizar(req.headers["X-Signature"]);
 
     const requestId =
-        req.headers["x-request-id"] ||
-        req.headers["X-Request-Id"] ||
-        "";
-
-    const evento = req.body || {};
-    const dataId = evento.data?.id || "";
+        normalizar(req.headers["x-request-id"]) ||
+        normalizar(req.headers["X-Request-Id"]);
 
     if (!signatureHeader) {
         console.warn("Webhook Mercado Pago sem x-signature.");
         return false;
     }
 
-    const parts = signatureHeader.split(",").reduce((acc, part) => {
-        const idx = part.indexOf("=");
-        if (idx > 0) {
-            const key = part.substring(0, idx).trim();
-            const value = part.substring(idx + 1).trim();
-            acc[key] = value;
+    const query = req.query || {};
+    const dataId =
+        normalizar(query["data.id"]) ||
+        normalizar(query.data?.id) ||
+        normalizar(query["data_id"]) ||
+        normalizar(query.id);
+
+    const hashes = {};
+    let ts = "";
+
+    for (const part of signatureHeader.split(",")) {
+        const eq = part.indexOf("=");
+        if (eq === -1) {
+            continue;
         }
-        return acc;
-    }, {});
+        const key = part.substring(0, eq).trim().toLowerCase();
+        const value = part.substring(eq + 1).trim();
+        if (!key || !value) {
+            continue;
+        }
+        if (key === "ts") {
+            ts = value;
+        } else if (/^v\d+$/.test(key)) {
+            hashes[key] = value;
+        }
+    }
 
-    const ts = parts.ts;
-    const v1 = parts.v1;
-
-    if (!ts || !v1) {
+    if (!ts || !/^\d+$/.test(ts)) {
         console.warn("Webhook Mercado Pago: x-signature malformado.");
         return false;
     }
 
-    /* Mercado Pago envia a assinatura como HMAC-SHA256 do manifesto:
-       id:<data.id>;request-id:<x-request-id>;ts:<ts>;
-       Testamos variações conhecidas para robustez. */
+    const v1 = hashes.v1;
 
-    const manifestBase = `id:${dataId};ts:${ts};`;
-    const manifestFull = `id:${dataId};request-id:${requestId};ts:${ts};`;
-
-    const candidatos = [
-        manifestBase,
-        manifestFull,
-        `${ts}:${dataId}`,
-        `${ts}:${requestId}:${dataId}`
-    ];
-
-    for (const payload of candidatos) {
-        const expected = crypto
-            .createHmac("sha256", MERCADOPAGO_WEBHOOK_SECRET)
-            .update(payload)
-            .digest("hex");
-
-        const a = Buffer.from(v1, "utf8");
-        const b = Buffer.from(expected, "utf8");
-
-        if (
-            a.length === b.length &&
-            crypto.timingSafeEqual(a, b)
-        ) {
-            return true;
-        }
+    if (!v1) {
+        console.warn("Webhook Mercado Pago: assinatura sem hash v1.");
+        return false;
     }
 
-    console.warn("Webhook Mercado Pago: assinatura inválida.");
-    return false;
+    const trechos = [];
+    if (dataId) {
+        trechos.push(`id:${dataId}`);
+    }
+    if (requestId) {
+        trechos.push(`request-id:${requestId}`);
+    }
+    trechos.push(`ts:${ts}`);
+
+    const manifest = trechos.join(";") + ";";
+
+    const expected = crypto
+        .createHmac("sha256", MERCADOPAGO_WEBHOOK_SECRET)
+        .update(manifest)
+        .digest("hex");
+
+    if (
+        Buffer.byteLength(expected) !== Buffer.byteLength(v1) ||
+        !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(v1))
+    ) {
+        console.warn("Webhook Mercado Pago: assinatura inválida.");
+        return false;
+    }
+
+    return true;
 }
 
 /* =========================
@@ -6573,21 +6602,37 @@ app.post("/webhooks/mercadopago", async (req, res) => {
     }
 
     const evento = req.body || {};
+    const query = req.query || {};
+
+    const dataIdQuery = String(
+        query["data.id"] ??
+        query.data?.id ??
+        query["data_id"] ??
+        query.id ??
+        ""
+    ).trim();
+
+    const dataIdCorpo = String(
+        (evento.data && evento.data.id) || ""
+    ).trim();
+
+    const dataIdWebhook = dataIdQuery || dataIdCorpo;
+    const tipoEvento = String(query.type || evento.type || "");
 
     console.log("Webhook Mercado Pago recebido:", {
-        type: evento.type,
+        type: tipoEvento,
         action: evento.action,
-        orderId: evento.data?.id
+        orderId: dataIdWebhook
     });
 
     /* Processamos apenas notificações de Order. */
-    if (evento.type !== "order" || !evento.data?.id) {
+    if (tipoEvento !== "order" || !dataIdWebhook) {
         return res.status(200).json({ received: true });
     }
 
     try {
 
-        const orderId = String(evento.data.id);
+        const orderId = dataIdWebhook;
 
         /* Sempre consultamos a Order na API do Mercado Pago.
            Nunca confiamos apenas no payload recebido. */

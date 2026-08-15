@@ -344,7 +344,8 @@ async function main() {
     t("M) request cartão sem notification_url",
         !!pedidoCard && pedidoCard.body.notification_url === undefined);
 
-    /* N) webhook continua funcionando */
+    /* N) webhook continua funcionando (formato oficial da API Orders:
+       POST /webhooks/mercadopago?data.id=<id>&type=order) */
     const espRes2 = await reqJson(BASE + "/api/checkout",
         json("POST", userTok, {
             spaces: [999996], aceiteRegras: true, name: "Pix Test", email,
@@ -353,23 +354,45 @@ async function main() {
     t("N) espaço reservado (pré-webhook)", espRes2.r.status === 200,
         "status=" + espRes2.r.status + " mpOrderId=" + espRes2.body.mpOrderId);
 
-    const evento = { type: "order", data: { id: String(espRes2.body.mpOrderId) } };
-    const ts = Math.floor(Date.now() / 1000);
-    const rid = "teste-request-" + Date.now();
-    const manifest = "id:" + evento.data.id + ";request-id:" + rid + ";ts:" + ts + ";";
-    const hmac = crypto
-        .createHmac("sha256", process.env.MERCADOPAGO_WEBHOOK_SECRET)
-        .update(manifest)
-        .digest("hex");
+    const dataId = String(espRes2.body.mpOrderId);
+    const evento = { type: "order", data: { id: dataId } };
+    const urlWebhook = BASE + "/webhooks/mercadopago?data.id=" + dataId + "&type=order";
+    const assinatura = (idManifest, ts, rid) => {
+        const manifest = "id:" + idManifest + ";request-id:" + rid + ";ts:" + ts + ";";
+        return crypto
+            .createHmac("sha256", process.env.MERCADOPAGO_WEBHOOK_SECRET)
+            .update(manifest)
+            .digest("hex");
+    };
 
-    const wErr = await reqJson(BASE + "/webhooks/mercadopago", json("POST", null, evento));
+    /* Sem assinatura -> 401. */
+    const wErr = await reqJson(urlWebhook, json("POST", null, evento));
     t("N) assinatura ausente -> 401", wErr.r.status === 401, "status=" + wErr.r.status);
 
-    const wOk = await reqJson(BASE + "/webhooks/mercadopago", {
+    /* Assinatura com data.id ERRADO (divergente do query) -> 401:
+       prova que a validação usa o query parameter data.id. */
+    const tsErrado = Math.floor(Date.now() / 1000);
+    const ridErrado = "teste-request-errado-" + Date.now();
+    const wErrado = await reqJson(urlWebhook, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            "x-signature": "ts=" + ts + ",v1=" + hmac,
+            "x-signature": "ts=" + tsErrado + ",v1=" + assinatura("999999", tsErrado, ridErrado),
+            "x-request-id": ridErrado
+        },
+        body: JSON.stringify(evento)
+    });
+    t("N) assinatura com id errado -> 401",
+        wErrado.r.status === 401, "status=" + wErrado.r.status);
+
+    /* Assinatura oficial com o query data.id -> 200 + liberação. */
+    const ts = Math.floor(Date.now() / 1000);
+    const rid = "teste-request-" + Date.now();
+    const wOk = await reqJson(urlWebhook, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-signature": "ts=" + ts + ",v1=" + assinatura(dataId, ts, rid),
             "x-request-id": rid
         },
         body: JSON.stringify(evento)
@@ -383,6 +406,21 @@ async function main() {
     t("N) espaço pago via webhook",
         dbEsp["999996"] && dbEsp["999996"].status === "paid",
         "status=" + (dbEsp["999996"] && dbEsp["999996"].status));
+
+    /* Repetição do mesmo webhook (idempotente) não quebra nada. */
+    const ts2 = Math.floor(Date.now() / 1000);
+    const rid2 = "teste-request-repetido-" + Date.now();
+    const wRep = await reqJson(urlWebhook, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-signature": "ts=" + ts2 + ",v1=" + assinatura(dataId, ts2, rid2),
+            "x-request-id": rid2
+        },
+        body: JSON.stringify(evento)
+    });
+    t("N) repetição do webhook idempotente",
+        wRep.r.status === 200, "status=" + wRep.r.status);
 
     /* ---- resultado ---- */
     const falhas = log.filter(l => l.startsWith("FAIL"));

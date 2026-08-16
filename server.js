@@ -3168,6 +3168,7 @@ app.get("/api/marketplace/oauth/connect", authUsuario, async (req, res) => {
             code_challenge: challenge,
             code_challenge_method: "S256"
         });
+        console.log(`[oauth-connect] usuario_id=${req.usuario.id} redirect_uri=${MERCADOPAGO_REDIRECT_URI}`);
         const authorizationUrl = "https://auth.mercadopago.com.br/authorization?" + params.toString();
         if (String(req.headers.accept || "").includes("application/json")) {
             return res.json({ ok: true, authorizationUrl });

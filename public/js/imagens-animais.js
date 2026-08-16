@@ -65,7 +65,7 @@
         "Serpente-real": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/12_-_The_Mystical_King_Cobra_and_Coffee_Forests.jpg/960px-12_-_The_Mystical_King_Cobra_and_Coffee_Forests.jpg",
         "Sapo-cururu": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Canetoadmale.jpg/960px-Canetoadmale.jpg",
         "Polvo-comum": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Octopus2.jpg/960px-Octopus2.jpg",
-        "Caranguejo-eremita": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Pagurus_bernhardus.jpg/960px-Pagurus_bernhardus.jpg",
+        "Caranguejo-eremita": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Pagurus_bernhardus.jpg/960px-Pagurus_bernhardus.jpg",
         "Abelha-europeia": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Apis_mellifera_Western_honey_bee.jpg/960px-Apis_mellifera_Western_honey_bee.jpg",
         "Okapi": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Saint-Aignan_%28Loir-et-Cher%29._Okapi.jpg/960px-Saint-Aignan_%28Loir-et-Cher%29._Okapi.jpg",
         "Saiga": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Saiga_antelope_at_the_Stepnoi_Sanctuary.jpg/960px-Saiga_antelope_at_the_Stepnoi_Sanctuary.jpg",
@@ -76,7 +76,7 @@
         "Dugongo": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Dugong.JPG/960px-Dugong.JPG",
         "Peixe-boi-amazônico": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Manati_amazonico_en_Iquitos.jpg/960px-Manati_amazonico_en_Iquitos.jpg",
         "Axolote": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Axolotl_ganz.jpg/960px-Axolotl_ganz.jpg",
-        "Geco-leopardo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Leopard_gecko_%28Eublepharis_macularius%29.jpg/960px-Leopard_gecko_%28Eublepharis_macularius%29.jpg",
+        "Geco-leopardo": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Eublepharis_macularius_2009_G5.jpg/960px-Eublepharis_macularius_2009_G5.jpg",
         "Narval": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/%D0%9D%D0%B0%D1%80%D0%B2%D0%B0%D0%BB_%D0%B2_%D1%80%D0%BE%D1%81%D1%81%D0%B8%D0%B9%D1%81%D0%BA%D0%BE%D0%B9_%D0%90%D1%80%D0%BA%D1%82%D0%B8%D0%BA%D0%B5.jpg/960px-%D0%9D%D0%B0%D1%80%D0%B2%D0%B0%D0%BB_%D0%B2_%D1%80%D0%BE%D1%81%D1%81%D0%B8%D0%B9%D1%81%D0%BA%D0%BE%D0%B9_%D0%90%D1%80%D0%BA%D1%82%D0%B8%D0%BA%D0%B5.jpg",
         "Beluga": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Oceanogr%C3%A0fic_29102004.jpg/960px-Oceanogr%C3%A0fic_29102004.jpg",
         "Urso-de-óculos": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Tremarctos_ornatus_in_Jardim_Zool%C3%B3gico_de_Curitiba.jpg/960px-Tremarctos_ornatus_in_Jardim_Zool%C3%B3gico_de_Curitiba.jpg",
@@ -88,11 +88,11 @@
         "Cutia": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Agouti_Azarae.JPG/960px-Agouti_Azarae.JPG",
         "Paca": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Paca_walking_in_grass_close_up_-_DPLA_-_826590946052c7217e313ec0a53c7f17.jpg/960px-Paca_walking_in_grass_close_up_-_DPLA_-_826590946052c7217e313ec0a53c7f17.jpg",
         "Ouriço-cacheiro": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Hystrix_cristata_qtl1.jpg/960px-Hystrix_cristata_qtl1.jpg",
-        "Musaranho-elefante": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Elephantulus_rufescens.jpg/960px-Elephantulus_rufescens.jpg",
+        "Musaranho-elefante": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Galegeeska_rufescens_zoo_frankfurt.jpg/960px-Galegeeska_rufescens_zoo_frankfurt.jpg",
         "Tarsius": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Tarsius_tarsier_Tandurusa_zoo.JPG/960px-Tarsius_tarsier_Tandurusa_zoo.JPG",
         "Pangolim": "https://upload.wikimedia.org/wikipedia/commons/9/94/Manis_pentadactyla_%2829054818144%29.jpg",
         "Pica-pau-imperador": "https://upload.wikimedia.org/wikipedia/commons/9/95/Kaiserspecht_fg02.jpg",
-        "Vaquita": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Vaquita_size.svg/960px-Vaquita_size.svg.png",
+        "Vaquita": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Vaquita4_Olson_NOAA.jpg/960px-Vaquita4_Olson_NOAA.jpg",
         "Lince-ibérico": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Lince_ib%C3%A9rico_%28Lynx_pardinus%29%2C_Almuradiel%2C_Ciudad_Real%2C_Espa%C3%B1a%2C_2021-12-19%2C_DD_07.jpg/960px-Lince_ib%C3%A9rico_%28Lynx_pardinus%29%2C_Almuradiel%2C_Ciudad_Real%2C_Espa%C3%B1a%2C_2021-12-19%2C_DD_07.jpg",
         "Leopardo-das-neves": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Irbis4.JPG/960px-Irbis4.JPG",
         "Tigre-de-bengala": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Bengal_tiger_in_Sanjay_Dubri_Tiger_Reserve_December_2024_by_Tisha_Mukherjee_11.jpg/960px-Bengal_tiger_in_Sanjay_Dubri_Tiger_Reserve_December_2024_by_Tisha_Mukherjee_11.jpg",
@@ -106,7 +106,7 @@
         "Condor-andino": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/AndeanCondorMale.jpg/960px-AndeanCondorMale.jpg",
         "Rinoceronte-de-sumatra": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Sumatran_Rhinoceros_at_Sumatran_Rhino_Sanctuary_Lampung_Indonesia_2013.JPG/960px-Sumatran_Rhinoceros_at_Sumatran_Rhino_Sanctuary_Lampung_Indonesia_2013.JPG",
         "Baleia-azul": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Anim1754_-_Flickr_-_NOAA_Photo_Library.jpg/960px-Anim1754_-_Flickr_-_NOAA_Photo_Library.jpg",
-        "Lula-colossal": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Colossal_squid_size_comparison.png/960px-Colossal_squid_size_comparison.png"
+        "Lula-colossal": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Colossal_squid_in_Te_Papa.jpg/960px-Colossal_squid_in_Te_Papa.jpg"
     };
 
     const REGIOES_ANIMAIS = {

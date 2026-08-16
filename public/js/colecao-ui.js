@@ -260,7 +260,7 @@
         const imgUrl = imagemAnimal(card);
         let conteudo;
         if (imgUrl) {
-            conteudo = '<img class="cc-img" src="' + esc(imgUrl) + '" alt="' + esc(card.name || "") + '" loading="lazy" decoding="async">';
+            conteudo = '<img class="cc-img" src="' + esc(imgUrl) + '" alt="' + esc(card.name || "") + '" data-nome="' + esc(card.name || "") + '" loading="lazy" decoding="async" onerror="window.ColecaoUIFallbackImg&&ColecaoUIFallbackImg(this)">';
         } else {
             conteudo = '<span class="cc-emoji">' + emojiAnimal(card) + '</span>';
         }
@@ -504,6 +504,18 @@
     }
 
     /* ===== exportação ===== */
+    function fallbackImagemFigurinha(imgEl) {
+        const nome = (imgEl && imgEl.getAttribute && imgEl.getAttribute("data-nome")) || "";
+        const emoji = EMOJI_ANIMAIS[nome] || "🐾";
+        const span = document.createElement("span");
+        span.className = "cc-emoji";
+        span.textContent = emoji;
+        if (imgEl && imgEl.replaceWith) imgEl.replaceWith(span);
+    }
+    if (typeof global.ColecaoUIFallbackImg !== "function") {
+        global.ColecaoUIFallbackImg = fallbackImagemFigurinha;
+    }
+
     const API = {
         esc: esc,
         padNum: padNum,

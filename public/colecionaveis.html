@@ -2470,6 +2470,17 @@ function fecharModal(){
    INICIALIZAÇÃO
 ========================================================= */
 window.addEventListener("load", () => {
+    const mp = new URLSearchParams(window.location.search).get("mercadopago");
+    if (mp === "connected") {
+        toast("🟢 Mercado Pago conectado com sucesso!", "ok");
+    } else if (mp === "error") {
+        toast("🔴 Não foi possível conectar o Mercado Pago. Verifique se a aplicação está habilitada como Marketplace no painel do Mercado Pago.", "erro");
+    }
+    if (mp) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("mercadopago");
+        window.history.replaceState({}, "", url.toString());
+    }
     atualizarHeader();
     carregarInfo().then(() => {
         mudarAba("album");

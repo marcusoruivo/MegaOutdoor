@@ -3181,11 +3181,26 @@ app.get("/api/marketplace/oauth/connect", authUsuario, async (req, res) => {
 
 app.get("/api/marketplace/oauth/callback", async (req, res) => {
     let oauthClient = null;
+    const sanitize = (value) => String(value || "").replace(/\s+/g, " ").trim().slice(0, 300);
+    const log = (message) => console.log("[oauth-callback]", sanitize(message));
     try {
         const code = String(req.query.code || "");
         const state = String(req.query.state || "");
-        if (!code || !state) return res.status(400).send("Autorização inválida.");
-        if (!MERCADOPAGO_CLIENT_ID || !MERCADOPAGO_CLIENT_SECRET || !MERCADOPAGO_REDIRECT_URI || !pgDisponivel || !pgPool) return res.status(503).send("OAuth não configurado.");
+        const oauthError = String(req.query.error || "");
+        const oauthErrorDescription = String(req.query.error_description || "");
+        log(`callback recebido | code=${code ? "presente" : "ausente"} | state=${state ? "presente" : "ausente"} | erro_mp=${oauthError || "nenhum"}`);
+        if (oauthError) {
+            log(`Mercado Pago recusou a autorização: ${oauthError} ${oauthErrorDescription}`);
+            return res.redirect("/colecionaveis.html?mercadopago=error");
+        }
+        if (!code || !state) {
+            log("code ou state ausente no callback");
+            return res.status(400).send("Autorização inválida.");
+        }
+        if (!MERCADOPAGO_CLIENT_ID || !MERCADOPAGO_CLIENT_SECRET || !MERCADOPAGO_REDIRECT_URI || !pgDisponivel || !pgPool) {
+            log("OAuth não configurado no ambiente");
+            return res.status(503).send("OAuth não configurado.");
+        }
         oauthClient = await pgPool.connect();
         await oauthClient.query("BEGIN");
         const stateQ = await oauthClient.query(
@@ -3195,18 +3210,22 @@ app.get("/api/marketplace/oauth/callback", async (req, res) => {
         );
         if (!stateQ.rows[0]) {
             await oauthClient.query("ROLLBACK");
+            log("state inválido, expirado ou já utilizado");
             return res.status(400).send("Estado OAuth inválido ou já utilizado.");
         }
         const oauthState = stateQ.rows[0];
         const verifier = descriptografarMarketplace(oauthState.verifier_enc);
         if (!verifier) {
             await oauthClient.query("ROLLBACK");
+            log("verifier não pôde ser descriptografado");
             return res.status(400).send("Estado OAuth inválido.");
         }
+        log("state validado para usuario_id=" + oauthState.usuario_id);
         await oauthClient.query("UPDATE marketplace_oauth_states SET used_at = NOW() WHERE state = $1", [state]);
         await oauthClient.query("COMMIT");
         oauthClient.release();
         oauthClient = null;
+        log("trocando authorization code por access token");
         const response = await fetch("https://api.mercadopago.com/oauth/token", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -3220,7 +3239,15 @@ app.get("/api/marketplace/oauth/callback", async (req, res) => {
             }).toString()
         });
         const data = await response.json();
-        if (!response.ok || !data.access_token || !data.user_id) return res.status(502).send("Não foi possível concluir a conexão Mercado Pago.");
+        log(`token MP respondeu HTTP ${response.status}`);
+        if (!response.ok) {
+            log(`falha na troca do code: ${data.error || response.status} ${data.error_description || ""}`);
+            return res.status(502).send("Não foi possível concluir a conexão Mercado Pago.");
+        }
+        if (!data.access_token || !data.user_id) {
+            log("resposta da troca sem access_token ou user_id");
+            return res.status(502).send("Não foi possível concluir a conexão Mercado Pago.");
+        }
         await pgPool.query(
             `INSERT INTO marketplace_accounts
                 (usuario_id, seller_user_id, access_token_enc, refresh_token_enc, public_key, expires_at)
@@ -3234,10 +3261,11 @@ app.get("/api/marketplace/oauth/callback", async (req, res) => {
                 updated_at = NOW()`,
             [oauthState.usuario_id, String(data.user_id), criptografarMarketplace(data.access_token), criptografarMarketplace(data.refresh_token), data.public_key || null, Number(data.expires_in || 15552000)]
         );
+        log(`conta conectada com sucesso para usuario_id=${oauthState.usuario_id}`);
         res.redirect("/colecionaveis.html?mercadopago=connected");
     } catch (error) {
         if (oauthClient) { try { await oauthClient.query("ROLLBACK"); } catch(e) {} oauthClient.release(); }
-        console.error("ERRO no callback OAuth Mercado Pago:", error.message);
+        log("erro interno: " + error.message);
         res.status(400).send("Não foi possível concluir a autorização Mercado Pago.");
     }
 });

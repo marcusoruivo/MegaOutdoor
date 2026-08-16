@@ -5174,6 +5174,7 @@ let touchPinch = null;
 let db = {};
 
 let sel = new Set();
+let hoveredSpaceId = null;
 let paidSpaces = [];
 let ultimoCupom = "";
 
@@ -6299,7 +6300,15 @@ T-2,
 T-2
 );
 
-if(sc>.14){
+if(
+  sc > .14 &&
+  (
+    hoveredSpaceId === id ||
+    sel.has(id) ||
+    searchTarget === id ||
+    storyHighlightIds.has(id)
+  )
+){
 
 ctx.save();
 const fonteNumero = Math.max(20, Math.min(52, 8 / sc));
@@ -6310,7 +6319,7 @@ ctx.textAlign =
 "center";
 
 ctx.fillStyle =
-sel.has(id) ? "#111" : (v ? "#fff3a6" : "#ffd400");
+sel.has(id) ? "#ffd400" : (v ? "#fff3a6" : "#ffd400");
 ctx.shadowColor = "rgba(0,0,0,.9)";
 ctx.shadowBlur = 3 / sc;
 
@@ -7556,7 +7565,41 @@ return;
 
 }
 
-if(!drag)return;
+if(!drag){
+
+const pos = getMousePos(e);
+
+const hcol =
+Math.floor(
+((pos.x-x)/sc)/T
+);
+
+const hrow =
+Math.floor(
+((pos.y-y)/sc)/T
+);
+
+const hid =
+(
+  hcol>=0 &&
+  hrow>=0 &&
+  hcol<C &&
+  hrow<C
+)
+? hrow*C+hcol+1
+: null;
+
+if(hid !== hoveredSpaceId){
+
+hoveredSpaceId = hid;
+
+draw();
+
+}
+
+return;
+
+}
 
 if(
 Math.abs(
@@ -7604,6 +7647,19 @@ return;
 }
 
 drag=false;
+
+};
+
+area.onpointerleave =
+()=>{
+
+if(hoveredSpaceId !== null){
+
+hoveredSpaceId = null;
+
+draw();
+
+}
 
 };
 

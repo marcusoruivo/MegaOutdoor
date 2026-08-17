@@ -495,15 +495,15 @@ html,body{
 .story-consent input{width:auto;margin-top:3px;accent-color:#ffd400}
 .story-consent b{display:block;color:#ffd400;font-size:11px;letter-spacing:.3px}
 .story-consent small{display:block;color:#aaa;font-size:11px;line-height:1.4;margin-top:3px}
-.stories-shell{display:none;max-width:1180px;margin:14px auto 0;padding:12px 16px;background:rgba(17,17,17,.88);border:1px solid rgba(255,212,0,.18);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
-.stories-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;font-size:10px;font-weight:900;letter-spacing:1.4px;color:var(--accent)}
+.stories-shell{display:none;width:100%;max-width:none;margin:0;padding:10px 0;background:rgba(17,17,17,.88);border:0;border-bottom:1px solid rgba(255,212,0,.18);border-radius:0;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.stories-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;font-size:10px;font-weight:900;letter-spacing:1.4px;color:var(--accent);padding:0 16px}
 .stories-ticker{font-size:11px;color:var(--text-secondary);font-weight:600;letter-spacing:0;text-transform:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .story-sponsor{border:1px solid rgba(255,212,0,.45);border-radius:999px;background:rgba(255,212,0,.08);color:var(--accent);padding:5px 9px;font-size:9px;font-weight:800;white-space:nowrap;cursor:pointer}
-.stories-list{display:flex;gap:14px;overflow-x:auto;padding:2px 2px 5px;scrollbar-width:thin}
-.story-bubble{flex:0 0 76px;border:0;background:none;color:var(--texto);cursor:pointer;padding:0;text-align:center}
-.story-ring{width:58px;height:58px;margin:0 auto 5px;border-radius:50%;padding:3px;background:linear-gradient(135deg,#ffd400,#ff7a00,#b06bff)}
+.stories-list{display:flex;gap:14px;overflow-x:auto;padding:2px 16px 5px;scrollbar-width:thin}
+.story-bubble{flex:0 0 66px;border:0;background:none;color:var(--texto);cursor:pointer;padding:0;text-align:center}
+.story-ring{width:48px;height:48px;margin:0 auto 5px;border-radius:50%;padding:3px;background:linear-gradient(135deg,#ffd400,#ff7a00,#b06bff)}
 .story-bubble.seen .story-ring{background:#454545}
-.story-face{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#111;border:2px solid #171717;font-size:23px}
+.story-face{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#111;border:2px solid #171717;font-size:19px}
 .story-label{display:block;font-size:10px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .story-viewer{display:none;position:fixed;inset:0;z-index:1800;background:rgba(0,0,0,.92);align-items:center;justify-content:center;padding:18px}
 .story-viewer.open{display:flex}
@@ -517,15 +517,15 @@ html,body{
 .story-title{font-size:24px;font-weight:900;line-height:1.15;color:#fff}
 .story-subtitle{font-size:15px;color:#bbb;margin-top:10px;line-height:1.5}
 .story-action{margin-top:24px;min-width:190px}
-@media(max-width:640px){.stories-shell{margin:10px 10px 0;padding:11px}.stories-head{align-items:flex-start;flex-direction:column;gap:4px}.story-card{min-height:460px}.story-title{font-size:21px}}
+@media(max-width:640px){.stories-shell{margin:0;padding:10px 0}.stories-head{align-items:flex-start;flex-direction:column;gap:4px}.story-card{min-height:460px}.story-title{font-size:21px}}
 
 /* ÚLTIMAS COMPRAS */
-.ultimas-compras-shell{display:none;max-width:1180px;margin:14px auto 0;padding:12px 16px;background:rgba(17,17,17,.88);border:1px solid rgba(69,223,110,.18);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
-.ultimas-compras-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:10px;font-weight:900;letter-spacing:1.4px;color:var(--success)}
+.ultimas-compras-shell{display:none;width:100%;max-width:none;margin:0;padding:10px 0;background:rgba(17,17,17,.88);border:0;border-bottom:1px solid rgba(69,223,110,.18);border-radius:0;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.ultimas-compras-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:10px;font-weight:900;letter-spacing:1.4px;color:var(--success);padding:0 16px}
 .ao-vivo-badge{background:var(--success);color:#000;padding:3px 8px;border-radius:999px;font-size:9px;font-weight:900;animation:pulseAoVivo 2s ease-in-out infinite}
 @keyframes pulseAoVivo{0%,100%{opacity:1}50%{opacity:.6}}
 .atualizando-info{font-size:10px;color:var(--text-muted);font-weight:600;margin-left:auto}
-.ultimas-compras-ticker{display:flex;gap:20px;overflow-x:auto;padding:8px 4px;scrollbar-width:thin;scroll-behavior:smooth}
+.ultimas-compras-ticker{display:flex;gap:20px;overflow-x:auto;padding:8px 16px;scrollbar-width:thin;scroll-behavior:smooth}
 .compra-item{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(69,223,110,.08);border:1px solid rgba(69,223,110,.2);border-radius:12px;white-space:nowrap}
 .compra-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--success),#2dd36f);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#000;flex-shrink:0;overflow:hidden}
 .compra-avatar img{width:100%;height:100%;object-fit:cover}
@@ -535,7 +535,7 @@ html,body{
 .compra-tempo{font-size:10px;color:var(--text-muted)}
 
 /* STORIES CTA */
-.stories-cta-shell{display:none;max-width:1180px;margin:14px auto 0;padding:20px;background:linear-gradient(135deg,rgba(255,212,0,.08),rgba(255,122,0,.08));border:1px solid rgba(255,212,0,.3);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.stories-cta-shell{display:none;width:100%;max-width:none;margin:0;padding:20px 16px;background:linear-gradient(135deg,rgba(255,212,0,.08),rgba(255,122,0,.08));border:0;border-bottom:1px solid rgba(255,212,0,.3);border-radius:0;box-shadow:0 10px 30px rgba(0,0,0,.25)}
 .stories-cta-content{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:center}
 .stories-cta-text h2{font-size:24px;font-weight:900;color:var(--text-primary);margin:0 0 10px 0}
 .stories-cta-text p{font-size:14px;color:var(--text-secondary);margin:0 0 16px 0;line-height:1.5}
@@ -3699,7 +3699,7 @@ body.footer-visible #area{
     .stories-shell,
     .ultimas-compras-shell,
     .stories-cta-shell{
-        margin-top:14px
+        margin-top:0
     }
 }
 </style>

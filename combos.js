@@ -70,6 +70,7 @@ module.exports = function criarModuloCombos(deps) {
         statusOrderPago,
         orderPagaMercadoPago,
         paraCentavos,
+        descontoEmCentavos,
         registrarLog,
         obterPool,
         obterPgDisponivel,
@@ -284,9 +285,12 @@ module.exports = function criarModuloCombos(deps) {
                     total_price: total
                 });
             }
-            const subtotal = Math.round((spacesPrice + packsPrice) * 100) / 100;
+            const subtotalCents = paraCentavos(spacesPrice) + paraCentavos(packsPrice);
             const discountPercent = Math.round((DESCONTO_KIT[kit.slug] || 0.10) * 100);
-            const finalPrice = Math.round(subtotal * (1 - discountPercent / 100) * 100) / 100;
+            const discountCents = descontoEmCentavos(subtotalCents, discountPercent);
+            const finalPriceCents = subtotalCents - discountCents;
+            const subtotal = subtotalCents / 100;
+            const finalPrice = finalPriceCents / 100;
             return { spacesPrice, packsPrice, subtotal, discountPercent, finalPrice, totalCards, packageSummary };
         }
 

@@ -83,6 +83,7 @@ tr:hover td{background:#141414;}
 .pill.published{background:#0f3a4a;color:#4dc3ff;}
 .pill.pendente{background:#3a2f1b;color:#ffd400;}
 .pill.pago{background:#1b3a2a;color:#45d66f;}
+.pill.pending{background:#3a2f1b;color:#ffd400;}
 .card{
     background:#141414;
     border:1px solid #242424;
@@ -127,6 +128,22 @@ main{padding:20px;}
 img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px solid #333;display:block;}
 .badge-count{background:#222;border-radius:10px;padding:2px 8px;font-size:11px;color:#ccc;margin-left:6px;}
 .paginacao{display:flex;gap:8px;margin-top:12px;align-items:center;font-size:12px;color:#888;}
+.paginacao button{padding:4px 10px;font-size:11px;}
+.btn-csv{text-decoration:none;}
+
+/* Modal de confirmação */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;}
+.modal-overlay.hidden{display:none;}
+.modal-box{background:#141414;border:1px solid #333;border-radius:12px;max-width:500px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.8);}
+.modal-box h3{color:#ffd400;margin-bottom:16px;font-size:18px;}
+.modal-box p{color:#ccc;margin-bottom:20px;line-height:1.5;}
+.modal-box .modal-actions{display:flex;gap:10px;justify-content:flex-end;}
+.modal-box input,.modal-box textarea{width:100%;margin-bottom:12px;}
+.modal-box label{display:block;color:#888;font-size:12px;margin-bottom:6px;margin-top:12px;}
+.btn-modal{padding:10px 20px;border-radius:8px;font-weight:700;cursor:pointer;border:0;font-size:13px;}
+.btn-modal.cancel{background:#222;color:#ddd;border:1px solid #444;}
+.btn-modal.confirm{background:#ffd400;color:#111;}
+.btn-modal.danger{background:#7a1f1f;color:#fff;}
 
 /* Preview do card da coleção */
 .colpv-modal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
@@ -138,6 +155,14 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
 .colpv-detalhes b{color:#ffd400;font-weight:800}
 .btn-secundario{background:#1a1a26;border:1px solid #444;color:#e8e8ee;padding:8px 16px;border-radius:10px;cursor:pointer;font-weight:700;font-size:12px}
 .btn-secundario:hover{background:#252530;border-color:#666}
+
+@media(max-width:600px){
+    button{min-height:44px;padding:10px 14px;}
+    .paginacao button{min-height:44px;min-width:44px;padding:8px 12px;font-size:12px;}
+    .btn-modal{min-height:44px;padding:12px 20px;}
+    .btn-secundario{min-height:44px;padding:10px 16px;}
+    .btn-csv{min-height:44px;padding:10px 16px;}
+}
 </style>
 <link rel="stylesheet" href="/css/colecao.css">
 </head>
@@ -161,16 +186,19 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
 <div id="app" style="display:none;">
 
     <div class="tabbar">
-        <button id="tabResumo" class="ativa" onclick="aba('resumo')">📊 RESUMO</button>
+        <button id="tabResumo" class="ativa" onclick="aba('resumo')"> RESUMO</button>
         <button id="tabEspacos" onclick="aba('espacos')">🧩 ESPAÇOS</button>
         <button id="tabTransacoes" onclick="aba('transacoes')">💰 TRANSAÇÕES</button>
         <button id="tabUsuarios" onclick="aba('usuarios')">👥 USUÁRIOS</button>
+        <button id="tabStories" onclick="aba('stories')">📱 STORIES</button>
+        <button id="tabUltimasCompras" onclick="aba('ultimascompras')">🛒 ÚLTIMAS COMPRAS</button>
+        <button id="tabPrecoStories" onclick="aba('precostories')">💰 PREÇOS STORIES</button>
         <button id="tabLogs" onclick="aba('logs')">📜 LOGS</button>
         <button id="tabCupons" onclick="aba('cupons')">🎟️ CUPONS</button>
-        <button id="tabSorteio" onclick="aba('sorteio')">🎲 SORTEIO</button>
+        <button id="tabSorteio" onclick="aba('sorteio')"> SORTEIO</button>
         <button id="tabReferencia" onclick="aba('referencia')">📋 REFERÊNCIA</button>
         <button id="tabColecionaveis" onclick="aba('colecionaveis')">🃏 COLECIONÁVEIS</button>
-        <button id="tabCombos" onclick="aba('combos')">🔥 COMBOS & KITS</button>
+        <button id="tabCombos" onclick="aba('combos')"> COMBOS & KITS</button>
         <button id="tabBugs" onclick="aba('bugs')">🐞 BUGS/SUGESTÕES</button>
     </div>
 
@@ -235,6 +263,7 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
                         <option value="pendente">pendente</option>
                     </select>
                     <button onclick="carregarTransacoes()">BUSCAR</button>
+                    <a class="btn-csv" href="/api/admin/export/transacoes" target="_blank"><button class="sec">📥 CSV</button></a>
                 </div>
                 <div style="overflow:auto;max-height:70vh;">
                     <table id="trTabela">
@@ -254,17 +283,95 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
 
         <div id="viewUsuarios" style="display:none;">
             <div class="card">
+                <div class="toolbar">
+                    <input id="usBusca" placeholder="Buscar por nome ou e-mail"
+                        onkeydown="if(event.key==='Enter')carregarUsuarios()">
+                    <select id="usBloqueado" onchange="carregarUsuarios()">
+                        <option value="">Todos os status</option>
+                        <option value="false">Ativos</option>
+                        <option value="true">Bloqueados</option>
+                    </select>
+                    <button onclick="carregarUsuarios()">BUSCAR</button>
+                    <a class="btn-csv" href="/api/admin/export/usuarios" target="_blank"><button class="sec">📥 CSV</button></a>
+                </div>
                 <div style="overflow:auto;max-height:70vh;">
                     <table id="usTabela">
                         <thead>
                             <tr>
                                 <th>ID</th><th>Nome</th><th>E-mail</th>
-                                <th>Criado em</th><th>Último login</th><th>Blocos</th><th>Transações</th>
+                                <th>Criado em</th><th>Último login</th><th>Blocos</th><th>Transações</th><th>Status</th><th>Ações</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
                     </table>
                 </div>
+                <div class="paginacao" id="usPag"></div>
+            </div>
+        </div>
+
+        <div id="viewStories" style="display:none;">
+            <div class="card">
+                <div class="toolbar">
+                    <input id="storiesBusca" placeholder="Buscar por título, usuário ou e-mail"
+                        onkeydown="if(event.key==='Enter')carregarStories()">
+                    <select id="storiesStatus" onchange="carregarStories()">
+                        <option value="">Todos os status</option>
+                        <option value="ativo">Ativos</option>
+                        <option value="expirado">Expirados</option>
+                        <option value="cancelado">Cancelados</option>
+                        <option value="pendente">Pendentes</option>
+                    </select>
+                    <button onclick="carregarStories()">BUSCAR</button>
+                    <a class="btn-csv" href="/api/admin/export/stories" target="_blank"><button class="sec">📥 CSV</button></a>
+                </div>
+                <div style="overflow:auto;max-height:70vh;">
+                    <table id="storiesTabela">
+                        <thead>
+                            <tr>
+                                <th>ID</th><th>Usuário</th><th>Título</th><th>Duração</th>
+                                <th>Status</th><th>Criado em</th><th>Expira em</th><th>Visualizações</th><th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="paginacao" id="storiesPag"></div>
+            </div>
+        </div>
+
+        <div id="viewUltimasCompras" style="display:none;">
+            <div class="card">
+                <div class="toolbar">
+                    <input id="ucBusca" placeholder="Buscar por descrição, usuário ou e-mail"
+                        onkeydown="if(event.key==='Enter')carregarUltimasCompras()">
+                    <select id="ucVisivel" onchange="carregarUltimasCompras()">
+                        <option value="">Todas</option>
+                        <option value="true">Visíveis</option>
+                        <option value="false">Ocultas</option>
+                    </select>
+                    <button onclick="carregarUltimasCompras()">BUSCAR</button>
+                    <a class="btn-csv" href="/api/admin/export/ultimas-compras" target="_blank"><button class="sec">📥 CSV</button></a>
+                </div>
+                <div style="overflow:auto;max-height:70vh;">
+                    <table id="ultimasComprasTabela">
+                        <thead>
+                            <tr>
+                                <th>ID</th><th>Usuário</th><th>Descrição</th><th>Quantidade</th>
+                                <th>Valor</th><th>Criado em</th><th>Visível</th><th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="paginacao" id="ucPag"></div>
+            </div>
+        </div>
+
+        <div id="viewPrecoStories" style="display:none;">
+            <div class="card">
+                <h3 style="color:#ffd400;margin-bottom:16px;">💰 Configuração de Preços dos Stories</h3>
+                <div class="grid" id="precoStoriesCards"></div>
+                <div id="precoStoriesForm" style="margin-top:16px;"></div>
             </div>
         </div>
 
@@ -655,6 +762,48 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
     </main>
 </div>
 
+<!-- Modal de Confirmação -->
+<div id="modalConfirm" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h3 id="modalTitle">Confirmar ação</h3>
+        <p id="modalMessage">Tem certeza?</p>
+        <div id="modalExtra"></div>
+        <div class="modal-actions">
+            <button class="btn-modal cancel" onclick="fecharModal()">CANCELAR</button>
+            <button class="btn-modal confirm" id="modalConfirmBtn" onclick="executarAcaoModal()">CONFIRMAR</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Editar Usuário -->
+<div id="modalEditarUsuario" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h3>✏️ Editar Usuário</h3>
+        <label>Nome</label>
+        <input id="editUserNome" type="text">
+        <label>E-mail</label>
+        <input id="editUserEmail" type="email">
+        <div class="modal-actions">
+            <button class="btn-modal cancel" onclick="fecharModalEditarUsuario()">CANCELAR</button>
+            <button class="btn-modal confirm" onclick="salvarEdicaoUsuario()">SALVAR</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Resetar Senha -->
+<div id="modalResetSenha" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h3>🔑 Resetar Senha</h3>
+        <p>Defina uma nova senha para o usuário. A senha atual será perdida.</p>
+        <label>Nova senha (mínimo 6 caracteres)</label>
+        <input id="resetSenhaNova" type="password" minlength="6">
+        <div class="modal-actions">
+            <button class="btn-modal cancel" onclick="fecharModalResetSenha()">CANCELAR</button>
+            <button class="btn-modal confirm" onclick="executarResetSenha()">RESETAR SENHA</button>
+        </div>
+    </div>
+</div>
+
 <script src="/js/imagens-animais.js"></script>
 <script src="/js/colecao-ui.js"></script>
 <script>
@@ -720,9 +869,20 @@ function sairAdmin(){
     document.getElementById("app").style.display = "none";
 }
 
+function renderPaginacao(paginaAtual, totalPaginas, funcaoCarregar){
+    if(totalPaginas <= 1) return "";
+    const prev = paginaAtual > 1
+        ? "<button onclick='" + funcaoCarregar + "(" + (paginaAtual - 1) + ")'>← ANTERIOR</button>"
+        : "";
+    const next = paginaAtual < totalPaginas
+        ? "<button onclick='" + funcaoCarregar + "(" + (paginaAtual + 1) + ")'>PRÓXIMA →</button>"
+        : "";
+    return prev + " Página " + paginaAtual + " de " + totalPaginas + " " + next;
+}
+
 function aba(nome){
     abaAtual = nome;
-    for(const n of ["resumo","espacos","transacoes","usuarios","logs","cupons","sorteio","referencia","colecionaveis","combos","bugs"]){
+    for(const n of ["resumo","espacos","transacoes","usuarios","stories","ultimascompras","precostories","logs","cupons","sorteio","referencia","colecionaveis","combos","bugs"]){
         const bt = document.getElementById("tab" + n.charAt(0).toUpperCase() + n.slice(1));
         const vw = document.getElementById("view" + n.charAt(0).toUpperCase() + n.slice(1));
         if(bt) bt.className = n === nome ? "ativa" : "";
@@ -732,6 +892,9 @@ function aba(nome){
     if(nome === "espacos") carregarEspacos();
     if(nome === "transacoes") carregarTransacoes();
     if(nome === "usuarios") carregarUsuarios();
+    if(nome === "stories") carregarStories();
+    if(nome === "ultimascompras") carregarUltimasCompras();
+    if(nome === "precostories") carregarPrecoStories();
     if(nome === "logs") carregarLogs();
     if(nome === "cupons") carregarCupons();
     if(nome === "sorteio") carregarSorteio();
@@ -750,7 +913,7 @@ async function carregarResumo(){
         const [resumo, trans, usuarios] = await Promise.all([
             api("/api/admin/resumo"),
             api("/api/admin/transacoes?limite=1").catch(() => null),
-            api("/api/admin/usuarios").catch(() => null)
+            null
         ]);
 
         let pago = 0;
@@ -765,8 +928,12 @@ async function carregarResumo(){
             ["Reservados", fmtNum(resumo.reserved)],
             ["Disponíveis", fmtNum(resumo.disponiveis)],
             ["Receita bruta", fmtDin(pago)],
-            ["Usuários", fmtNum(usuarios ? usuarios.total : 0)],
-            ["Transações", fmtNum(trans ? trans.total : 0)]
+            ["Usuários", fmtNum(resumo.totalUsuarios || 0)],
+            ["Bloqueados", fmtNum(resumo.usuariosBloqueados || 0)],
+            ["Transações", fmtNum(resumo.totalTransacoes || 0)],
+            ["Stories Ativos", fmtNum(resumo.storiesAtivos || 0)],
+            ["Stories Expirados", fmtNum(resumo.storiesExpirados || 0)],
+            ["Compras Visíveis", fmtNum(resumo.comprasVisiveis || 0)]
         ];
 
         document.getElementById("resumoCards").innerHTML =
@@ -935,9 +1102,14 @@ async function carregarTransacoes(){
     }
 }
 
-async function carregarUsuarios(){
+async function carregarUsuarios(pag){
+    const pagina = pag || 1;
+    const busca = document.getElementById("usBusca").value.trim();
+    const bloqueado = document.getElementById("usBloqueado").value;
     try {
-        const data = await api("/api/admin/usuarios");
+        const data = await api("/api/admin/usuarios?pagina=" + pagina +
+            (busca ? "&busca=" + encodeURIComponent(busca) : "") +
+            (bloqueado ? "&bloqueado=" + bloqueado : ""));
         const tbody = document.querySelector("#usTabela tbody");
         tbody.innerHTML = data.usuarios.map(u =>
             "<tr>" +
@@ -948,8 +1120,362 @@ async function carregarUsuarios(){
             "<td>" + fmtData(u.ultimoLogin) + "</td>" +
             "<td>" + fmtNum(u.chaves) + "</td>" +
             "<td>" + fmtNum(u.transacoes) + "</td>" +
+            "<td><span class='pill " + (u.bloqueado ? "reserved" : "paid") + "'>" + (u.bloqueado ? "BLOQUEADO" : "ATIVO") + "</span></td>" +
+            "<td>" +
+              "<button class='sec' onclick='abrirModalEditarUsuario(" + u.id + ",\"" + esc(u.nome) + "\",\"" + esc(u.email) + "\")' style='margin-right:4px;' title='Editar'>✏️</button>" +
+              "<button class='sec' onclick='abrirModalResetSenha(" + u.id + ")' style='margin-right:4px;' title='Resetar senha'>🔑</button>" +
+              "<button class='sec' onclick='toggleBloqueioUsuario(" + u.id + "," + (u.bloqueado ? "false" : "true") + ")' style='margin-right:4px;' title='" + (u.bloqueado ? "Desbloquear" : "Bloquear") + "'>" + (u.bloqueado ? "🔓" : "🔒") + "</button>" +
+              "<button class='danger' onclick='confirmarExclusaoUsuario(" + u.id + ",\"" + esc(u.nome) + "\",\"" + esc(u.email) + "\")' title='Excluir'>🗑</button>" +
+            "</td>" +
             "</tr>"
-        ).join("") || "<tr><td colspan='7' class='fade'>Nenhum usuário ainda.</td></tr>";
+        ).join("") || "<tr><td colspan='9' class='fade'>Nenhum usuário ainda.</td></tr>";
+        document.getElementById("usPag").innerHTML = renderPaginacao(data.pagina, data.totalPaginas, "carregarUsuarios");
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+// Modal de Editar Usuário
+let usuarioEditandoId = null;
+
+function abrirModalEditarUsuario(id, nome, email){
+    usuarioEditandoId = id;
+    document.getElementById("editUserNome").value = nome;
+    document.getElementById("editUserEmail").value = email;
+    document.getElementById("modalEditarUsuario").classList.remove("hidden");
+}
+
+function fecharModalEditarUsuario(){
+    document.getElementById("modalEditarUsuario").classList.add("hidden");
+    usuarioEditandoId = null;
+}
+
+async function salvarEdicaoUsuario(){
+    if(!usuarioEditandoId) return;
+    const nome = document.getElementById("editUserNome").value.trim();
+    const email = document.getElementById("editUserEmail").value.trim();
+    if(!nome || !email){
+        alert("Nome e e-mail são obrigatórios.");
+        return;
+    }
+    try {
+        await api("/api/admin/usuarios/" + usuarioEditandoId, {
+            method: "PUT",
+            body: JSON.stringify({ nome, email })
+        });
+        alert("Usuário atualizado com sucesso!");
+        fecharModalEditarUsuario();
+        carregarUsuarios();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+// Modal de Resetar Senha
+let usuarioResetSenhaId = null;
+
+function abrirModalResetSenha(id){
+    usuarioResetSenhaId = id;
+    document.getElementById("resetSenhaNova").value = "";
+    document.getElementById("modalResetSenha").classList.remove("hidden");
+}
+
+function fecharModalResetSenha(){
+    document.getElementById("modalResetSenha").classList.add("hidden");
+    usuarioResetSenhaId = null;
+}
+
+async function executarResetSenha(){
+    if(!usuarioResetSenhaId) return;
+    const novaSenha = document.getElementById("resetSenhaNova").value;
+    if(novaSenha.length < 6){
+        alert("A senha deve ter pelo menos 6 caracteres.");
+        return;
+    }
+    if(!confirm("Tem certeza que deseja resetar a senha deste usuário?")) return;
+    try {
+        await api("/api/admin/usuarios/" + usuarioResetSenhaId + "/reset-senha", {
+            method: "POST",
+            body: JSON.stringify({ novaSenha })
+        });
+        alert("Senha resetada com sucesso!");
+        fecharModalResetSenha();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+// Bloquear/Desbloquear Usuário
+async function toggleBloqueioUsuario(id, bloqueado){
+    const acao = bloqueado ? "bloquear" : "desbloquear";
+    if(!confirm("Tem certeza que deseja " + acao + " este usuário?")) return;
+    try {
+        await api("/api/admin/usuarios/" + id + "/bloquear", {
+            method: "POST",
+            body: JSON.stringify({ bloqueado })
+        });
+        alert("Usuário " + (bloqueado ? "bloqueado" : "desbloqueado") + " com sucesso!");
+        carregarUsuarios();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+// Excluir Usuário
+let usuarioExcluindoId = null;
+
+function confirmarExclusaoUsuario(id, nome, email){
+    usuarioExcluindoId = id;
+    document.getElementById("modalTitle").textContent = "🗑 Excluir Usuário";
+    document.getElementById("modalMessage").innerHTML = "Tem certeza que deseja excluir o usuário <b>" + esc(nome) + "</b> (" + esc(email) + ")?<br><br><span style='color:#ff6b6b;font-size:12px;'>Esta ação irá desativar o usuário. Dados financeiros serão preservados para auditoria.</span>";
+    document.getElementById("modalExtra").innerHTML = "";
+    document.getElementById("modalConfirmBtn").className = "btn-modal danger";
+    document.getElementById("modalConfirmBtn").onclick = executarExclusaoUsuario;
+    document.getElementById("modalConfirm").classList.remove("hidden");
+}
+
+async function executarExclusaoUsuario(){
+    if(!usuarioExcluindoId) return;
+    try {
+        const result = await api("/api/admin/usuarios/" + usuarioExcluindoId, { method: "DELETE" });
+        alert("Usuário excluído com sucesso!\n\nTransações preservadas: " + result.transacoesPreservadas + "\nDestaques preservados: " + result.destaquesPreservados);
+        fecharModal();
+        carregarUsuarios();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+// Modal genérico
+let acaoModalCallback = null;
+
+function fecharModal(){
+    document.getElementById("modalConfirm").classList.add("hidden");
+    acaoModalCallback = null;
+}
+
+function executarAcaoModal(){
+    if(acaoModalCallback) acaoModalCallback();
+}
+
+// Stories
+async function carregarStories(pag){
+    const pagina = pag || 1;
+    const status = document.getElementById("storiesStatus").value;
+    const busca = document.getElementById("storiesBusca").value.trim();
+    try {
+        const data = await api("/api/admin/stories?pagina=" + pagina +
+            (status ? "&status=" + encodeURIComponent(status) : "") +
+            (busca ? "&busca=" + encodeURIComponent(busca) : ""));
+        const tbody = document.querySelector("#storiesTabela tbody");
+        tbody.innerHTML = data.stories.map(s => {
+            const tempoRestante = s.tempoRestanteSegundos > 0 ? formatarTempo(s.tempoRestanteSegundos) : "—";
+            return "<tr>" +
+                "<td>" + s.id + "</td>" +
+                "<td>" + esc(s.usuarioApelido || "—") + "<br><span class='fade'>" + esc(s.usuarioEmail || "") + "</span></td>" +
+                "<td>" + esc(s.titulo || "—") + "</td>" +
+                "<td>" + s.duracao + "</td>" +
+                "<td><span class='pill " + getStatusPill(s.status) + "'>" + s.status + "</span></td>" +
+                "<td>" + fmtData(s.criadoEm) + "</td>" +
+                "<td>" + fmtData(s.expiraEm) + "<br><span class='fade'>" + tempoRestante + "</span></td>" +
+                "<td>" + fmtNum(s.visualizacoes) + "</td>" +
+                "<td>" +
+                  (s.status === "ativo" ? "<button class='sec' onclick='desativarStory(" + s.id + ")' style='margin-right:4px;' title='Desativar'>️</button>" : "") +
+                  "<button class='danger' onclick='confirmarExclusaoStory(" + s.id + ")' title='Remover'></button>" +
+                "</td>" +
+                "</tr>";
+        }).join("") || "<tr><td colspan='9' class='fade'>Nenhum story encontrado.</td></tr>";
+        document.getElementById("storiesPag").innerHTML = renderPaginacao(data.pagina, data.totalPaginas, "carregarStories");
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+function getStatusPill(status){
+    const map = { "ativo": "paid", "expirado": "available", "cancelado": "reserved", "pendente": "pending" };
+    return map[status] || "available";
+}
+
+function formatarTempo(segundos){
+    const h = Math.floor(segundos / 3600);
+    const m = Math.floor((segundos % 3600) / 60);
+    const s = segundos % 60;
+    return (h > 0 ? h + "h " : "") + (m > 0 ? m + "m " : "") + s + "s";
+}
+
+async function desativarStory(id){
+    if(!confirm("Tem certeza que deseja desativar este story?")) return;
+    try {
+        await api("/api/admin/stories/" + id + "/desativar", { method: "POST" });
+        alert("Story desativado com sucesso!");
+        carregarStories();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+let storyExcluindoId = null;
+
+function confirmarExclusaoStory(id){
+    storyExcluindoId = id;
+    document.getElementById("modalTitle").textContent = "🗑 Remover Story";
+    document.getElementById("modalMessage").innerHTML = "Tem certeza que deseja remover este story?<br><br><span style='color:#ff6b6b;font-size:12px;'>Esta ação é irreversível.</span>";
+    document.getElementById("modalExtra").innerHTML = "";
+    document.getElementById("modalConfirmBtn").className = "btn-modal danger";
+    document.getElementById("modalConfirmBtn").onclick = executarExclusaoStory;
+    document.getElementById("modalConfirm").classList.remove("hidden");
+}
+
+async function executarExclusaoStory(){
+    if(!storyExcluindoId) return;
+    try {
+        await api("/api/admin/stories/" + storyExcluindoId, { method: "DELETE" });
+        alert("Story removido com sucesso!");
+        fecharModal();
+        carregarStories();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+// Últimas Compras
+async function carregarUltimasCompras(pag){
+    const pagina = pag || 1;
+    const busca = document.getElementById("ucBusca").value.trim();
+    const visivel = document.getElementById("ucVisivel").value;
+    try {
+        const data = await api("/api/admin/ultimas-compras?pagina=" + pagina +
+            (busca ? "&busca=" + encodeURIComponent(busca) : "") +
+            (visivel ? "&visivel=" + visivel : ""));
+        const tbody = document.querySelector("#ultimasComprasTabela tbody");
+        tbody.innerHTML = data.compras.map(c =>
+            "<tr>" +
+            "<td>" + c.id + "</td>" +
+            "<td>" + esc(c.usuarioApelido || "—") + "<br><span class='fade'>" + esc(c.usuarioEmail || "") + "</span></td>" +
+            "<td>" + esc(c.descricao) + "</td>" +
+            "<td>" + fmtNum(c.quantidade) + "</td>" +
+            "<td>" + fmtDin(c.valorCents / 100) + "</td>" +
+            "<td>" + fmtData(c.criadoEm) + "</td>" +
+            "<td><span class='pill " + (c.visivel ? "paid" : "available") + "'>" + (c.visivel ? "VISÍVEL" : "OCULTO") + "</span></td>" +
+            "<td>" +
+              (c.visivel
+                ? "<button class='sec' onclick='ocultarCompra(" + c.id + ")' style='margin-right:4px;' title='Ocultar'>👁️🗨️</button>"
+                : "<button class='sec' onclick='mostrarCompra(" + c.id + ")' style='margin-right:4px;' title='Mostrar Novamente'>👁️</button>") +
+              "<button class='danger' onclick='confirmarExclusaoCompra(" + c.id + ")' title='Remover'>🗑</button>" +
+            "</td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='8' class='fade'>Nenhuma compra registrada.</td></tr>";
+        document.getElementById("ucPag").innerHTML = renderPaginacao(data.pagina, data.totalPaginas, "carregarUltimasCompras");
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function ocultarCompra(id){
+    if(!confirm("Tem certeza que deseja ocultar esta compra do feed público?")) return;
+    try {
+        await api("/api/admin/ultimas-compras/" + id + "/ocultar", { method: "POST" });
+        alert("Compra ocultada com sucesso!");
+        carregarUltimasCompras();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function mostrarCompra(id){
+    if(!confirm("Tem certeza que deseja tornar esta compra visível no feed público?")) return;
+    try {
+        await api("/api/admin/ultimas-compras/" + id + "/mostrar", { method: "POST" });
+        alert("Compra tornada visível com sucesso!");
+        carregarUltimasCompras();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+let compraExcluindoId = null;
+
+function confirmarExclusaoCompra(id){
+    compraExcluindoId = id;
+    document.getElementById("modalTitle").textContent = " Remover Compra";
+    document.getElementById("modalMessage").innerHTML = "Tem certeza que deseja remover esta compra?<br><br><span style='color:#ff6b6b;font-size:12px;'>Esta ação é irreversível.</span>";
+    document.getElementById("modalExtra").innerHTML = "";
+    document.getElementById("modalConfirmBtn").className = "btn-modal danger";
+    document.getElementById("modalConfirmBtn").onclick = executarExclusaoCompra;
+    document.getElementById("modalConfirm").classList.remove("hidden");
+}
+
+async function executarExclusaoCompra(){
+    if(!compraExcluindoId) return;
+    try {
+        await api("/api/admin/ultimas-compras/" + compraExcluindoId, { method: "DELETE" });
+        alert("Compra removida com sucesso!");
+        fecharModal();
+        carregarUltimasCompras();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+// Preços Stories
+async function carregarPrecoStories(){
+    try {
+        const data = await api("/api/admin/stories/pricing");
+        const config = data.config || [];
+        
+        const cards = config.map(c => {
+            const preco = c.precoCents / 100;
+            const popular = c.popular ? "<div class='badge-count' style='background:#ffd400;color:#111;'>POPULAR</div>" : "";
+            const status = c.ativo ? "<span class='pill paid'>ATIVO</span>" : "<span class='pill reserved'>INATIVO</span>";
+            return "<div class='metric'>" +
+                "<b>" + fmtDin(preco) + "</b>" +
+                "<span>" + c.duracao + " horas</span>" +
+                popular + " " + status +
+                "</div>";
+        }).join("");
+
+        document.getElementById("precoStoriesCards").innerHTML = cards;
+
+        const form = config.map(c => {
+            return "<div style='display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;'>" +
+                "<b style='width:40px;'>" + c.duracao + "</b>" +
+                "<input id='price_" + c.duracao + "' type='number' step='0.01' min='0' value='" + (c.precoCents / 100).toFixed(2) + "' style='width:100px;'>" +
+                "<label style='margin:0;'>" +
+                  "<input type='checkbox' id='active_" + c.duracao + "' " + (c.ativo ? "checked" : "") + "> Ativo" +
+                "</label>" +
+                "<label style='margin:0;'>" +
+                  "<input type='radio' name='popular' value='" + c.duracao + "' " + (c.popular ? "checked" : "") + "> ⭐ Popular" +
+                "</label>" +
+                "</div>";
+        }).join("") + "<button onclick='salvarPrecoStories()' style='margin-top:12px;'>SALVAR ALTERAÇÕES</button>";
+
+        document.getElementById("precoStoriesForm").innerHTML = form;
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+async function salvarPrecoStories(){
+    const duracoes = ["3h", "6h", "12h", "24h"];
+    const itens = duracoes.map(d => {
+        const preco = parseFloat(document.getElementById("price_" + d).value) || 0;
+        const ativo = document.getElementById("active_" + d).checked;
+        const pop = document.querySelector("input[name='popular']:checked");
+        return {
+            duracao: d,
+            precoCents: Math.round(preco * 100),
+            ativo: ativo,
+            popular: pop && pop.value === d
+        };
+    });
+
+    try {
+        await api("/api/admin/stories/pricing", {
+            method: "PUT",
+            body: JSON.stringify({ itens })
+        });
+        alert("Preços atualizados com sucesso!");
+        carregarPrecoStories();
     } catch(err){
         alert("Erro: " + err.message);
     }

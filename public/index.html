@@ -365,82 +365,6 @@ html,body{
     background:#252525
 }
 
-.cmdFixo{
-    position:fixed;
-    left:22px;
-    bottom:22px;
-    z-index:45;
-    width:auto;
-    margin:0;
-    padding:13px 20px;
-    font-size:13px;
-    white-space:nowrap;
-    background:linear-gradient(180deg,#1f4733,#17301f 60%,#122a1b);
-    color:#45d66f;
-    border:1px solid #2f5c42;
-    box-shadow:
-        0 3px 0 #0c1c12,
-        0 8px 18px rgba(0,0,0,.55);
-    animation:cmdPulse 3s ease-in-out infinite;
-}
-
-.cmdFixo:hover{
-    color:#6fe89a;
-    border-color:#3f7a56;
-    box-shadow:
-        0 4px 0 #0c1c12,
-        0 12px 24px rgba(0,0,0,.6)
-}
-
-.cmdFixo:active{
-    transform:translateY(2px);
-    box-shadow:
-        0 1px 0 #0c1c12,
-        0 3px 8px rgba(0,0,0,.4)
-}
-
-@keyframes cmdPulse{
-    0%,100%{
-        box-shadow:0 3px 0 #0c1c12,0 8px 18px rgba(0,0,0,.55);
-    }
-    50%{
-        box-shadow:0 3px 0 #0c1c12,0 8px 22px rgba(69,214,111,.35);
-    }
-}
-
-.chatFixo{
-    position:fixed;
-    left:22px;
-    bottom:84px;
-    z-index:45;
-    width:auto;
-    margin:0;
-    padding:13px 20px;
-    font-size:13px;
-    white-space:nowrap;
-    background:linear-gradient(180deg,#1b3557,#132640 60%,#0f2036);
-    color:#5aa2ff;
-    border:1px solid #2c4f7c;
-    box-shadow:
-        0 3px 0 #0b1626,
-        0 8px 18px rgba(0,0,0,.55);
-}
-
-.chatFixo:hover{
-    color:#8cc0ff;
-    border-color:#3c6ba1;
-    box-shadow:
-        0 4px 0 #0b1626,
-        0 12px 24px rgba(0,0,0,.6)
-}
-
-.chatFixo:active{
-    transform:translateY(2px);
-    box-shadow:
-        0 1px 0 #0b1626,
-        0 3px 8px rgba(0,0,0,.4)
-}
-
 .hint{
     position:fixed;
     bottom:20px;
@@ -594,6 +518,41 @@ html,body{
 .story-subtitle{font-size:15px;color:#bbb;margin-top:10px;line-height:1.5}
 .story-action{margin-top:24px;min-width:190px}
 @media(max-width:640px){.stories-shell{margin:10px 10px 0;padding:11px}.stories-head{align-items:flex-start;flex-direction:column;gap:4px}.story-card{min-height:460px}.story-title{font-size:21px}}
+
+/* ÚLTIMAS COMPRAS */
+.ultimas-compras-shell{display:none;max-width:1180px;margin:14px auto 0;padding:12px 16px;background:rgba(17,17,17,.88);border:1px solid rgba(69,223,110,.18);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.ultimas-compras-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:10px;font-weight:900;letter-spacing:1.4px;color:var(--success)}
+.ao-vivo-badge{background:var(--success);color:#000;padding:3px 8px;border-radius:999px;font-size:9px;font-weight:900;animation:pulseAoVivo 2s ease-in-out infinite}
+@keyframes pulseAoVivo{0%,100%{opacity:1}50%{opacity:.6}}
+.atualizando-info{font-size:10px;color:var(--text-muted);font-weight:600;margin-left:auto}
+.ultimas-compras-ticker{display:flex;gap:20px;overflow-x:auto;padding:8px 4px;scrollbar-width:thin;scroll-behavior:smooth}
+.compra-item{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(69,223,110,.08);border:1px solid rgba(69,223,110,.2);border-radius:12px;white-space:nowrap}
+.compra-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--success),#2dd36f);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#000;flex-shrink:0;overflow:hidden}
+.compra-avatar img{width:100%;height:100%;object-fit:cover}
+.compra-info{display:flex;flex-direction:column;gap:2px}
+.compra-texto{font-size:12px;color:var(--text-primary);font-weight:600}
+.compra-texto b{color:var(--success)}
+.compra-tempo{font-size:10px;color:var(--text-muted)}
+
+/* STORIES CTA */
+.stories-cta-shell{display:none;max-width:1180px;margin:14px auto 0;padding:20px;background:linear-gradient(135deg,rgba(255,212,0,.08),rgba(255,122,0,.08));border:1px solid rgba(255,212,0,.3);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.stories-cta-content{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:center}
+.stories-cta-text h2{font-size:24px;font-weight:900;color:var(--text-primary);margin:0 0 10px 0}
+.stories-cta-text p{font-size:14px;color:var(--text-secondary);margin:0 0 16px 0;line-height:1.5}
+.stories-cta-beneficios{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.beneficio-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary)}
+.beneficio-icon{font-size:20px}
+.stories-cta-opcoes h3{font-size:16px;font-weight:800;color:var(--text-primary);margin:0 0 12px 0}
+.duracao-opcoes{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.duracao-opcao{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(255,212,0,.08);border:1px solid rgba(255,212,0,.2);border-radius:10px;cursor:pointer;transition:.2s}
+.duracao-opcao:hover{background:rgba(255,212,0,.15);border-color:rgba(255,212,0,.4)}
+.duracao-opcao.popular{background:rgba(255,212,0,.2);border-color:var(--accent);position:relative}
+.duracao-opcao.popular::after{content:"POPULAR";position:absolute;top:-8px;right:10px;background:var(--accent);color:#000;font-size:9px;font-weight:900;padding:2px 6px;border-radius:999px}
+.duracao-label{font-size:13px;font-weight:700;color:var(--text-primary)}
+.duracao-preco{font-size:14px;font-weight:900;color:var(--accent)}
+.btn-destaque{width:100%;padding:14px;font-size:14px;font-weight:900;letter-spacing:1px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#ff9d00);color:#000;border:none;cursor:pointer;transition:.2s;box-shadow:0 6px 18px rgba(255,212,0,.3)}
+.btn-destaque:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(255,212,0,.4)}
+@media(max-width:768px){.stories-cta-content{grid-template-columns:1fr}.stories-cta-beneficios{grid-template-columns:1fr 1fr}}
 .auth-header{position:relative;text-align:center;padding:28px 20px 18px;margin:-25px -25px 18px;border-radius:14px 14px 0 0;background:linear-gradient(135deg,#1a1a1a,#0d0d0d);overflow:hidden}
 .auth-logo{font-size:46px;line-height:1;margin-bottom:4px;filter:drop-shadow(0 0 8px rgba(255,212,0,.4))}
 .auth-title{font-size:22px;font-weight:900;letter-spacing:2px;background:linear-gradient(90deg,#ffd400,#ff9d00);-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -985,20 +944,6 @@ html,body{
         top:105px;
     }
 
-    .cmdFixo{
-        left:12px;
-        bottom:56px;
-        padding:12px 16px;
-        font-size:12px;
-    }
-
-    .chatFixo{
-        left:12px;
-        bottom:108px;
-        padding:12px 16px;
-        font-size:12px;
-    }
-
     .cart{
         right:12px;
         bottom:12px;
@@ -1125,23 +1070,6 @@ html,body{
         width:48px;
         height:48px;
         font-size:24px;
-    }
-
-    .cmdFixo{
-        left:10px;
-        right:10px;
-        bottom:10px;
-        width:auto;
-        text-align:center;
-        padding:14px;
-        font-size:13px;
-    }
-
-    .chatFixo{
-        left:10px;
-        bottom:72px;
-        padding:12px 16px;
-        font-size:12px;
     }
 
     .hint{
@@ -1535,9 +1463,9 @@ body.has-benefits{
 
 .topo .logo img{
     width:auto;
-    height:80px;
-    max-width:380px;
-    max-height:80px;
+    height:100px;
+    max-width:420px;
+    max-height:100px;
     object-fit:contain;
     display:block
 }
@@ -1574,6 +1502,27 @@ body.has-benefits{
     align-items:center;
     gap:10px;
     flex:0 0 auto
+}
+
+.btn-notificacoes{
+    width:38px;
+    height:38px;
+    border-radius:50%;
+    border:1px solid var(--border-color);
+    background:var(--bg-card);
+    color:var(--text-secondary);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    font-size:16px;
+    transition:var(--transition);
+    position:relative
+}
+
+.btn-notificacoes:hover{
+    border-color:var(--accent);
+    color:var(--accent)
 }
 
 .btn-tema{
@@ -2048,7 +1997,7 @@ body.has-benefits{
 .fab-actions{
     position:fixed;
     left:20px;
-    bottom:20px;
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
     z-index:50;
     display:flex;
     flex-direction:column;
@@ -2069,7 +2018,8 @@ body.has-benefits{
     cursor:pointer;
     box-shadow:var(--shadow-sm);
     transition:var(--transition);
-    white-space:nowrap
+    white-space:nowrap;
+    max-width:calc(100vw - 40px)
 }
 
 .fab-btn:hover{
@@ -2437,6 +2387,19 @@ body.has-benefits{
     .footer-content{
         grid-template-columns:1fr
     }
+    .fab-actions{
+        left:12px;
+        bottom:calc(12px + env(safe-area-inset-bottom, 0px));
+        gap:8px
+    }
+    .fab-btn{
+        padding:10px 14px;
+        font-size:11px;
+        gap:6px
+    }
+    .fab-btn span:last-child{
+        display:none
+    }
 }
 
 /* --- AJUSTES FINAIS --- */
@@ -2466,11 +2429,6 @@ body.footer-visible #area{
 /* Carrinho flutuante antigo desativado — usamos o card de seleção na sidebar */
 #cart{
     display:none !important
-}
-
-.cmdFixo,
-.chatFixo{
-    display:none
 }
 
 #btnEntrar{
@@ -3178,11 +3136,19 @@ body.footer-visible #area{
         <a href="#combos" onclick="verTodosKits(event)">COMBOS & KITS</a>
         <a href="#faq" onclick="abrirFaq(event)">FAQ</a>
         <a class="topo-colecionaveis" href="/colecionaveis.html">🟡 COLECIONÁVEIS</a>
-        <a href="#" onclick="abrirBisbilhotar(event)">👀 BISBILHOTAR</a>
         <a href="#contato" onclick="scrollToFooter(event)">CONTATO</a>
     </nav>
 
     <div class="topo-actions">
+        <button
+            class="btn-notificacoes"
+            id="btnNotificacoes"
+            onclick="abrirPainelNotificacoes()"
+            title="Notificações"
+            style="position:relative;padding:8px 12px;background:transparent;border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);cursor:pointer;display:none;">
+            🔔
+            <span id="notificacoesBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ff4d4d;color:#fff;font-size:10px;font-weight:900;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px">0</span>
+        </button>
         <button
             class="btn-tema"
             id="btnTema"
@@ -3216,7 +3182,6 @@ body.footer-visible #area{
         <a href="#combos" onclick="verTodosKits(event);fecharMenuMobile()">COMBOS & KITS</a>
         <a href="#faq" onclick="abrirFaq(event);fecharMenuMobile()">FAQ</a>
         <a class="topo-colecionaveis" href="/colecionaveis.html" onclick="fecharMenuMobile()">🟡 COLECIONÁVEIS</a>
-        <a href="#" onclick="abrirBisbilhotar(event);fecharMenuMobile()">👀 BISBILHOTAR</a>
         <a href="#contato" onclick="scrollToFooter(event);fecharMenuMobile()">CONTATO</a>
         <button
             class="btn-entrar"
@@ -3351,11 +3316,56 @@ LIMPAR
 
 <section class="stories-shell" id="storiesShell" aria-label="Stories do Milhão Door">
     <div class="stories-head">
-        <span>STORIES DO MILHÃO DOOR · 🔥 ÚLTIMAS ATIVIDADES</span>
-        <span class="stories-ticker" id="storiesTicker"></span>
+        <div>
+            <span style="font-weight:800;">STORIES DO MILHÃO DOOR</span>
+            <span style="font-size:12px;color:var(--text-muted);display:block;margin-top:2px;">Veja quem acabou de comprar e está em destaque!</span>
+        </div>
         <button class="story-sponsor" onclick="abrirDestaqueStory()">✨ DESTAQUE NO STORY</button>
     </div>
     <div class="stories-list" id="storiesList"></div>
+</section>
+
+<!-- ÚLTIMAS COMPRAS -->
+<section class="ultimas-compras-shell" id="ultimasComprasShell" aria-label="Últimas Compras">
+    <div class="ultimas-compras-head">
+        <span>🛒 ÚLTIMAS COMPRAS</span>
+        <span class="ao-vivo-badge">AO VIVO</span>
+        <span class="atualizando-info">Atualizando a cada 5 segundos</span>
+    </div>
+    <div class="ultimas-compras-ticker" id="ultimasComprasTicker"></div>
+</section>
+
+<!-- QUER APARECER NOS STORIES? -->
+<section class="stories-cta-shell" id="storiesCtaShell">
+    <div class="stories-cta-content">
+        <div class="stories-cta-text">
+            <h2>Quer aparecer nos <span style="color:var(--accent);">Stories</span>?</h2>
+            <p>Destaque sua compra para milhares de pessoas e mostre que você está na corrida pelo MILHÃO!</p>
+            <div class="stories-cta-beneficios">
+                <div class="beneficio-item">
+                    <span class="beneficio-icon">👁️</span>
+                    <span>Mais visibilidade</span>
+                </div>
+                <div class="beneficio-item">
+                    <span class="beneficio-icon">👥</span>
+                    <span>Milhares de views</span>
+                </div>
+                <div class="beneficio-item">
+                    <span class="beneficio-icon">⚡</span>
+                    <span>Prova social</span>
+                </div>
+                <div class="beneficio-item">
+                    <span class="beneficio-icon">🏆</span>
+                    <span>Impulsione sua sorte</span>
+                </div>
+            </div>
+        </div>
+        <div class="stories-cta-opcoes" id="storiesCtaOpcoes">
+            <h3>Escolha a duração</h3>
+            <div class="duracao-opcoes" id="duracaoOpcoes"></div>
+            <button class="btn btn-destaque" onclick="abrirDestaqueStory()"> QUERO APARECER</button>
+        </div>
+    </div>
 </section>
 
 <main class="main-layout" id="mainLayout">
@@ -3610,23 +3620,6 @@ LIMPAR
         <span>CHAT AO VIVO</span>
     </button>
 </div>
-
-
-<button
-id="btnPainelCmd"
-class="btn cmdFixo"
-onclick="abrirPainelComando()"
-title="Painel de comando — ofertas, meus blocos e chave Pix">
-⚙️ PAINEL DE COMANDO
-</button>
-
-<button
-id="btnChatGeral"
-class="btn chatFixo"
-onclick="abrirChatGeral()"
-title="Chat geral — converse com a comunidade">
-💬 CHAT
-</button>
 
 
 <div id="dragCount"></div>
@@ -4811,7 +4804,7 @@ function scrollToSection(event,id){
 function scrollToFooter(event){
     if(event) event.preventDefault();
     abrirInfoModal("CONTATO", `
-        <p><b>E-mail:</b> <a href="mailto:group.holding@outlook.com" style="color:var(--accent)">group.holding@outlook.com</a></p>
+        <p><b>E-mail:</b> <a href="mailto:milhaodoor@gmail.com" style="color:var(--accent)">milhaodoor@gmail.com</a></p>
         <p><b>Chat:</b> <a href="#" onclick="fecharInfoModal();abrirChatGeral();return false;" style="color:var(--accent)">Chat ao vivo</a></p>
         <p><b>Redes:</b> <a href="https://instagram.com/milhaodoor" target="_blank" style="color:var(--accent)">Instagram</a></p>
         <hr style="border-color:var(--border-color);margin:16px 0;">
@@ -4872,7 +4865,7 @@ let storiesState = [];
 let storyAtual = null;
 let storyTimer = null;
 let storyTickerTimer = null;
-let storyPricing = { "5h": null, "7h": null, "12h": null, "24h": null };
+let storyPricing = { "3h": null, "6h": null, "12h": null, "24h": null };
 
 /* ===== BENEFÍCIO DE INDICAÇÃO ===== */
 let beneficioIndicacao = null;
@@ -4922,14 +4915,14 @@ function carregarStories(){
             storiesState = Array.isArray(data.stories) ? data.stories : [];
             renderizarStories();
         })
-        .catch(() => {});
+        .catch(e => { if(e && e.message !== "Failed to fetch") console.warn("stories:", e.message); });
 }
 
 function carregarStoryConfig(){
     return fetch("/api/stories/config", { cache: "no-store" })
         .then(reqJSON)
         .then(data => { if(data && data.pricing) storyPricing = data.pricing; })
-        .catch(() => {});
+        .catch(e => { if(e && e.message !== "Failed to fetch") console.warn("storyConfig:", e.message); });
 }
 
 function abrirDestaqueStory(){
@@ -4938,13 +4931,14 @@ function abrirDestaqueStory(){
         toastMsg("Faça login para contratar um destaque no Story.");
         return;
     }
-    const opcoes = [["5h", "5 HORAS"], ["7h", "7 HORAS"], ["12h", "12 HORAS"], ["24h", "24 HORAS"]];
+    const opcoes = [["3h", "3 HORAS"], ["6h", "6 HORAS"], ["12h", "12 HORAS"], ["24h", "24 HORAS"]];
     const radio = opcoes.map(([key, label], idx) => {
         const preco = storyPricing[key];
+        const popular = key === "6h" ? ' <span style="background:var(--accent);color:#000;font-size:9px;font-weight:900;padding:2px 6px;border-radius:999px;margin-left:8px;">POPULAR</span>' : '';
         return '<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--border-color);cursor:pointer;">' +
             '<span style="display:flex;align-items:center;gap:10px;">' +
-                '<input type="radio" name="destaqueDuracao" value="' + key + '"' + (idx === 0 ? " checked" : "") + ' style="accent-color:var(--accent)">' +
-                '<b>' + label + '</b>' +
+                '<input type="radio" name="destaqueDuracao" value="' + key + '"' + (idx === 1 ? " checked" : "") + ' style="accent-color:var(--accent)">' +
+                '<b>' + label + '</b>' + popular +
             '</span>' +
             '<span style="color:var(--accent);font-weight:800">' +
             (preco == null ? "Preço a configurar" : fmtMoeda(preco)) + '</span></label>';
@@ -4961,12 +4955,12 @@ function abrirDestaqueStory(){
         '<div id="dstMsg" style="font-size:12px;color:#aaa;min-height:16px;margin-top:8px;"></div>' +
         '<button class="btn" style="width:100%;margin-top:10px;" onclick="confirmarCompraDestaque()">💳 PAGAR COM PIX</button>' +
         '<button class="btn sec" style="width:100%;margin-top:8px;" onclick="abrirMeusDestaques()">📅 MEUS DESTAQUES</button>' +
-        '<p style="font-size:11px;color:var(--text-muted);margin-top:12px">Preços: 5h = ' + fmtMoeda(storyPricing["5h"]) + ' · 7h = ' + fmtMoeda(storyPricing["7h"]) + ' · 12h = ' + fmtMoeda(storyPricing["12h"]) + ' · 24h = ' + fmtMoeda(storyPricing["24h"]) + '.</p>');
+        '<p style="font-size:11px;color:var(--text-muted);margin-top:12px">Preços: 3h = ' + fmtMoeda(storyPricing["3h"]) + ' · 6h = ' + fmtMoeda(storyPricing["6h"]) + ' · 12h = ' + fmtMoeda(storyPricing["12h"]) + ' · 24h = ' + fmtMoeda(storyPricing["24h"]) + '.</p>');
 }
 
 async function confirmarCompraDestaque(){
     const msg = document.getElementById("dstMsg");
-    const duracao = (document.querySelector('input[name="destaqueDuracao"]:checked') || {}).value || "24h";
+    const duracao = (document.querySelector('input[name="destaqueDuracao"]:checked') || {}).value || "6h";
     const titulo = document.getElementById("dstTitulo").value.trim();
     const subtitulo = document.getElementById("dstSubtitulo").value.trim();
     const cpfCnpj = document.getElementById("dstCpf").value.trim();
@@ -5147,8 +5141,8 @@ function renderizarStories(){
     const lidos = storiesLidos();
     list.innerHTML = storiesState.map((story, index) =>
         '<button class="story-bubble ' + (lidos.includes(story.id) ? "seen" : "") + '" onclick="abrirStory(' + index + ')" aria-label="' + escHtml(story.title) + '">' +
-            '<span class="story-ring"><span class="story-face">' + storyIcon(story.kind) + '</span></span>' +
-            '<span class="story-label">' + escHtml((story.title || "STORY").replace(/^[^A-Z0-9À-ÿ]+/i, "").slice(0, 18)) + '</span>' +
+            '<span class="story-ring"><span class="story-face">' + (story.fotoUrl ? '<img src="' + escHtml(story.fotoUrl) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">' : storyIcon(story.kind)) + '</span></span>' +
+            '<span class="story-label">@' + escHtml(story.apelido || "usuario") + '</span>' +
         '</button>'
     ).join("");
     let tickerIndex = 0;
@@ -5163,6 +5157,72 @@ function renderizarStories(){
     updateTicker();
     if(storyTickerTimer) clearInterval(storyTickerTimer);
     storyTickerTimer = setInterval(updateTicker, 5000);
+}
+
+/* ===== ÚLTIMAS COMPRAS ===== */
+let ultimasComprasState = [];
+let comprasTickerTimer = null;
+
+function carregarUltimasCompras(){
+    return fetch("/api/ultimas-compras?limite=20", { cache: "no-store" })
+        .then(reqJSON)
+        .then(data => {
+            ultimasComprasState = Array.isArray(data.compras) ? data.compras : [];
+            renderizarUltimasCompras();
+        })
+        .catch(e => { if(e && e.message !== "Failed to fetch") console.warn("ultimasCompras:", e.message); });
+}
+
+function formatarTempoAtras(segundos){
+    if(segundos < 60) return `há ${segundos}s`;
+    if(segundos < 3600) return `há ${Math.floor(segundos/60)}min`;
+    if(segundos < 86400) return `há ${Math.floor(segundos/3600)}h`;
+    return `há ${Math.floor(segundos/86400)}d`;
+}
+
+function renderizarUltimasCompras(){
+    const shell = document.getElementById("ultimasComprasShell");
+    const ticker = document.getElementById("ultimasComprasTicker");
+    if(!shell || !ticker) return;
+    shell.style.display = ultimasComprasState.length ? "block" : "none";
+    if(!ultimasComprasState.length){
+        if(comprasTickerTimer) clearInterval(comprasTickerTimer);
+        return;
+    }
+    ticker.innerHTML = ultimasComprasState.map(compra => {
+        const avatarHtml = compra.fotoUrl 
+            ? '<img src="' + escHtml(compra.fotoUrl) + '" alt="' + escHtml(compra.apelido) + '">'
+            : (compra.apelido || "U").charAt(0).toUpperCase();
+        return '<div class="compra-item">' +
+            '<div class="compra-avatar">' + avatarHtml + '</div>' +
+            '<div class="compra-info">' +
+                '<div class="compra-texto"><b>@' + escHtml(compra.apelido) + '</b> ' + escHtml(compra.descricao) + '</div>' +
+                '<div class="compra-tempo">' + formatarTempoAtras(compra.tempoAtrasSegundos) + '</div>' +
+            '</div>' +
+        '</div>';
+    }).join("");
+    if(comprasTickerTimer) clearInterval(comprasTickerTimer);
+    comprasTickerTimer = setInterval(carregarUltimasCompras, 5000);
+}
+
+/* ===== STORIES CTA ===== */
+function renderizarStoriesCta(){
+    const shell = document.getElementById("storiesCtaShell");
+    const opcoes = document.getElementById("duracaoOpcoes");
+    if(!shell || !opcoes) return;
+    shell.style.display = minhaConta && minhaConta.token ? "block" : "none";
+    const duracoes = [
+        { key: "3h", label: "3 horas", preco: storyPricing["3h"], popular: false },
+        { key: "6h", label: "6 horas", preco: storyPricing["6h"], popular: true },
+        { key: "12h", label: "12 horas", preco: storyPricing["12h"], popular: false },
+        { key: "24h", label: "24 horas", preco: storyPricing["24h"], popular: false }
+    ];
+    opcoes.innerHTML = duracoes.map(d => 
+        '<div class="duracao-opcao' + (d.popular ? ' popular' : '') + '">' +
+            '<span class="duracao-label">' + d.label + '</span>' +
+            '<span class="duracao-preco">' + (d.preco != null ? fmtMoeda(d.preco) : "Preço a configurar") + '</span>' +
+        '</div>'
+    ).join("");
 }
 
 function abrirStory(index){
@@ -5298,7 +5358,7 @@ function abrirFaq(event){
         <p><b>Quem é responsável pela imagem publicada?</b><br>Você é o único responsável pelo conteúdo publicado. Deve possuir os direitos necessários e respeitar a legislação.</p>
         <p><b>O que acontece se eu publicar conteúdo proibido?</b><br>O conteúdo poderá ser removido ou bloqueado sem aviso prévio, e não haverá direito a reembolso, salvo disposição legal em contrário.</p>
         <p><b>Como faço para renovar?</b><br>Acesse a aba "Meus Espaços", localize o espaço com a licença próxima do vencimento e clique em "Renovar".</p>
-        <p><b>Como falar com o suporte?</b><br>Use o chat ao vivo no canto inferior direito ou envie um e-mail para group.holding@outlook.com. No chat você pode usar emojis e mensagens rápidas.</p>
+        <p><b>Como falar com o suporte?</b><br>Use o chat ao vivo no canto inferior direito ou envie um e-mail para milhaodoor@gmail.com. No chat você pode usar emojis e mensagens rápidas.</p>
         <p><b>Posso revender meus espaços?</b><br>Sim! Ative o modo "Oferta em Blocos" para anunciar seus espaços para outros usuários.</p>
         <h3 style="color:#ffd400;margin-top:22px;">🃏 COLECIONÁVEIS</h3>
         <p><b>Como compro um pacote?</b><br>Entre na página de Colecionáveis, escolha um pacote (Bronze, Prata, Ouro ou Especial) e faça o pagamento via Pix ou cartão. Ao confirmar, as figurinhas são abertas automaticamente.</p>
@@ -5385,6 +5445,17 @@ document.addEventListener("DOMContentLoaded", async function(){
     await carregarConfigMercadoPago();
     carregarKits();
     resize();
+    
+    // Carregar stories e últimas compras
+    carregarStories();
+    carregarUltimasCompras();
+    renderizarStoriesCta();
+    
+    // Inicializar notificações se usuário já estiver logado
+    if(minhaConta && minhaConta.token){
+        updateBtnConta();
+        iniciarSSENotificacoes();
+    }
 });
 
 let x = 0;
@@ -5563,12 +5634,14 @@ function setAuth(dados){
     );
     updateBtnConta();
     verificarBeneficioIndicacao();
+    iniciarSSENotificacoes();
 }
 
 function clearAuth(){
     minhaConta = null;
     localStorage.removeItem("mega_conta");
     updateBtnConta();
+    pararSSENotificacoes();
 }
 
 function authHeaders(extra){
@@ -5587,6 +5660,170 @@ function updateBtnConta(){
         const b = document.getElementById(id);
         if(b) b.textContent = text;
     });
+    
+    // Mostrar/esconder botão de notificações baseado no login
+    const btnNotif = document.getElementById("btnNotificacoes");
+    if(btnNotif){
+        btnNotif.style.display = minhaConta && minhaConta.token ? "block" : "none";
+    }
+    
+    // Carregar notificações se logado
+    if(minhaConta && minhaConta.token){
+        carregarNotificacoes();
+    }
+}
+
+/* ===== NOTIFICAÇÕES ===== */
+let notificacoesSource = null;
+
+async function carregarNotificacoes(){
+    if(!minhaConta || !minhaConta.token) return;
+    
+    try {
+        const resp = await fetch("/api/notificacoes", {
+            headers: { "Authorization": "Bearer " + minhaConta.token }
+        });
+        const data = await resp.json();
+        
+        const badge = document.getElementById("notificacoesBadge");
+        if(badge){
+            if(data.naoLidas > 0){
+                badge.textContent = data.naoLidas > 99 ? "99+" : data.naoLidas;
+                badge.style.display = "flex";
+            } else {
+                badge.style.display = "none";
+            }
+        }
+        
+        return data;
+    } catch(error){
+        console.error("Erro ao carregar notificações:", error);
+        return { notificacoes: [], naoLidas: 0 };
+    }
+}
+
+function iniciarSSENotificacoes(){
+    if(notificacoesSource){
+        notificacoesSource.close();
+    }
+    
+    if(!minhaConta || !minhaConta.token) return;
+    
+    try {
+        notificacoesSource = new EventSource("/api/notificacoes/stream?token=" + encodeURIComponent(minhaConta.token));
+        
+        notificacoesSource.onmessage = function(event){
+            try {
+                const notificacao = JSON.parse(event.data);
+                carregarNotificacoes();
+                if(typeof toastMsg === "function"){
+                    toastMsg(notificacao.titulo || "Nova notificação");
+                }
+            } catch(e){
+                console.error("Erro ao processar notificação SSE:", e);
+            }
+        };
+        
+        notificacoesSource.onerror = function(){
+            console.log("SSE notificações: reconectando...");
+        };
+    } catch(e){
+        console.error("Erro ao iniciar SSE notificações:", e);
+    }
+}
+
+function pararSSENotificacoes(){
+    if(notificacoesSource){
+        notificacoesSource.close();
+        notificacoesSource = null;
+    }
+}
+
+async function abrirPainelNotificacoes(){
+    if(!minhaConta || !minhaConta.token){
+        abrirLogin();
+        return;
+    }
+    
+    const data = await carregarNotificacoes();
+    const notificacoes = data.notificacoes || [];
+    
+    let html = '<h2>🔔 NOTIFICAÇÕES</h2>';
+    
+    if(!notificacoes.length){
+        html += '<div style="text-align:center;padding:40px 20px;color:var(--text-muted);">Nenhuma notificação ainda.</div>';
+    } else {
+        html += '<div style="margin-bottom:12px;">';
+        html += '<button class="btn btn-secondary" onclick="marcarTodasLidas()" style="width:100%;">✓ Marcar todas como lidas</button>';
+        html += '</div>';
+        
+        const icones = {
+            oferta_recebida: "📥",
+            oferta_aceita: "✅",
+            oferta_recusada: "❌",
+            oferta_cancelada: "🚫",
+            nova_mensagem: "💬",
+            pagamento_aprovado: "💳",
+            figurinha_recebida: "🎁",
+            nova_meta: "🏆",
+            album_proximo: "📊",
+            bloco_publicado: "🗺️"
+        };
+        
+        for(const n of notificacoes){
+            const icone = icones[n.tipo] || "🔔";
+            const lida = n.lida_em ? "opacity:0.6;" : "";
+            const tempo = new Date(n.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+            
+            html += '<div style="background:var(--bg-card);border:2px solid ' + (n.lida_em ? "var(--border-color)" : "var(--accent)") + ';border-radius:10px;padding:12px;margin-bottom:10px;' + lida + '" onclick="marcarLida(' + n.id + ')">';
+            html += '<div style="display:flex;gap:10px;align-items:flex-start;">';
+            html += '<div style="font-size:24px;">' + icone + '</div>';
+            html += '<div style="flex:1;min-width:0;">';
+            html += '<div style="font-weight:800;color:var(--text-primary);margin-bottom:4px;">' + escHtml(n.titulo) + '</div>';
+            html += '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:6px;">' + escHtml(n.mensagem) + '</div>';
+            html += '<div style="font-size:11px;color:var(--text-muted);">' + tempo + '</div>';
+            html += '</div>';
+            if(!n.lida_em){
+                html += '<div style="width:8px;height:8px;background:var(--accent);border-radius:50%;flex-shrink:0;"></div>';
+            }
+            html += '</div>';
+            html += '</div>';
+        }
+    }
+    
+    abrirInfoModal("🔔 NOTIFICAÇÕES", html);
+}
+
+async function marcarLida(id){
+    try {
+        await fetch("/api/notificacoes/" + id + "/lida", {
+            method: "POST",
+            headers: {
+                "Authorization": "Bearer " + minhaConta.token,
+                "Content-Type": "application/json"
+            }
+        });
+        abrirPainelNotificacoes();
+        carregarNotificacoes();
+    } catch(e){
+        console.error("Erro ao marcar notificação:", e);
+    }
+}
+
+async function marcarTodasLidas(){
+    try {
+        await fetch("/api/notificacoes/lidas", {
+            method: "POST",
+            headers: {
+                "Authorization": "Bearer " + minhaConta.token,
+                "Content-Type": "application/json"
+            }
+        });
+        abrirPainelNotificacoes();
+        carregarNotificacoes();
+    } catch(e){
+        console.error("Erro ao marcar todas:", e);
+    }
 }
 
 function validarSessao(){
@@ -15740,7 +15977,7 @@ function compartilharIndicacao(){
         </div>
         <div class="footer-col">
             <h4>CONTATO</h4>
-            <a href="mailto:group.holding@outlook.com">group.holding@outlook.com</a>
+            <a href="mailto:milhaodoor@gmail.com">milhaodoor@gmail.com</a>
             <a href="#" onclick="abrirChatGeral();return false;">Chat ao Vivo</a>
             <a href="https://instagram.com/milhaodoor" target="_blank">Instagram</a>
         </div>

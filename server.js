@@ -32,11 +32,55 @@ const ALLOW_TEST_MODE =
 
 /* Configuração central dos destaques patrocinados. */
 const STORY_PRICING = Object.freeze({
-    "5h": Number(process.env.STORY_PRICE_5H || 15.00),
-    "7h": Number(process.env.STORY_PRICE_7H || 20.00),
-    "12h": Number(process.env.STORY_PRICE_12H || 30.00),
-    "24h": Number(process.env.STORY_PRICE_24H || 45.00)
+    "3h": Number(process.env.STORY_PRICE_3H || 5.00),
+    "6h": Number(process.env.STORY_PRICE_6H || 8.00),
+    "12h": Number(process.env.STORY_PRICE_12H || 12.00),
+    "24h": Number(process.env.STORY_PRICE_24H || 20.00)
 });
+
+/* Obtém a configuração de preços dos stories do banco de dados.
+   Fallback para STORY_PRICING caso o DB não esteja disponível. */
+async function getStoryPricingConfig() {
+    if (!pgDisponivel || !pgPool) {
+        const duracoes = Object.keys(STORY_PRICING);
+        return duracoes.map(d => ({
+            duracao: d,
+            precoCents: Math.round(STORY_PRICING[d] * 100),
+            ativo: true,
+            popular: d === "6h"
+        }));
+    }
+    try {
+        const result = await pgPool.query(
+            "SELECT duracao, preco_cents, ativo, popular FROM story_pricing_config ORDER BY CASE duracao WHEN '3h' THEN 1 WHEN '6h' THEN 2 WHEN '12h' THEN 3 WHEN '24h' THEN 4 ELSE 5 END"
+        );
+        if (result.rows.length > 0) {
+            return result.rows.map(r => ({
+                duracao: r.duracao,
+                precoCents: Number(r.preco_cents),
+                ativo: r.ativo === true,
+                popular: r.popular === true
+            }));
+        }
+    } catch (e) { /* fallback */ }
+    const duracoes = Object.keys(STORY_PRICING);
+    return duracoes.map(d => ({
+        duracao: d,
+        precoCents: Math.round(STORY_PRICING[d] * 100),
+        ativo: true,
+        popular: d === "6h"
+    }));
+}
+
+/* Valida o preço de uma duração de story contra a config do banco.
+   Retorna { ok, precoCents, erro } */
+async function validarPrecoStory(duracao, frontendPrecoCents) {
+    const config = await getStoryPricingConfig();
+    const item = config.find(c => c.duracao === duracao);
+    if (!item) return { ok: false, erro: "Duração inválida." };
+    if (!item.ativo) return { ok: false, erro: "Duração desativada pelo administrador." };
+    return { ok: true, precoCents: item.precoCents };
+}
 
 const MAX_CREDITOS_INDICACAO = 4;
 
@@ -606,6 +650,9 @@ async function initBanco() {
             )
         `);
 
+        await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_transacoes_mp_order_id ON transacoes(mp_order_id)`);
+        await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_transacoes_status ON transacoes(status)`);
+
         await pgPool.query(`
             CREATE TABLE IF NOT EXISTS usuarios (
                 id          SERIAL PRIMARY KEY,
@@ -633,7 +680,8 @@ async function initBanco() {
                     ADD COLUMN IF NOT EXISTS apelido VARCHAR(50),
                     ADD COLUMN IF NOT EXISTS bio TEXT,
                     ADD COLUMN IF NOT EXISTS foto_url VARCHAR(500),
-                    ADD COLUMN IF NOT EXISTS codigo_indicacao VARCHAR(20) UNIQUE
+                    ADD COLUMN IF NOT EXISTS codigo_indicacao VARCHAR(20) UNIQUE,
+                    ADD COLUMN IF NOT EXISTS bloqueado BOOLEAN NOT NULL DEFAULT FALSE
             `);
         } catch (e) { /* se as colunas já existirem, segue o boot */ }
 
@@ -669,6 +717,26 @@ async function initBanco() {
                     UNIQUE(indicado_id, status)
                 )
             `);
+        } catch (e) { /* se a tabela já existir, segue o boot */ }
+
+        /* Tabela de últimas compras (feed público) */
+        try {
+            await pgPool.query(`
+                CREATE TABLE IF NOT EXISTS ultimas_compras (
+                    id SERIAL PRIMARY KEY,
+                    usuario_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+                    tipo VARCHAR(20) NOT NULL,
+                    descricao VARCHAR(200) NOT NULL,
+                    quantidade INTEGER NOT NULL DEFAULT 0,
+                    valor_cents INTEGER NOT NULL DEFAULT 0,
+                    espacos INTEGER[] DEFAULT '{}',
+                    visivel BOOLEAN NOT NULL DEFAULT TRUE,
+                    criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    expira_em TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '24 hours'
+                )
+            `);
+            await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_ultimas_compras_expira ON ultimas_compras(expira_em)`);
+            await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_ultimas_compras_criado ON ultimas_compras(criado_em DESC)`);
         } catch (e) { /* se a tabela já existir, segue o boot */ }
 
         await pgPool.query(`
@@ -713,6 +781,7 @@ async function initBanco() {
                 titulo          VARCHAR(180),
                 subtitulo       VARCHAR(240),
                 publicado       BOOLEAN NOT NULL DEFAULT FALSE,
+                visualizacoes   INTEGER NOT NULL DEFAULT 0,
                 criado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 pago_em         TIMESTAMPTZ,
                 expira_em       TIMESTAMPTZ
@@ -960,6 +1029,42 @@ async function initBanco() {
                 "ERRO ao migrar tabela de bugs/sugestões:",
                 eBugs.message
             );
+        }
+
+        /* Configuração de preços de destaque dos Stories (admin). */
+        try {
+            await pgPool.query(`
+                CREATE TABLE IF NOT EXISTS story_pricing_config (
+                    id            SERIAL PRIMARY KEY,
+                    duracao       VARCHAR(10) NOT NULL UNIQUE,
+                    preco_cents   INTEGER NOT NULL DEFAULT 0,
+                    ativo         BOOLEAN NOT NULL DEFAULT TRUE,
+                    popular       BOOLEAN NOT NULL DEFAULT FALSE,
+                    atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            `);
+
+            const pricingCheck = await pgPool.query(
+                "SELECT COUNT(*) as total FROM story_pricing_config"
+            );
+
+            if (Number(pricingCheck.rows[0].total) === 0) {
+                const defaults = [
+                    ["3h", 500, true, false],
+                    ["6h", 800, true, true],
+                    ["12h", 1200, true, false],
+                    ["24h", 2000, true, false]
+                ];
+                for (const [dur, preco, ativo, pop] of defaults) {
+                    await pgPool.query(
+                        "INSERT INTO story_pricing_config (duracao, preco_cents, ativo, popular) VALUES ($1,$2,$3,$4)",
+                        [dur, preco, ativo, pop]
+                    );
+                }
+                console.log("story_pricing_config: preços padrão inseridos.");
+            }
+        } catch (ePricing) {
+            console.error("ERRO ao migrar tabela de preços de stories:", ePricing.message);
         }
 
         pgDisponivel = true;
@@ -1704,10 +1809,9 @@ async function chavesDoUsuario(usuarioId) {
 const TAXA_SITE = 0.1;
 
 function taxaDoSite(valor) {
-    return Math.max(
-        0.01,
-        Math.round(valor * TAXA_SITE * 100) / 100
-    );
+    const cents = paraCentavos(valor);
+    const taxaCents = Math.max(1, Math.round(cents * TAXA_SITE));
+    return taxaCents / 100;
 }
 
 /* =========================
@@ -1944,6 +2048,16 @@ function flushTodasEmails() {
 
 process.on("SIGTERM", flushTodasEmails);
 process.on("SIGINT", flushTodasEmails);
+
+function escapeHtml(str) {
+    if (str == null) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
 
 function htmlNotificacao(titulo, linhas) {
 
@@ -2780,7 +2894,7 @@ app.post("/api/auth/registrar", async (req, res) => {
 
     } catch (error) {
         console.error("ERRO ao cadastrar usuário:", error.message);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: "Erro interno do servidor." });
     }
 });
 
@@ -2854,7 +2968,7 @@ app.post("/api/auth/login", async (req, res) => {
 
     } catch (error) {
         console.error("ERRO no login:", error.message);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: "Erro interno do servidor." });
     }
 });
 
@@ -2912,7 +3026,7 @@ app.post("/api/auth/senha-recuperacao", async (req, res) => {
                 "Redefinição de senha — Milhão Door",
                 `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto">
                    <h2 style="color:#0d9488">Redefinição de senha</h2>
-                   <p>Olá, ${usuario.nome.split(" ")[0]}!</p>
+                    <p>Olá, ${escapeHtml(usuario.nome.split(" ")[0])}!</p>
                    <p>Recebemos um pedido de redefinição da sua senha. O link abaixo é válido por <b>30 minutos</b> e só pode ser usado uma vez:</p>
                    <p style="text-align:center;margin:24px 0">
                      <a href="${link}" style="background:#0d9488;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Redefinir minha senha</a>
@@ -3374,10 +3488,6 @@ app.get("/api/stories", async (req, res) => {
     }
 });
 
-app.get("/api/stories/config", (req, res) => {
-    res.json({ ok: true, pricing: STORY_PRICING });
-});
-
 /* =========================
    DESTAQUES NO STORY — COMPRA, CONFIRMAÇÃO E PUBLICAÇÃO
    Cobrança REAL via Mercado Pago (PIX ou cartão). O usuário só
@@ -3558,8 +3668,14 @@ app.post("/api/stories/destaques", authUsuario, async (req, res) => {
     if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço de destaques indisponível no momento." });
     try {
         const duracao = String(req.body.duracao || "24h").trim();
-        const preco = STORY_PRICING[duracao];
-        if (preco == null) return res.status(400).json({ error: "Duração inválida. Use 5h, 7h, 12h ou 24h." });
+
+        /* Valida preço contra config do banco (admin é a fonte de verdade). */
+        const validacao = await validarPrecoStory(duracao);
+        if (!validacao.ok) {
+            return res.status(400).json({ error: validacao.erro });
+        }
+        const precoCents = validacao.precoCents;
+        const preco = precoCents / 100;
 
         const comprador = normalizarDadosComprador(req.body);
         if (!comprador.documento || !validarDocumento(comprador.documento)) {
@@ -3569,7 +3685,6 @@ app.post("/api/stories/destaques", authUsuario, async (req, res) => {
         const titulo = String(req.body.titulo || "").slice(0, 180).trim();
         if (!titulo) return res.status(400).json({ error: "Informe o título do seu destaque." });
 
-        const precoCents = paraCentavos(preco);
         const orderId = "MEGA-STORY-" + crypto.randomUUID().slice(0, 8).toUpperCase();
 
         const mp = await criarOrderMercadoPago({
@@ -3745,6 +3860,121 @@ app.post("/api/stories/destaques/:id/publicar", authUsuario, async (req, res) =>
     } catch (error) {
         res.status(500).json({ error: "Não foi possível publicar o destaque." });
     }
+});
+
+/* =========================
+   ÚLTIMAS COMPRAS (Feed Público)
+========================= */
+
+/* Lista as últimas compras públicas para o feed */
+app.get("/api/ultimas-compras", async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const limite = Math.min(50, Math.max(1, parseInt(req.query.limite) || 20));
+        
+        const result = await pgPool.query(
+            `SELECT uc.*, u.apelido, u.foto_url
+             FROM ultimas_compras uc
+             LEFT JOIN usuarios u ON u.id = uc.usuario_id
+             WHERE uc.expira_em > NOW() AND uc.visivel = TRUE
+             ORDER BY uc.criado_em DESC
+             LIMIT $1`,
+            [limite]
+        );
+        
+        const agora = Date.now();
+        const compras = result.rows.map(c => ({
+            id: c.id,
+            usuarioId: c.usuario_id,
+            apelido: c.apelido || `Usuário ${c.id}`,
+            fotoUrl: c.foto_url,
+            tipo: c.tipo,
+            descricao: c.descricao,
+            quantidade: c.quantidade,
+            valorCents: c.valor_cents,
+            espacos: c.espacos,
+            criadoEm: c.criado_em,
+            tempoAtrasSegundos: Math.floor((agora - new Date(c.criado_em).getTime()) / 1000)
+        }));
+        
+        res.json({ compras });
+    } catch (error) {
+        console.error("ERRO ao listar últimas compras:", error.message);
+        res.status(500).json({ error: "Não foi possível listar últimas compras." });
+    }
+});
+
+/* Registra uma nova compra no feed (chamado após confirmação de pagamento) */
+async function registrarUltimaCompra(usuarioId, tipo, descricao, quantidade, valorCents, espacos = []) {
+    if (!pgDisponivel || !pgPool) return null;
+    try {
+        const result = await pgPool.query(
+            `INSERT INTO ultimas_compras (usuario_id, tipo, descricao, quantidade, valor_cents, espacos)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING id`,
+            [usuarioId, tipo, descricao, quantidade, valorCents, espacos]
+        );
+        return result.rows[0];
+    } catch (error) {
+        console.error("ERRO ao registrar última compra:", error.message);
+        return null;
+    }
+}
+
+/* =========================
+   STORIES - LISTA PÚBLICA
+========================= */
+
+/* Lista stories ativos para exibição pública */
+app.get("/api/stories", async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const result = await pgPool.query(
+            `SELECT d.*, u.apelido, u.foto_url
+             FROM destaques d
+             LEFT JOIN usuarios u ON u.id = d.usuario_id
+             WHERE d.status = 'ativo' AND d.publicado = TRUE AND d.expira_em > NOW()
+             ORDER BY d.pago_em DESC
+             LIMIT 50`
+        );
+        
+        const agora = Date.now();
+        const stories = result.rows.map(s => ({
+            id: s.id,
+            usuarioId: s.usuario_id,
+            apelido: s.apelido || `Usuário ${s.id}`,
+            fotoUrl: s.foto_url,
+            tipo: s.tipo,
+            duracao: s.duracao,
+            titulo: s.titulo,
+            subtitulo: s.subtitulo,
+            criadoEm: s.criado_em,
+            pagoEm: s.pago_em,
+            expiraEm: s.expira_em,
+            tempoRestanteSegundos: s.expira_em ? Math.max(0, Math.floor((new Date(s.expira_em).getTime() - agora) / 1000)) : 0
+        }));
+        
+        res.json({ stories });
+    } catch (error) {
+        console.error("ERRO ao listar stories:", error.message);
+        res.status(500).json({ error: "Não foi possível listar stories." });
+    }
+});
+
+/* Configuração pública dos preços de stories */
+app.get("/api/stories/config", async (req, res) => {
+    const config = await getStoryPricingConfig();
+    const pricing = {};
+    const duracoes = [];
+    for (const c of config) {
+        pricing[c.duracao] = c.precoCents / 100;
+        if (c.ativo) duracoes.push(c.duracao);
+    }
+    res.json({
+        pricing,
+        duracoes,
+        config
+    });
 });
 
 /* =========================
@@ -4514,7 +4744,7 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
             htmlNotificacao(
                 "🎟️ Guarde seu código de acesso",
                 `<p style="margin:0 0 8px;color:#444;font-size:14px;">` +
-                `Olá, <b>${name.trim()}</b>! Você reservou ` +
+                `Olá, <b>${escapeHtml(name.trim())}</b>! Você reservou ` +
                 `<b>${ids.length.toLocaleString("pt-BR")}</b> espaço(s) ` +
                 `(pedido ${orderId}).</p>` +
                 `<p style="margin:0 0 8px;color:#444;font-size:14px;">` +
@@ -5208,7 +5438,7 @@ app.post("/api/test/confirm-offer", (req, res) => {
         );
 
         res.status(500).json({
-            error: error.message
+            error: "Erro interno do servidor."
         });
     }
 });
@@ -5493,7 +5723,7 @@ app.post("/api/restore", (req, res) => {
     } catch (error) {
 
         res.status(500).json({
-            error: error.message
+            error: "Erro interno do servidor."
         });
     }
 });
@@ -5681,7 +5911,7 @@ app.get("/api/historico", authOpcional, async (req, res) => {
         );
 
         res.status(500).json({
-            error: error.message
+            error: "Erro interno do servidor."
         });
     }
 });
@@ -5771,7 +6001,7 @@ app.get("/api/extrato/export", authOpcional, async (req, res) => {
         console.error("ERRO ao exportar extrato:", error.message);
 
         res.status(500).json({
-            error: error.message
+            error: "Erro interno do servidor."
         });
     }
 });
@@ -6340,7 +6570,7 @@ app.post("/api/pix-key", (req, res) => {
     } catch (error) {
 
         res.status(500).json({
-            error: error.message
+            error: "Erro interno do servidor."
         });
     }
 });
@@ -6514,16 +6744,16 @@ app.post("/api/offers", (req, res) => {
 
             const item =
                 `<p style="margin:0 0 8px;color:#444;font-size:14px;">` +
-                `Oferta para o ${resumoEspacos}:</p>` +
+                `Oferta para o ${escapeHtml(resumoEspacos)}:</p>` +
                 `<div style="font-size:14px;color:#333;">` +
-                `Comprador: <b>${name.trim()}</b><br>` +
+                `Comprador: <b>${escapeHtml(name.trim())}</b><br>` +
                 `Valor da oferta: ` +
                 `<b style="color:#15803d;">` +
                 `R$ ${Number(value).toLocaleString("pt-BR")}</b><br>` +
                 (message
-                    ? `Mensagem: ${message.trim()}<br>`
+                    ? `Mensagem: ${escapeHtml(message.trim())}<br>`
                     : "") +
-                `E-mail do comprador: ${email.trim()}` +
+                `E-mail do comprador: ${escapeHtml(email.trim())}` +
                 `</div>`;
 
             agendarEmailUnificado(
@@ -6541,7 +6771,7 @@ app.post("/api/offers", (req, res) => {
     } catch (error) {
 
         res.status(500).json({
-            error: error.message
+            error: "Erro interno do servidor."
         });
     }
 });
@@ -6762,21 +6992,21 @@ app.post("/api/offers/:id/accept", async (req, res) => {
 
         enviarEmail(
             oferta.email,
-            `Sua oferta para o ${resumoEspacos} foi aceita`,
+            `Sua oferta para o ${escapeHtml(resumoEspacos)} foi aceita`,
             htmlNotificacao(
                 "🎉 Oferta aceita — pagamento direto",
                 `<p style="margin:0 0 10px;color:#444;font-size:14px;">` +
                 `Sua oferta de ` +
                 `<b style="color:#15803d;">` +
                 `R$ ${Number(oferta.value).toLocaleString("pt-BR")}</b> ` +
-                `para o ${resumoEspacos} foi aceita.</p>` +
+                `para o ${escapeHtml(resumoEspacos)} foi aceita.</p>` +
                 `<p style="margin:0 0 8px;color:#444;font-size:14px;">` +
                 `Pague <b>R$ ` +
                 `${Number(oferta.value).toLocaleString("pt-BR")}</b> ` +
                 `diretamente ao proprietário na chave Pix:</p>` +
                 `<div style="background:#f7f7f7;border-radius:8px;` +
                 `padding:12px;font-size:14px;color:#333;word-break:break-all;">` +
-                `${minhaChave}</div>` +
+                `${escapeHtml(minhaChave)}</div>` +
                 `<p style="margin:10px 0 0;color:#666;font-size:13px;">` +
                 `E pague a taxa de 10% do site ` +
                 `(<b>R$ ${feeValue.toLocaleString("pt-BR")}</b>) ` +
@@ -6898,18 +7128,18 @@ app.post("/api/offers/:id/buyer-accept", async (req, res) => {
             enviarEmail(
                 dono.email,
                 `Comprador aceitou sua contraproposta ` +
-                `para o ${resumoEspacos}`,
+                `para o ${escapeHtml(resumoEspacos)}`,
                 htmlNotificacao(
                     "✅ Contraproposta aceita",
                     `<p style="margin:0;color:#444;font-size:14px;">` +
-                    `O comprador <b>${oferta.name}</b> aceitou sua ` +
+                    `O comprador <b>${escapeHtml(oferta.name)}</b> aceitou sua ` +
                     `contraproposta de ` +
                     `<b style="color:#15803d;">` +
                     `R$ ${Number(oferta.value).toLocaleString("pt-BR")}</b> ` +
-                    `para o ${resumoEspacos}.</p>` +
+                    `para o ${escapeHtml(resumoEspacos)}.</p>` +
                     `<p style="margin:8px 0 0;color:#666;font-size:13px;">` +
                     `O comprador pagará o valor direto na sua chave Pix ` +
-                    `(${chaveDono || "chave cadastrada"}) e a taxa de ` +
+                    `(${escapeHtml(chaveDono) || "chave cadastrada"}) e a taxa de ` +
                     `10% ao site. A transferência é feita ao confirmar ` +
                     `o pagamento da taxa.</p>`
                 )
@@ -6934,7 +7164,7 @@ app.post("/api/offers/:id/buyer-accept", async (req, res) => {
         console.error("ERRO CONTRA-PROPOSTA ACEITA:", error.message);
 
         res.status(500).json({
-            error: error.message
+            error: "Erro interno do servidor."
         });
     }
 });
@@ -6980,7 +7210,7 @@ app.post("/api/offers/:id/buyer-reject", (req, res) => {
             htmlNotificacao(
                 "Contraproposta recusada",
                 `<p style="margin:0;color:#444;font-size:14px;">` +
-                `O comprador <b>${oferta.name}</b> recusou sua ` +
+                `O comprador <b>${escapeHtml(oferta.name)}</b> recusou sua ` +
                 `contraproposta de ` +
                 `<b>R$ ${Number(oferta.value).toLocaleString("pt-BR")}</b> ` +
                 `para o espaço ` +
@@ -8370,7 +8600,7 @@ app.post("/api/link", authOpcional, async (req, res) => {
     } catch (error) {
 
         res.status(500).json({
-            error: error.message
+            error: "Erro interno do servidor."
         });
     }
 });
@@ -8839,6 +9069,20 @@ app.post("/webhooks/mercadopago", async (req, res) => {
                             descontoCents
                         });
                     }
+                    
+                    // Registra no feed de últimas compras
+                    const espacosIds = Object.keys(db)
+                        .filter(id => db[id].mpOrderId === orderId && db[id].status === "paid")
+                        .map(id => Number(id));
+                    
+                    await registrarUltimaCompra(
+                        usuarioId,
+                        "espacos",
+                        `${espacosIds.length} espaço(s)`,
+                        espacosIds.length,
+                        totalPagoCents,
+                        espacosIds
+                    );
                 }
             } catch (eBenef) {
                 console.error("ERRO ao consumir benefício de indicação:", eBenef.message);
@@ -9000,7 +9244,7 @@ app.post("/api/admin/login", (req, res) => {
     });
 });
 
-app.get("/api/admin/resumo", authAdmin, (req, res) => {
+app.get("/api/admin/resumo", authAdmin, async (req, res) => {
 
     const db = readDB();
 
@@ -9027,6 +9271,44 @@ app.get("/api/admin/resumo", authAdmin, (req, res) => {
         }
     }
 
+    /* Métricas expandidas do PostgreSQL */
+    let totalUsuarios = 0;
+    let usuariosBloqueados = 0;
+    let totalTransacoes = 0;
+    let storiesAtivos = 0;
+    let storiesExpirados = 0;
+    let comprasVisiveis = 0;
+
+    if (pgDisponivel && pgPool) {
+        try {
+            const uRes = await pgPool.query(
+                "SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE bloqueado = TRUE) as bloqueados FROM usuarios"
+            );
+            totalUsuarios = Number(uRes.rows[0].total);
+            usuariosBloqueados = Number(uRes.rows[0].bloqueados);
+
+            const tRes = await pgPool.query("SELECT COUNT(*) as total FROM transacoes");
+            totalTransacoes = Number(tRes.rows[0].total);
+
+            const sRes = await pgPool.query(
+                "SELECT COUNT(*) as total FROM destaques WHERE status = 'ativo' AND (expira_em IS NULL OR expira_em > NOW())"
+            );
+            storiesAtivos = Number(sRes.rows[0].total);
+
+            const seRes = await pgPool.query(
+                "SELECT COUNT(*) as total FROM destaques WHERE status = 'ativo' AND expira_em IS NOT NULL AND expira_em <= NOW()"
+            );
+            storiesExpirados = Number(seRes.rows[0].total);
+
+            const cRes = await pgPool.query(
+                "SELECT COUNT(*) as total FROM ultimas_compras WHERE visivel = TRUE"
+            );
+            comprasVisiveis = Number(cRes.rows[0].total);
+        } catch (e) {
+            console.error("ERRO ao buscar métricas do resumo:", e.message);
+        }
+    }
+
         res.json({
             ok: true,
             espacosTotal: espacos.length,
@@ -9036,7 +9318,13 @@ app.get("/api/admin/resumo", authAdmin, (req, res) => {
             porStatus,
             valorEspaco: 1,
             receitaPotencial: sold,
-            mercadoPagoModo: MERCADOPAGO_SANDBOX ? "sandbox" : "producao"
+            mercadoPagoModo: MERCADOPAGO_SANDBOX ? "sandbox" : "producao",
+            totalUsuarios,
+            usuariosBloqueados,
+            totalTransacoes,
+            storiesAtivos,
+            storiesExpirados,
+            comprasVisiveis
         });
 });
 
@@ -9379,8 +9667,6 @@ app.get("/api/admin/transacoes", authAdmin, async (req, res) => {
         const status =
             String(req.query.status || "").trim();
 
-        const limite = Math.min(500, Number(req.query.limite || 200));
-
         const params = [];
         const clausulas = [];
 
@@ -9409,6 +9695,17 @@ app.get("/api/admin/transacoes", authAdmin, async (req, res) => {
             ? "WHERE " + clausulas.join(" AND ")
             : "";
 
+        const pagina = Math.max(1, parseInt(req.query.pagina) || 1);
+        const limite = Math.min(500, Number(req.query.limite || 200));
+        const offset = (pagina - 1) * limite;
+
+        const countResult = await pgPool.query(
+            `SELECT COUNT(*) as total FROM transacoes ${where}`,
+            params
+        );
+        const total = Number(countResult.rows[0].total);
+        const totalPaginas = Math.ceil(total / limite);
+
         const result = await pgPool.query(
             `SELECT id, tipo, access_code, token, order_id,
                     customer_id, payment_id, usuario_id,
@@ -9418,13 +9715,16 @@ app.get("/api/admin/transacoes", authAdmin, async (req, res) => {
                FROM transacoes
               ${where}
               ORDER BY criado_em DESC
-              LIMIT ${limite}`,
+              LIMIT ${limite} OFFSET ${offset}`,
             params
         );
 
         res.json({
             ok: true,
-            total: result.rows.length,
+            total,
+            pagina,
+            totalPaginas,
+            limite,
             transacoes: result.rows.map(r => ({
                 id: r.id,
                 tipo: r.tipo,
@@ -9461,22 +9761,62 @@ app.get("/api/admin/usuarios", authAdmin, async (req, res) => {
     }
 
     try {
+        const pagina = Math.max(1, parseInt(req.query.pagina) || 1);
+        const limite = Math.min(200, Math.max(1, parseInt(req.query.limite) || 50));
+        const offset = (pagina - 1) * limite;
+        const busca = String(req.query.busca || "").trim().toLowerCase();
+        const bloqueado = req.query.bloqueado;
+
+        let where = [];
+        let params = [];
+        let paramIdx = 1;
+
+        if (busca) {
+            where.push(`(LOWER(u.nome) LIKE $${paramIdx} OR LOWER(u.email) LIKE $${paramIdx})`);
+            params.push(`%${busca}%`);
+            paramIdx++;
+        }
+        if (bloqueado === "true") {
+            where.push(`u.bloqueado = TRUE`);
+        } else if (bloqueado === "false") {
+            where.push(`u.bloqueado = FALSE`);
+        }
+
+        const whereClause = where.length > 0 ? "WHERE " + where.join(" AND ") : "";
+
+        const countResult = await pgPool.query(
+            `SELECT COUNT(*) as total FROM usuarios u ${whereClause}`,
+            params
+        );
+        const total = Number(countResult.rows[0].total);
+        const totalPaginas = Math.ceil(total / limite);
 
         const result = await pgPool.query(
             `SELECT u.id, u.nome, u.email, u.criado_em,
-                    u.ultimo_login,
-                    (SELECT COUNT(*) FROM usuario_chaves c
-                      WHERE c.usuario_id = u.id) AS chaves,
-                    (SELECT COUNT(*) FROM transacoes t
-                      WHERE t.usuario_id = u.id) AS transacoes
+                    u.ultimo_login, u.bloqueado,
+                    COALESCE(k.chaves, 0) AS chaves,
+                    COALESCE(t.transacoes, 0) AS transacoes
                FROM usuarios u
+              LEFT JOIN (
+                  SELECT usuario_id, COUNT(*) AS chaves
+                    FROM usuario_chaves GROUP BY usuario_id
+              ) k ON k.usuario_id = u.id
+              LEFT JOIN (
+                  SELECT usuario_id, COUNT(*) AS transacoes
+                    FROM transacoes GROUP BY usuario_id
+              ) t ON t.usuario_id = u.id
+              ${whereClause}
               ORDER BY u.id DESC
-              LIMIT 500`
+              LIMIT ${limite} OFFSET ${offset}`,
+            params
         );
 
         res.json({
             ok: true,
-            total: result.rows.length,
+            total,
+            pagina,
+            totalPaginas,
+            limite,
             usuarios: result.rows.map(u => ({
                 id: u.id,
                 nome: u.nome,
@@ -9484,7 +9824,8 @@ app.get("/api/admin/usuarios", authAdmin, async (req, res) => {
                 criadoEm: u.criado_em,
                 ultimoLogin: u.ultimo_login,
                 chaves: Number(u.chaves),
-                transacoes: Number(u.transacoes)
+                transacoes: Number(u.transacoes),
+                bloqueado: u.bloqueado === true
             }))
         });
 
@@ -9560,6 +9901,140 @@ app.delete("/api/admin/logs", authAdmin, (req, res) => {
         res.json({ ok: true });
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+});
+
+/* ─── Exportação CSV (admin) ─── */
+
+function csvEscape(val) {
+    if (val == null) return "";
+    const s = String(val);
+    if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+        return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+}
+
+function csvFromRows(headers, rows) {
+    const lines = [headers.map(csvEscape).join(",")];
+    for (const row of rows) {
+        lines.push(headers.map(h => csvEscape(row[h])).join(","));
+    }
+    return lines.join("\n");
+}
+
+function sendCsv(res, filename, csvContent) {
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send("\uFEFF" + csvContent);
+}
+
+app.get("/api/admin/export/usuarios", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const result = await pgPool.query(
+            `SELECT u.id, u.nome, u.email, u.criado_em, u.ultimo_login, u.bloqueado,
+                    COALESCE(k.chaves, 0) AS chaves,
+                    COALESCE(t.transacoes, 0) AS transacoes
+               FROM usuarios u
+              LEFT JOIN (
+                  SELECT usuario_id, COUNT(*) AS chaves
+                    FROM usuario_chaves GROUP BY usuario_id
+              ) k ON k.usuario_id = u.id
+              LEFT JOIN (
+                  SELECT usuario_id, COUNT(*) AS transacoes
+                    FROM transacoes GROUP BY usuario_id
+              ) t ON t.usuario_id = u.id
+              ORDER BY u.id DESC`
+        );
+        const rows = result.rows.map(u => ({
+            id: u.id, nome: u.nome, email: u.email,
+            criado_em: u.criado_em, ultimo_login: u.ultimo_login,
+            bloqueado: u.bloqueado ? "SIM" : "NAO",
+            chaves: Number(u.chaves), transacoes: Number(u.transacoes)
+        }));
+        const csv = csvFromRows(["id", "nome", "email", "criado_em", "ultimo_login", "bloqueado", "chaves", "transacoes"], rows);
+        sendCsv(res, "usuarios.csv", csv);
+    } catch (error) {
+        res.status(500).json({ error: "Erro ao exportar usuários." });
+    }
+});
+
+app.get("/api/admin/export/transacoes", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const result = await pgPool.query(
+            `SELECT t.id, t.usuario_id, CAST(t.espacos AS TEXT) as espacos, t.valor_total, t.comissao, t.status, t.metodo_pagamento, t.criado_em
+               FROM transacoes t ORDER BY t.criado_em DESC`
+        );
+        const rows = result.rows.map(t => ({
+            id: t.id, usuario_id: t.usuario_id, espaco: t.espacos,
+            valor_total: t.valor_total, comissao: t.comissao,
+            status: t.status, metodo_pagamento: t.metodo_pagamento, criado_em: t.criado_em
+        }));
+        const csv = csvFromRows(["id", "usuario_id", "espaco", "valor_total", "comissao", "status", "metodo_pagamento", "criado_em"], rows);
+        sendCsv(res, "transacoes.csv", csv);
+    } catch (error) {
+        res.status(500).json({ error: "Erro ao exportar transações." });
+    }
+});
+
+app.get("/api/admin/export/stories", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const result = await pgPool.query(
+            `SELECT d.id, d.usuario_id, d.tipo, d.duracao, d.titulo, d.status,
+                    d.preco_cents, d.visualizacoes, d.criado_em, d.pago_em, d.expira_em
+               FROM destaques d ORDER BY d.criado_em DESC`
+        );
+        const rows = result.rows.map(s => ({
+            id: s.id, usuario_id: s.usuario_id, tipo: s.tipo,
+            duracao: s.duracao, titulo: s.titulo, status: s.status,
+            preco_cents: s.preco_cents, visualizacoes: s.visualizacoes || 0,
+            criado_em: s.criado_em, pago_em: s.pago_em, expira_em: s.expira_em
+        }));
+        const csv = csvFromRows(["id", "usuario_id", "tipo", "duracao", "titulo", "status", "preco_cents", "visualizacoes", "criado_em", "pago_em", "expira_em"], rows);
+        sendCsv(res, "stories.csv", csv);
+    } catch (error) {
+        res.status(500).json({ error: "Erro ao exportar stories." });
+    }
+});
+
+app.get("/api/admin/export/ultimas-compras", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const result = await pgPool.query(
+            `SELECT uc.id, uc.usuario_id, uc.tipo, uc.descricao, uc.quantidade,
+                    uc.valor_cents, uc.visivel, uc.criado_em
+               FROM ultimas_compras uc ORDER BY uc.criado_em DESC`
+        );
+        const rows = result.rows.map(c => ({
+            id: c.id, usuario_id: c.usuario_id, tipo: c.tipo,
+            descricao: c.descricao, quantidade: c.quantidade,
+            valor_cents: c.valor_cents, visivel: c.visivel ? "SIM" : "NAO",
+            criado_em: c.criado_em
+        }));
+        const csv = csvFromRows(["id", "usuario_id", "tipo", "descricao", "quantidade", "valor_cents", "visivel", "criado_em"], rows);
+        sendCsv(res, "ultimas-compras.csv", csv);
+    } catch (error) {
+        res.status(500).json({ error: "Erro ao exportar últimas compras." });
+    }
+});
+
+app.get("/api/admin/export/espacos", authAdmin, (req, res) => {
+    try {
+        const db = readDB();
+        const espacos = Object.values(db);
+        const rows = espacos.map(e => ({
+            id: e.id, status: e.status, dono: e.owner || "",
+            comprador: e.buyer || "",
+            valor: e.price || 1,
+            criado_em: e.createdAt || ""
+        }));
+        const csv = csvFromRows(["id", "status", "dono", "comprador", "valor", "criado_em"], rows);
+        sendCsv(res, "espacos.csv", csv);
+    } catch (error) {
+        res.status(500).json({ error: "Erro ao exportar espaços." });
     }
 });
 
@@ -9869,9 +10344,9 @@ function gerarHtmlAvisoSorteio(valor, mensagem, email) {
         "max-width:600px;margin:0 auto;padding:20px;" +
         "background:#111;color:#eee;border-radius:8px;'>" +
         "<h2 style='color:#ffd400;margin-top:0;'>🎲 " +
-        "Sorteio " + valor + "</h2>" +
+        "Sorteio " + escapeHtml(valor) + "</h2>" +
         "<p style='font-size:16px;line-height:1.6;'>" +
-        mensagem.replace(/</g, "&lt;") +
+        escapeHtml(mensagem) +
         "</p>" +
         "<p style='font-size:15px;line-height:1.6;'>" +
         "Cada bloco comprado vale <b>1 bilhete</b> no " +
@@ -9880,7 +10355,7 @@ function gerarHtmlAvisoSorteio(valor, mensagem, email) {
         "<hr style='border-color:#333;'>" +
         "<p style='font-size:13px;color:#888;'>" +
         "Você está recebendo este e-mail por ter blocos " +
-        "ativos no Mega Outdoor (" + email + ").</p>" +
+        "ativos no Mega Outdoor (" + escapeHtml(email) + ").</p>" +
         "</div>"
     );
 }
@@ -9945,6 +10420,7 @@ const combos = criarCombos({
     statusOrderPago,
     orderPagaMercadoPago,
     paraCentavos,
+    descontoEmCentavos,
     registrarLog,
     registrarStoryEvento,
     obterPool: () => pgPool,
@@ -10053,7 +10529,7 @@ app.post(
                 message: "Obrigado! Seu relato foi enviado para nossa equipe."
             });
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ error: "Erro interno do servidor." });
         }
     }
 );
@@ -10160,6 +10636,698 @@ app.post("/api/admin/bugs/:id", authAdmin, async (req, res) => {
         res.json({ ok: true });
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+});
+
+/* =========================
+   ADMINISTRAÇÃO DE USUÁRIOS
+========================= */
+
+/* Editar usuário (admin) */
+app.put("/api/admin/usuarios/:id", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const userId = Number(req.params.id);
+        if (!Number.isInteger(userId) || userId < 1) {
+            return res.status(400).json({ error: "ID de usuário inválido." });
+        }
+
+        const { nome, email, bloqueado } = req.body;
+
+        // Validações
+        if (nome !== undefined) {
+            if (typeof nome !== "string" || nome.trim().length < 2 || nome.trim().length > 200) {
+                return res.status(400).json({ error: "Nome deve ter entre 2 e 200 caracteres." });
+            }
+        }
+
+        if (email !== undefined) {
+            if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                return res.status(400).json({ error: "E-mail inválido." });
+            }
+        }
+
+        // Verifica se usuário existe
+        const checkUser = await pgPool.query("SELECT id FROM usuarios WHERE id = $1", [userId]);
+        if (checkUser.rowCount === 0) {
+            return res.status(404).json({ error: "Usuário não encontrado." });
+        }
+
+        // Constrói UPDATE dinâmico
+        const updates = [];
+        const params = [];
+        let paramIndex = 1;
+
+        if (nome !== undefined) {
+            updates.push(`nome = $${paramIndex++}`);
+            params.push(nome.trim());
+        }
+        if (email !== undefined) {
+            updates.push(`email = $${paramIndex++}`);
+            params.push(email.trim().toLowerCase());
+        }
+        if (bloqueado !== undefined) {
+            updates.push(`bloqueado = $${paramIndex++}`);
+            params.push(Boolean(bloqueado));
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ error: "Nenhum campo para atualizar." });
+        }
+
+        params.push(userId);
+        const query = `UPDATE usuarios SET ${updates.join(", ")} WHERE id = $${paramIndex} RETURNING id, nome, email, bloqueado`;
+        const result = await pgPool.query(query, params);
+
+        registrarLog("admin_user_edit", {
+            admin: req.admin.usuario,
+            userId,
+            campos: Object.keys(req.body)
+        });
+
+        res.json({ ok: true, usuario: result.rows[0] });
+    } catch (error) {
+        console.error("ERRO ao editar usuário:", error.message);
+        res.status(500).json({ error: "Não foi possível editar o usuário." });
+    }
+});
+
+/* Resetar senha de usuário (admin) */
+app.post("/api/admin/usuarios/:id/reset-senha", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const userId = Number(req.params.id);
+        if (!Number.isInteger(userId) || userId < 1) {
+            return res.status(400).json({ error: "ID de usuário inválido." });
+        }
+
+        const { novaSenha } = req.body;
+        if (typeof novaSenha !== "string" || novaSenha.length < 6) {
+            return res.status(400).json({ error: "Nova senha deve ter pelo menos 6 caracteres." });
+        }
+
+        // Verifica se usuário existe
+        const checkUser = await pgPool.query("SELECT id FROM usuarios WHERE id = $1", [userId]);
+        if (checkUser.rowCount === 0) {
+            return res.status(404).json({ error: "Usuário não encontrado." });
+        }
+
+        // Gera novo hash de senha
+        const senhaHash = await hashSenha(novaSenha);
+        await pgPool.query("UPDATE usuarios SET senha_hash = $1 WHERE id = $2", [senhaHash, userId]);
+
+        registrarLog("admin_password_reset", {
+            admin: req.admin.usuario,
+            userId
+        });
+
+        res.json({ ok: true, mensagem: "Senha redefinida com sucesso." });
+    } catch (error) {
+        console.error("ERRO ao resetar senha:", error.message);
+        res.status(500).json({ error: "Não foi possível redefinir a senha." });
+    }
+});
+
+/* Bloquear/desbloquear usuário (admin) */
+app.post("/api/admin/usuarios/:id/bloquear", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const userId = Number(req.params.id);
+        if (!Number.isInteger(userId) || userId < 1) {
+            return res.status(400).json({ error: "ID de usuário inválido." });
+        }
+
+        const { bloqueado } = req.body;
+        if (typeof bloqueado !== "boolean") {
+            return res.status(400).json({ error: "Campo 'bloqueado' deve ser booleano." });
+        }
+
+        // Verifica se usuário existe
+        const checkUser = await pgPool.query("SELECT id FROM usuarios WHERE id = $1", [userId]);
+        if (checkUser.rowCount === 0) {
+            return res.status(404).json({ error: "Usuário não encontrado." });
+        }
+
+        await pgPool.query("UPDATE usuarios SET bloqueado = $1 WHERE id = $2", [bloqueado, userId]);
+
+        registrarLog(bloqueado ? "admin_user_block" : "admin_user_unblock", {
+            admin: req.admin.usuario,
+            userId
+        });
+
+        res.json({ ok: true, bloqueado });
+    } catch (error) {
+        console.error("ERRO ao bloquear usuário:", error.message);
+        res.status(500).json({ error: "Não foi possível bloquear o usuário." });
+    }
+});
+
+/* Excluir usuário (admin) */
+app.delete("/api/admin/usuarios/:id", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const userId = Number(req.params.id);
+        if (!Number.isInteger(userId) || userId < 1) {
+            return res.status(400).json({ error: "ID de usuário inválido." });
+        }
+
+        // Verifica se usuário existe
+        const checkUser = await pgPool.query("SELECT id, email FROM usuarios WHERE id = $1", [userId]);
+        if (checkUser.rowCount === 0) {
+            return res.status(404).json({ error: "Usuário não encontrado." });
+        }
+
+        // Verifica dependências antes de excluir
+        const transacoes = await pgPool.query("SELECT COUNT(*) FROM transacoes WHERE usuario_id = $1", [userId]);
+        const destaques = await pgPool.query("SELECT COUNT(*) FROM destaques WHERE usuario_id = $1", [userId]);
+
+        // Marca usuário como excluído (soft delete) em vez de deletar fisicamente
+        // para preservar integridade de dados financeiros
+        const novoEmail = `excluido_${userId}@deleted.local`;
+        await pgPool.query(
+            "UPDATE usuarios SET bloqueado = TRUE, email = $2, nome = 'Usuário Excluído' WHERE id = $1",
+            [userId, novoEmail]
+        );
+
+        registrarLog("admin_user_delete", {
+            admin: req.admin.usuario,
+            userId,
+            transacoes: transacoes.rows[0].count,
+            destaques: destaques.rows[0].count
+        });
+
+        res.json({
+            ok: true,
+            mensagem: "Usuário marcado como excluído. Dados financeiros preservados para auditoria.",
+            transacoesPreservadas: transacoes.rows[0].count,
+            destaquesPreservados: destaques.rows[0].count
+        });
+    } catch (error) {
+        console.error("ERRO ao excluir usuário:", error.message);
+        res.status(500).json({ error: "Não foi possível excluir o usuário." });
+    }
+});
+
+/* =========================
+   ADMINISTRAÇÃO DE ESPAÇOS
+========================= */
+
+/* Editar espaço (admin) */
+app.put("/api/admin/spaces/:id", authAdmin, async (req, res) => {
+    try {
+        const spaceId = String(req.params.id);
+        const db = readDB();
+
+        if (!db[spaceId]) {
+            return res.status(404).json({ error: "Espaço não encontrado." });
+        }
+
+        const { link, status, bloqueado } = req.body;
+
+        if (link !== undefined) {
+            const linkNormalizado = link ? normalizarLink(link) : null;
+            if (link && !linkNormalizado) {
+                return res.status(400).json({ error: "Link inválido." });
+            }
+            db[spaceId].link = linkNormalizado;
+        }
+
+        if (status !== undefined) {
+            const statusValidos = ["reserved", "paid", "published", "expired", "blocked"];
+            if (!statusValidos.includes(status)) {
+                return res.status(400).json({ error: "Status inválido." });
+            }
+            db[spaceId].status = status;
+        }
+
+        if (bloqueado !== undefined) {
+            db[spaceId].bloqueado = Boolean(bloqueado);
+        }
+
+        writeDB(db);
+
+        registrarLog("admin_space_edit", {
+            admin: req.admin.usuario,
+            spaceId,
+            campos: Object.keys(req.body)
+        });
+
+        res.json({ ok: true, space: db[spaceId] });
+    } catch (error) {
+        console.error("ERRO ao editar espaço:", error.message);
+        res.status(500).json({ error: "Não foi possível editar o espaço." });
+    }
+});
+
+/* Excluir espaço (admin) */
+app.delete("/api/admin/spaces/:id", authAdmin, async (req, res) => {
+    try {
+        const spaceId = String(req.params.id);
+        const db = readDB();
+
+        if (!db[spaceId]) {
+            return res.status(404).json({ error: "Espaço não encontrado." });
+        }
+
+        // Verifica se espaço tem transações associadas
+        const transacoes = await pgPool.query(
+            "SELECT COUNT(*) FROM transacoes WHERE espacos @> ARRAY[$1::integer]",
+            [Number(spaceId)]
+        );
+
+        // Remove espaço do banco de dados em memória
+        delete db[spaceId];
+        writeDB(db);
+
+        registrarLog("admin_space_delete", {
+            admin: req.admin.usuario,
+            spaceId,
+            transacoesAssociadas: transacoes.rows[0].count
+        });
+
+        res.json({
+            ok: true,
+            mensagem: "Espaço excluído.",
+            transacoesPreservadas: transacoes.rows[0].count
+        });
+    } catch (error) {
+        console.error("ERRO ao excluir espaço:", error.message);
+        res.status(500).json({ error: "Não foi possível excluir o espaço." });
+    }
+});
+
+/* =========================
+   ADMINISTRAÇÃO DE STORIES
+========================= */
+
+/* Listar stories (admin) */
+app.get("/api/admin/stories", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const status = req.query.status;
+        const busca = String(req.query.busca || "").trim().toLowerCase();
+        const pagina = Math.max(1, parseInt(req.query.pagina) || 1);
+        const limite = Math.min(200, Math.max(1, parseInt(req.query.limite) || 50));
+        const offset = (pagina - 1) * limite;
+
+        let where = ["1=1"];
+        let params = [];
+        let paramIdx = 1;
+
+        if (status) {
+            where.push(`d.status = $${paramIdx}`);
+            params.push(status);
+            paramIdx++;
+        }
+        if (busca) {
+            where.push(`(LOWER(d.titulo) LIKE $${paramIdx} OR LOWER(u.nome) LIKE $${paramIdx} OR LOWER(u.email) LIKE $${paramIdx})`);
+            params.push(`%${busca}%`);
+            paramIdx++;
+        }
+
+        const whereClause = where.join(" AND ");
+
+        const countResult = await pgPool.query(
+            `SELECT COUNT(*) as total FROM destaques d LEFT JOIN usuarios u ON u.id = d.usuario_id WHERE ${whereClause}`,
+            params
+        );
+        const total = Number(countResult.rows[0].total);
+        const totalPaginas = Math.ceil(total / limite);
+
+        let query = `
+            SELECT d.*, u.apelido, u.email as usuario_email
+            FROM destaques d
+            LEFT JOIN usuarios u ON u.id = d.usuario_id
+            WHERE ${whereClause}
+            ORDER BY d.criado_em DESC
+            LIMIT ${limite} OFFSET ${offset}
+        `;
+
+        const result = await pgPool.query(query, params);
+
+        const agora = Date.now();
+        const stories = result.rows.map(s => ({
+            id: s.id,
+            usuarioId: s.usuario_id,
+            usuarioApelido: s.apelido,
+            usuarioEmail: s.usuario_email,
+            tipo: s.tipo,
+            duracao: s.duracao,
+            titulo: s.titulo,
+            subtitulo: s.subtitulo,
+            status: s.status,
+            precoCents: s.preco_cents,
+            criadoEm: s.criado_em,
+            pagoEm: s.pago_em,
+            expiraEm: s.expira_em,
+            tempoRestanteSegundos: s.expira_em ? Math.max(0, Math.floor((new Date(s.expira_em).getTime() - agora) / 1000)) : 0,
+            visualizacoes: s.visualizacoes || 0
+        }));
+
+        res.json({ ok: true, total, pagina, totalPaginas, limite, stories });
+    } catch (error) {
+        console.error("ERRO ao listar stories:", error.message);
+        res.status(500).json({ error: "Não foi possível listar stories." });
+    }
+});
+
+/* Desativar story (admin) */
+app.post("/api/admin/stories/:id/desativar", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const storyId = Number(req.params.id);
+        if (!Number.isInteger(storyId) || storyId < 1) {
+            return res.status(400).json({ error: "ID de story inválido." });
+        }
+
+        const result = await pgPool.query(
+            "UPDATE destaques SET status = 'cancelado' WHERE id = $1 AND status = 'ativo' RETURNING id",
+            [storyId]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Story não encontrado ou não está ativo." });
+        }
+
+        registrarLog("admin_story_disable", {
+            admin: req.admin.usuario,
+            storyId
+        });
+
+        res.json({ ok: true, mensagem: "Story desativado." });
+    } catch (error) {
+        console.error("ERRO ao desativar story:", error.message);
+        res.status(500).json({ error: "Não foi possível desativar o story." });
+    }
+});
+
+/* Remover story (admin) */
+app.delete("/api/admin/stories/:id", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const storyId = Number(req.params.id);
+        if (!Number.isInteger(storyId) || storyId < 1) {
+            return res.status(400).json({ error: "ID de story inválido." });
+        }
+
+        const result = await pgPool.query(
+            "DELETE FROM destaques WHERE id = $1 RETURNING id, usuario_id, titulo",
+            [storyId]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Story não encontrado." });
+        }
+
+        // Remove também o story_event associado
+        await pgPool.query(
+            "DELETE FROM story_events WHERE event_key = $1",
+            [`destaque:${storyId}`]
+        );
+
+        registrarLog("admin_story_delete", {
+            admin: req.admin.usuario,
+            storyId,
+            usuarioId: result.rows[0].usuario_id,
+            titulo: result.rows[0].titulo
+        });
+
+        res.json({ ok: true, mensagem: "Story removido." });
+    } catch (error) {
+        console.error("ERRO ao remover story:", error.message);
+        res.status(500).json({ error: "Não foi possível remover o story." });
+    }
+});
+
+/* ─── Configuração de preços dos stories (admin) ─── */
+
+/* GET /api/admin/stories/pricing — listar config atual */
+app.get("/api/admin/stories/pricing", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const config = await getStoryPricingConfig();
+        res.json({ ok: true, config });
+    } catch (error) {
+        console.error("ERRO ao listar pricing:", error.message);
+        res.status(500).json({ error: "Não foi possível listar a configuração de preços." });
+    }
+});
+
+/* PUT /api/admin/stories/pricing — atualizar configuração */
+app.put("/api/admin/stories/pricing", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const { itens } = req.body;
+        if (!Array.isArray(itens) || itens.length === 0) {
+            return res.status(400).json({ error: "Envie um array 'itens' com as configurações." });
+        }
+
+        const duracoesValidas = ["3h", "6h", "12h", "24h"];
+        let popularCount = 0;
+
+        for (const item of itens) {
+            const duracao = String(item.duracao || "").trim();
+            if (!duracoesValidas.includes(duracao)) {
+                return res.status(400).json({ error: `Duração inválida: ${duracao}. Use 3h, 6h, 12h ou 24h.` });
+            }
+
+            const precoCents = Number(item.precoCents);
+            if (!Number.isFinite(precoCents) || precoCents < 0) {
+                return res.status(400).json({ error: `Preço inválido para ${duracao}. Use um valor numérico >= 0.` });
+            }
+
+            const ativo = item.ativo !== false;
+            const popular = item.popular === true;
+            if (popular) popularCount++;
+        }
+
+        if (popularCount > 1) {
+            return res.status(400).json({ error: "Somente uma duração pode ser marcada como POPULAR." });
+        }
+
+        for (const item of itens) {
+            const duracao = String(item.duracao || "").trim();
+            const precoCents = Math.round(Number(item.precoCents));
+            const ativo = item.ativo !== false;
+            const popular = item.popular === true;
+
+            await pgPool.query(
+                `INSERT INTO story_pricing_config (duracao, preco_cents, ativo, popular, atualizado_em)
+                 VALUES ($1,$2,$3,$4,NOW())
+                 ON CONFLICT (duracao)
+                 DO UPDATE SET preco_cents=$2, ativo=$3, popular=$4, atualizado_em=NOW()`,
+                [duracao, precoCents, ativo, popular]
+            );
+        }
+
+        registrarLog("admin_story_price_update", {
+            admin: req.admin.usuario,
+            alteracoes: itens.map(i => ({
+                duracao: i.duracao,
+                precoCents: i.precoCents,
+                ativo: i.ativo !== false,
+                popular: i.popular === true
+            }))
+        });
+
+        const config = await getStoryPricingConfig();
+        res.json({ ok: true, mensagem: "Preços atualizados com sucesso.", config });
+    } catch (error) {
+        console.error("ERRO ao atualizar pricing:", error.message);
+        res.status(500).json({ error: "Não foi possível atualizar os preços." });
+    }
+});
+
+/* POST /api/admin/stories/pricing/popular — marcar apenas uma duração como popular */
+app.post("/api/admin/stories/pricing/popular", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const { duracao } = req.body;
+        const duracoesValidas = ["3h", "6h", "12h", "24h"];
+
+        /* Limpa todas as marcações de popular */
+        await pgPool.query("UPDATE story_pricing_config SET popular = FALSE");
+
+        /* Se enviou uma duração válida, marca como popular */
+        if (duracao && duracoesValidas.includes(duracao)) {
+            await pgPool.query(
+                "UPDATE story_pricing_config SET popular = TRUE WHERE duracao = $1",
+                [duracao]
+            );
+        }
+
+        registrarLog("admin_story_popular_update", {
+            admin: req.admin.usuario,
+            duracao: duracao || "nenhuma"
+        });
+
+        const config = await getStoryPricingConfig();
+        res.json({ ok: true, mensagem: "Destaque popular atualizado.", config });
+    } catch (error) {
+        console.error("ERRO ao atualizar popular:", error.message);
+        res.status(500).json({ error: "Não foi possível atualizar o destaque popular." });
+    }
+});
+
+/* =========================
+   ADMINISTRAÇÃO DE ÚLTIMAS COMPRAS
+========================= */
+
+/* Listar últimas compras (admin) */
+app.get("/api/admin/ultimas-compras", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const pagina = Math.max(1, parseInt(req.query.pagina) || 1);
+        const limite = Math.min(200, Math.max(1, parseInt(req.query.limite) || 50));
+        const offset = (pagina - 1) * limite;
+        const busca = String(req.query.busca || "").trim().toLowerCase();
+        const visivel = req.query.visivel;
+
+        let where = [];
+        let params = [];
+        let paramIdx = 1;
+
+        if (busca) {
+            where.push(`(LOWER(u.nome) LIKE $${paramIdx} OR LOWER(u.email) LIKE $${paramIdx} OR LOWER(uc.descricao) LIKE $${paramIdx})`);
+            params.push(`%${busca}%`);
+            paramIdx++;
+        }
+        if (visivel === "true") {
+            where.push(`uc.visivel = TRUE`);
+        } else if (visivel === "false") {
+            where.push(`uc.visivel = FALSE`);
+        }
+
+        const whereClause = where.length > 0 ? "WHERE " + where.join(" AND ") : "";
+
+        const countResult = await pgPool.query(
+            `SELECT COUNT(*) as total FROM ultimas_compras uc LEFT JOIN usuarios u ON u.id = uc.usuario_id ${whereClause}`,
+            params
+        );
+        const total = Number(countResult.rows[0].total);
+        const totalPaginas = Math.ceil(total / limite);
+
+        const result = await pgPool.query(
+            `SELECT uc.*, u.apelido, u.email as usuario_email
+             FROM ultimas_compras uc
+             LEFT JOIN usuarios u ON u.id = uc.usuario_id
+             ${whereClause}
+             ORDER BY uc.criado_em DESC
+             LIMIT ${limite} OFFSET ${offset}`,
+            params
+        );
+
+        const compras = result.rows.map(c => ({
+            id: c.id,
+            usuarioId: c.usuario_id,
+            usuarioApelido: c.apelido,
+            usuarioEmail: c.usuario_email,
+            tipo: c.tipo,
+            descricao: c.descricao,
+            quantidade: c.quantidade,
+            valorCents: c.valor_cents,
+            espacos: c.espacos,
+            criadoEm: c.criado_em,
+            expiraEm: c.expira_em,
+            visivel: c.visivel !== false
+        }));
+
+        res.json({ ok: true, total, pagina, totalPaginas, limite, compras });
+    } catch (error) {
+        console.error("ERRO ao listar últimas compras:", error.message);
+        res.status(500).json({ error: "Não foi possível listar últimas compras." });
+    }
+});
+
+/* Ocultar última compra (admin) */
+app.post("/api/admin/ultimas-compras/:id/ocultar", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const compraId = Number(req.params.id);
+        if (!Number.isInteger(compraId) || compraId < 1) {
+            return res.status(400).json({ error: "ID de compra inválido." });
+        }
+
+        const result = await pgPool.query(
+            "UPDATE ultimas_compras SET visivel = FALSE WHERE id = $1 RETURNING id",
+            [compraId]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Compra não encontrada." });
+        }
+
+        registrarLog("admin_compra_hide", {
+            admin: req.admin.usuario,
+            compraId
+        });
+
+        res.json({ ok: true, mensagem: "Compra oculta do feed público." });
+    } catch (error) {
+        console.error("ERRO ao ocultar compra:", error.message);
+        res.status(500).json({ error: "Não foi possível ocultar a compra." });
+    }
+});
+
+/* Mostrar última compra novamente (admin) */
+app.post("/api/admin/ultimas-compras/:id/mostrar", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const compraId = Number(req.params.id);
+        if (!Number.isInteger(compraId) || compraId < 1) {
+            return res.status(400).json({ error: "ID de compra inválido." });
+        }
+
+        const result = await pgPool.query(
+            "UPDATE ultimas_compras SET visivel = TRUE WHERE id = $1 RETURNING id",
+            [compraId]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Compra não encontrada." });
+        }
+
+        registrarLog("admin_compra_show", {
+            admin: req.admin.usuario,
+            compraId
+        });
+
+        res.json({ ok: true, mensagem: "Compra tornada visível no feed público." });
+    } catch (error) {
+        console.error("ERRO ao mostrar compra:", error.message);
+        res.status(500).json({ error: "Não foi possível mostrar a compra." });
+    }
+});
+
+/* Remover última compra (admin) */
+app.delete("/api/admin/ultimas-compras/:id", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const compraId = Number(req.params.id);
+        if (!Number.isInteger(compraId) || compraId < 1) {
+            return res.status(400).json({ error: "ID de compra inválido." });
+        }
+
+        const result = await pgPool.query(
+            "DELETE FROM ultimas_compras WHERE id = $1 RETURNING id, usuario_id, descricao",
+            [compraId]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Compra não encontrada." });
+        }
+
+        registrarLog("admin_compra_delete", {
+            admin: req.admin.usuario,
+            compraId,
+            usuarioId: result.rows[0].usuario_id,
+            descricao: result.rows[0].descricao
+        });
+
+        res.json({ ok: true, mensagem: "Compra removida." });
+    } catch (error) {
+        console.error("ERRO ao remover compra:", error.message);
+        res.status(500).json({ error: "Não foi possível remover a compra." });
     }
 });
 

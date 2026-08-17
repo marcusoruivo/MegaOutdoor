@@ -215,7 +215,7 @@ async function main() {
     });
     t("destaque criado (pendente)", resp.r.status === 200 && resp.body.ok === true && resp.body.id, "status=" + resp.r.status + " id=" + resp.body.id);
     const destaqueId = resp.body.id;
-    t("destaque retorna totalCents correto (24h=4500)", resp.body.totalCents === 4500, "totalCents=" + resp.body.totalCents);
+    t("destaque retorna totalCents correto (24h=2000)", resp.body.totalCents === 2000, "totalCents=" + resp.body.totalCents);
 
     resp = await reqJson(BASE + "/api/stories/destaques/meus", { headers: h1b });
     t("meus destaques lista o criado", resp.r.status === 200 && resp.body.destaques.some(d => d.id === destaqueId), "n=" + (resp.body.destaques || []).length);
@@ -276,7 +276,7 @@ async function main() {
     t("/api/config retorna allowTestMode", resp.r.status === 200 && resp.body.allowTestMode === true, "status=" + resp.r.status);
 
     resp = await reqJson(BASE + "/api/stories/config", {});
-    t("/api/stories/config retorna pricing", resp.r.status === 200 && resp.body.pricing && resp.body.pricing["24h"] === 45, "24h=" + (resp.body.pricing && resp.body.pricing["24h"]));
+    t("/api/stories/config retorna pricing", resp.r.status === 200 && resp.body.pricing && resp.body.pricing["24h"] === 20, "24h=" + (resp.body.pricing && resp.body.pricing["24h"]));
 
     resp = await reqJson(BASE + "/api/colecionaveis/diagnostico/pagamentos", { headers: h1b });
     t("diagnóstico não expõe tokens", resp.r.status === 200 && !JSON.stringify(resp.body).includes("access_token_enc"), "status=" + resp.r.status);

@@ -423,10 +423,28 @@ body{overflow-x:hidden}
     background:radial-gradient(circle at 30% 20%, rgba(255,255,255,.3), transparent 55%);
     pointer-events:none;
 }
-.modal-arte-premium{background:transparent;height:clamp(170px,34vh,260px);padding:12px 14px 0;flex:0 0 auto;min-height:0}
+.modal-arte-premium{background:transparent;height:clamp(170px,34vh,260px);padding:12px 14px 0;flex:0 0 auto;min-height:0;font-size:14px}
 .modal-arte-premium::after{display:none}
 .modal-arte-premium .cc-arte{height:100%;max-height:100%;aspect-ratio:auto;margin:0;border-radius:18px;min-height:0}
 .cc-curiosidade{font-size:11px;color:var(--muted);line-height:1.5;margin-top:10px;font-style:italic}
+
+/* ===== VERSO DA CARTA E FLIP 3D (modal) — isolados do canvas/mapa.
+   O texto do verso usa tamanho FIXO (px), nunca herdado do
+   .modal-arte (que tinha font-size:90px) nem de variáveis do mapa. ===== */
+.modal-arte .cc-verso-lista{font-size:11px;line-height:1.7;color:var(--muted);word-break:break-word}
+.modal-arte .cc-verso-lista b{color:var(--texto)}
+.cc-flip-container{perspective:1200px;width:100%;height:100%}
+.cc-flipper{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .6s cubic-bezier(.4,0,.2,1)}
+.cc-flipper.virado{transform:rotateY(180deg)}
+.cc-frente,.cc-verso{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.cc-verso{transform:rotateY(180deg)}
+.cc-verso-card{position:relative}
+.cc-verso-card::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.10;z-index:0;
+    background-image:radial-gradient(circle,#3b82f6 1.2px,transparent 1.5px);
+    background-size:14px 14px;
+    mask-image:radial-gradient(ellipse at 30% 45%,#000 18%,transparent 55%),radial-gradient(ellipse at 70% 35%,#000 14%,transparent 50%),radial-gradient(ellipse at 55% 70%,#000 12%,transparent 48%);
+    -webkit-mask-image:radial-gradient(ellipse at 30% 45%,#000 18%,transparent 55%),radial-gradient(ellipse at 70% 35%,#000 14%,transparent 50%),radial-gradient(ellipse at 55% 70%,#000 12%,transparent 48%)}
+.cc-verso-card .cc-info,.cc-verso-card .cc-topo,.cc-verso-card .cc-rodape{position:relative;z-index:1}
 .modal-body{padding:18px 20px 20px;min-width:0;overflow:auto;overscroll-behavior:contain}
 .modal-body h2{font-size:clamp(18px,4vw,22px);line-height:1.2;margin:8px 0 4px;overflow-wrap:anywhere}
 .modal-body .num{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:1px}
@@ -803,6 +821,7 @@ body{overflow-x:hidden}
     <button class="aba-btn" data-aba="mercado" onclick="mudarAba('mercado')">🏪 MERCADO</button>
     <button class="aba-btn" data-aba="leiloes" onclick="mudarAba('leiloes')">🔨 LEILÕES</button>
     <button class="aba-btn" data-aba="trocas" onclick="mudarAba('trocas')">🤝 TROCAS</button>
+    <button class="aba-btn" data-aba="ofertas" onclick="mudarAba('ofertas')">💰 OFERTAS<span class="contador" id="abaOfertasContador"></span></button>
     <button class="aba-btn" data-aba="perfil" onclick="mudarAba('perfil')">👤 PERFIL</button>
 </nav>
 
@@ -948,6 +967,14 @@ body{overflow-x:hidden}
         <div class="grid-trades" id="tradesGrid"></div>
     </section>
 
+    <!-- OFERTAS -->
+    <section class="secao" id="secao-ofertas">
+        <div class="secao-titulo">Ofertas</div>
+        <div class="secao-sub">Faça ofertas por figurinhas de outros colecionadores, negocie valores e finalize a compra de forma segura.</div>
+        <div id="ofertasPendentes" style="font-size:12px;color:var(--amarelo);font-weight:700;margin-bottom:10px"></div>
+        <div class="grid-trades" id="ofertasGrid"></div>
+    </section>
+
     <!-- PERFIL -->
     <section class="secao" id="secao-perfil">
         <div class="secao-titulo">Meu Perfil</div>
@@ -1001,6 +1028,36 @@ try {
     minhaConta = JSON.parse(localStorage.getItem("mega_conta") || "null");
 } catch(e){ minhaConta = null; }
 
+/* Resolve o usuário logado de forma defensiva.
+   A sessão pode ter sido criada por index.html como { token, nome, email }
+   (sem o sub-objeto usuario). Neste caso decodifica o JWT para obter o id
+   e normaliza o formato salvo. Retorna null se não houver sessão válida. */
+function usuarioLogado(){
+    if (minhaConta && minhaConta.usuario && minhaConta.usuario.id) {
+        return minhaConta.usuario;
+    }
+    if (!minhaConta || !minhaConta.token) return null;
+    try {
+        const part = String(minhaConta.token).split(".")[1];
+        if (!part) return null;
+        const payload = JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/")));
+        if (payload && payload.usuarioId) {
+            minhaConta.usuario = {
+                id: Number(payload.usuarioId),
+                nome: minhaConta.nome || payload.nome || "",
+                email: minhaConta.email || payload.email || ""
+            };
+            localStorage.setItem("mega_conta", JSON.stringify(minhaConta));
+            return minhaConta.usuario;
+        }
+    } catch(e) { /* sessão inválida — segue sem usuario */ }
+    return null;
+}
+function meuUsuarioId(){
+    const u = usuarioLogado();
+    return u ? u.id : null;
+}
+
 let INFO = null;
 let MEU_ALBUM = null;
 let estado = {
@@ -1038,6 +1095,7 @@ async function api(url, opts = {}) {
 }
 function apiGet(url){ return api(url, { headers: authHeaders({}) }); }
 function apiPost(url, body){ return api(url, { method:"POST", headers: authHeaders({}), body: JSON.stringify(body||{}) }); }
+function apiPut(url, body){ return api(url, { method:"PUT", headers: authHeaders({}), body: JSON.stringify(body||{}) }); }
 function apiDelete(url){ return api(url, { method:"DELETE", headers: authHeaders({}) }); }
 
 /* ===== UI HELPERS ===== */
@@ -1047,6 +1105,18 @@ function toast(msg, tipo){
     el.textContent = msg;
     document.getElementById("toastWrap").appendChild(el);
     setTimeout(()=>{ el.style.opacity = "0"; el.style.transition="opacity .3s"; setTimeout(()=>el.remove(),300); }, 3200);
+}
+
+/* Converte exceções em mensagens amigáveis. Erros técnicos de JavaScript
+   nunca vão para o usuário; são registrados no console (backend faz o log
+   seguro no servidor). */
+function msgErro(e){
+    const m = e && e.message ? String(e.message) : "";
+    if (/Cannot read propert|undefined|is not a function|TypeError|ReferenceError|SyntaxError|network|fetch failed/i.test(m)) {
+        if (window.console && console.error) console.error("[MILHAO-DOOR] erro técnico (oculto do usuário):", e);
+        return "Não foi possível concluir esta ação. Tente novamente.";
+    }
+    return m;
 }
 function fmtR$(v){ return "R$ " + Number(v||0).toFixed(2).replace(".", ","); }
 function emojiRaridade(r){
@@ -1067,8 +1137,11 @@ function cardModalArte(card){
     '</div>';
 }
 function toggleModalFlip(){
-    const el = document.getElementById("modalFlipContainer");
-    if (el) el.classList.toggle("virado");
+    const container = document.getElementById("modalFlipContainer");
+    if (container) {
+        const flipper = container.querySelector(".cc-flipper") || container;
+        flipper.classList.toggle("virado");
+    }
 }
 
 function atualizarHeader(){
@@ -1133,6 +1206,7 @@ function mudarAba(aba){
     if (aba === "mercado") carregarMercado(1);
     if (aba === "leiloes") carregarLeiloes();
     if (aba === "trocas") carregarTrocas();
+    if (aba === "ofertas") carregarOfertas();
     if (aba === "perfil") carregarPerfil();
 }
 
@@ -1490,7 +1564,8 @@ async function carregarMercado(pag){
 function mkPagGo(p){ carregarMercado(p); window.scrollTo({top:0, behavior:"smooth"}); }
 
 function listingHtml(l){
-    const ehMeu = minhaConta && minhaConta.usuario && l.seller_id === minhaConta.usuario.id;
+    const meuId = meuUsuarioId();
+    const ehMeu = meuId != null && l.seller_id === meuId;
     const finish = ColecaoUI.finishDeCard({ id: l.card_id, rarity: l.rarity });
     const finishLabel = finish === "ouro" ? "🏆 OURO" : finish === "cromada" ? "🪞 CROMADA" : "NORMAL";
     const resumo = JSON.stringify({
@@ -1512,8 +1587,153 @@ function listingHtml(l){
         '<div class="listing-vendedor">Vendedor: ' + esc(l.seller_nome || "—") + '</div>' +
         (ehMeu
             ? '<button class="btn btn-ghost" onclick="cancelarVenda(' + l.id + ')">Meu anúncio — cancelar</button>'
-            : '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-laranja" onclick="comprarDoMercado(' + l.id + ',' + l.unit_price + ',' + l.quantity + ',' + resumo + ')">COMPRAR</button><button class="btn btn-ghost" onclick="verPerfilColecionador(' + l.seller_id + ')">VER PERFIL</button><button class="btn btn-ghost" onclick="abrirChatAnuncio(' + l.id + ')">NEGOCIAR</button></div>') +
+            : '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-laranja" onclick="comprarDoMercado(' + l.id + ',' + l.unit_price + ',' + l.quantity + ',' + resumo + ')">COMPRAR</button><button class="btn btn-ghost" onclick="abrirModalOferta(' + l.card_id + ',' + l.seller_id + ',' + l.unit_price + ',\'' + esc(l.seller_nome || "") + '\',\'' + esc(l.name || "") + '\')">FAZER OFERTA</button><button class="btn btn-ghost" onclick="verPerfilColecionador(' + l.seller_id + ')">VER PERFIL</button><button class="btn btn-ghost" onclick="abrirChatAnuncio(' + l.id + ')">NEGOCIAR</button></div>') +
     '</div>';
+}
+
+/* =========================================================
+   OFERTAS (FAZER OFERTA / NEGOCIAÇÃO)
+========================================================= */
+function fmtR$(v){
+    return "R$ " + Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function abrirModalOferta(cardId, offereeId, valorAnunciado, vendedorNome, figurinhaNome){
+    if (!exigirLogin()) return;
+    document.getElementById("modalBody").innerHTML =
+        '<h2>💰 Fazer oferta</h2>' +
+        '<div class="modal-form">' +
+            '<label>Figurinha</label><div class="campo"><b>#' + String(cardId).padStart(3,"0") + ' ' + esc(figurinhaNome || "") + '</b></div>' +
+            '<label>Vendedor</label><div class="campo">' + esc(vendedorNome || "—") + '</div>' +
+            '<label>Valor anunciado</label><div class="campo">' + fmtR$(valorAnunciado || 0) + '</div>' +
+            '<label>Quantidade</label><input id="ofertaQuantidade" type="number" min="1" max="99" value="1">' +
+            '<label>Sua oferta (R$)</label><input id="ofertaValor" type="number" min="0.01" step="0.01" value="' + Number(valorAnunciado || 0).toFixed(2) + '">' +
+            '<label>Mensagem (opcional)</label><textarea id="ofertaMensagem" maxlength="500" rows="3" placeholder="Ex.: posso fechar por esse valor?"></textarea>' +
+            '<button class="btn btn-amarelo" onclick="enviarOferta(' + cardId + ',' + offereeId + ')">ENVIAR OFERTA</button>' +
+            '<button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>' +
+        '</div>';
+    document.getElementById("modalOverlay").classList.remove("hidden");
+}
+
+async function enviarOferta(cardId, offereeId){
+    try {
+        const quantidade = Math.max(1, Math.floor(Number(document.getElementById("ofertaQuantidade").value) || 1));
+        const valor = Number(document.getElementById("ofertaValor").value);
+        const mensagem = document.getElementById("ofertaMensagem").value;
+        if (!isFinite(valor) || valor <= 0) { toast("Informe um valor de oferta válido.", "erro"); return; }
+        await apiPost("/api/colecionaveis/offers", { cardId, offereeId, quantidade, valor, mensagem });
+        toast("Oferta enviada!", "ok");
+        fecharModal();
+        carregarOfertas();
+    } catch(e){ toast(msgErro(e), "erro"); }
+}
+
+async function carregarOfertas(){
+    const grid = document.getElementById("ofertasGrid");
+    if (!grid) return;
+    if (!exigirLogin()) { grid.innerHTML = ""; return; }
+    try {
+        const d = await apiGet("/api/colecionaveis/offers/mine");
+        const recebidas = d.recebidas || [];
+        const enviadas = d.enviadas || [];
+        const ctr = document.getElementById("abaOfertasContador");
+        if (ctr) ctr.textContent = recebidas.length ? " " + recebidas.length : "";
+        const totalPend = recebidas.filter(o => o.status === "PENDENTE").length;
+        const pendBadge = document.getElementById("ofertasPendentes");
+        if (pendBadge) pendBadge.textContent = totalPend ? totalPend + " oferta(s) pendente(s)" : "";
+        grid.innerHTML =
+            '<div class="secao-titulo">📥 Recebidas</div>' +
+            (recebidas.length ? recebidas.map(o => renderOfertaHtml(o, true)).join("") : '<div class="vazio">Nenhuma oferta recebida.</div>') +
+            '<div class="secao-titulo" style="margin-top:18px">📤 Enviadas</div>' +
+            (enviadas.length ? enviadas.map(o => renderOfertaHtml(o, false)).join("") : '<div class="vazio">Nenhuma oferta enviada.</div>');
+    } catch(e){ grid.innerHTML = '<div class="vazio">' + msgErro(e) + '</div>'; }
+}
+
+function renderOfertaHtml(o, recebida){
+    const cardLabel = '#' + String(o.card_number || o.card_id).padStart(3,"0") + ' ' + esc(o.card_name || "");
+    const parceiro = recebida ? esc(o.offeror_nome || "—") : esc(o.offeree_nome || "—");
+    const rotuloStatus = { PENDENTE:"🕐 Pendente", ACEITA:"✅ Aceita", RECUSADA:"❌ Recusada", CANCELADA:"🚫 Cancelada", EXPIRADA:"⏳ Expirada", CONCLUIDA:"🎉 Concluída" };
+    const status = rotuloStatus[o.status] || o.status;
+    let acoes = "";
+    if (recebida && o.status === "PENDENTE") {
+        acoes = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">' +
+            '<button class="btn btn-amarelo" onclick="aceitarOferta(' + o.id + ')">✓ Aceitar</button>' +
+            '<button class="btn btn-ghost" onclick="recusarOferta(' + o.id + ')">Recusar</button>' +
+            '<button class="btn btn-ghost" onclick="contraporOferta(' + o.id + ')">Contrapor</button>' +
+            '</div>';
+    } else if (!recebida && o.status === "PENDENTE") {
+        acoes = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">' +
+            '<button class="btn btn-ghost" onclick="cancelarOferta(' + o.id + ')">Cancelar oferta</button>' +
+            '</div>';
+    } else if (!recebida && o.status === "ACEITA") {
+        acoes = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">' +
+            '<button class="btn btn-amarelo" onclick="pagarOferta(' + o.id + ',' + Number(o.amount || 0).toFixed(2) + ',\'' + esc(o.card_name || "") + '\')">💳 PAGAR OFERTA</button>' +
+            '<button class="btn btn-ghost" onclick="cancelarOferta(' + o.id + ')">Cancelar</button>' +
+            '</div>';
+    }
+    return '<div class="listing-card" style="margin-bottom:10px">' +
+        '<div class="listing-top"><div class="info">' +
+            '<div class="n">' + cardLabel + '</div>' +
+            '<div class="muted">' + (recebida ? "De " : "Para ") + parceiro + ' • ' + quantidadeOferta(o.quantity) + ' • ' + fmtR$(o.amount) + '</div>' +
+            '<div class="muted">' + status + (o.message ? ' • <em>“' + esc(o.message) + '”</em>' : '') + '</div>' +
+        '</div></div>' + acoes + '</div>';
+}
+
+function quantidadeOferta(q){ return Number(q || 1) + "x"; }
+
+async function aceitarOferta(offerId){
+    try {
+        const d = await apiPost("/api/colecionaveis/offers/" + offerId + "/accept", {});
+        toast(d.mensagem || "Oferta aceita!", "ok");
+        carregarOfertas();
+    } catch(e){ toast(msgErro(e), "erro"); }
+}
+
+async function recusarOferta(offerId){
+    try {
+        const d = await apiPost("/api/colecionaveis/offers/" + offerId + "/decline", {});
+        toast(d.mensagem || "Oferta recusada.", "ok");
+        carregarOfertas();
+    } catch(e){ toast(msgErro(e), "erro"); }
+}
+
+async function cancelarOferta(offerId){
+    try {
+        const d = await apiPost("/api/colecionaveis/offers/" + offerId + "/cancel", {});
+        toast(d.mensagem || "Oferta cancelada.", "ok");
+        carregarOfertas();
+    } catch(e){ toast(msgErro(e), "erro"); }
+}
+
+function contraporOferta(offerId){
+    document.getElementById("modalBody").innerHTML =
+        '<h2>🔄 Contraproposta</h2>' +
+        '<div class="modal-form">' +
+            '<label>Quantidade</label><input id="cpQuantidade" type="number" min="1" max="99" value="1">' +
+            '<label>Seu valor (R$)</label><input id="cpValor" type="number" min="0.01" step="0.01" value="0.00">' +
+            '<label>Mensagem (opcional)</label><textarea id="cpMensagem" maxlength="500" rows="3" placeholder="Ex.: posso fechar nesse valor?"></textarea>' +
+            '<button class="btn btn-amarelo" onclick="enviarContraproposta(' + offerId + ')">Enviar contraproposta</button>' +
+            '<button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>' +
+        '</div>';
+    document.getElementById("modalOverlay").classList.remove("hidden");
+}
+
+async function enviarContraproposta(offerId){
+    try {
+        const quantidade = Math.max(1, Math.floor(Number(document.getElementById("cpQuantidade").value) || 1));
+        const valor = Number(document.getElementById("cpValor").value);
+        const mensagem = document.getElementById("cpMensagem").value;
+        if (!isFinite(valor) || valor <= 0) { toast("Informe um valor válido.", "erro"); return; }
+        await apiPost("/api/colecionaveis/offers/" + offerId + "/counter", { quantidade, valor, mensagem });
+        toast("Contraproposta enviada!", "ok");
+        fecharModal();
+        carregarOfertas();
+    } catch(e){ toast(msgErro(e), "erro"); }
+}
+
+function pagarOferta(offerId, valor, figurinhaNome){
+    if (!exigirLogin()) return;
+    abrirModalPagamento("oferta", { offerId, preco: valor, nome: figurinhaNome, quantidade: 1 });
 }
 
 async function comprarDoMercado(listingId, preco, qtdDisp, detalhe){
@@ -1526,7 +1746,7 @@ async function abrirChatAnuncio(listingId, buyerId){
         const query = buyerId ? "?buyerId=" + encodeURIComponent(buyerId) : "";
         const d = await apiGet("/api/colecionaveis/listings/" + listingId + "/chat" + query);
         document.getElementById("modalBody").innerHTML = '<h2>💬 NEGOCIAR ANÚNCIO #' + listingId + '</h2>' +
-            '<div class="chat-box" id="listingChatMessages">' + (d.messages || []).map(m => '<div class="chat-msg ' + (m.author_id === minhaConta.usuario.id ? "minha" : "deles") + '"><span class="quem">' + esc(m.autor_nome || "") + '</span>' + esc(m.text) + '</div>').join("") + '</div>' +
+            '<div class="chat-box" id="listingChatMessages">' + (d.messages || []).map(m => '<div class="chat-msg ' + (m.author_id === meuUsuarioId() ? "minha" : "deles") + '"><span class="quem">' + esc(m.autor_nome || "") + '</span>' + esc(m.text) + '</div>').join("") + '</div>' +
             '<div class="chat-input"><input id="listingChatInput" maxlength="500" placeholder="Escreva sua mensagem..."><button class="btn btn-laranja" onclick="enviarChatAnuncio(' + listingId + ',' + d.buyerId + ')">ENVIAR</button></div>' +
             '<button class="btn btn-ghost" onclick="fecharModal()">Fechar</button>';
         document.getElementById("modalOverlay").classList.remove("hidden");
@@ -1565,8 +1785,9 @@ async function carregarLeiloes(){
     } catch(e) { document.getElementById("leiloesGrid").innerHTML = '<div style="color:var(--muted);padding:16px">' + esc(e.message) + '</div>'; }
 }
 function leilaoHtml(a){
-    const meu = minhaConta && minhaConta.usuario && a.seller_id === minhaConta.usuario.id;
-    const vencedor = minhaConta && minhaConta.usuario && a.winner_id === minhaConta.usuario.id;
+    const meuId = meuUsuarioId();
+    const meu = meuId != null && a.seller_id === meuId;
+    const vencedor = meuId != null && a.winner_id === meuId;
     const valor = a.current_bid == null ? a.minimum_bid : Number(a.current_bid) + 0.01;
     const arte = a.image_url ? '<img src="' + esc(a.image_url) + '" alt="' + esc(a.name) + '" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' + '<span class="fallback" style="display:none">' + emojiRaridade(a.rarity) + '</span>' : '<span class="fallback">' + emojiRaridade(a.rarity) + '</span>';
     return '<div class="listing-card"><div class="listing-arte-grande">' + arte + '</div>' +
@@ -1621,10 +1842,11 @@ async function carregarTrocas(){
 }
 
 function tradeHtml(t){
+    const meuId = meuUsuarioId();
     const items = t.items || [];
-    const minhas = items.filter(i => i.owner_id === minhaConta.usuario.id);
-    const delas = items.filter(i => i.owner_id !== minhaConta.usuario.id);
-    const euSouProposer = t.proposer_id === minhaConta.usuario.id;
+    const minhas = meuId != null ? items.filter(i => i.owner_id === meuId) : [];
+    const delas = meuId != null ? items.filter(i => i.owner_id !== meuId) : [];
+    const euSouProposer = meuId != null && t.proposer_id === meuId;
     const elegivelAceitar = !euSouProposer && (t.status === "PENDING" || t.status === "COUNTER_OFFER");
     const elegivelContra = euSouProposer && (t.status === "PENDING" || t.status === "COUNTER_OFFER");
     const elegivelCancelar = euSouProposer && ["PENDING","COUNTER_OFFER"].includes(t.status);
@@ -1666,7 +1888,7 @@ function figHtml(i){
     return '<span class="mini-fig"><span class="emoji">' + emojiRaridade(r) + '</span>#' + String(i.number||i.card_id).padStart(3,"0") + ' ' + esc(i.name||"") + '</span>';
 }
 function chatMsgHtml(m){
-    const minha = m.usuario_id === minhaConta.usuario.id;
+    const minha = meuUsuarioId() === m.usuario_id;
     return '<div class="chat-msg ' + (minha ? "minha" : "deles") + '">' +
         '<div class="quem">' + esc(m.autor_nome || "") + '</div>' + esc(m.text) + '</div>';
 }
@@ -1805,9 +2027,17 @@ async function confirmarVenda(cardId){
 ========================================================= */
 async function abrirModalTroca(){
     if (!exigirLogin()) return;
+    const meuId = meuUsuarioId();
+    if (meuId == null) {
+        toast("Não foi possível iniciar a troca. Faça login novamente para continuar.", "erro");
+        return;
+    }
     try {
         const meuAcervo = await apiGet("/api/colecionaveis/acervo?pagina=1");
-        const colec = await apiGet("/api/colecionaveis/colecionador/" + minhaConta.usuario.id);
+        if (!meuAcervo || !Array.isArray(meuAcervo.cards)) {
+            toast("Não foi possível iniciar a troca. Selecione uma figurinha e um colecionador para continuar.", "erro");
+            return;
+        }
         estado.modoTroca = { tipo: "nova" };
         let html = '<div class="num">🤝 NOVA TROCA</div>';
         html += '<h2>Propor negociação</h2>';
@@ -1828,7 +2058,7 @@ async function abrirModalTroca(){
         /* mini-seletores */
         renderSelFig(meuAcervo.cards, "trocaOfereco", "ofereco");
         renderSelFig(meuAcervo.cards, "trocaRecebo", "recebo");
-    } catch(e){ toast(e.message, "erro"); }
+    } catch(e){ toast(msgErro(e), "erro"); }
 }
 
 async function abrirModalTrocaCom(trade, meuAcervo){
@@ -1887,7 +2117,7 @@ async function confirmarTroca(){
         toast("Proposta de troca enviada!", "ok");
         fecharModal();
         carregarTrocas();
-    } catch(e){ toast(e.message, "erro"); }
+    } catch(e){ toast(msgErro(e), "erro"); }
 }
 
 async function confirmarContraproposta(tradeId){
@@ -1903,7 +2133,7 @@ async function confirmarContraproposta(tradeId){
         toast("Contra-proposta enviada!", "ok");
         fecharModal();
         carregarTrocas();
-    } catch(e){ toast(e.message, "erro"); }
+    } catch(e){ toast(msgErro(e), "erro"); }
 }
 
 /* =========================================================
@@ -1912,7 +2142,7 @@ async function confirmarContraproposta(tradeId){
 async function abrirModalPagamento(tipo, dados){
     document.getElementById("modalOverlay").classList.remove("hidden");
     const corpo = document.getElementById("modalBody");
-    const titulo = tipo === "pack" ? "Abrir Pacote" : tipo === "mercado" ? "Comprar no Mercado" : tipo === "auction" ? "Pagar Lance Vencedor" : "Diferença de Troca";
+    const titulo = tipo === "pack" ? "Abrir Pacote" : tipo === "mercado" ? "Comprar no Mercado" : tipo === "auction" ? "Pagar Lance Vencedor" : tipo === "oferta" ? "Pagar Oferta Aceita" : "Diferença de Troca";
     let html = '<div class="num">💳 CONFIRMAR PAGAMENTO</div>';
     html += '<h2>' + esc(titulo) + '</h2>';
 
@@ -1939,6 +2169,12 @@ async function abrirModalPagamento(tipo, dados){
         '</div>';
     } else if (tipo === "auction") {
         html += '<div class="produto-resumo"><div class="produto-preco">' + fmtR$(dados.valor) + '</div><div class="produto-detalhe">Lance vencedor do leilão</div></div>';
+    } else if (tipo === "oferta") {
+        html += '<div class="produto-resumo">' +
+            '<div class="produto-nome">' + esc(dados.nome || "Figurinha") + '</div>' +
+            '<div class="produto-preco">' + fmtR$(dados.preco) + '</div>' +
+            '<div class="produto-detalhe">Oferta aceita • Quantidade: ' + (dados.quantidade || 1) + '</div>' +
+        '</div>';
     }
 
     html += '<div class="desc">Escolha como deseja pagar. O pagamento é processado com segurança pelo Mercado Pago.</div>';
@@ -1971,17 +2207,20 @@ async function iniciarPagamento(tipo, dados){
     } else if (tipo === "auction") {
         url = "/api/colecionaveis/auctions/" + dados.auctionId + "/pay";
         body = { paymentMethod: metodo, cpfCnpj: cpf };
+    } else if (tipo === "oferta") {
+        url = "/api/colecionaveis/offers/" + dados.offerId + "/pay";
+        body = { paymentMethod: metodo, cpfCnpj: cpf };
     }
     try {
         const d = await apiPost(url, body);
         mostrarQr(d, tipo);
-    } catch(e){ toast(e.message, "erro"); }
+    } catch(e){ toast(msgErro(e), "erro"); }
 }
 
 function mostrarQr(d, tipo){
     const corpo = document.getElementById("modalBody");
     let html = '<div class="num">✅ PEDIDO CRIADO</div>';
-    html += '<h2>' + (tipo === "pack" ? "Pacote reservado" : tipo === "mercado" ? "Compra reservada" : tipo === "auction" ? "Lance reservado" : "Diferença de troca") + '</h2>';
+    html += '<h2>' + (tipo === "pack" ? "Pacote reservado" : tipo === "mercado" ? "Compra reservada" : tipo === "auction" ? "Lance reservado" : tipo === "oferta" ? "Oferta reservada" : "Diferença de troca") + '</h2>';
     html += '<div class="desc" style="text-align:center;margin-bottom:10px;">' +
         '⏳ Aguardando confirmação do pagamento. Não entregamos o produto antes do pagamento ser confirmado.' +
     '</div>';
@@ -2028,6 +2267,7 @@ async function iniciarPolling(orderId, tipo){
                     carregarTrocas();
                     carregarMercado(1);
                     carregarLeiloes();
+                    carregarOfertas();
                 }
                 return;
             }
@@ -2299,6 +2539,21 @@ async function carregarPerfil(){
             '🏆 Álbum completo: <b style="color:var(--amarelo)">' + p.diferentes + '/100</b>' +
             (p.recompensa_mensal ? ' · Recompensa mensal registrada: <b style="color:var(--verde)">✅</b>' : '') +
             '</div>';
+
+        /* Visibilidade do álbum público. */
+        stats += '<div style="margin-top:12px;padding:12px;border:1px solid var(--borda);border-radius:10px;background:var(--painel)">' +
+            '<h4 style="margin-bottom:6px">🌐 Álbum público</h4>' +
+            '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">' +
+                (p.album_publico
+                    ? 'Seu álbum está <b style="color:var(--verde)">PÚBLICO</b>. Outros colecionadores podem ver seu acervo e fazer ofertas.'
+                    : 'Seu álbum está <b style="color:var(--muted)">PRIVADO</b>. Só você consegue ver o acervo.') +
+            '</div>' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+                '<button class="btn ' + (p.album_publico ? "btn-amarelo" : "btn-ghost") + '" onclick="mudarVisibilidade(false)">🔒 Privado</button>' +
+                '<button class="btn ' + (p.album_publico ? "btn-ghost" : "btn-amarelo") + '" onclick="mudarVisibilidade(true)">🌐 Público</button>' +
+                '<a class="btn btn-ghost" style="margin:0" href="/perfil.html?id=' + encodeURIComponent(meuUsuarioId() || "") + '" target="_blank">Ver como público</a>' +
+            '</div>' +
+        '</div>';
         document.getElementById("perfilStatsCard").innerHTML = stats;
 
         /* conquistas */
@@ -2327,6 +2582,14 @@ async function carregarPerfil(){
     } catch(e){
         document.getElementById("perfilStatsCard").innerHTML = '<div style="color:var(--muted)">' + esc(e.message) + '</div>';
     }
+}
+
+async function mudarVisibilidade(albumPublico){
+    try {
+        const d = await apiPut("/api/colecionaveis/perfil/visibilidade", { albumPublico });
+        toast(d.mensagem || "Visibilidade atualizada!", "ok");
+        carregarPerfil();
+    } catch(e){ toast(msgErro(e), "erro"); }
 }
 
 async function carregarContaRecebimento(){

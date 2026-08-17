@@ -5487,7 +5487,8 @@ async function fazerLogin(){
         setAuth({
             token: data.token,
             nome: data.usuario.nome,
-            email: data.usuario.email
+            email: data.usuario.email,
+            usuario: data.usuario
         });
 
         msg.textContent =
@@ -5554,7 +5555,8 @@ async function fazerCadastro(){
         setAuth({
             token: data.token,
             nome: data.usuario.nome,
-            email: data.usuario.email
+            email: data.usuario.email,
+            usuario: data.usuario
         });
 
         msg.textContent =

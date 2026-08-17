@@ -12,7 +12,7 @@ const checks = [
     ["state one-shot persistido", /marketplace_oauth_states/.test(server) && /used_at IS NULL/.test(server) && /FOR UPDATE/.test(server)],
     ["adapter usa token do vendedor", /criarOrderMercadoPagoSplit/.test(server) && /mercadoPagoRequestComToken\(sellerAccount\.accessToken/.test(server)],
     ["adapter envia marketplace_fee", /marketplace_fee: Number\(platformFee\)/.test(server)],
-    ["vendedor sem conta é bloqueado", /conecte sua conta de recebimento/.test(colecao)],
+    ["vendedor sem conta é bloqueado", /conecte sua conta do Mercado Pago/.test(colecao)],
     ["split permanece desativado sem configuração oficial", /mercadopagoMarketplaceSplitEnabled/.test(colecao) && /MERCADOPAGO_MARKETPLACE_SPLIT_ENABLED/.test(server)],
     ["nenhum token OAuth é enviado ao frontend", !/access_token|refresh_token/.test(accountRoute)],
     ["frontend solicita URL OAuth com Bearer e credentials", /fetch\("\/api\/marketplace\/oauth\/connect"/.test(frontend) && /credentials: "include"/.test(frontend) && /authorizationUrl/.test(frontend)]

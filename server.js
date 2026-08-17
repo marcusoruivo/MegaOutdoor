@@ -600,6 +600,15 @@ async function initBanco() {
             )
         `);
 
+        /* Álbum público (Feature: perfil público de colecionador).
+           Aditivo — nunca remove/reescreve dados existentes. */
+        try {
+            await pgPool.query(`
+                ALTER TABLE usuarios
+                    ADD COLUMN IF NOT EXISTS album_publico BOOLEAN NOT NULL DEFAULT FALSE
+            `);
+        } catch (e) { /* se a coluna já existir, segue o boot */ }
+
         await pgPool.query(`
             CREATE TABLE IF NOT EXISTS story_events (
                 id           SERIAL PRIMARY KEY,

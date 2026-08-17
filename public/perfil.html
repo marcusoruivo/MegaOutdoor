@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Perfil Público — MegaOutdoor Colecionáveis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/colecao.css">
+<style>
+:root{
+    --fundo:#0b0b0f;--painel:#14141c;--painel2:#1a1a26;--borda:#262633;
+    --texto:#e8e8ee;--muted:#8a8a9a;--amarelo:#ffd400;--laranja:#ff7a00;
+    --vermelho:#d7263d;--verde:#2ecc71;--azul:#3b82f6;--roxo:#a855f7;--ouro:#ffbf40;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--fundo);color:var(--texto);font-family:'Inter',sans-serif;min-height:100vh}
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;background:rgba(11,11,15,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--borda)}
+.brand{font-family:'Orbitron',sans-serif;font-weight:900;font-size:16px;letter-spacing:1px;background:linear-gradient(90deg,#fff,var(--amarelo),var(--laranja));-webkit-background-clip:text;background-clip:text;color:transparent}
+.topbar a{color:var(--muted);text-decoration:none;font-size:12px;font-weight:700}
+.topbar a:hover{color:var(--amarelo)}
+.conteudo{max-width:1080px;margin:0 auto;padding:22px 16px 60px}
+.header-perfil{display:flex;flex-wrap:wrap;gap:18px;align-items:center;background:var(--painel);border:1px solid var(--borda);border-radius:16px;padding:20px;margin-bottom:20px}
+.avatar{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--amarelo),var(--laranja));display:flex;align-items:center;justify-content:center;font-size:30px;box-shadow:0 0 18px rgba(255,212,0,.25)}
+.header-info h1{font-size:20px;font-weight:800}
+.header-info .sub{font-size:12px;color:var(--muted);margin-top:2px}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;flex:1}
+.stat-box{background:var(--painel2);border:1px solid var(--borda);border-radius:12px;padding:10px 16px;text-align:center;min-width:90px}
+.stat-box .v{font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--amarelo)}
+.stat-box .l{font-size:9px;letter-spacing:1px;color:var(--muted);margin-top:2px}
+.aviso{background:var(--painel);border:1px solid var(--borda);border-radius:16px;padding:30px;text-align:center;color:var(--muted);font-size:14px}
+.aviso b{display:block;font-size:18px;color:var(--texto);margin-bottom:6px}
+.grid-album{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.tile{position:relative;background:var(--painel);border:1px solid var(--borda);border-radius:14px;overflow:hidden;cursor:pointer;transition:transform .15s,border-color .15s}
+.tile:hover{transform:translateY(-3px);border-color:var(--amarelo)}
+.tile .img{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:var(--painel2);font-size:52px;overflow:hidden}
+.tile .img img{width:100%;height:100%;object-fit:cover}
+.tile .info{padding:8px 10px}
+.tile .nome{font-size:11px;font-weight:800;line-height:1.25}
+.tile .meta{font-size:10px;color:var(--muted);margin-top:3px}
+.tile .qtd{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.6);border-radius:999px;padding:2px 8px;font-size:10px;font-weight:800;color:var(--amarelo)}
+.tile .venda{position:absolute;top:8px;left:8px;background:var(--laranja);border-radius:999px;padding:2px 8px;font-size:9px;font-weight:800;color:#141414}
+.modal-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.66);display:flex;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.hidden{display:none}
+.modal{position:relative;background:var(--painel);border:1px solid var(--borda);border-radius:18px;max-width:480px;width:100%;max-height:90vh;overflow:auto}
+.modal-body{padding:18px 20px 20px;min-width:0}
+.modal-body h2{font-size:18px;margin:8px 0 4px;overflow-wrap:anywhere}
+.modal-body .num{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:1px}
+.modal-body label{font-size:12px;font-weight:700;color:var(--muted);display:block;margin-top:10px}
+.modal-body input,.modal-body textarea,.modal-body select{width:100%;background:#0f0f16;border:1px solid var(--borda);color:var(--texto);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;margin-top:4px}
+.modal-body input:focus,.modal-body textarea:focus{outline:none;border-color:var(--amarelo)}
+.modal-fechar{position:absolute;top:12px;right:12px;z-index:2;background:rgba(0,0,0,.4);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer}
+.btn{border:none;border-radius:10px;padding:11px 16px;font-size:12px;font-weight:800;letter-spacing:.6px;cursor:pointer;text-decoration:none;display:inline-block;text-align:center;font-family:inherit;margin-top:10px}
+.btn-amarelo{background:linear-gradient(90deg,var(--amarelo),var(--laranja));color:#141414}
+.btn-laranja{background:linear-gradient(90deg,var(--laranja),var(--vermelho));color:#fff}
+.btn-ghost{background:transparent;border:1px solid var(--borda);color:var(--texto)}
+.btn-ghost:hover{border-color:var(--amarelo)}
+.acoes{display:flex;gap:8px;flex-wrap:wrap}
+.desc{font-size:13px;color:var(--muted);line-height:1.6;margin:10px 0}
+.campo{background:var(--painel2);border:1px solid var(--borda);border-radius:10px;padding:9px 12px;font-size:13px;margin-top:4px}
+.toast-wrap{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;align-items:center}
+.toast{background:var(--painel2);border:1px solid var(--borda);border-radius:12px;padding:12px 18px;font-size:13px;font-weight:600;max-width:90vw;text-align:center}
+.toast.ok{border-color:var(--verde)}
+.toast.erro{border-color:var(--vermelho);color:#ffb3bd}
+@media(max-width:640px){.grid-album{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}.header-perfil{padding:16px}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="brand">🏟️ MILHÃO DOOR</div>
+    <div><a href="/colecionaveis.html">← Voltar ao meu álbum</a></div>
+</div>
+
+<div class="conteudo">
+    <div id="perfilHeader"></div>
+    <div id="albumConteudo"></div>
+</div>
+
+<div class="modal-overlay hidden" id="modalOverlay">
+    <div class="modal">
+        <button class="modal-fechar" onclick="fecharModal()">✕</button>
+        <div class="modal-body" id="modalBody"></div>
+    </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script src="/js/imagens-animais.js"></script>
+<script src="/js/colecao-ui.js"></script>
+<script>
+/* =========================================================
+   PERFIL PÚBLICO — página pública (sem login obrigatório)
+========================================================= */
+function salvarSessao(dados){
+    try { localStorage.setItem("mega_conta", JSON.stringify(dados)); } catch(e){}
+}
+function lerSessao(){
+    try { return JSON.parse(localStorage.getItem("mega_conta") || "null"); } catch(e){ return null; }
+}
+function meuId(){
+    const s = lerSessao();
+    if (s && s.usuario && s.usuario.id != null) return s.usuario.id;
+    if (s && s.id != null) return s.id;
+    return null;
+}
+function minhaConta(){ return lerSessao(); }
+
+function esc(s){ return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+function fmtR$(v){ return "R$ " + Number(v||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtData(d){ if(!d) return ""; const x=new Date(d); if(isNaN(x)) return ""; return x.toLocaleDateString("pt-BR") + " " + x.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}); }
+function toast(msg, tipo){
+    const el = document.createElement("div");
+    el.className = "toast " + (tipo||"info");
+    el.textContent = msg;
+    document.getElementById("toastWrap").appendChild(el);
+    setTimeout(()=>{ el.style.opacity="0"; el.style.transition="opacity .3s"; setTimeout(()=>el.remove(),300); }, 3200);
+}
+function msgErro(e){
+    const m = e && e.message ? String(e.message) : "";
+    if (/Cannot read propert|undefined|is not a function|TypeError|ReferenceError|SyntaxError|network|fetch failed/i.test(m)) {
+        console.error("[MILHAO-DOOR] erro técnico (oculto do usuário):", e);
+        return "Não foi possível concluir esta ação. Tente novamente.";
+    }
+    return m;
+}
+function authHeaders(opts){
+    const s = minhaConta();
+    if (s && s.token) opts.headers = Object.assign({}, opts.headers || {}, { Authorization: "Bearer " + s.token });
+    opts.credentials = "include";
+    return opts;
+}
+async function api(url, opts){
+    const res = await fetch(url, authHeaders(opts || {}));
+    const ct = res.headers.get("content-type") || "";
+    const d = ct.includes("application/json") ? await res.json() : await res.text();
+    if (!res.ok) throw new Error((d && (d.error || d.message)) || ("Erro " + res.status));
+    return d;
+}
+function apiGet(url){ return api(url, { headers: authHeaders({}) }); }
+function apiPost(url, body){ return api(url, { method:"POST", headers: authHeaders({}), body: JSON.stringify(body||{}) }); }
+
+const NOME_RARIDADE = { COMUM:"COMUM", INCOMUM:"INCOMUM", RARA:"RARA", EPICA:"ÉPICA", LENDARIA:"LENDÁRIA", MITICA:"MÍTICA" };
+const EMOJI_RARIDADE = { COMUM:"🟢", INCOMUM:"🟡", RARA:"🔵", EPICA:"🟣", LENDARIA:"🟠", MITICA:"🔴" };
+
+let PERFIL = null;
+let CARDS = [];
+
+const params = new URLSearchParams(location.search);
+const PERFIL_ID = params.get("id");
+
+async function carregar(){
+    const header = document.getElementById("perfilHeader");
+    const conteudo = document.getElementById("albumConteudo");
+    if (!PERFIL_ID) {
+        header.innerHTML = "";
+        conteudo.innerHTML = '<div class="aviso"><b>Perfil não encontrado</b>Informe o id do colecionador na URL (ex.: /perfil.html?id=1).</div>';
+        return;
+    }
+    try {
+        const d = await apiGet("/api/colecionaveis/colecionador/" + encodeURIComponent(PERFIL_ID));
+        PERFIL = d.perfil || {};
+        CARDS = d.cards || [];
+        renderHeader();
+        renderAlbum();
+    } catch(e){
+        header.innerHTML = "";
+        conteudo.innerHTML = '<div class="aviso"><b>Colecionador não encontrado</b>Verifique o link ou tente novamente.</div>';
+    }
+}
+
+function renderHeader(){
+    const p = PERFIL;
+    const visibilidade = p.privado ? "PRIVADO" : "PÚBLICO";
+    document.getElementById("perfilHeader").innerHTML =
+        '<div class="header-perfil">' +
+            '<div class="avatar">👤</div>' +
+            '<div class="header-info">' +
+                '<h1>' + esc(p.nome || "Colecionador") + '</h1>' +
+                '<div class="sub">Álbum ' + visibilidade + (p.id && p.id === meuId() ? " • <b style='color:var(--verde)'>este é você</b>" : "") + '</div>' +
+            '</div>' +
+            '<div class="stats">' +
+                '<div class="stat-box"><div class="v">' + (p.diferentes||0) + '/' + 100 + '</div><div class="l">PROGRESSO</div></div>' +
+                '<div class="stat-box"><div class="v">' + (p.figurinhas||0) + '</div><div class="l">DESCOBERTAS</div></div>' +
+                '<div class="stat-box"><div class="v">' + (p.repetidas||0) + '</div><div class="l">REPETIDAS</div></div>' +
+                '<div class="stat-box"><div class="v">' + (p.disponiveis_troca||0) + '</div><div class="l">P/ TROCA</div></div>' +
+                '<div class="stat-box"><div class="v">' + (p.vendas||0) + '</div><div class="l">À VENDA</div></div>' +
+            '</div>' +
+        '</div>';
+}
+
+function renderAlbum(){
+    const conteudo = document.getElementById("albumConteudo");
+    if (PERFIL.privado) {
+        conteudo.innerHTML = '<div class="aviso"><b>🔒 Este colecionador mantém o álbum privado.</b>Habilite seu álbum público em Meu Perfil para compartilhar seu acervo.</div>';
+        return;
+    }
+    if (!CARDS.length) {
+        conteudo.innerHTML = '<div class="aviso"><b>Acervo vazio</b>Este colecionador ainda não possui figurinhas.</div>';
+        return;
+    }
+    conteudo.innerHTML = '<div class="grid-album">' + CARDS.map(tileHtml).join("") + '</div>';
+}
+
+function tileHtml(c){
+    const finish = (typeof ColecaoUI !== "undefined" && ColecaoUI.finishDeCard) ? ColecaoUI.finishDeCard(c) : "normal";
+    const finLabel = finish === "ouro" ? " OURO" : finish === "cromada" ? " CROMADA" : "";
+    const emoji = EMOJI_RARIDADE[c.rarity] || "🃏";
+    const imagem = c.image_url
+        ? '<img src="' + esc(c.image_url) + '" alt="' + esc(c.name) + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'"><span class="fallback" style="display:none">' + emoji + '</span>'
+        : emoji;
+    return '<div class="tile" onclick="abrirDetalhe(' + c.id + ')">' +
+        '<span class="qtd">' + c.quantity + 'x</span>' +
+        (c.listing ? '<span class="venda">À VENDA</span>' : '') +
+        '<div class="img">' + imagem + '</div>' +
+        '<div class="info"><div class="nome">#' + String(c.number).padStart(3,"0") + ' ' + esc(c.name) + '</div>' +
+        '<div class="meta">' + (NOME_RARIDADE[c.rarity] || c.rarity) + finLabel + '</div></div>' +
+    '</div>';
+}
+
+function cardPorId(id){ return CARDS.find(c => Number(c.id) === Number(id)); }
+
+function abrirDetalhe(cardId){
+    const c = cardPorId(cardId);
+    if (!c) return;
+    const meu = meuId();
+    const ehMeu = meu != null && PERFIL.id === meu;
+    const fin = (typeof ColecaoUI !== "undefined" && ColecaoUI.finishDeCard) ? ColecaoUI.finishDeCard(c) : "normal";
+    const finLabel = fin === "ouro" ? "🏆 OURO" : fin === "cromada" ? "🪞 CROMADA" : "NORMAL";
+    const imagem = c.image_url ? '<img src="' + esc(c.image_url) + '" alt="' + esc(c.name) + '" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\'">' : '';
+
+    let acoes = '<button class="btn btn-ghost" onclick="fecharModal()">Fechar</button>';
+    if (ehMeu) {
+        acoes = '<div class="acoes"><button class="btn btn-ghost" onclick="fecharModal()">Fechar</button></div>';
+    } else {
+        acoes = '<div class="acoes">' +
+            (c.listing ? '<a class="btn btn-laranja" href="/colecionaveis.html" target="_blank">💳 COMPRAR ' + fmtR$(c.listing.unit_price) + '</a>' : '') +
+            '<button class="btn btn-amarelo" onclick="abrirModalOferta(' + c.id + ')">💰 FAZER OFERTA</button>' +
+            '<a class="btn btn-ghost" href="/colecionaveis.html" target="_blank">🤝 PROPÔR TROCA</a>' +
+            '<button class="btn btn-ghost" onclick="fecharModal()">Fechar</button>' +
+        '</div>';
+    }
+
+    document.getElementById("modalBody").innerHTML =
+        '<div class="num">' + (NOME_RARIDADE[c.rarity] || c.rarity) + ' • ' + finLabel + '</div>' +
+        '<h2>#' + String(c.number).padStart(3,"0") + ' — ' + esc(c.name) + '</h2>' +
+        (imagem ? '<div style="height:220px;border-radius:14px;overflow:hidden;margin:10px 0;background:var(--painel2)">' + imagem + '</div>' : '') +
+        '<div class="desc">' + (PERFIL.nome || "O colecionador") + ' possui <b style="color:var(--amarelo)">' + c.quantity + 'x</b> desta figurinha' +
+        (c.listing ? ' e vende por <b style="color:var(--amarelo)">' + fmtR$(c.listing.unit_price) + '</b> cada (Qtd: ' + c.listing.quantity + ').' : '.') + '</div>' +
+        acoes;
+    document.getElementById("modalOverlay").classList.remove("hidden");
+}
+
+function abrirModalOferta(cardId){
+    const c = cardPorId(cardId);
+    const s = minhaConta();
+    if (!s || !s.token) {
+        toast("Entre na sua conta para fazer uma oferta.", "erro");
+        return;
+    }
+    const valorSugerido = c && c.listing ? Number(c.listing.unit_price).toFixed(2) : "0.00";
+    document.getElementById("modalBody").innerHTML =
+        '<div class="num">💰 FAZER OFERTA</div>' +
+        '<h2>#' + String((c && c.number) || cardId).padStart(3,"0") + ' ' + esc((c && c.name) || "") + '</h2>' +
+        '<label>Vendedor</label><div class="campo">' + esc(PERFIL.nome || "—") + '</div>' +
+        (c && c.listing ? '<label>Valor anunciado</label><div class="campo">' + fmtR$(c.listing.unit_price) + '</div>' : '') +
+        '<label>Quantidade</label><input id="ofertaQuantidade" type="number" min="1" max="99" value="1">' +
+        '<label>Sua oferta (R$)</label><input id="ofertaValor" type="number" min="0.01" step="0.01" value="' + valorSugerido + '">' +
+        '<label>Mensagem (opcional)</label><textarea id="ofertaMensagem" maxlength="500" rows="3" placeholder="Ex.: posso fechar por esse valor?"></textarea>' +
+        '<div class="acoes"><button class="btn btn-amarelo" onclick="enviarOferta(' + cardId + ')">ENVIAR OFERTA</button>' +
+        '<button class="btn btn-ghost" onclick="abrirDetalhe(' + cardId + ')">Voltar</button></div>';
+    document.getElementById("modalOverlay").classList.remove("hidden");
+}
+
+async function enviarOferta(cardId){
+    try {
+        const quantidade = Math.max(1, Math.floor(Number(document.getElementById("ofertaQuantidade").value) || 1));
+        const valor = Number(document.getElementById("ofertaValor").value);
+        const mensagem = document.getElementById("ofertaMensagem").value;
+        if (!isFinite(valor) || valor <= 0) { toast("Informe um valor de oferta válido.", "erro"); return; }
+        const d = await apiPost("/api/colecionaveis/offers", { cardId, offereeId: Number(PERFIL.id), quantidade, valor, mensagem });
+        toast("Oferta enviada para " + esc(PERFIL.nome) + "!", "ok");
+        fecharModal();
+    } catch(e){ toast(msgErro(e), "erro"); }
+}
+
+function fecharModal(){
+    document.getElementById("modalOverlay").classList.add("hidden");
+}
+
+document.getElementById("modalOverlay").addEventListener("click", function(e){
+    if (e.target === this) fecharModal();
+});
+
+carregar();
+</script>
+</body>
+</html>

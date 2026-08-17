@@ -2042,6 +2042,301 @@ body.has-benefits{
     display:none
 }
 
+/* --- COLLAPSE INDIVIDUAL DOS PAINÉIS --- */
+.card-header-collapse{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    cursor:pointer;
+    user-select:none;
+    padding:0;
+    margin:-14px -14px 10px;
+    padding:10px 14px;
+    border-radius:var(--radius-lg) var(--radius-lg) 0 0;
+    background:rgba(255,255,255,.02);
+    border-bottom:1px solid var(--border-color);
+}
+.card-header-collapse:hover{
+    background:rgba(255,255,255,.04);
+}
+.card-header-collapse .card-collapse-label{
+    font-size:12px;
+    font-weight:700;
+    color:var(--text-muted);
+    text-transform:uppercase;
+    letter-spacing:.8px;
+}
+.card-header-collapse .card-collapse-icon{
+    font-size:14px;
+    color:var(--text-muted);
+    transition:transform .2s;
+    width:20px;
+    height:20px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+.card.collapsed .card-collapse-icon{
+    transform:rotate(-90deg);
+}
+.card.collapsed > *:not(.card-header-collapse){
+    display:none !important;
+}
+
+/* --- BOTÃO RECOLHER TODOS --- */
+.collapse-all-bar{
+    position:fixed;
+    top:calc(var(--header-height) + var(--benefits-height) + 8px);
+    right:16px;
+    z-index:55;
+    display:flex;
+    gap:6px;
+    align-items:center;
+}
+.collapse-all-btn{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:7px 12px;
+    border-radius:var(--radius-sm);
+    border:1px solid var(--border-color);
+    background:var(--bg-card);
+    color:var(--text-primary);
+    font-size:11px;
+    font-weight:700;
+    cursor:pointer;
+    transition:var(--transition);
+    white-space:nowrap;
+}
+.collapse-all-btn:hover{
+    background:var(--accent);
+    color:#000;
+    border-color:var(--accent);
+}
+.collapse-all-btn.active{
+    background:var(--accent);
+    color:#000;
+    border-color:var(--accent);
+}
+.collapse-all-btn .collapse-icon{
+    font-size:13px;
+    transition:transform .2s;
+}
+.collapse-all-btn.active .collapse-icon{
+    transform:rotate(180deg);
+}
+
+/* --- EXPANDIR MAPA (ALL COLLAPSED) --- */
+.main-layout.all-collapsed{
+    grid-template-columns:0px 1fr 0px !important;
+}
+.main-layout.all-collapsed .sidebar-left,
+.main-layout.all-collapsed .sidebar-right{
+    overflow:hidden;
+    width:0;
+    padding:0;
+    margin:0;
+    opacity:0;
+    pointer-events:none;
+}
+.main-layout.all-collapsed #area{
+    grid-column:1 / -1;
+}
+.main-layout.all-collapsed .zoom{
+    right:20px;
+}
+
+/* --- SEÇÕES INFERIORES (OFERTAS + RESUMO) --- */
+.dashboard-bottom{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:14px;
+    padding:14px;
+    max-width:1400px;
+    margin:0 auto;
+}
+.dashboard-bottom .card{
+    min-height:180px;
+}
+.dashboard-bottom .card-title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+}
+.dashboard-bottom .card-title .ver-todas{
+    font-size:11px;
+    color:var(--accent);
+    cursor:pointer;
+    text-transform:none;
+    letter-spacing:0;
+    font-weight:600;
+}
+.dashboard-bottom .card-title .ver-todas:hover{
+    text-decoration:underline;
+}
+.oferta-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:8px 0;
+    border-bottom:1px solid rgba(255,255,255,.04);
+    font-size:12px;
+}
+.oferta-item:last-child{
+    border-bottom:none;
+}
+.oferta-avatar{
+    width:32px;
+    height:32px;
+    border-radius:50%;
+    background:var(--bg-tertiary);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:14px;
+    flex-shrink:0;
+}
+.oferta-info{
+    flex:1;
+    min-width:0;
+}
+.oferta-info .nome{
+    font-weight:700;
+    color:var(--text-primary);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+.oferta-info .detalhe{
+    font-size:11px;
+    color:var(--text-muted);
+}
+.oferta-valor{
+    font-weight:800;
+    color:var(--accent);
+    white-space:nowrap;
+}
+.oferta-status{
+    font-size:10px;
+    padding:2px 6px;
+    border-radius:4px;
+    font-weight:700;
+    white-space:nowrap;
+}
+.oferta-status.recebida{
+    background:rgba(255,212,0,.12);
+    color:var(--accent);
+}
+.oferta-status.enviada{
+    background:rgba(90,162,255,.12);
+    color:var(--info);
+}
+.oferta-status.recusada{
+    background:rgba(255,77,77,.12);
+    color:var(--danger);
+}
+.resumo-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+}
+.resumo-box{
+    padding:12px;
+    border-radius:var(--radius-md);
+    background:rgba(255,255,255,.03);
+    border:1px solid rgba(255,255,255,.05);
+    text-align:center;
+}
+.resumo-box .valor{
+    font-size:22px;
+    font-weight:900;
+    color:var(--accent);
+    line-height:1.2;
+}
+.resumo-box .label{
+    font-size:10px;
+    color:var(--text-muted);
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    margin-top:4px;
+}
+.resumo-box .sub{
+    font-size:11px;
+    color:var(--text-muted);
+    margin-top:2px;
+}
+
+/* --- AVATAR NO HEADER --- */
+.user-avatar-header{
+    display:none;
+    align-items:center;
+    gap:8px;
+    cursor:pointer;
+    padding:4px 8px;
+    border-radius:var(--radius-sm);
+    transition:var(--transition);
+}
+.user-avatar-header:hover{
+    background:rgba(255,255,255,.05);
+}
+.user-avatar-header img{
+    width:32px;
+    height:32px;
+    border-radius:50%;
+    border:2px solid var(--accent);
+    object-fit:cover;
+}
+.user-avatar-header .avatar-initials{
+    width:32px;
+    height:32px;
+    border-radius:50%;
+    background:var(--accent);
+    color:#000;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:13px;
+    font-weight:900;
+}
+.user-avatar-header .avatar-name{
+    font-size:12px;
+    font-weight:700;
+    color:var(--text-primary);
+}
+.user-avatar-header .avatar-chevron{
+    font-size:10px;
+    color:var(--text-muted);
+}
+.user-avatar-header.logado{
+    display:flex;
+}
+.btn-entrar-header{
+    display:block;
+}
+.btn-entrar-header.oculto{
+    display:none;
+}
+
+@media(max-width:900px){
+    .dashboard-bottom{
+        grid-template-columns:1fr;
+    }
+    .collapse-all-bar{
+        top:auto;
+        bottom:60px;
+        right:12px;
+    }
+}
+@media(max-width:760px){
+    .dashboard-bottom{
+        grid-template-columns:1fr;
+        padding:10px;
+    }
+    .resumo-grid{
+        grid-template-columns:1fr 1fr;
+    }
+}
+
 .trust-section,
 .benefits-section{
     background:var(--bg-secondary);
@@ -2293,12 +2588,17 @@ body.has-benefits{
         --benefits-height:56px
     }
     .main-layout{
+        position:relative !important;
         grid-template-columns:1fr;
-        grid-template-rows:auto minmax(55vh,1fr);
+        grid-template-rows:auto 1fr;
         gap:10px;
         padding:10px;
-        height:calc(100vh - var(--header-height) - var(--benefits-height));
-        overflow:hidden
+        height:auto !important;
+        min-height:calc(100vh - var(--header-height) - var(--benefits-height));
+        overflow:visible !important;
+        left:auto;
+        right:auto;
+        bottom:auto
     }
     .sidebar-left{
         grid-column:1;
@@ -2312,7 +2612,7 @@ body.has-benefits{
         max-height:34vh
     }
     .sidebar-left .card{
-        min-width:280px;
+        min-width:260px;
         flex:0 0 auto;
         padding:12px
     }
@@ -2334,7 +2634,7 @@ body.has-benefits{
     #area{
         grid-column:1;
         grid-row:2;
-        min-height:55vh
+        min-height:50vh
     }
     .sidebar-right{
         display:none
@@ -2361,6 +2661,88 @@ body.has-benefits{
     }
     .sidebar-left{
         padding-bottom:70px !important;
+    }
+    .card-header-collapse{
+        margin:-12px -12px 8px;
+        padding:8px 12px;
+    }
+    .card-header-collapse .card-collapse-label{
+        font-size:10px;
+    }
+    .collapse-all-bar{
+        position:fixed;
+        top:calc(var(--header-height) + var(--benefits-height) + 6px);
+        right:8px;
+        z-index:60;
+    }
+    .collapse-all-btn{
+        padding:6px 10px;
+        font-size:10px;
+        gap:4px;
+    }
+    .collapse-all-btn .collapse-icon{
+        font-size:11px;
+    }
+    .main-layout.all-collapsed .sidebar-left{
+        max-height:0 !important;
+        overflow:hidden !important;
+        padding:0 !important;
+        margin:0 !important;
+        opacity:0;
+        pointer-events:none;
+    }
+    .main-layout.all-collapsed #area{
+        min-height:75vh;
+    }
+    .dashboard-bottom{
+        grid-template-columns:1fr;
+        gap:10px;
+        padding:10px;
+        position:relative;
+        z-index:1;
+    }
+    .dashboard-bottom .card{
+        min-height:auto;
+    }
+    .resumo-grid{
+        grid-template-columns:1fr 1fr;
+        gap:8px;
+    }
+    .resumo-box{
+        padding:10px 8px;
+    }
+    .resumo-box .valor{
+        font-size:18px;
+    }
+    .resumo-box .label{
+        font-size:9px;
+    }
+    .user-avatar-header .avatar-name{
+        display:none;
+    }
+    .user-avatar-header .avatar-chevron{
+        display:none;
+    }
+    .user-avatar-header .avatar-initials{
+        width:30px;
+        height:30px;
+        font-size:12px;
+    }
+    .oferta-item{
+        padding:6px 0;
+        gap:8px;
+    }
+    .oferta-avatar{
+        width:28px;
+        height:28px;
+        font-size:12px;
+    }
+    .oferta-valor{
+        font-size:11px;
+    }
+    .oferta-status{
+        font-size:9px;
+        padding:2px 5px;
     }
     .footer-content{
         grid-template-columns:1fr 1fr;
@@ -2405,6 +2787,40 @@ body.has-benefits{
     }
     .sidebar-left{
         padding-bottom:80px !important;
+    }
+    #area{
+        min-height:45vh;
+    }
+    .sidebar-left{
+        max-height:45vh;
+    }
+    .collapse-all-bar{
+        right:6px;
+        top:calc(var(--header-height) + var(--benefits-height) + 4px);
+    }
+    .collapse-all-btn{
+        padding:5px 8px;
+        font-size:9px;
+    }
+    .dashboard-bottom{
+        padding:8px;
+    }
+    .resumo-grid{
+        grid-template-columns:1fr 1fr;
+        gap:6px;
+    }
+    .resumo-box .valor{
+        font-size:16px;
+    }
+    .main-layout{
+        padding:8px;
+        gap:8px
+    }
+    .sidebar-left .card{
+        padding:14px
+    }
+    .kitModal .kitModalPrecoNovo{
+        font-size:26px
     }
 }
 
@@ -3092,10 +3508,48 @@ body.footer-visible #area{
 
 @media(max-width:760px){
     .main-layout{
+        grid-template-columns:1fr;
         grid-template-rows:auto 1fr;
         overflow-y:auto
     }
+    #area{
+        grid-column:1;
+        grid-row:2;
+        min-height:55vh
+    }
+    .sidebar-left{
+        grid-column:1;
+        grid-row:1;
+        flex-direction:row;
+        overflow-x:auto;
+        overflow-y:hidden;
+        max-height:34vh
+    }
+    .sidebar-left .card{
+        min-width:260px;
+        flex:0 0 auto
+    }
     .sidebar-right{
+        display:none
+    }
+    .zoom{
+        right:12px;
+        top:calc(var(--header-height) + var(--benefits-height) + 12px)
+    }
+    .map-legend{
+        gap:10px;
+        padding:8px 12px;
+        font-size:10px
+    }
+    .legend-item span{
+        display:none
+    }
+    .fab-actions{
+        left:12px;
+        bottom:12px;
+        flex-direction:row
+    }
+    .fab-btn span{
         display:none
     }
     .bug-fab{
@@ -3108,18 +3562,82 @@ body.footer-visible #area{
         max-height:320px;
         overflow-y:auto
     }
-}
-
-@media(max-width:480px){
-    .main-layout{
-        padding:8px;
+    .card-header-collapse{
+        margin:-12px -12px 8px;
+        padding:8px 12px
+    }
+    .card-header-collapse .card-collapse-label{
+        font-size:10px
+    }
+    .collapse-all-bar{
+        position:fixed;
+        top:calc(var(--header-height) + var(--benefits-height) + 6px);
+        right:8px;
+        z-index:60
+    }
+    .collapse-all-btn{
+        padding:6px 10px;
+        font-size:10px;
+        gap:4px
+    }
+    .collapse-all-btn .collapse-icon{
+        font-size:11px
+    }
+    .main-layout.all-collapsed .sidebar-left{
+        max-height:0 !important;
+        overflow:hidden !important;
+        padding:0 !important;
+        margin:0 !important;
+        opacity:0;
+        pointer-events:none
+    }
+    .main-layout.all-collapsed #area{
+        min-height:75vh
+    }
+    .dashboard-bottom{
+        grid-template-columns:1fr;
+        gap:10px;
+        padding:10px
+    }
+    .dashboard-bottom .card{
+        min-height:auto
+    }
+    .resumo-grid{
+        grid-template-columns:1fr 1fr;
         gap:8px
     }
-    .sidebar-left .card{
-        padding:14px
+    .resumo-box .valor{
+        font-size:18px
     }
-    .kitModal .kitModalPrecoNovo{
-        font-size:26px
+    .resumo-box .label{
+        font-size:9px
+    }
+    .user-avatar-header .avatar-name{
+        display:none
+    }
+    .user-avatar-header .avatar-chevron{
+        display:none
+    }
+    .user-avatar-header .avatar-initials{
+        width:30px;
+        height:30px;
+        font-size:12px
+    }
+    .oferta-item{
+        padding:6px 0;
+        gap:8px
+    }
+    .oferta-avatar{
+        width:28px;
+        height:28px;
+        font-size:12px
+    }
+    .oferta-valor{
+        font-size:11px
+    }
+    .oferta-status{
+        font-size:9px;
+        padding:2px 5px
     }
 }
 </style>
@@ -3168,6 +3686,11 @@ body.footer-visible #area{
             onclick="abrirLogin()">
             👤 ENTRAR
         </button>
+        <div class="user-avatar-header" id="userAvatarHeader" onclick="abrirPainelComando()">
+            <div class="avatar-initials" id="avatarInitials">M</div>
+            <span class="avatar-name" id="avatarName">Marcus</span>
+            <span class="avatar-chevron">▾</span>
+        </div>
         <button
             class="btn-menu-mobile"
             id="btnMenuMobile"
@@ -3386,6 +3909,10 @@ LIMPAR
         </div>
 
         <div class="card">
+            <div class="card-header-collapse" onclick="toggleCollapse(this.parentElement)">
+                <span class="card-collapse-label">🏠 LOCALIZAR & COMPRAR</span>
+                <span class="card-collapse-icon">▾</span>
+            </div>
             <div class="card-title">Localizar Espaço</div>
             <div class="search-box">
                 <input
@@ -3439,6 +3966,10 @@ LIMPAR
         </div>
 
         <div class="card selection-card" id="selectionCard">
+            <div class="card-header-collapse" onclick="toggleCollapse(this.parentElement)">
+                <span class="card-collapse-label">📦 SELEÇÃO ATUAL</span>
+                <span class="card-collapse-icon">▾</span>
+            </div>
             <div class="selection-empty" id="selectionEmpty">
                 <span class="icon">🖱️</span>
                 <div>Nenhum espaço selecionado ainda.<br>Clique no mapa para começar.</div>
@@ -3489,6 +4020,10 @@ LIMPAR
     <aside class="sidebar-right" id="comoFuncionaSection">
 
         <div class="card how-it-works">
+            <div class="card-header-collapse" onclick="toggleCollapse(this.parentElement)">
+                <span class="card-collapse-label">❓ COMO FUNCIONA?</span>
+                <span class="card-collapse-icon">▾</span>
+            </div>
             <div class="card-title">Como Funciona?</div>
             <div class="steps">
                 <div class="step">
@@ -3523,6 +4058,10 @@ LIMPAR
         </div>
 
         <div class="card how-it-works" style="border-color:rgba(255,122,0,.35);">
+            <div class="card-header-collapse" onclick="toggleCollapse(this.parentElement)">
+                <span class="card-collapse-label" style="color:#ffd400;">🃏 COLECIONÁVEIS</span>
+                <span class="card-collapse-icon">▾</span>
+            </div>
             <div class="card-title" style="color:#ffd400;">🃏 Colecionáveis — Como Funciona</div>
             <div class="steps">
                 <div class="step">
@@ -3561,6 +4100,10 @@ LIMPAR
         </div>
 
         <div class="card kits-section" id="combosSection">
+            <div class="card-header-collapse" onclick="toggleCollapse(this.parentElement)">
+                <span class="card-collapse-label">🔥 COMBOS & KITS</span>
+                <span class="card-collapse-icon">▾</span>
+            </div>
             <div class="card-title">🔥 COMBOS & KITS
                 <span class="kits-mini">economize até R$120</span>
             </div>
@@ -3576,6 +4119,10 @@ LIMPAR
         </div>
 
         <div class="card discount-card" id="precos">
+            <div class="card-header-collapse" onclick="toggleCollapse(this.parentElement)">
+                <span class="card-collapse-label">💰 DESCONTO PROGRESSIVO</span>
+                <span class="card-collapse-icon">▾</span>
+            </div>
             <h3>DESCONTO PROGRESSIVO</h3>
             <p>Quanto mais espaços, maior o desconto!</p>
             <button class="btn" onclick="abrirPrecos(event)">
@@ -3584,6 +4131,10 @@ LIMPAR
         </div>
 
         <div class="card">
+            <div class="card-header-collapse" onclick="toggleCollapse(this.parentElement)">
+                <span class="card-collapse-label">📊 ESTATÍSTICAS</span>
+                <span class="card-collapse-icon">▾</span>
+            </div>
             <div class="card-title">Estatísticas</div>
             <div class="mini-stats">
                 <div>TOTAIS<b>1.000.000</b></div>
@@ -3596,6 +4147,70 @@ LIMPAR
     </aside>
 
 </main>
+
+<!-- BOTÃO RECOLHER TODOS -->
+<div class="collapse-all-bar" id="collapseAllBar">
+    <button class="collapse-all-btn" id="collapseAllBtn" onclick="toggleCollapseAll()" title="Recolher/expandir todos os painéis">
+        <span class="collapse-icon">◂◂</span>
+        <span>RECOLHER PAINÉIS</span>
+    </button>
+</div>
+
+<!-- SEÇÕES INFERIORES -->
+<div class="dashboard-bottom" id="dashboardBottom">
+
+    <!-- ÚLTIMAS COMPRAS -->
+    <div class="card">
+        <div class="card-title">
+            <span>🛒 ÚLTIMAS COMPRAS</span>
+            <span class="ver-todas" onclick="abrirPainelComando()">Ver todas</span>
+        </div>
+        <div id="ultimasComprasDash">
+            <div style="color:var(--text-muted);font-size:12px;padding:8px 0;">Carregando...</div>
+        </div>
+    </div>
+
+    <!-- OFERTAS ATIVAS -->
+    <div class="card">
+        <div class="card-title">
+            <span>💎 OFERTAS ATIVAS</span>
+            <span class="ver-todas" onclick="abrirPainelComando()">Ver todas</span>
+        </div>
+        <div id="ofertasAtivasDash">
+            <div style="color:var(--text-muted);font-size:12px;padding:8px 0;">Carregando...</div>
+        </div>
+    </div>
+
+    <!-- RESUMO GERAL -->
+    <div class="card">
+        <div class="card-title">
+            <span>📊 RESUMO GERAL</span>
+        </div>
+        <div class="resumo-grid" id="resumoGeralDash">
+            <div class="resumo-box">
+                <div class="valor" id="resumoTotal">1.000.000</div>
+                <div class="label">ESPAÇOS TOTAIS</div>
+                <div class="sub">100%</div>
+            </div>
+            <div class="resumo-box">
+                <div class="valor" style="color:var(--danger);" id="resumoVendidos">0</div>
+                <div class="label">VENDIDOS</div>
+                <div class="sub" id="resumoVendidosPct">0%</div>
+            </div>
+            <div class="resumo-box">
+                <div class="valor" style="color:var(--success);" id="resumoDisponiveis">1.000.000</div>
+                <div class="label">DISPONÍVEIS</div>
+                <div class="sub" id="resumoDisponiveisPct">100%</div>
+            </div>
+            <div class="resumo-box">
+                <div class="valor" style="color:var(--info);" id="resumoUsuarios">0</div>
+                <div class="label">USUÁRIOS</div>
+                <div class="sub" id="resumoUsuariosHoje">+0 hoje</div>
+            </div>
+        </div>
+    </div>
+
+</div>
 
 <div class="zoom">
     <button onclick="zoom(1.2)">+</button>
@@ -15978,6 +16593,210 @@ function compartilharIndicacao(){
             }
         }).catch(() => {});
     }
+})();
+
+/* ===== COLLAPSE INDIVIDUAL DOS PAINÉIS ===== */
+function toggleCollapse(card){
+    if(!card) return;
+    card.classList.toggle("collapsed");
+}
+
+/* ===== RECOLHER TODOS / EXPANDIR MAPA ===== */
+let _allCollapsed = false;
+function toggleCollapseAll(){
+    _allCollapsed = !_allCollapsed;
+    const layout = document.getElementById("mainLayout");
+    const btn = document.getElementById("collapseAllBtn");
+    if(!layout || !btn) return;
+
+    const cards = layout.querySelectorAll(".card");
+    if(_allCollapsed){
+        layout.classList.add("all-collapsed");
+        btn.classList.add("active");
+        btn.querySelector("span:last-child").textContent = "EXPANDIR PAINÉIS";
+        cards.forEach(function(c){ c.classList.add("collapsed"); });
+    } else {
+        layout.classList.remove("all-collapsed");
+        btn.classList.remove("active");
+        btn.querySelector("span:last-child").textContent = "RECOLHER PAINÉIS";
+        cards.forEach(function(c){ c.classList.remove("collapsed"); });
+    }
+    /* Redesenhar canvas após transição */
+    setTimeout(function(){
+        if(typeof draw === "function") draw();
+        if(typeof center === "function") center();
+    }, 350);
+}
+
+/* ===== CARREGAR ÚLTIMAS COMPRAS NA DASHBOARD ===== */
+async function carregarUltimasComprasDash(){
+    const el = document.getElementById("ultimasComprasDash");
+    if(!el) return;
+    try {
+        const resp = await fetch("/api/ultimas-compras?limite=6");
+        const data = await resp.json();
+        const compras = data.compras || [];
+        if(!compras.length){
+            el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">Nenhuma compra ainda.</div>';
+            return;
+        }
+        el.innerHTML = compras.map(function(c){
+            const nome = escHtml(c.usuario_nome || c.nome || "Anônimo");
+            const espacos = c.espacos || c.quantidade || 0;
+            const valor = c.valor_total || c.valor || 0;
+            const cuando = c.tempo || c.created_at || "";
+            const avatar = (nome.charAt(0) || "?").toUpperCase();
+            return '<div class="oferta-item">' +
+                '<div class="oferta-avatar">' + avatar + '</div>' +
+                '<div class="oferta-info">' +
+                    '<div class="nome">' + nome + '</div>' +
+                    '<div class="detalhe">' + espacos + ' espaço(s) · ' + formatarReais(valor) + '</div>' +
+                '</div>' +
+                '<div class="oferta-status enviada">' + escHtml(cuando) + '</div>' +
+            '</div>';
+        }).join("");
+    } catch(e){
+        el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Erro ao carregar.</div>';
+    }
+}
+
+/* ===== CARREGAR OFERTAS ATIVAS NA DASHBOARD ===== */
+async function carregarOfertasAtivasDash(){
+    const el = document.getElementById("ofertasAtivasDash");
+    if(!el) return;
+    try {
+        const token = (minhaConta && minhaConta.token) || "";
+        if(!token){
+            el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">Faça login para ver suas ofertas.</div>';
+            return;
+        }
+        const resp = await fetch("/api/offers", {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        const data = await resp.json();
+        const ofertas = data.ofertas || [];
+        if(!ofertas.length){
+            el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">Nenhuma oferta ativa.</div>';
+            return;
+        }
+        el.innerHTML = ofertas.slice(0, 5).map(function(o){
+            const nome = escHtml(o.comprador_nome || o.vendedor_nome || "—");
+            const valor = o.valor || 0;
+            const status = (o.status || "pendente").toLowerCase();
+            let statusClass = "enviada";
+            if(status === "aceita" || status === "pago") statusClass = "recebida";
+            else if(status === "recusada" || status === "cancelada") statusClass = "recusada";
+            return '<div class="oferta-item">' +
+                '<div class="oferta-avatar">💎</div>' +
+                '<div class="oferta-info">' +
+                    '<div class="nome">#' + (o.id || "—") + ' ' + nome + '</div>' +
+                    '<div class="detalhe">' + (o.espacos || 1) + ' espaço(s)</div>' +
+                '</div>' +
+                '<div class="oferta-valor">' + formatarReais(valor) + '</div>' +
+                '<div class="oferta-status ' + statusClass + '">' + escHtml(status) + '</div>' +
+            '</div>';
+        }).join("");
+    } catch(e){
+        el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Erro ao carregar.</div>';
+    }
+}
+
+/* ===== CARREGAR RESUMO GERAL ===== */
+async function carregarResumoGeral(){
+    try {
+        const resp = await fetch("/api/status");
+        const data = await resp.json();
+        const total = data.total || 1000000;
+        const vendidos = data.vendidos || 0;
+        const disponiveis = total - vendidos;
+        const pctVendidos = ((vendidos / total) * 100).toFixed(2);
+        const pctDisponiveis = ((disponiveis / total) * 100).toFixed(2);
+
+        const elTotal = document.getElementById("resumoTotal");
+        const elVendidos = document.getElementById("resumoVendidos");
+        const elVendidosPct = document.getElementById("resumoVendidosPct");
+        const elDisponiveis = document.getElementById("resumoDisponiveis");
+        const elDisponiveisPct = document.getElementById("resumoDisponiveisPct");
+        const elUsuarios = document.getElementById("resumoUsuarios");
+        const elUsuariosHoje = document.getElementById("resumoUsuariosHoje");
+
+        if(elTotal) elTotal.textContent = total.toLocaleString("pt-BR");
+        if(elVendidos) elVendidos.textContent = vendidos.toLocaleString("pt-BR");
+        if(elVendidosPct) elVendidosPct.textContent = pctVendidos + "%";
+        if(elDisponiveis) elDisponiveis.textContent = disponiveis.toLocaleString("pt-BR");
+        if(elDisponiveisPct) elDisponiveisPct.textContent = pctDisponiveis + "%";
+
+        /* Usuários via endpoint se disponível */
+        try {
+            const respU = await fetch("/api/admin/usuarios", {
+                headers: { "Authorization": "Bearer " + ((minhaConta && minhaConta.token) || "") }
+            });
+            if(respU.ok){
+                const dataU = await respU.json();
+                const usuarios = (dataU.usuarios || dataU || []).length;
+                if(elUsuarios) elUsuarios.textContent = usuarios.toLocaleString("pt-BR");
+                if(elUsuariosHoje) elUsuariosHoje.textContent = "+" + Math.min(usuarios, 3) + " hoje";
+            }
+        } catch(ignored){}
+    } catch(e){
+        /*silently fail*/
+    }
+}
+
+/* ===== ATUALIZAR AVATAR NO HEADER ===== */
+function atualizarAvatarHeader(){
+    const btnEntrar = document.getElementById("btnEntrarHeader");
+    const avatar = document.getElementById("userAvatarHeader");
+    const initials = document.getElementById("avatarInitials");
+    const name = document.getElementById("avatarName");
+    if(!btnEntrar || !avatar) return;
+
+    if(minhaConta && minhaConta.token){
+        const u = minhaConta.usuario || minhaConta;
+        const nome = u.nome || u.email || "Usuário";
+        const iniciais = nome.split(" ").map(function(p){ return p.charAt(0); }).join("").substring(0, 2).toUpperCase();
+        btnEntrar.classList.add("oculto");
+        avatar.classList.add("logado");
+        if(initials) initials.textContent = iniciais;
+        if(name) name.textContent = nome.split(" ")[0];
+    } else {
+        btnEntrar.classList.remove("oculto");
+        avatar.classList.remove("logado");
+    }
+}
+
+/* ===== OVERRIDE: Salvar tokens atualiza avatar ===== */
+const _origSalvarTokens = (typeof salvarTokens === "function") ? salvarTokens : null;
+if(typeof salvarTokens === "function"){
+    salvarTokens = function(token, refresh, usuario){
+        if(_origSalvarTokens) _origSalvarTokens(token, refresh, usuario);
+        setTimeout(atualizarAvatarHeader, 100);
+    };
+}
+
+/* ===== INICIALIZAÇÃO DAS SEÇÕES INFERIORES ===== */
+(function(){
+    function initDashboardBottom(){
+        carregarUltimasComprasDash();
+        carregarOfertasAtivasDash();
+        carregarResumoGeral();
+        atualizarAvatarHeader();
+    }
+    if(document.readyState === "loading"){
+        document.addEventListener("DOMContentLoaded", function(){
+            setTimeout(initDashboardBottom, 500);
+        });
+    } else {
+        setTimeout(initDashboardBottom, 500);
+    }
+    /* Atualizar a cada 30s */
+    setInterval(function(){
+        carregarUltimasComprasDash();
+        carregarOfertasAtivasDash();
+        carregarResumoGeral();
+    }, 30000);
+    /* Atualizar avatar quando login muda */
+    setInterval(atualizarAvatarHeader, 3000);
 })();
 
 </script>

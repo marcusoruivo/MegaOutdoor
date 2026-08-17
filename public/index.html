@@ -2359,6 +2359,9 @@ body.has-benefits{
     .fab-btn span{
         display:none
     }
+    .sidebar-left{
+        padding-bottom:70px !important;
+    }
     .footer-content{
         grid-template-columns:1fr 1fr;
         gap:24px
@@ -2399,6 +2402,9 @@ body.has-benefits{
     }
     .fab-btn span:last-child{
         display:none
+    }
+    .sidebar-left{
+        padding-bottom:80px !important;
     }
 }
 
@@ -12439,46 +12445,52 @@ async function carregarOfertasPainel(){
     const outras =
         ultimasOfertas.filter(o => o.status !== "pending");
 
-    if(!ultimasOfertas.length){
-
-        list.innerHTML =
-            "Você ainda não recebeu ofertas.<br>" +
-            "<span style='font-size:12px;color:#888;'>" +
-            "Compre espaços, publique-os e outros " +
-            "compradores poderão fazer ofertas.</span>";
-
-        carregarMinhasOfertasEnviadas();
-
-        return;
-    }
+    const totalRecebidas = ultimasOfertas.length;
+    const totalEnviadas = myOffers.length;
 
     let html = "";
 
-    if(pendentes.length){
+    html +=
+        '<div style="display:flex;gap:12px;margin:8px 0 14px;flex-wrap:wrap;">' +
+        '<div style="background:#1a1a26;border:1px solid #333;border-radius:10px;padding:10px 16px;flex:1;min-width:120px;text-align:center;">' +
+        '<div style="font-size:22px;font-weight:800;color:#ffd400;">' +
+        totalRecebidas.toLocaleString("pt-BR") +
+        '</div>' +
+        '<div style="font-size:11px;color:#aaa;margin-top:2px;">RECEBIDA' +
+        (totalRecebidas !== 1 ? "S" : "") +
+        '</div></div>' +
+        '<div style="background:#1a1a26;border:1px solid #333;border-radius:10px;padding:10px 16px;flex:1;min-width:120px;text-align:center;">' +
+        '<div style="font-size:22px;font-weight:800;color:#45d66f;">' +
+        totalEnviadas.toLocaleString("pt-BR") +
+        '</div>' +
+        '<div style="font-size:11px;color:#aaa;margin-top:2px;">ENVIADA' +
+        (totalEnviadas !== 1 ? "S" : "") +
+        '</div></div>' +
+        '</div>';
+
+    if(totalRecebidas > 0){
 
         html +=
-            '<div style="font-weight:800;margin:8px 0 6px;' +
-            'color:#ffd400;">PENDENTES</div>';
+            '<div style="font-weight:800;margin:10px 0 8px;' +
+            'color:#ffd400;font-size:13px;">OFERTAS RECEBIDAS</div>';
 
         for(const o of pendentes){
             html += cardOferta(o, false);
         }
-    }
-
-    if(outras.length){
-
-        html +=
-            '<div style="font-weight:800;margin:14px 0 6px;' +
-            'color:#aaa;">JÁ RESPONDIDAS</div>';
 
         for(const o of outras){
             html += cardOferta(o, true);
         }
+    } else {
+
+        html +=
+            '<div style="color:#888;font-size:13px;margin:8px 0;">' +
+            'Você ainda não recebeu ofertas.</div>';
     }
 
     list.innerHTML = html;
 
-    carregarMinhasOfertasEnviadas();
+    await carregarMinhasOfertasEnviadas();
 }
 
 function idsBlocoOferta(o){
@@ -12503,73 +12515,65 @@ function cardOferta(o, done){
     const blocoLabel =
         blocoIds.length > 1
         ? `<div style="font-size:12px;color:#45d66f;margin-top:4px;">
-             🧩 Bloco de ${blocoIds.length.toLocaleString("pt-BR")} espaços
+             Bloco de ${blocoIds.length.toLocaleString("pt-BR")} espaços
              (#${blocoIds[0].toLocaleString("pt-BR")}–
               #${blocoIds[blocoIds.length-1].toLocaleString("pt-BR")})
            </div>`
         : "";
 
+    const statusHtml = done
+        ? `<div style="margin-top:6px;">${statusLabel(o.status)}</div>`
+        : "";
+
+    const botoes = done
+        ? (o.status === "pending" || o.status === "countered" || o.status === "accepted"
+            ? `<div style="margin-top:8px;">
+                 <button class="btn sec" onclick="abrirChatNegociacao('${o.id}','','${tokenDaOferta(o.id)}')"
+                         style="margin:0;padding:8px 12px;font-size:12px;">
+                   NEGOCIAR
+                 </button>
+               </div>`
+            : "")
+        : `<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+             <button class="btn" onclick="aceitarOferta('${o.id}')"
+                     style="margin:0;padding:8px 14px;font-size:12px;">
+               ACEITAR
+             </button>
+             <button class="btn sec" onclick="recusarOferta('${o.id}')"
+                     style="margin:0;padding:8px 14px;font-size:12px;">
+               RECUSAR
+             </button>
+             <button class="btn sec" onclick="contraproposta('${o.id}')"
+                     style="margin:0;padding:8px 14px;font-size:12px;">
+               CONTRAPROPOSTA
+             </button>
+             <button class="btn sec" onclick="abrirChatNegociacao('${o.id}','','${tokenDaOferta(o.id)}')"
+                     style="margin:0;padding:8px 14px;font-size:12px;">
+               NEGOCIAR
+             </button>
+           </div>`;
+
     return `
       <div style="border:1px solid #333;border-radius:12px;
                   padding:12px 14px;margin-bottom:10px;background:#161616;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
-          <b>#${o.spaceId.toLocaleString("pt-BR")}</b>
-          <span style="color:#ffd400;font-weight:800;">${valor}</span>
+          <b style="color:#ffd400;">#${o.spaceId.toLocaleString("pt-BR")}</b>
+          <span style="color:#45d66f;font-weight:800;">${valor}</span>
         </div>
         ${blocoLabel}
-        <div style="color:#aaa;margin-top:4px;">
-          ${o.name} · ${o.email}
+        <div style="color:#aaa;margin-top:4px;font-size:13px;">
+          De: <b>${o.name}</b> · ${o.email}
         </div>
         ${
             o.message
-            ? `<div style="color:#888;font-size:12px;margin-top:4px;">“${o.message}”</div>`
+            ? `<div style="color:#888;font-size:12px;margin-top:4px;">"${o.message}"</div>`
             : ""
         }
-        <div style="font-size:12px;color:#888;margin-top:4px;">
+        <div style="font-size:11px;color:#666;margin-top:4px;">
           ${new Date(o.createdAt).toLocaleString("pt-BR")}
         </div>
-        ${
-            done
-            ? `<div style="margin-top:8px;font-size:12px;">${statusLabel(o.status)}</div>
-               ${
-                   o.status === "pending" ||
-                   o.status === "countered" ||
-                   o.status === "accepted"
-                   ? `<button class="btn sec" onclick="abrirChatNegociacao('${o.id}','','${tokenDaOferta(o.id)}')"
-                          style="margin-top:10px;padding:8px 12px;font-size:12px;">
-                        💬 NEGOCIAR COM O COMPRADOR
-                      </button>`
-                   : ""
-               }`
-            : `
-              <div style="margin-top:10px;">
-                <button class="btn" onclick="aceitarOferta('${o.id}')"
-                        style="margin:0;padding:8px 12px;font-size:12px;">
-                  ✓ ACEITAR
-                </button>
-                <button class="btn sec" onclick="contraproposta('${o.id}')"
-                        style="margin:0;padding:8px 12px;font-size:12px;">
-                  ↗ AUMENTAR
-                </button>
-                <button class="btn sec" onclick="recusarOferta('${o.id}')"
-                        style="margin:0;padding:8px 12px;font-size:12px;">
-                  ✕ RECUSAR
-                </button>
-                <button class="btn sec" onclick="abrirChatNegociacao('${o.id}','','${tokenDaOferta(o.id)}')"
-                        style="margin:0;padding:8px 12px;font-size:12px;">
-                  💬 NEGOCIAR
-                </button>
-              </div>
-              ${
-                  o.status === "countered"
-                  ? `<div style="margin-top:8px;font-size:12px;color:#ffd400;">
-                      Contraproposta de R$ ${Number(o.value).toLocaleString("pt-BR")} —
-                      aguardando resposta do comprador.
-                    </div>`
-                  : ""
-              }
-            `
-        }
+        ${statusHtml}
+        ${botoes}
       </div>
     `;
 }
@@ -13221,7 +13225,7 @@ function htmlOfertaFeita(o, emailComprador){
         Array.isArray(o.spaceIds) &&
         o.spaceIds.length > 1
         ? "<div style='font-size:11px;color:#45d66f;margin-top:2px;'>" +
-          "🧩 Bloco de " +
+          "Bloco de " +
           o.spaceIds.length.toLocaleString("pt-BR") +
           " espaços (#" +
           o.spaceIds[0].toLocaleString("pt-BR") +
@@ -13230,11 +13234,21 @@ function htmlOfertaFeita(o, emailComprador){
           ")</div>"
         : "";
 
+    const valor =
+        "R$ " + Number(o.value).toLocaleString("pt-BR");
+
     let html =
-        "<div>" +
-        "Oferta para o espaço <b>" + espaco + "</b>" +
+        "<div style='border:1px solid #333;border-radius:12px;" +
+        "padding:12px 14px;margin-bottom:10px;background:#161616;'>" +
+        "<div style='display:flex;justify-content:space-between;align-items:center;'>" +
+        "<b style='color:#45d66f;'>" + espaco + "</b>" +
+        "<span style='color:#ffd400;font-weight:800;'>" + valor + "</span>" +
         "</div>" +
         bloco +
+        "<div style='color:#aaa;margin-top:4px;font-size:13px;'>" +
+        "Para: <b>" + (o.name || "comprador") + "</b>" +
+        (o.email ? " · " + o.email : "") +
+        "</div>" +
         "<div style='margin-top:6px;'>" +
         statusLabel(o.status) +
         "</div>";
@@ -13243,7 +13257,7 @@ function htmlOfertaFeita(o, emailComprador){
 
         html +=
             "<div style='margin-top:8px;font-size:13px;color:#ffd400;'>" +
-            "Nova proposta: <b>R$ " +
+            "Contraproposta: <b>R$ " +
             Number(o.value).toLocaleString("pt-BR") +
             "</b>" +
             (o.originalValue
@@ -13252,17 +13266,17 @@ function htmlOfertaFeita(o, emailComprador){
                   ")"
                 : "") +
             "</div>" +
-            "<div style='margin-top:10px;'>" +
+            "<div style='margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;'>" +
             "<button class='btn' " +
             "onclick=\"aceitarContraproposta('" +
             o.id + "')\" " +
             "style='margin:0;padding:8px 12px;font-size:12px;'>" +
-            "✓ ACEITAR E PAGAR</button> " +
+            "ACEITAR E PAGAR</button> " +
             "<button class='btn sec' " +
             "onclick=\"recusarContraproposta('" +
             o.id + "')\" " +
             "style='margin:0;padding:8px 12px;font-size:12px;'>" +
-            "✕ RECUSAR</button>" +
+            "RECUSAR</button>" +
             "</div>";
     }
 
@@ -13274,7 +13288,7 @@ function htmlOfertaFeita(o, emailComprador){
             "onclick=\"abrirPagamentoOferta('" +
             o.id + "')\" " +
             "style='margin:0;padding:8px 12px;font-size:12px;'>" +
-            "💰 EFETUAR PAGAMENTO</button>" +
+            "EFETUAR PAGAMENTO</button>" +
             "</div>";
     }
 
@@ -13287,7 +13301,19 @@ function htmlOfertaFeita(o, emailComprador){
             o.newOwnerToken + "', '" +
             (o.newOwnerAccessCode || "") + "')\" " +
             "style='margin-top:10px;padding:8px 12px;font-size:12px;'>" +
-            "✅ SALVAR MEU BLOCO</button>";
+            "SALVAR MEU BLOCO</button>";
+    }
+
+    if(o.status === "pending"){
+
+        html +=
+            "<div style='margin-top:10px;'>" +
+            "<button class='btn sec' " +
+            "onclick=\"cancelarOfertaEnviada('" +
+            o.id + "')\" " +
+            "style='margin:0;padding:8px 12px;font-size:12px;'>" +
+            "CANCELAR</button>" +
+            "</div>";
     }
 
     if(
@@ -13305,9 +13331,11 @@ function htmlOfertaFeita(o, emailComprador){
             emailComprador.replace(/'/g, "") +
             "','')\" " +
             "style='margin:0;padding:8px 12px;font-size:12px;'>" +
-            "💬 NEGOCIAR COM O PROPRIETÁRIO</button>" +
+            "NEGOCIAR COM O PROPRIETÁRIO</button>" +
             "</div>";
     }
+
+    html += "</div>";
 
     return html;
 }
@@ -13538,29 +13566,18 @@ async function carregarMinhasOfertasEnviadas(){
 
     if(!validas.length && !invalidas.length)return;
 
-    const seta =
-        minhasOfertasExpandido ? "▾" : "▸";
-
     let html =
-        '<div style="margin:18px 0 6px;">' +
-        '<button onclick="toggleMinhasOfertas()" ' +
-        'style="background:none;border:0;color:#ffd400;' +
-        'font-weight:800;font-size:13px;cursor:pointer;' +
-        'padding:4px 0;display:flex;align-items:center;' +
-        'gap:6px;">' +
-        '<span id="minhasOfertasSeta">' + seta + '</span>' +
-        'OFERTAS QUE VOCÊ FEZ (' +
+        '<div style="margin:18px 0 8px;">' +
+        '<div style="font-weight:800;color:#45d66f;font-size:13px;">' +
+        'OFERTAS ENVIADAS (' +
         validas.length.toLocaleString("pt-BR") +
-        ')</button>' +
+        ')</div>' +
         '</div>';
 
-    if(minhasOfertasExpandido){
+    {
 
-        const grupos =
-            agruparOfertasFeitas(validas);
-
-        for(const g of grupos){
-            html += cardGrupoOferta(g, emailComprador);
+        for(const o of validas){
+            html += htmlOfertaFeita(o, emailComprador);
         }
 
         for(const inv of invalidas){
@@ -13643,6 +13660,18 @@ async function aceitarContraproposta(offerId){
 
         console.error(error);
     }
+}
+
+function cancelarOfertaEnviada(offerId){
+
+    if(!confirm("Deseja cancelar esta oferta enviada?"))return;
+
+    try{
+        myOffers = myOffers.filter(id => id !== offerId);
+        localStorage.setItem("mega_myOffers", JSON.stringify(myOffers));
+    }catch(e){}
+
+    carregarOfertasPainel();
 }
 
 async function recusarContraproposta(offerId){

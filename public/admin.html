@@ -192,7 +192,7 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
         <button id="tabUsuarios" onclick="aba('usuarios')">👥 USUÁRIOS</button>
         <button id="tabStories" onclick="aba('stories')">📱 STORIES</button>
         <button id="tabUltimasCompras" onclick="aba('ultimascompras')">🛒 ÚLTIMAS COMPRAS</button>
-        <button id="tabPrecoStories" onclick="aba('precostories')">💰 PREÇOS STORIES</button>
+        <button id="tabPrecoStories" onclick="aba('precoStories')">💰 PREÇOS STORIES</button>
         <button id="tabLogs" onclick="aba('logs')">📜 LOGS</button>
         <button id="tabCupons" onclick="aba('cupons')">🎟️ CUPONS</button>
         <button id="tabSorteio" onclick="aba('sorteio')"> SORTEIO</button>
@@ -882,7 +882,7 @@ function renderPaginacao(paginaAtual, totalPaginas, funcaoCarregar){
 
 function aba(nome){
     abaAtual = nome;
-    for(const n of ["resumo","espacos","transacoes","usuarios","stories","ultimascompras","precostories","logs","cupons","sorteio","referencia","colecionaveis","combos","bugs"]){
+    for(const n of ["resumo","espacos","transacoes","usuarios","stories","ultimascompras","precoStories","logs","cupons","sorteio","referencia","colecionaveis","combos","bugs"]){
         const bt = document.getElementById("tab" + n.charAt(0).toUpperCase() + n.slice(1));
         const vw = document.getElementById("view" + n.charAt(0).toUpperCase() + n.slice(1));
         if(bt) bt.className = n === nome ? "ativa" : "";
@@ -894,7 +894,7 @@ function aba(nome){
     if(nome === "usuarios") carregarUsuarios();
     if(nome === "stories") carregarStories();
     if(nome === "ultimascompras") carregarUltimasCompras();
-    if(nome === "precostories") carregarPrecoStories();
+    if(nome === "precoStories") carregarPrecoStories();
     if(nome === "logs") carregarLogs();
     if(nome === "cupons") carregarCupons();
     if(nome === "sorteio") carregarSorteio();

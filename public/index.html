@@ -16,27 +16,27 @@
 ========================================================= */
 
 :root{
-    --bg-primary:#050505;
-    --bg-secondary:#0a0a0a;
-    --bg-tertiary:#111111;
+    --bg-primary:#0D0D0D;
+    --bg-secondary:#141414;
+    --bg-tertiary:#1a1a1a;
     --bg-card:#161616;
-    --bg-card-hover:#1c1c1c;
+    --bg-card-hover:#1e1e1e;
     --bg-input:#111111;
     --bg-button-secondary:#232323;
     --text-primary:#ffffff;
     --text-secondary:#b0b0b0;
     --text-muted:#888888;
-    --border-color:#292929;
+    --border-color:#2a2a2a;
     --border-color-strong:#3a3a3a;
-    --accent:#ffd400;
-    --accent-hover:#ffe34d;
-    --accent-shadow:rgba(255,212,0,.22);
-    --success:#45df6e;
-    --success-bg:#1b3a2a;
+    --accent:#FFC700;
+    --accent-hover:#ffd940;
+    --accent-shadow:rgba(255,199,0,.22);
+    --success:#00E676;
+    --success-bg:#0f2a1e;
     --offer:#ff7a00;
     --offer-bg:#3a2f1b;
-    --info:#5aa2ff;
-    --purple:#b06bff;
+    --info:#0091FF;
+    --purple:#8A2BE2;
     --pink:#ff6b9d;
     --danger:#ff4d4d;
     --shadow:0 10px 40px rgba(0,0,0,.45);
@@ -333,16 +333,17 @@ html,body{
 }
 
 .zoom{
-    position:fixed;
-    right:22px;
-    top:105px;
+    position:absolute;
+    left:20px;
+    top:20px;
     z-index:40;
     display:flex;
     flex-direction:column;
-    background:#000;
-    border:1px solid #333;
+    background:#0D0D0D;
+    border:1px solid var(--border-color-strong);
     border-radius:10px;
-    overflow:hidden
+    overflow:hidden;
+    box-shadow:var(--shadow-sm)
 }
 
 .zoom button{
@@ -520,12 +521,16 @@ html,body{
 @media(max-width:640px){.stories-shell{margin:8px 8px 0;padding:8px 10px;width:calc(100% - 16px)}.stories-head{align-items:flex-start;flex-direction:column;gap:4px}.story-card{min-height:460px}.story-title{font-size:21px}}
 
 /* ÚLTIMAS COMPRAS */
-.ultimas-compras-shell{display:none;width:calc(100% - 32px);max-width:1680px;margin:10px auto 0;padding:10px 16px;background:rgba(17,17,17,.88);border:1px solid rgba(69,223,110,.18);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
-.ultimas-compras-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:10px;font-weight:900;letter-spacing:1.4px;color:var(--success);padding:0}
-.ao-vivo-badge{background:var(--success);color:#000;padding:3px 8px;border-radius:999px;font-size:9px;font-weight:900;animation:pulseAoVivo 2s ease-in-out infinite}
+.ultimas-compras-shell{display:none;width:calc(100% - 32px);max-width:1680px;margin:10px auto 0;padding:10px 16px;background:rgba(17,17,17,.88);border:1px solid rgba(255,199,0,.18);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.ultimas-compras-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:10px;font-weight:900;letter-spacing:1.4px;color:var(--accent);padding:0}
+.ao-vivo-badge{background:var(--accent);color:#000;padding:3px 8px;border-radius:999px;font-size:9px;font-weight:900;animation:pulseAoVivo 2s ease-in-out infinite}
 @keyframes pulseAoVivo{0%,100%{opacity:1}50%{opacity:.6}}
 .atualizando-info{font-size:10px;color:var(--text-muted);font-weight:600;margin-left:auto}
+.ticker-pause-btn{background:transparent;border:1px solid var(--border-color);color:var(--text-secondary);width:26px;height:26px;border-radius:8px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;transition:var(--transition)}
+.ticker-pause-btn:hover{color:var(--accent);border-color:var(--accent)}
+.ticker-pause-btn.pausado{color:var(--accent);border-color:var(--accent);background:rgba(255,199,0,.1)}
 .ultimas-compras-ticker{display:flex;gap:20px;overflow-x:auto;padding:8px 2px;scrollbar-width:thin;scroll-behavior:smooth}
+.ultimas-compras-ticker.pausado{animation-play-state:paused;scroll-behavior:auto}
 @media(max-width:640px){.ultimas-compras-shell{margin:8px 8px 0;padding:8px 10px;width:calc(100% - 16px)}}
 .compra-item{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(69,223,110,.08);border:1px solid rgba(69,223,110,.2);border-radius:12px;white-space:nowrap}
 .compra-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--success),#2dd36f);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#000;flex-shrink:0;overflow:hidden}
@@ -966,6 +971,45 @@ html,body{
     border-radius:20px;
     box-shadow:0 4px 12px rgba(0,0,0,.5);
     white-space:nowrap;
+}
+
+#mapTooltip{
+    position:fixed;
+    z-index:61;
+    pointer-events:none;
+    display:none;
+    background:rgba(20,20,20,.96);
+    border:1px solid var(--border-color-strong);
+    border-radius:12px;
+    padding:10px 14px;
+    box-shadow:var(--shadow);
+    font-size:12px;
+    line-height:1.5;
+    min-width:150px;
+}
+#mapTooltip .tt-title{
+    font-weight:800;
+    color:var(--accent);
+    font-size:11px;
+    letter-spacing:.5px;
+    margin-bottom:6px;
+}
+#mapTooltip .tt-row{
+    display:flex;
+    justify-content:space-between;
+    gap:16px;
+    color:var(--text-secondary);
+}
+#mapTooltip .tt-row b{
+    color:var(--text-primary);
+    font-weight:700;
+}
+#mapTooltip .tt-total{
+    margin-top:6px;
+    padding-top:6px;
+    border-top:1px dashed var(--border-color);
+    color:var(--accent);
+    font-weight:800;
 }
 
 .hint{
@@ -1494,6 +1538,12 @@ body.has-benefits{
     white-space:nowrap
 }
 
+.nav-desktop a.active,
+.nav-desktop a[aria-current="page"]{
+    color:var(--accent);
+    background:rgba(255,199,0,.1)
+}
+
 .nav-desktop a:hover{
     color:var(--accent);
     background:rgba(255,212,0,.08)
@@ -1632,7 +1682,7 @@ body.has-benefits{
     bottom:0;
     z-index:1;
     display:grid;
-    grid-template-columns:340px 1fr 300px;
+    grid-template-columns:minmax(240px,20%) minmax(0,60%) minmax(260px,20%);
     gap:14px;
     padding:14px;
     background:var(--bg-primary);
@@ -1961,6 +2011,52 @@ body.has-benefits{
     margin:0 0 12px;
     font-size:12px;
     color:var(--text-secondary)
+}
+
+.pacotes-card{
+    background:linear-gradient(135deg, rgba(138,43,226,.12), rgba(0,145,255,.08));
+    border-color:rgba(138,43,226,.35)
+}
+.pacotes-thumb{
+    width:100%;
+    border-radius:var(--radius-md);
+    overflow:hidden;
+    border:1px solid var(--border-color);
+    background:#000;
+    margin-bottom:10px;
+    aspect-ratio:16/7;
+    display:flex;
+    align-items:center;
+    justify-content:center
+}
+.pacotes-thumb img{
+    width:auto;
+    max-width:70%;
+    height:auto;
+    max-height:100%;
+    object-fit:contain;
+    filter:drop-shadow(0 4px 14px rgba(255,199,0,.25))
+}
+.pacotes-desc{
+    margin:0 0 10px;
+    font-size:12px;
+    color:var(--text-secondary)
+}
+.pacotes-preco{
+    display:flex;
+    align-items:baseline;
+    gap:6px;
+    margin-bottom:12px
+}
+.pacotes-preco span{
+    font-size:11px;
+    color:var(--text-muted);
+    font-weight:600
+}
+.pacotes-preco b{
+    font-size:22px;
+    color:var(--accent);
+    font-weight:900
 }
 
 /* --- LEGENDA --- */
@@ -2318,6 +2414,79 @@ body.has-benefits{
 }
 .btn-entrar-header.oculto{
     display:none;
+}
+
+.conta-dropdown{
+    display:none;
+    position:fixed;
+    top:calc(var(--header-height) + 6px);
+    right:20px;
+    z-index:1200;
+    width:240px;
+    background:var(--bg-card);
+    border:1px solid var(--border-color);
+    border-radius:var(--radius-md);
+    box-shadow:var(--shadow);
+    padding:8px;
+    flex-direction:column;
+    gap:2px;
+}
+.conta-dropdown.open{
+    display:flex;
+}
+.conta-dropdown .conta-dropdown-head{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 12px;
+    margin-bottom:4px;
+    border-bottom:1px solid var(--border-color);
+}
+.conta-dropdown .conta-dropdown-head .avatar-initials{
+    width:36px;
+    height:36px;
+    border-radius:50%;
+    background:var(--accent);
+    color:#000;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:14px;
+    font-weight:900;
+    flex-shrink:0;
+}
+.conta-dropdown .conta-dropdown-head b{
+    display:block;
+    font-size:13px;
+    color:var(--text-primary);
+}
+.conta-dropdown .conta-dropdown-head span{
+    display:block;
+    font-size:11px;
+    color:var(--text-muted);
+}
+.conta-dropdown a{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 12px;
+    border-radius:var(--radius-sm);
+    color:var(--text-secondary);
+    font-size:12px;
+    font-weight:600;
+    text-decoration:none;
+    transition:var(--transition);
+    cursor:pointer;
+}
+.conta-dropdown a:hover{
+    background:rgba(255,199,0,.08);
+    color:var(--accent);
+}
+.conta-dropdown a#contaDropSair{
+    color:var(--danger);
+}
+.conta-dropdown a#contaDropSair:hover{
+    background:rgba(255,77,77,.1);
 }
 
 @media(max-width:900px){
@@ -2897,7 +3066,7 @@ body.footer-visible #area{
 
 /* --- GRID PRINCIPAL --- */
 .main-layout{
-    grid-template-columns:300px minmax(0,1fr) 320px;
+    grid-template-columns:minmax(240px,20%) minmax(0,60%) minmax(260px,20%);
     max-width:1680px;
     margin:0 auto;
     width:100%;
@@ -3724,7 +3893,7 @@ body.footer-visible #area{
     </div>
 
     <nav class="nav-desktop">
-        <a href="#inicio" onclick="scrollToTop(event)">INÍCIO</a>
+        <a href="#inicio" class="active" onclick="scrollToTop(event)">INÍCIO</a>
         <a href="#como-funciona" onclick="abrirComoFunciona(event)">COMO FUNCIONA</a>
         <a href="#precos" onclick="abrirPrecos(event)">PREÇOS</a>
         <a href="#combos" onclick="verTodosKits(event)">COMBOS & KITS</a>
@@ -3756,10 +3925,24 @@ body.footer-visible #area{
             onclick="abrirLogin()">
             👤 ENTRAR
         </button>
-        <div class="user-avatar-header" id="userAvatarHeader" onclick="abrirPainelComando()">
+        <div class="user-avatar-header" id="userAvatarHeader" onclick="abrirContaDropdown(event)">
             <div class="avatar-initials" id="avatarInitials">M</div>
             <span class="avatar-name" id="avatarName">Marcus</span>
             <span class="avatar-chevron">▾</span>
+        </div>
+        <div class="conta-dropdown" id="contaDropdown">
+            <div class="conta-dropdown-head">
+                <div class="avatar-initials" id="contaDropInitials">M</div>
+                <div>
+                    <b id="contaDropNome">Marcus</b>
+                    <span id="contaDropEmail">minha conta</span>
+                </div>
+            </div>
+            <a href="#" onclick="event.preventDefault();abrirPainelComando();fecharContaDropdown()">⚙️ Painel de Comando</a>
+            <a href="/colecionaveis.html">🃏 Meus Colecionáveis</a>
+            <a href="#" onclick="event.preventDefault();abrirMeusDestaques();fecharContaDropdown()">✨ Meus Destaques</a>
+            <a href="#" onclick="event.preventDefault();abrirSistemaIndicacao();fecharContaDropdown()">🎁 Indique e Ganhe</a>
+            <a href="#" id="contaDropSair" onclick="event.preventDefault();sairConta();fecharContaDropdown()">🚪 Sair</a>
         </div>
         <button
             class="btn-menu-mobile"
@@ -3925,11 +4108,12 @@ LIMPAR
 </section>
 
 <!-- ÚLTIMAS COMPRAS -->
-<section class="ultimas-compras-shell" id="ultimasComprasShell" aria-label="Últimas Compras">
+<section class="ultimas-compras-shell" id="ultimasComprasShell" aria-label="Últimas Vendas">
     <div class="ultimas-compras-head">
-        <span>🛒 ÚLTIMAS COMPRAS</span>
+        <span>⚡ ÚLTIMAS VENDAS</span>
         <span class="ao-vivo-badge">AO VIVO</span>
         <span class="atualizando-info">Atualizando a cada 5 segundos</span>
+        <button class="ticker-pause-btn" id="tickerPauseBtn" onclick="alternarPausaTicker()" title="Pausar">❚❚</button>
     </div>
     <div class="ultimas-compras-ticker" id="ultimasComprasTicker"></div>
 </section>
@@ -4066,6 +4250,12 @@ LIMPAR
     <div id="area">
         <canvas id="canvas"></canvas>
 
+        <div class="zoom">
+            <button onclick="zoom(1.2)" title="Aproximar">+</button>
+            <button onclick="zoom(.83)" title="Afastar">−</button>
+            <button onclick="toggleMapaFullscreen()" title="Tela cheia">⛶</button>
+        </div>
+
         <div class="map-legend">
             <div class="legend-item">
                 <span class="legend-dot" style="background:#1a1a1a;border:1px solid #333"></span>
@@ -4159,13 +4349,6 @@ LIMPAR
                         <span>Anuncie repetidas no mercado ou proponha trocas com outros colecionadores.</span>
                     </div>
                 </div>
-                <div class="step">
-                    <div class="step-num">4</div>
-                    <div>
-                        <b>Complete a coleção</b>
-                        <span>Desbloqueie conquistas, suba no ranking e conquiste o Álbum Completo!</span>
-                    </div>
-                </div>
             </div>
             <button class="btn" style="width:100%;margin-top:14px;"
                 onclick="abrirTutorialColecionaveis(event)">
@@ -4201,6 +4384,24 @@ LIMPAR
             <p>Quanto mais espaços, maior o desconto!</p>
             <button class="btn" onclick="abrirPrecos(event)">
                 VER TABELA DE PREÇOS →
+            </button>
+        </div>
+
+        <div class="card pacotes-card" id="pacotesDisponiveis">
+            <div class="card-header-collapse" onclick="toggleCollapse(this.parentElement)">
+                <span class="card-collapse-label">🎁 PACOTES DISPONÍVEIS</span>
+                <span class="card-collapse-icon">▾</span>
+            </div>
+            <div class="pacotes-thumb">
+                <img src="/logo-milhao-door.png" alt="Pacotes Milhão Door">
+            </div>
+            <p class="pacotes-desc">Abra pacotes de figurinhas digitais e colecione todas!</p>
+            <div class="pacotes-preco">
+                <span>A partir de</span>
+                <b>R$ 9,90</b>
+            </div>
+            <button class="btn" onclick="abrirPacotesModal(event)">
+                VER PACOTES →
             </button>
         </div>
 
@@ -4286,14 +4487,11 @@ LIMPAR
 
 </div>
 
-<div class="zoom">
-    <button onclick="zoom(1.2)">+</button>
-    <button onclick="zoom(.83)">−</button>
-</div>
-
 <div class="hint">
     🖱️ Arraste • Role ou pinça para zoom • Clique/toque para selecionar
 </div>
+
+<div id="mapTooltip"></div>
 
 <div class="cart" id="cart">
     <h3>Seu carrinho</h3>
@@ -5551,6 +5749,11 @@ function abrirInfoModal(titulo, html){
     modal.style.display = "flex";
 }
 
+function abrirPacotesModal(event){
+    if(event) event.preventDefault();
+    abrirTutorialColecionaveis(null);
+}
+
 function fecharInfoModal(){
     const modal = document.getElementById("infoModal");
     if(modal) modal.style.display = "none";
@@ -5680,7 +5883,7 @@ function renderizarPagamentoDestaque(data){
     const qr = data.qrCodeBase64
         ? '<div style="text-align:center;margin:14px 0;">' +
             '<p style="font-size:12px;color:var(--text-muted)">Escaneie o QR Code pelo aplicativo do seu banco.</p>' +
-            '<img src="data:image/png;base64,' + data.qrCodeBase64 + '" alt="QR Code Pix" style="width:200px;height:200px;border-radius:12px;background:#fff;padding:8px;">' +
+            '<img src="' + qrCodeUrl(data.qrCodeBase64) + '" alt="QR Code Pix" style="width:200px;height:200px;border-radius:12px;background:#fff;padding:8px;">' +
           '</div>'
         : '';
     const payload = data.payload
@@ -5898,6 +6101,16 @@ function renderizarUltimasCompras(){
     }).join("");
     if(comprasTickerTimer) clearInterval(comprasTickerTimer);
     comprasTickerTimer = setInterval(carregarUltimasCompras, 5000);
+}
+
+function alternarPausaTicker(){
+    const btn = document.getElementById("tickerPauseBtn");
+    const ticker = document.getElementById("ultimasComprasTicker");
+    if(!btn || !ticker) return;
+    const pausado = btn.classList.toggle("pausado");
+    ticker.classList.toggle("pausado", pausado);
+    btn.title = pausado ? "Retomar" : "Pausar";
+    btn.textContent = pausado ? "▶" : "❚❚";
 }
 
 /* ===== STORIES CTA ===== */
@@ -7988,6 +8201,25 @@ draw();
 
 }
 
+function toggleMapaFullscreen(){
+
+const areaEl =
+document.getElementById("area");
+
+if(!areaEl)return;
+
+if(!document.fullscreenElement){
+
+(areaEl.requestFullscreen ? areaEl.requestFullscreen() : areaEl.webkitRequestFullscreen && areaEl.webkitRequestFullscreen());
+
+} else {
+
+document.exitFullscreen();
+
+}
+
+}
+
 
 /* =========================
    MOUSE ZOOM
@@ -8359,6 +8591,60 @@ document.getElementById("dragCount");
 if(badge){
 badge.style.display = "none";
 }
+
+}
+
+function atualizarTooltipMapa(id, cx, cy){
+
+const tt =
+document.getElementById("mapTooltip");
+
+if(!tt)return;
+
+if(id == null){
+
+tt.style.display = "none";
+
+return;
+
+}
+
+const col =
+Math.floor((id - 1) % C);
+
+const row =
+Math.floor((id - 1) / C);
+
+const selSet =
+(offerMode ? offerSel : sel);
+
+const qtde = selSet.size;
+
+const totalCents = qtde * 100;
+
+const dado = (typeof dados !== "undefined" && dados && dados[id]) ? dados[id] : null;
+
+const statusTexto =
+dado && dado.status === "sold"
+? '<span style="color:#8A2BE2;">Vendido</span>'
+: (dado && dado.status === "offer" ? '<span style="color:#ff7a00;">Em oferta</span>'
+: (selSet.has(id) ? '<span style="color:#0091FF;">Selecionado</span>'
+: '<span style="color:#00E676;">Disponível</span>'));
+
+tt.innerHTML =
+'<div class="tt-title">ESPAÇO #' + id.toLocaleString("pt-BR") + '</div>' +
+'<div class="tt-row"><span>Coordenadas</span><b>X: ' + (col + 1).toLocaleString("pt-BR") + ' • Y: ' + (row + 1).toLocaleString("pt-BR") + '</b></div>' +
+'<div class="tt-row"><span>Dimensões</span><b>1 × 1 espaço</b></div>' +
+'<div class="tt-row"><span>Status</span><b>' + statusTexto + '</b></div>' +
+(qtde > 1
+? '<div class="tt-total">Total (' + qtde.toLocaleString("pt-BR") + '): ' + formatarReais(totalCents) + '</div>'
+: '<div class="tt-total">Valor: ' + formatarReais(100) + '</div>');
+
+tt.style.display = "block";
+
+tt.style.left = Math.min(cx + 16, window.innerWidth - tt.offsetWidth - 12) + "px";
+
+tt.style.top = Math.max(8, cy - tt.offsetHeight - 14) + "px";
 
 }
 
@@ -8821,6 +9107,8 @@ if(hid !== hoveredSpaceId){
 
 hoveredSpaceId = hid;
 
+atualizarTooltipMapa(hid, e.clientX, e.clientY);
+
 draw();
 
 }
@@ -8884,6 +9172,8 @@ area.onpointerleave =
 if(hoveredSpaceId !== null){
 
 hoveredSpaceId = null;
+
+atualizarTooltipMapa(null);
 
 draw();
 
@@ -12448,6 +12738,67 @@ function abrirPainelComando(){
 
     abaOfertas();
 }
+
+function abrirContaDropdown(ev){
+
+    if(ev){ ev.stopPropagation(); }
+
+    const dd = document.getElementById("contaDropdown");
+
+    if(!dd) return;
+
+    if(dd.classList.contains("open")){
+        fecharContaDropdown();
+        return;
+    }
+
+    const nome = localStorage.getItem("usuario_nome") || "Marcus";
+
+    const email = localStorage.getItem("usuario_email") || "minha conta";
+
+    const ini = (nome.trim()[0] || "M").toUpperCase();
+
+    const elNome = document.getElementById("contaDropNome");
+
+    const elEmail = document.getElementById("contaDropEmail");
+
+    const elIni = document.getElementById("contaDropInitials");
+
+    const elAv = document.getElementById("avatarInitials");
+
+    if(elNome) elNome.textContent = nome;
+
+    if(elEmail) elEmail.textContent = email;
+
+    if(elIni) elIni.textContent = ini;
+
+    if(elAv) elAv.textContent = ini;
+
+    dd.classList.add("open");
+
+}
+
+function fecharContaDropdown(){
+
+    const dd = document.getElementById("contaDropdown");
+
+    if(dd) dd.classList.remove("open");
+
+}
+
+document.addEventListener("click", ev=>{
+
+    const dd = document.getElementById("contaDropdown");
+
+    const av = document.getElementById("userAvatarHeader");
+
+    if(!dd || !dd.classList.contains("open")) return;
+
+    if(av && (av.contains(ev.target) || dd.contains(ev.target))) return;
+
+    fecharContaDropdown();
+
+});
 
 function abaOfertas(){
 

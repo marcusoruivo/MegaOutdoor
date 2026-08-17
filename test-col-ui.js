@@ -24,7 +24,7 @@ t("Stories usam endpoint público", /\/api\/stories/.test(index) && /storyViewer
 t("consentimento de Story é opcional no checkout", /storyOptIn/.test(index) && /storyOptIn/.test(colecao));
 t("navegação de Story não seleciona espaço", /function navegarParaEspaco\s*\(/.test(index) && /centralizarNoEspaco\(id\)/.test(index));
 t("viewport inicial aproxima o espaço 1 do início", /function iniciarVista\s*\(/.test(index) && /const margem/.test(index));
-t("destaque patrocinado usa configuração central", /STORY_PRICE_5H/.test(fs.readFileSync(path.join(root, "server.js"), "utf8")) && /storyPricing/.test(index));
+t("destaque patrocinado usa configuração central", /STORY_PRICE_3H/.test(fs.readFileSync(path.join(root, "server.js"), "utf8")) && /storyPricing/.test(index));
 t("área Mercado Pago existe no topo", /mpRecebimentosBanner/.test(colecao) && /CONECTAR MERCADO PAGO/.test(colecao));
 t("hint do mapa não é fixed", /\.hint\{position:relative/.test(index));
 t("canvas ocupa a área sem texto corrido", /#area canvas#canvas\{display:block/.test(index));

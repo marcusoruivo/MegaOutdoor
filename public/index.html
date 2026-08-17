@@ -536,6 +536,7 @@ html,body{
 
 /* STORIES CTA */
 .stories-cta-shell{display:none;width:100%;max-width:none;margin:0;padding:20px 16px;background:linear-gradient(135deg,rgba(255,212,0,.08),rgba(255,122,0,.08));border:0;border-bottom:1px solid rgba(255,212,0,.3);border-radius:0;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+#storiesCtaShell{display:none!important}
 .stories-cta-content{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:center}
 .stories-cta-text h2{font-size:24px;font-weight:900;color:var(--text-primary);margin:0 0 10px 0}
 .stories-cta-text p{font-size:14px;color:var(--text-secondary);margin:0 0 16px 0;line-height:1.5}
@@ -3666,8 +3667,8 @@ body.footer-visible #area{
     }
     #area{
         position:relative;
-        height:70vh;
-        min-height:520px;
+        height:62vh;
+        min-height:480px;
         grid-column:2;
         grid-row:1
     }
@@ -3676,14 +3677,14 @@ body.footer-visible #area{
         grid-column:1;
         grid-row:1;
         overflow-y:auto;
-        max-height:calc(100vh - var(--header-height) - var(--benefits-height) - 32px)
+        max-height:calc(62vh + 32px)
     }
     .sidebar-right{
         position:relative;
         grid-column:3;
         grid-row:1;
         overflow-y:auto;
-        max-height:calc(100vh - var(--header-height) - var(--benefits-height) - 32px)
+        max-height:calc(62vh + 32px)
     }
     .main-layout.all-collapsed #area{
         grid-column:1 / -1;
@@ -4074,6 +4075,10 @@ LIMPAR
             <div class="legend-item">
                 <span class="legend-dot" style="background:#b06bff"></span>
                 <span>Vendido</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot" style="background:#ff7a00"></span>
+                <span>Em oferta</span>
             </div>
         </div>
     </div>

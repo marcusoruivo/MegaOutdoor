@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redefinir senha — Milhão Door</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+    --fundo:#0b0b0f;--painel:#14141c;--painel2:#1a1a26;--borda:#262633;
+    --texto:#e8e8ee;--muted:#8a8a9a;--amarelo:#ffd400;--laranja:#ff7a00;
+    --vermelho:#d7263d;--verde:#2ecc71;--azul:#3b82f6;--roxo:#a855f7;--ouro:#ffbf40;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--fundo);color:var(--texto);font-family:'Inter',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{
+    background:var(--painel);border:1px solid var(--borda);border-radius:18px;
+    max-width:420px;width:100%;padding:28px 24px;text-align:center;
+    box-shadow:0 18px 50px rgba(0,0,0,.5);
+}
+.brand{font-family:'Orbitron',sans-serif;font-weight:900;font-size:18px;letter-spacing:1px;margin-bottom:4px;background:linear-gradient(90deg,#fff,var(--amarelo),var(--laranja));-webkit-background-clip:text;background-clip:text;color:transparent}
+.submarca{font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:18px}
+h2{font-size:18px;margin:8px 0 4px}
+.desc{font-size:13px;color:var(--muted);line-height:1.6;margin:10px 0 16px}
+.form{display:flex;flex-direction:column;gap:12px;text-align:left}
+label{font-size:12px;font-weight:700;color:var(--muted)}
+input{width:100%;background:#0f0f16;border:1px solid var(--borda);color:var(--texto);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit}
+input:focus{outline:none;border-color:var(--amarelo)}
+.erro{color:#ffb3bd;font-size:12px;min-height:16px}
+.btn{border:none;border-radius:10px;padding:12px 16px;font-size:12px;font-weight:800;letter-spacing:.6px;cursor:pointer;text-decoration:none;display:inline-block;text-align:center;font-family:inherit}
+.btn-amarelo{background:linear-gradient(90deg,var(--amarelo),var(--laranja));color:#141414}
+.btn-ghost{background:transparent;border:1px solid var(--borda);color:var(--texto);margin-top:4px}
+.btn-ghost:hover{border-color:var(--amarelo)}
+.aviso{background:var(--painel2);border:1px solid var(--borda);border-radius:12px;padding:16px;font-size:13px;color:var(--texto);line-height:1.6}
+.aviso b{color:var(--amarelo)}
+</style>
+</head>
+<body>
+
+<div class="card">
+    <div class="brand">MILHÃO DOOR</div>
+    <div class="submarca">ANÚNCIOS DE OUTDOOR DIGITAL</div>
+    <h2 id="titulo">🔑 Redefinir senha</h2>
+    <div class="desc" id="subtitulo">Defina uma nova senha para a sua conta.</div>
+    <div id="conteudo">
+        <div class="form">
+            <label>Nova senha</label>
+            <input type="password" id="novaSenha" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+            <label>Confirmar nova senha</label>
+            <input type="password" id="confirmarSenha" placeholder="Repita a nova senha" autocomplete="new-password">
+            <div class="erro" id="erro"></div>
+            <button class="btn btn-amarelo" id="btnRedefinir" onclick="redefinir()">Redefinir senha</button>
+        </div>
+    </div>
+    <a class="btn btn-ghost" href="/" style="margin-top:14px">← Voltar para o início</a>
+</div>
+
+<script>
+(function(){
+    const params = new URLSearchParams(window.location.search);
+    const token = (params.get("token") || "").trim();
+    if (!token) {
+        document.getElementById("conteudo").innerHTML =
+            '<div class="aviso">Este link de redefinição é inválido ou já foi usado. <br> Solicite um novo link em <b>“Esqueci minha senha”</b> na página de login.</div>';
+        document.getElementById("btnRedefinir") && document.getElementById("btnRedefinir").remove();
+    }
+})();
+
+async function redefinir(){
+    const nova = document.getElementById("novaSenha").value;
+    const confirma = document.getElementById("confirmarSenha").value;
+    const erroEl = document.getElementById("erro");
+    const token = new URLSearchParams(window.location.search).get("token") || "";
+    if (nova.length < 6) { erroEl.textContent = "A nova senha deve ter ao menos 6 caracteres."; return; }
+    if (nova !== confirma) { erroEl.textContent = "As senhas não coincidem."; return; }
+    erroEl.textContent = "";
+    const btn = document.getElementById("btnRedefinir");
+    btn.disabled = true;
+    btn.textContent = "Processando...";
+    try {
+        const r = await fetch("/api/auth/redefinir-senha", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token, novaSenha: nova })
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || "Não foi possível redefinir a senha.");
+        document.getElementById("conteudo").innerHTML =
+            '<div class="aviso"><b style="color:var(--verde)">✅ Senha redefinida com sucesso!</b> Agora você já pode entrar com a nova senha.</div>';
+        document.title = "Senha redefinida — Milhão Door";
+    } catch(e){
+        erroEl.textContent = e.message;
+        btn.disabled = false;
+        btn.textContent = "Redefinir senha";
+    }
+}
+</script>
+</body>
+</html>

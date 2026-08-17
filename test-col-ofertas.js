@@ -167,7 +167,7 @@ async function main() {
     t("contraproposta criada", resp.r.status === 201 && !!novaId, "status=" + resp.r.status);
     const origMine = await reqJson(BASE + "/api/colecionaveis/offers/mine", { headers: h1 });
     const origOferta = origMine.body.enviadas.find(o => o.id === origId);
-    t("oferta original vira RECUSADA após contraproposta", origOferta && origOferta.status === "RECUSADA", "status=" + (origOferta && origOferta.status));
+    t("oferta original vira CONTRAPROPOSTA após contraproposta", origOferta && origOferta.status === "CONTRAPROPOSTA", "status=" + (origOferta && origOferta.status));
 
     /* --- RECUSA (card c2[2], não duplicado) --- */
     const cardRecusa = c2[2];

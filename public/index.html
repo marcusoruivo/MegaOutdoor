@@ -3178,6 +3178,7 @@ body.footer-visible #area{
         <a href="#combos" onclick="verTodosKits(event)">COMBOS & KITS</a>
         <a href="#faq" onclick="abrirFaq(event)">FAQ</a>
         <a class="topo-colecionaveis" href="/colecionaveis.html">🟡 COLECIONÁVEIS</a>
+        <a href="#" onclick="abrirBisbilhotar(event)">👀 BISBILHOTAR</a>
         <a href="#contato" onclick="scrollToFooter(event)">CONTATO</a>
     </nav>
 
@@ -3215,6 +3216,7 @@ body.footer-visible #area{
         <a href="#combos" onclick="verTodosKits(event);fecharMenuMobile()">COMBOS & KITS</a>
         <a href="#faq" onclick="abrirFaq(event);fecharMenuMobile()">FAQ</a>
         <a class="topo-colecionaveis" href="/colecionaveis.html" onclick="fecharMenuMobile()">🟡 COLECIONÁVEIS</a>
+        <a href="#" onclick="abrirBisbilhotar(event);fecharMenuMobile()">👀 BISBILHOTAR</a>
         <a href="#contato" onclick="scrollToFooter(event);fecharMenuMobile()">CONTATO</a>
         <button
             class="btn-entrar"
@@ -4328,6 +4330,12 @@ onclick="fecharLogin()">
     style="margin-top:10px;width:100%;">
     ▶ ENTRAR
   </button>
+  <a
+    href="#"
+    onclick="abrirModalEsqueciSenha();return false;"
+    style="display:block;margin-top:10px;text-align:center;color:#aaa;font-size:12px;text-decoration:underline;">
+    Esqueci minha senha
+  </a>
 </div>
 
 <div id="authCadastrar" style="display:none;">
@@ -4435,6 +4443,11 @@ onclick="closeOwner()">
 
 <div
 id="ownerList"
+style="font-size:13px;color:#ccc;">
+</div>
+
+<div
+id="beneficiosPendentes"
 style="font-size:13px;color:#ccc;">
 </div>
 
@@ -4861,6 +4874,31 @@ let storyTimer = null;
 let storyTickerTimer = null;
 let storyPricing = { "5h": null, "7h": null, "12h": null, "24h": null };
 
+/* ===== BENEFÍCIO DE INDICAÇÃO ===== */
+let beneficioIndicacao = null;
+
+async function verificarBeneficioIndicacao() {
+    if (!minhaConta || !minhaConta.token) {
+        beneficioIndicacao = null;
+        return;
+    }
+    
+    try {
+        const resp = await fetch("/api/indicacao/beneficio", {
+            headers: { "Authorization": "Bearer " + minhaConta.token }
+        });
+        const data = await resp.json();
+        
+        if (resp.ok && data.beneficio && data.beneficio.status === "PENDENTE") {
+            beneficioIndicacao = data.beneficio;
+        } else {
+            beneficioIndicacao = null;
+        }
+    } catch (error) {
+        beneficioIndicacao = null;
+    }
+}
+
 function storyIcon(kind){
     return { space: "🗺️", purchase: "🟡", pack: "🎁", card: "✨" }[kind] || "✨";
 }
@@ -4895,14 +4933,206 @@ function carregarStoryConfig(){
 }
 
 function abrirDestaqueStory(){
+    if(!minhaConta){
+        abrirModalLogin();
+        toastMsg("Faça login para contratar um destaque no Story.");
+        return;
+    }
     const opcoes = [["5h", "5 HORAS"], ["7h", "7 HORAS"], ["12h", "12 HORAS"], ["24h", "24 HORAS"]];
-    const linhas = opcoes.map(([key, label]) => {
+    const radio = opcoes.map(([key, label], idx) => {
         const preco = storyPricing[key];
-        return '<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border-color)">' +
-            '<b>' + label + '</b><span style="color:var(--accent);font-weight:800">' +
-            (preco == null ? "Preço a configurar" : fmtMoeda(preco)) + '</span></div>';
+        return '<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--border-color);cursor:pointer;">' +
+            '<span style="display:flex;align-items:center;gap:10px;">' +
+                '<input type="radio" name="destaqueDuracao" value="' + key + '"' + (idx === 0 ? " checked" : "") + ' style="accent-color:var(--accent)">' +
+                '<b>' + label + '</b>' +
+            '</span>' +
+            '<span style="color:var(--accent);font-weight:800">' +
+            (preco == null ? "Preço a configurar" : fmtMoeda(preco)) + '</span></label>';
     }).join("");
-    abrirInfoModal("✨ DESTAQUE NO STORY", '<p>Escolha a duração para destacar uma compra autorizada. O evento só fica público após a confirmação do pagamento.</p>' + linhas + '<p style="font-size:11px;color:var(--text-muted);margin-top:12px">A contratação do destaque será habilitada quando a configuração comercial estiver definida.</p>');
+    abrirInfoModal("✨ DESTAQUE NO STORY",
+        '<p>Escolha a duração do destaque e escreva o anúncio. A cobrança é <b>real</b> (Pix via Mercado Pago) e o evento só fica público após a confirmação do pagamento.</p>' +
+        '<div style="margin:10px 0;">' + radio + '</div>' +
+        '<label style="font-size:12px;color:var(--text-muted)">Título do destaque</label>' +
+        '<input class="copia" id="dstTitulo" maxlength="180" placeholder="Ex.: Vendas de hoje — aproveite 20% OFF" style="margin-top:4px;">' +
+        '<label style="font-size:12px;color:var(--text-muted);margin-top:10px;display:block">Subtítulo (opcional)</label>' +
+        '<input class="copia" id="dstSubtitulo" maxlength="240" placeholder="Ex.: Válido até meia-noite" style="margin-top:4px;">' +
+        '<label style="font-size:12px;color:var(--text-muted);margin-top:10px;display:block">CPF ou CNPJ do comprador</label>' +
+        '<input class="copia" id="dstCpf" maxlength="18" placeholder="000.000.000-00" style="margin-top:4px;">' +
+        '<div id="dstMsg" style="font-size:12px;color:#aaa;min-height:16px;margin-top:8px;"></div>' +
+        '<button class="btn" style="width:100%;margin-top:10px;" onclick="confirmarCompraDestaque()">💳 PAGAR COM PIX</button>' +
+        '<button class="btn sec" style="width:100%;margin-top:8px;" onclick="abrirMeusDestaques()">📅 MEUS DESTAQUES</button>' +
+        '<p style="font-size:11px;color:var(--text-muted);margin-top:12px">Preços: 5h = ' + fmtMoeda(storyPricing["5h"]) + ' · 7h = ' + fmtMoeda(storyPricing["7h"]) + ' · 12h = ' + fmtMoeda(storyPricing["12h"]) + ' · 24h = ' + fmtMoeda(storyPricing["24h"]) + '.</p>');
+}
+
+async function confirmarCompraDestaque(){
+    const msg = document.getElementById("dstMsg");
+    const duracao = (document.querySelector('input[name="destaqueDuracao"]:checked') || {}).value || "24h";
+    const titulo = document.getElementById("dstTitulo").value.trim();
+    const subtitulo = document.getElementById("dstSubtitulo").value.trim();
+    const cpfCnpj = document.getElementById("dstCpf").value.trim();
+    if(!titulo){ msg.textContent = "Informe o título do seu destaque."; return; }
+    if(!cpfCnpj){ msg.textContent = "Informe o CPF ou CNPJ do comprador."; return; }
+    msg.textContent = "Gerando cobrança Pix...";
+    try {
+        const resp = await fetch("/api/stories/destaques", {
+            method: "POST",
+            headers: authHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({ duracao, titulo, subtitulo, cpfCnpj, paymentMethod: "pix" })
+        });
+        const data = await reqJSON(resp);
+        if(!resp.ok){ msg.textContent = data.error || "Não foi possível iniciar a compra."; return; }
+        renderizarPagamentoDestaque(data);
+    } catch(err){
+        msg.textContent = "Erro de conexão. Tente novamente.";
+    }
+}
+
+function renderizarPagamentoDestaque(data){
+    const qr = data.qrCodeBase64
+        ? '<div style="text-align:center;margin:14px 0;">' +
+            '<p style="font-size:12px;color:var(--text-muted)">Escaneie o QR Code pelo aplicativo do seu banco.</p>' +
+            '<img src="data:image/png;base64,' + data.qrCodeBase64 + '" alt="QR Code Pix" style="width:200px;height:200px;border-radius:12px;background:#fff;padding:8px;">' +
+          '</div>'
+        : '';
+    const payload = data.payload
+        ? '<div style="margin:10px 0;">' +
+            '<input class="copia" id="dstPayload" readonly value="' + escHtml(data.payload) + '" style="font-size:11px;">' +
+            '<button class="btn" style="margin-top:6px;" onclick="copiarDestaquePix()">📋 COPIAR PIX COPI E COLA</button>' +
+          '</div>'
+        : '';
+    abrirInfoModal("💳 PAGAR DESTAQUE",
+        '<p style="text-align:center">Destaque de <b>' + data.duracaoLabel + '</b> por <b style="color:var(--accent)">' + fmtMoeda(data.total) + '</b></p>' +
+        qr + payload +
+        '<div id="dstStatus" class="statusPix" style="text-align:center;font-size:13px;">Aguardando pagamento...</div>' +
+        '<button class="btn" style="width:100%;margin-top:10px;" onclick="verificarDestaquePagamento(' + data.id + ')">Já paguei o PIX</button>');
+    currentDestaqueId = Number(data.id);
+    if(currentDestaqueTimer) clearInterval(currentDestaqueTimer);
+    currentDestaqueTimer = setInterval(() => verificarDestaquePagamento(currentDestaqueId), 5000);
+}
+
+let currentDestaqueId = null;
+let currentDestaqueTimer = null;
+
+async function verificarDestaquePagamento(id){
+    try {
+        const resp = await fetch("/api/stories/destaques/" + id, { headers: authHeaders() });
+        const data = await reqJSON(resp);
+        if(!resp.ok) return;
+        const d = data.destaque || {};
+        const statusEl = document.getElementById("dstStatus");
+        if(!statusEl) return;
+        if(d.status === "ativo"){
+            clearInterval(currentDestaqueTimer);
+            currentDestaqueTimer = null;
+            statusEl.innerHTML = '<span style="color:#45d66f;font-weight:800;">✅ PAGAMENTO CONFIRMADO!</span>';
+            const corpo = document.getElementById("infoModalConteudo");
+            if(corpo){
+                corpo.innerHTML = '<div class="statusPix" style="background:#1a2f1f;border:1px solid #2f5c42;text-align:center;">' +
+                    '<span style="font-weight:800;color:#45d66f;font-size:16px;">✅ PAGAMENTO CONFIRMADO!</span>' +
+                    '<div style="font-size:13px;color:#ccc;margin-top:8px;">Seu destaque foi ' + (d.publicado ? "publicado" : "ativado") + ' no Story.</div>' +
+                    (d.publicado ? '' : '<div style="font-size:12px;color:#aaa;margin-top:6px;">Publique agora com o título do seu anúncio.</div>') +
+                    '</div>' +
+                    '<button class="btn" style="width:100%;margin-top:12px;" onclick="abrirMeusDestaques()">📅 MEUS DESTAQUES</button>';
+            }
+        } else if(d.status === "pendente"){
+            statusEl.innerHTML = "Aguardando pagamento...";
+        }
+    } catch(e){ /* mantém polling */ }
+}
+
+function copiarDestaquePix(){
+    const el = document.getElementById("dstPayload");
+    if(el) copiarTexto(el.value);
+}
+
+async function abrirMeusDestaques(){
+    if(!minhaConta){ abrirModalLogin(); return; }
+    try {
+        const resp = await fetch("/api/stories/destaques/meus", { headers: authHeaders() });
+        const data = await reqJSON(resp);
+        if(!resp.ok) throw new Error(data.error || "Erro ao carregar destaques.");
+        const lista = data.destaques || [];
+        let html = '<p>Seus destaques comprados. Eventos publicados ficam visíveis no Story até o fim da duração.</p>';
+        if(!lista.length){
+            html += '<p style="color:var(--text-muted);text-align:center;margin:18px 0;">Você ainda não tem destaques.</p>' +
+                '<button class="btn" style="width:100%;" onclick="abrirDestaqueStory()">✨ CONTRATAR DESTAQUE</button>';
+        } else {
+            html += lista.map(d => {
+                const rotulos = { pendente: "⏳ Aguardando pagamento", ativo: "🟢 Ativo", expirado: "⏰ Expirado", cancelado: "🚫 Cancelado" };
+                const restante = d.tempoRestanteSegundos != null && d.status === "ativo"
+                    ? '<span style="font-size:11px;color:#aaa;">· ' + Math.max(0, Math.ceil(d.tempoRestanteSegundos / 3600)) + 'h restantes</span>'
+                    : '';
+                const botao = d.status === "ativo"
+                    ? (d.publicado
+                        ? '<button class="btn sec" style="margin:0;padding:8px 10px;font-size:11px;" onclick="editarPublicarDestaque(' + d.id + ')">✏️ Editar publicação</button>'
+                        : '<button class="btn" style="margin:0;padding:8px 10px;font-size:11px;" onclick="editarPublicarDestaque(' + d.id + ')">🚀 PUBLICAR</button>')
+                    : (d.status === "expirado"
+                        ? '<button class="btn sec" style="margin:0;padding:8px 10px;font-size:11px;" onclick="abrirDestaqueStory()">↻ Comprar novamente</button>'
+                        : '');
+                return '<div style="border:1px solid var(--border-color);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--box-bg,#161616);">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">' +
+                        '<b style="color:#fff;">' + escHtml(d.titulo || ("Destaque " + d.duracao)) + '</b>' +
+                        '<span style="font-size:11px;font-weight:700;color:var(--accent);">' + (rotulos[d.status] || d.status) + ' ' + restante + '</span>' +
+                    '</div>' +
+                    '<div style="color:#aaa;margin-top:6px;font-size:12px;">' + d.duracao + ' · ' + fmtMoeda(d.preco) + ' · ' + (d.publicado ? "publicado no Story" : "não publicado") + '</div>' +
+                    (d.subtitulo ? '<div style="color:#aaa;font-size:12px;margin-top:4px;">' + escHtml(d.subtitulo) + '</div>' : '') +
+                    (botao ? '<div style="margin-top:10px;">' + botao + '</div>' : '') +
+                '</div>';
+            }).join("");
+        }
+        abrirInfoModal("📅 MEUS DESTAQUES", html);
+    } catch(e){
+        toastMsg(e.message || "Erro ao carregar seus destaques.");
+    }
+}
+
+function editarPublicarDestaque(id){
+    abrirInfoModal("🚀 PUBLICAR DESTAQUE",
+        '<p>Escreva o título e o subtítulo que ficarão públicos no Story.</p>' +
+        '<label style="font-size:12px;color:var(--text-muted)">Título do destaque</label>' +
+        '<input class="copia" id="pubTitulo" maxlength="180" placeholder="Ex.: Vendas de hoje — 20% OFF" style="margin-top:4px;">' +
+        '<label style="font-size:12px;color:var(--text-muted);margin-top:10px;display:block">Subtítulo (opcional)</label>' +
+        '<input class="copia" id="pubSubtitulo" maxlength="240" placeholder="Ex.: Válido até meia-noite" style="margin-top:4px;">' +
+        '<div id="pubMsg" style="font-size:12px;color:#aaa;min-height:16px;margin-top:8px;"></div>' +
+        '<button class="btn" style="width:100%;margin-top:10px;" onclick="confirmarPublicarDestaque(' + id + ')">🚀 PUBLICAR AGORA</button>');
+}
+
+async function confirmarPublicarDestaque(id){
+    const msg = document.getElementById("pubMsg");
+    const titulo = document.getElementById("pubTitulo").value.trim();
+    const subtitulo = document.getElementById("pubSubtitulo").value.trim();
+    if(!titulo){ msg.textContent = "Informe o título do destaque."; return; }
+    try {
+        const resp = await fetch("/api/stories/destaques/" + id + "/publicar", {
+            method: "POST",
+            headers: authHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({ titulo, subtitulo })
+        });
+        const data = await reqJSON(resp);
+        if(!resp.ok) throw new Error(data.error || "Não foi possível publicar.");
+        msg.innerHTML = '<span style="color:#45d66f;">✅ ' + escHtml(data.mensagem || "Destaque publicado!") + '</span>';
+        carregarStories();
+    } catch(e){
+        msg.textContent = e.message;
+    }
+}
+
+function toastMsg(m){
+    let el = document.getElementById("megaToast");
+    if(!el){
+        el = document.createElement("div");
+        el.id = "megaToast";
+        el.style.cssText =
+            "position:fixed;bottom:24px;left:50%;transform:translateX(-50%);" +
+            "z-index:99999;background:#1a1a26;border:1px solid #333;color:#e8e8ee;" +
+            "border-radius:12px;padding:12px 18px;font-size:13px;font-weight:600;" +
+            "max-width:90vw;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.5);";
+        document.body.appendChild(el);
+    }
+    el.textContent = m;
+    el.style.display = "block";
+    clearTimeout(toastMsg._t);
+    toastMsg._t = setTimeout(() => { el.style.display = "none"; }, 3500);
 }
 
 function renderizarStories(){
@@ -5316,6 +5546,11 @@ localStorage.getItem(
 ) || "null"
 );
 
+// Verificar benefício de indicação ao carregar
+if (minhaConta && minhaConta.token) {
+    verificarBeneficioIndicacao();
+}
+
 function getAuth(){
     return minhaConta;
 }
@@ -5327,6 +5562,7 @@ function setAuth(dados){
         JSON.stringify(dados)
     );
     updateBtnConta();
+    verificarBeneficioIndicacao();
 }
 
 function clearAuth(){
@@ -5410,6 +5646,64 @@ function abrirLogin(){
 
 function fecharLogin(){
     document.getElementById("authModal").style.display = "none";
+}
+
+/* ===== ESQUECI A SENHA ===== */
+function abrirModalEsqueciSenha(){
+    fecharMenuMobile();
+    const modal = document.getElementById("authModal");
+    const entrar = document.getElementById("authEntrar");
+    const cadastrar = document.getElementById("authCadastrar");
+    const tabs = document.querySelectorAll("#authModal .tab");
+    const msg = document.getElementById("authMsg");
+    if (tabs) tabs.forEach(t => t.classList.remove("ativa"));
+    entrar.style.display = "none";
+    cadastrar.style.display = "none";
+    const rec = document.getElementById("authRecuperar") || criarModalRecuperar();
+    rec.style.display = "block";
+    modal.style.display = "flex";
+    if (msg) msg.textContent = "";
+    setTimeout(() => {
+        const e = document.getElementById("recEmail");
+        if (e) e.focus();
+    }, 100);
+}
+function criarModalRecuperar(){
+    const el = document.createElement("div");
+    el.id = "authRecuperar";
+    el.style.display = "none";
+    el.innerHTML =
+        '<label style="font-size:12px;color:#aaa">Seu e-mail cadastrado</label>' +
+        '<input id="recEmail" class="copia" type="email" placeholder="Seu e-mail" style="margin-top:6px" autocomplete="email">' +
+        '<button class="btn" style="margin-top:10px;width:100%" onclick="enviarEsqueciSenha()">📧 ENVIAR LINK DE REDEFINIÇÃO</button>' +
+        '<button class="btn" style="margin-top:8px;width:100%;background:transparent;color:#aaa;border:1px solid #333" onclick="voltarDoEsqueciSenha()">← Voltar ao login</button>';
+    const pai = document.getElementById("authEntrar").parentNode;
+    pai.appendChild(el);
+    return el;
+}
+function voltarDoEsqueciSenha(){
+    const rec = document.getElementById("authRecuperar");
+    if (rec) rec.style.display = "none";
+    abrirModalLogin();
+}
+async function enviarEsqueciSenha(){
+    const msg = document.getElementById("authMsg");
+    const email = document.getElementById("recEmail").value.trim();
+    if (!email || !email.includes("@")) { if (msg) msg.textContent = "Informe um e-mail válido."; return; }
+    if (msg) msg.textContent = "Enviando...";
+    try {
+        const r = await fetch("/api/auth/senha-recuperacao", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email })
+        });
+        const d = await reqJSON(r);
+        if (!r.ok) { if (msg) { msg.textContent = d.error || "Erro ao solicitar redefinição."; } return; }
+        if (msg) msg.style.color = "#2ecc71";
+        if (msg) msg.textContent = "✅ " + (d.mensagem || "Se existir uma conta, enviaremos o link.");
+    } catch(err){
+        if (msg) { msg.style.color = ""; msg.textContent = "Erro de conexão. Tente novamente."; }
+    }
 }
 
 /* Fecha o modal de login ao clicar fora da caixa. */
@@ -8124,21 +8418,57 @@ function renderResumoCheckout() {
     const pct = resumo.pct;
     const lic = calcularLicencaFront(n, planoKey);
     const valorBaseCents = Math.round(Math.round(resumo.valor * 100));
-    const valorFinalCents = valorBaseCents + lic.feeCents;
+    
+    // Verificar benefício de indicação
+    let descontoIndicacaoCents = 0;
+    let temBeneficioIndicacao = false;
+    
+    if (beneficioIndicacao && beneficioIndicacao.status === "PENDENTE") {
+        temBeneficioIndicacao = true;
+        // 10% sobre o valor base (não sobre a licença)
+        descontoIndicacaoCents = Math.round(valorBaseCents * 0.10);
+    }
+    
+    const valorBaseComDescontoIndicacao = valorBaseCents - descontoIndicacaoCents;
+    const valorFinalCents = valorBaseComDescontoIndicacao + lic.feeCents;
     const totalSemDescontoCents = lic.baseAmountCents + lic.feeCents;
+    const totalSemDescontoIndicacao = totalSemDescontoCents - descontoIndicacaoCents;
 
-    ci.innerHTML =
-        `<b>${n.toLocaleString("pt-BR")} espaço(s) selecionado(s)</b><br>` +
-        `<span style="font-size:12px;color:#aaa;">Licença: ${escapeHtml(lic.label)}` +
-        (lic.feeCents > 0
-            ? " — taxa única de " + formatarReais(lic.feeCents)
-            : "") +
-        "</span><br>" +
-        (pct > 0
-            ? `<span style="color:#ffd400">Desconto progressivo de ${pct}% aplicado!</span><br>` +
-              `<span style="font-size:13px;color:#aaa;text-decoration:line-through;">${formatarReais(totalSemDescontoCents)}</span> ` +
-              `<span style="font-size:18px;color:#45df6f;font-weight:800;">${formatarReais(valorFinalCents)}</span>`
-            : `<span style="font-size:18px;color:#45df6f;font-weight:800;">${formatarReais(valorFinalCents)}</span>`);
+    let html = `<b>${n.toLocaleString("pt-BR")} espaço(s) selecionado(s)</b><br>`;
+    html += `<span style="font-size:12px;color:#aaa;">Licença: ${escapeHtml(lic.label)}`;
+    if (lic.feeCents > 0) {
+        html += ` — taxa única de ${formatarReais(lic.feeCents)}`;
+    }
+    html += `</span><br>`;
+    
+    // Desconto progressivo
+    if (pct > 0) {
+        html += `<span style="color:#ffd400">Desconto progressivo de ${pct}% aplicado!</span><br>`;
+    }
+    
+    // Desconto de indicação
+    if (temBeneficioIndicacao && descontoIndicacaoCents > 0) {
+        html += `<div style="background:linear-gradient(135deg,#1b3a2a,#0f2419);border:1px solid #45df6f;border-radius:8px;padding:10px;margin:10px 0;">`;
+        html += `<div style="font-size:14px;font-weight:700;color:#45df6f;margin-bottom:5px;">🎁 DESCONTO DE INDICAÇÃO</div>`;
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;">`;
+        html += `<span style="font-size:13px;color:#aaa;">-10% de indicação</span>`;
+        html += `<span style="font-size:16px;font-weight:800;color:#45df6f;">-${formatarReais(descontoIndicacaoCents)}</span>`;
+        html += `</div>`;
+        html += `</div>`;
+    }
+    
+    // Valor final
+    if (pct > 0 || temBeneficioIndicacao) {
+        html += `<span style="font-size:13px;color:#aaa;text-decoration:line-through;">${formatarReais(totalSemDescontoCents)}</span> `;
+    }
+    html += `<span style="font-size:18px;color:#45df6f;font-weight:800;">${formatarReais(valorFinalCents)}</span>`;
+    
+    // Mensagem de benefício
+    if (temBeneficioIndicacao) {
+        html += `<div style="font-size:12px;color:#45df6f;margin-top:8px;font-style:italic;">🎁 Você recebeu 10% de desconto por indicação!</div>`;
+    }
+    
+    ci.innerHTML = html;
 }
 
 function abrirRegrasLicenca(event) {
@@ -11596,6 +11926,15 @@ function carregarConta(){
             "style='margin:0;padding:8px;font-size:11px;'>📊 CSV</button>" +
             "</div>" +
 
+            "<div style='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;'>" +
+            "<button class='btn' onclick='abrirEditarPerfil()' " +
+            "style='margin:0;padding:8px;font-size:11px;flex:1;'>" +
+            "✏️ EDITAR PERFIL</button>" +
+            "<button class='btn' onclick='abrirSistemaIndicacao()' " +
+            "style='margin:0;padding:8px;font-size:11px;flex:1;'>" +
+            "🎁 INDICAÇÃO</button>" +
+            "</div>" +
+
             "<div style='font-size:12px;color:#aaa;margin-bottom:6px;'>" +
             "<b>Anexar um bloco que você já comprou</b> " +
             "(código de acesso recebido na compra):</div>" +
@@ -13536,13 +13875,26 @@ function renderMeusBlocos(list, blocos){
         return;
     }
 
+    // Ordenar blocos pela posição do primeiro espaço (numérico)
+    blocos.sort((a, b) => a[0] - b[0]);
+
     let html =
         '<div style="font-weight:800;margin:8px 0 6px;' +
-        'color:#ffd400;">MEUS BLOCOS</div>';
+        'color:#ffd400;">MEUS BLOCOS (' + blocos.length + ')</div>';
+
+    // Navegação entre blocos
+    if(blocos.length > 1){
+        html += '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">' +
+            '<button class="btn sec" onclick="blocoAnterior()" style="margin:0;padding:8px 12px;font-size:12px;">⬅️ BLOCO ANTERIOR</button>' +
+            '<button class="btn sec" onclick="proximoBloco()" style="margin:0;padding:8px 12px;font-size:12px;">PRÓXIMO BLOCO ➡️</button>' +
+            '</div>';
+        html += '<div style="font-size:11px;color:#888;margin-bottom:10px;">Bloco atual: <span id="blocoAtualLabel">1</span> de ' + blocos.length + '</div>';
+    }
 
     let total = 0;
 
-    for(const b of blocos){
+    for(let i = 0; i < blocos.length; i++){
+        const b = blocos[i];
 
         total += b.length;
 
@@ -13614,6 +13966,34 @@ function verBlocoNoMapa(primeiro){
     closeOwner();
 
     focusMapOnSpace(primeiro);
+}
+
+// Navegação entre blocos
+let blocoAtualIndex = 0;
+
+function blocoAnterior(){
+    const blocos = meusBlocos();
+    if(!blocos.length) return;
+    blocos.sort((a, b) => a[0] - b[0]);
+    blocoAtualIndex = (blocoAtualIndex - 1 + blocos.length) % blocos.length;
+    const bloco = blocos[blocoAtualIndex];
+    verBlocoNoMapa(bloco[0]);
+    atualizarLabelBlocoAtual();
+}
+
+function proximoBloco(){
+    const blocos = meusBlocos();
+    if(!blocos.length) return;
+    blocos.sort((a, b) => a[0] - b[0]);
+    blocoAtualIndex = (blocoAtualIndex + 1) % blocos.length;
+    const bloco = blocos[blocoAtualIndex];
+    verBlocoNoMapa(bloco[0]);
+    atualizarLabelBlocoAtual();
+}
+
+function atualizarLabelBlocoAtual(){
+    const label = document.getElementById("blocoAtualLabel");
+    if(label) label.textContent = (blocoAtualIndex + 1);
 }
 
 async function carregarAbaPix(){
@@ -13784,6 +14164,59 @@ function carregarMeusEspacos() {
     }
 
     renderMeusEspacos(list, meus);
+
+    /* Benefícios de Combos & Kits pendentes (espaços ainda
+       não selecionados) também aparecem em MEUS ESPAÇOS
+       COMPRADOS. */
+    if (minhaConta && minhaConta.token) {
+        fetch("/api/combos/kits/beneficios", {
+            headers: authHeaders()
+        })
+            .then(r => r.ok ? r.json() : { beneficios: [] })
+            .then(data => {
+                const pendentes = (data.beneficios || [])
+                    .filter(b => !b.espacosConfirmados);
+                if (!pendentes.length) return;
+                const box = document.getElementById("beneficiosPendentes");
+                if (!box) return;
+                box.innerHTML =
+                    '<div style="font-weight:800;margin:14px 0 6px;' +
+                    'color:#ffd400;">🔥 ESPAÇOS DE COMBOS PENDENTES</div>' +
+                    pendentes.map(b => `
+                      <div style="border:1px solid #333;border-radius:12px;
+                                  padding:12px 14px;margin-bottom:10px;
+                                  background:#161616;">
+                        <div style="display:flex;justify-content:space-between;
+                                    align-items:center;">
+                          <b style="color:#fff;">${escAttr(b.kitNome || "Kit")}</b>
+                          <span style="font-size:11px;color:#ffd400;font-weight:700;">
+                            ${Number(b.espacosKit) || 0} espaço(s)
+                          </span>
+                        </div>
+                        <div style="color:#aaa;margin-top:6px;font-size:12px;
+                                    line-height:1.6;">
+                          Compra confirmada, mas os espaços ainda
+                          não foram escolhidos.
+                        </div>
+                        <div style="margin-top:10px;display:flex;gap:8px;">
+                          <button class="btn"
+                                  onclick="abrirSelecaoKit()"
+                                  style="margin:0;padding:8px 12px;font-size:12px;">
+                            🎯 ESCOLHER ESPAÇOS
+                          </button>
+                        </div>
+                      </div>`).join("");
+            })
+            .catch(() => {});
+    }
+}
+
+function escAttr(v){
+    return String(v == null ? "" : v)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
 }
 
 function renderMeusEspacos(list, espacos) {
@@ -14908,6 +15341,378 @@ async function enviarBugSugestao(){
         if(msg) msg.innerHTML = '<span style="color:var(--danger);">⚠ ' + escHtml(error.message) + "</span>";
     }
 }
+
+/* =========================================================
+   BISBILHOTAR — Perfis Públicos
+========================================================= */
+
+function abrirBisbilhotar(event){
+    if(event) event.preventDefault();
+    const modal = document.getElementById("infoModal");
+    const titulo = document.getElementById("infoModalTitulo");
+    const conteudo = document.getElementById("infoModalConteudo");
+    if(!modal || !titulo || !conteudo) return;
+    
+    titulo.textContent = "👀 BISBILHOTAR";
+    conteudo.innerHTML = `
+        <div style="padding:20px;">
+            <p style="color:var(--text-secondary);margin-bottom:20px;">
+                Explore os álbuns públicos dos colecionadores do Milhão Door!
+            </p>
+            <div style="margin-bottom:20px;">
+                <input type="text" id="bisbilhotarBusca" placeholder="Buscar por nome ou apelido..." 
+                    style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:14px;"
+                    oninput="buscarPerfisPublicos()">
+            </div>
+            <div id="bisbilhotarResultados" style="min-height:200px;">
+                <div style="text-align:center;padding:40px;color:var(--text-muted);">
+                    <div style="font-size:48px;margin-bottom:10px;">🔍</div>
+                    <p>Carregando perfis públicos...</p>
+                </div>
+            </div>
+        </div>
+    `;
+    modal.style.display = "flex";
+    carregarPerfisPublicos();
+}
+
+async function carregarPerfisPublicos(busca = ""){
+    const resultados = document.getElementById("bisbilhotarResultados");
+    if(!resultados) return;
+    
+    try {
+        const url = busca ? `/api/perfis/publicos?busca=${encodeURIComponent(busca)}` : "/api/perfis/publicos";
+        const resp = await fetch(url);
+        const data = await resp.json();
+        
+        if(!resp.ok) throw new Error(data.error || "Erro ao carregar perfis");
+        
+        if(!data.perfis || data.perfis.length === 0){
+            resultados.innerHTML = `
+                <div style="text-align:center;padding:40px;color:var(--text-muted);">
+                    <div style="font-size:48px;margin-bottom:10px;">😕</div>
+                    <p>${busca ? "Nenhum perfil encontrado para '" + escHtml(busca) + "'" : "Nenhum perfil público disponível no momento"}</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;">';
+        for(const perfil of data.perfis){
+            const foto = perfil.foto_url || '/logo-milhao-door.png';
+            const nome = perfil.apelido || perfil.nome || 'Colecionador';
+            const bio = perfil.bio || '';
+            
+            html += `
+                <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;padding:16px;text-align:center;">
+                    <img src="${escHtml(foto)}" alt="${escHtml(nome)}" 
+                        style="width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:12px;border:2px solid var(--accent);"
+                        onerror="this.src='/logo-milhao-door.png'">
+                    <h3 style="margin:0 0 8px 0;font-size:16px;color:var(--text-primary);">${escHtml(nome)}</h3>
+                    ${bio ? `<p style="margin:0 0 12px 0;font-size:13px;color:var(--text-secondary);">${escHtml(bio)}</p>` : ''}
+                    <div style="display:flex;gap:8px;margin-top:12px;">
+                        <button class="btn" style="flex:1;margin:0;font-size:12px;padding:8px;" onclick="verPerfilPublico(${perfil.id})">VER PERFIL</button>
+                        <button class="btn btn-secondary" style="flex:1;margin:0;font-size:12px;padding:8px;" onclick="verAlbumPublico(${perfil.id})">VER ÁLBUM</button>
+                    </div>
+                </div>
+            `;
+        }
+        html += '</div>';
+        resultados.innerHTML = html;
+    } catch(error){
+        resultados.innerHTML = `
+            <div style="text-align:center;padding:40px;color:var(--danger);">
+                <div style="font-size:48px;margin-bottom:10px;">⚠️</div>
+                <p>${escHtml(error.message)}</p>
+            </div>
+        `;
+    }
+}
+
+function buscarPerfisPublicos(){
+    const input = document.getElementById("bisbilhotarBusca");
+    if(!input) return;
+    clearTimeout(window.bisbilhotarTimeout);
+    window.bisbilhotarTimeout = setTimeout(() => {
+        carregarPerfisPublicos(input.value);
+    }, 300);
+}
+
+function verPerfilPublico(usuarioId){
+    window.open(`/perfil.html?id=${usuarioId}`, '_blank');
+}
+
+function verAlbumPublico(usuarioId){
+    window.open(`/perfil.html?id=${usuarioId}&aba=album`, '_blank');
+}
+
+/* =========================================================
+   EDITAR PERFIL
+========================================================= */
+
+function abrirEditarPerfil(){
+    if(!minhaConta || !minhaConta.token){
+        abrirLogin();
+        return;
+    }
+    
+    const modal = document.getElementById("infoModal");
+    const titulo = document.getElementById("infoModalTitulo");
+    const conteudo = document.getElementById("infoModalConteudo");
+    if(!modal || !titulo || !conteudo) return;
+    
+    titulo.textContent = "✏️ EDITAR PERFIL";
+    conteudo.innerHTML = `
+        <div style="padding:20px;">
+            <div id="editarPerfilForm">
+                <div style="text-align:center;margin-bottom:20px;">
+                    <img id="editarPerfilFotoPreview" src="${minhaConta.foto_url || '/logo-milhao-door.png'}" 
+                        style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);"
+                        onerror="this.src='/logo-milhao-door.png'">
+                    <div style="margin-top:10px;">
+                        <input type="file" id="editarPerfilFotoInput" accept="image/jpeg,image/png,image/webp" 
+                            style="display:none;" onchange="previewFotoPerfil(this)">
+                        <button class="btn btn-secondary" onclick="document.getElementById('editarPerfilFotoInput').click()">
+                            📷 ALTERAR FOTO
+                        </button>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom:16px;">
+                    <label style="display:block;margin-bottom:6px;font-size:13px;color:var(--text-secondary);">Apelido</label>
+                    <input type="text" id="editarPerfilApelido" value="${escHtml(minhaConta.apelido || '')}" 
+                        placeholder="Seu apelido público" maxlength="50"
+                        style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);">
+                    <small style="color:var(--text-muted);font-size:11px;">Apenas letras, números e underscore</small>
+                </div>
+                
+                <div style="margin-bottom:16px;">
+                    <label style="display:block;margin-bottom:6px;font-size:13px;color:var(--text-secondary);">Bio</label>
+                    <textarea id="editarPerfilBio" placeholder="Conte um pouco sobre você..." maxlength="500"
+                        style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);min-height:80px;resize:vertical;">${escHtml(minhaConta.bio || '')}</textarea>
+                    <small style="color:var(--text-muted);font-size:11px;">Máximo 500 caracteres</small>
+                </div>
+                
+                <div style="margin-bottom:20px;">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" id="editarPerfilAlbumPublico" ${minhaConta.album_publico ? 'checked' : ''}>
+                        <span style="font-size:14px;">Álbum público (aparece em BISBILHOTAR)</span>
+                    </label>
+                </div>
+                
+                <div id="editarPerfilMsg" style="margin-bottom:16px;"></div>
+                
+                <div style="display:flex;gap:10px;">
+                    <button class="btn" style="flex:1;" onclick="salvarPerfil()">💾 SALVAR ALTERAÇÕES</button>
+                    <button class="btn btn-secondary" style="flex:1;" onclick="fecharInfoModal()">CANCELAR</button>
+                </div>
+            </div>
+        </div>
+    `;
+    modal.style.display = "flex";
+}
+
+function previewFotoPerfil(input){
+    if(input.files && input.files[0]){
+        const file = input.files[0];
+        if(file.size > 5 * 1024 * 1024){
+            alert("Imagem muito grande. Máximo 5MB.");
+            input.value = '';
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(e){
+            document.getElementById("editarPerfilFotoPreview").src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+async function salvarPerfil(){
+    const msg = document.getElementById("editarPerfilMsg");
+    if(!msg) return;
+    
+    const apelido = document.getElementById("editarPerfilApelido").value;
+    const bio = document.getElementById("editarPerfilBio").value;
+    const albumPublico = document.getElementById("editarPerfilAlbumPublico").checked;
+    const fotoInput = document.getElementById("editarPerfilFotoInput");
+    
+    try {
+        // Upload de foto se houver
+        if(fotoInput.files && fotoInput.files[0]){
+            const formData = new FormData();
+            formData.append("foto", fotoInput.files[0]);
+            
+            const respFoto = await fetch("/api/perfil/foto", {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + minhaConta.token },
+                body: formData
+            });
+            
+            const dataFoto = await respFoto.json();
+            if(!respFoto.ok) throw new Error(dataFoto.error || "Erro ao enviar foto");
+            
+            minhaConta.foto_url = dataFoto.foto_url;
+        }
+        
+        // Atualizar perfil
+        const resp = await fetch("/api/perfil", {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + minhaConta.token
+            },
+            body: JSON.stringify({ apelido, bio, album_publico: albumPublico })
+        });
+        
+        const data = await resp.json();
+        if(!resp.ok) throw new Error(data.error || "Erro ao salvar perfil");
+        
+        // Atualizar dados locais
+        minhaConta.apelido = data.perfil.apelido;
+        minhaConta.bio = data.perfil.bio;
+        minhaConta.album_publico = data.perfil.album_publico;
+        localStorage.setItem("mega_conta", JSON.stringify(minhaConta));
+        
+        msg.innerHTML = '<span style="color:var(--success);">✅ Perfil atualizado com sucesso!</span>';
+        setTimeout(() => fecharInfoModal(), 1500);
+        
+    } catch(error){
+        msg.innerHTML = '<span style="color:var(--danger);">⚠ ' + escHtml(error.message) + '</span>';
+    }
+}
+
+/* =========================================================
+   SISTEMA DE INDICAÇÃO
+========================================================= */
+
+async function abrirSistemaIndicacao(){
+    if(!minhaConta || !minhaConta.token){
+        abrirLogin();
+        return;
+    }
+    
+    const modal = document.getElementById("infoModal");
+    const titulo = document.getElementById("infoModalTitulo");
+    const conteudo = document.getElementById("infoModalConteudo");
+    if(!modal || !titulo || !conteudo) return;
+    
+    titulo.textContent = "🎁 DIVULGUE O MILHÃO DOOR";
+    conteudo.innerHTML = `
+        <div style="padding:20px;">
+            <p style="color:var(--text-secondary);margin-bottom:20px;">
+                Indique o Milhão Door para seus amigos. Quem usar seu código ganha <b style="color:var(--accent);">10% de desconto</b> na próxima compra elegível.
+            </p>
+            
+            <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;padding:20px;margin-bottom:20px;text-align:center;">
+                <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">MEU CÓDIGO</div>
+                <div id="indicacaoCodigo" style="font-size:32px;font-weight:900;color:var(--accent);letter-spacing:2px;margin-bottom:16px;">
+                    Gerando código...
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button class="btn" style="flex:1;margin:0;" onclick="copiarCodigoIndicacao()">📋 COPIAR CÓDIGO</button>
+                    <button class="btn btn-secondary" style="flex:1;margin:0;" onclick="copiarLinkIndicacao()">🔗 COPIAR LINK</button>
+                    <button class="btn btn-secondary" style="flex:1;margin:0;" onclick="compartilharIndicacao()">📤 COMPARTILHAR</button>
+                </div>
+            </div>
+            
+            <div id="indicacaoBeneficio" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;padding:20px;">
+                <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">BENEFÍCIO</div>
+                <div id="indicacaoBeneficioStatus" style="font-size:16px;font-weight:700;">
+                    Verificando...
+                </div>
+            </div>
+        </div>
+    `;
+    modal.style.display = "flex";
+    
+    // Carregar código
+    try {
+        const resp = await fetch("/api/indicacao/gerar-codigo", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + minhaConta.token }
+        });
+        const data = await resp.json();
+        if(resp.ok){
+            document.getElementById("indicacaoCodigo").textContent = data.codigo;
+            minhaConta.codigo_indicacao = data.codigo;
+            localStorage.setItem("mega_conta", JSON.stringify(minhaConta));
+        }
+    } catch(error){
+        document.getElementById("indicacaoCodigo").textContent = "Erro ao gerar código";
+    }
+    
+    // Carregar benefício
+    try {
+        const resp = await fetch("/api/indicacao/beneficio", {
+            headers: { "Authorization": "Bearer " + minhaConta.token }
+        });
+        const data = await resp.json();
+        const statusEl = document.getElementById("indicacaoBeneficioStatus");
+        if(data.beneficio){
+            if(data.beneficio.status === "PENDENTE"){
+                statusEl.innerHTML = '<span style="color:var(--success);">🟢 10% DISPONÍVEL</span><br><small style="color:var(--text-muted);">Use na próxima compra</small>';
+            } else {
+                statusEl.innerHTML = '<span style="color:var(--text-muted);">⚪ 10% JÁ UTILIZADO</span><br><small style="color:var(--text-muted);">Benefício consumido</small>';
+            }
+        } else {
+            statusEl.innerHTML = '<span style="color:var(--text-muted);">⚪ SEM BENEFÍCIO</span><br><small style="color:var(--text-muted);">Indique um amigo para ganhar 10%</small>';
+        }
+    } catch(error){
+        document.getElementById("indicacaoBeneficioStatus").textContent = "Erro ao verificar benefício";
+    }
+}
+
+function copiarCodigoIndicacao(){
+    const codigo = document.getElementById("indicacaoCodigo").textContent;
+    navigator.clipboard.writeText(codigo).then(() => {
+        alert("Código copiado: " + codigo);
+    });
+}
+
+function copiarLinkIndicacao(){
+    const codigo = document.getElementById("indicacaoCodigo").textContent;
+    const link = window.location.origin + "?ref=" + codigo;
+    navigator.clipboard.writeText(link).then(() => {
+        alert("Link copiado: " + link);
+    });
+}
+
+function compartilharIndicacao(){
+    const codigo = document.getElementById("indicacaoCodigo").textContent;
+    const link = window.location.origin + "?ref=" + codigo;
+    
+    if(navigator.share){
+        navigator.share({
+            title: "Milhão Door",
+            text: "Ganhe 10% de desconto no Milhão Door usando meu código: " + codigo,
+            url: link
+        });
+    } else {
+        copiarLinkIndicacao();
+    }
+}
+
+/* Capturar código de indicação da URL */
+(function(){
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if(ref && minhaConta && minhaConta.token){
+        // Registrar indicação automaticamente
+        fetch("/api/indicacao/registrar", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + minhaConta.token
+            },
+            body: JSON.stringify({ codigo: ref })
+        }).then(resp => resp.json()).then(data => {
+            if(data.ok){
+                alert("🎁 Você recebeu 10% de desconto na próxima compra elegível!");
+            }
+        }).catch(() => {});
+    }
+})();
 
 </script>
 

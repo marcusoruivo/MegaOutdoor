@@ -503,18 +503,35 @@ let pgDisponivel = false;
 
 async function registrarStoryEvento({
     eventKey, kind, title, subtitle, actionType = null,
-    actionId = null, metadata = {}
+    actionId = null, metadata = {}, usuarioId = null, expiresAt = null
 } = {}) {
     if (!pgDisponivel || !pgPool || !eventKey || !title) return false;
     try {
-        await pgPool.query(
-            `INSERT INTO story_events
-                (event_key, kind, title, subtitle, action_type, action_id, metadata, expires_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,NOW() + INTERVAL '24 hours')
-             ON CONFLICT (event_key) DO NOTHING`,
-            [eventKey, kind || "purchase", title, subtitle || null,
-             actionType, actionId, JSON.stringify(metadata || {})]
-        );
+        const expira = expiresAt
+            ? new Date(expiresAt).toISOString()
+            : "NOW() + INTERVAL '24 hours'";
+        if (expira === "NOW() + INTERVAL '24 hours'") {
+            await pgPool.query(
+                `INSERT INTO story_events
+                    (event_key, kind, title, subtitle, action_type, action_id, metadata, usuario_id, expires_at)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW() + INTERVAL '24 hours')
+                 ON CONFLICT (event_key) DO NOTHING`,
+                [eventKey, kind || "purchase", title, subtitle || null,
+                 actionType, actionId, JSON.stringify(metadata || {}), usuarioId]
+            );
+        } else {
+            await pgPool.query(
+                `INSERT INTO story_events
+                    (event_key, kind, title, subtitle, action_type, action_id, metadata, usuario_id, expires_at)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+                 ON CONFLICT (event_key) DO UPDATE
+                    SET title = EXCLUDED.title, subtitle = EXCLUDED.subtitle,
+                        metadata = EXCLUDED.metadata, expires_at = EXCLUDED.expires_at,
+                        usuario_id = COALESCE(story_events.usuario_id, EXCLUDED.usuario_id)`,
+                [eventKey, kind || "purchase", title, subtitle || null,
+                 actionType, actionId, JSON.stringify(metadata || {}), usuarioId, expira]
+            );
+        }
         return true;
     } catch (error) {
         console.error("ERRO ao registrar Story:", error.message);
@@ -609,6 +626,51 @@ async function initBanco() {
             `);
         } catch (e) { /* se a coluna já existir, segue o boot */ }
 
+        /* Perfil estendido e sistema de indicação */
+        try {
+            await pgPool.query(`
+                ALTER TABLE usuarios
+                    ADD COLUMN IF NOT EXISTS apelido VARCHAR(50),
+                    ADD COLUMN IF NOT EXISTS bio TEXT,
+                    ADD COLUMN IF NOT EXISTS foto_url VARCHAR(500),
+                    ADD COLUMN IF NOT EXISTS codigo_indicacao VARCHAR(20) UNIQUE
+            `);
+        } catch (e) { /* se as colunas já existirem, segue o boot */ }
+
+        /* Tabela de indicações */
+        try {
+            await pgPool.query(`
+                CREATE TABLE IF NOT EXISTS indicacoes (
+                    id SERIAL PRIMARY KEY,
+                    indicador_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                    indicado_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                    codigo_indicacao VARCHAR(20) NOT NULL,
+                    criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    UNIQUE(indicado_id)
+                )
+            `);
+        } catch (e) { /* se a tabela já existir, segue o boot */ }
+
+        /* Tabela de benefícios de indicação (desconto de 10%) */
+        try {
+            await pgPool.query(`
+                CREATE TABLE IF NOT EXISTS beneficios_indicacao (
+                    id SERIAL PRIMARY KEY,
+                    indicado_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                    indicador_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                    percentual_desconto INTEGER NOT NULL DEFAULT 10,
+                    status VARCHAR(20) NOT NULL DEFAULT 'PENDENTE',
+                    criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    utilizado_em TIMESTAMPTZ,
+                    order_id VARCHAR(60),
+                    valor_original_cents INTEGER,
+                    valor_desconto_cents INTEGER,
+                    valor_final_cents INTEGER,
+                    UNIQUE(indicado_id, status)
+                )
+            `);
+        } catch (e) { /* se a tabela já existir, segue o boot */ }
+
         await pgPool.query(`
             CREATE TABLE IF NOT EXISTS story_events (
                 id           SERIAL PRIMARY KEY,
@@ -626,6 +688,38 @@ async function initBanco() {
         await pgPool.query(
             "CREATE INDEX IF NOT EXISTS idx_story_events_expiry ON story_events(expires_at)"
         );
+
+        /* Associação do Story ao usuário que o criou (purchase/destaque). */
+        await pgPool.query(
+            "ALTER TABLE story_events ADD COLUMN IF NOT EXISTS usuario_id INTEGER"
+        );
+
+        /* ===== DESTAQUES / STORY PAGO =====
+           Compra de destaque no Story com duração (5h/7h/12h/24h).
+           Cobrança REAL via Mercado Pago (nunca fictícia). O usuário
+           só publica depois da confirmação do pagamento. */
+        await pgPool.query(`
+            CREATE TABLE IF NOT EXISTS destaques (
+                id              SERIAL PRIMARY KEY,
+                usuario_id      INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                tipo            VARCHAR(20) NOT NULL DEFAULT 'story',
+                duracao         VARCHAR(5) NOT NULL,
+                preco_cents     INTEGER NOT NULL,
+                status          VARCHAR(20) NOT NULL DEFAULT 'pendente',
+                order_id        VARCHAR(60) UNIQUE NOT NULL,
+                mp_order_id     VARCHAR(60),
+                payment_id      VARCHAR(60),
+                metodo_pagamento VARCHAR(20),
+                titulo          VARCHAR(180),
+                subtitulo       VARCHAR(240),
+                publicado       BOOLEAN NOT NULL DEFAULT FALSE,
+                criado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                pago_em         TIMESTAMPTZ,
+                expira_em       TIMESTAMPTZ
+            )
+        `);
+        await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_destaques_usuario ON destaques(usuario_id, status)`);
+        await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_destaques_mp ON destaques(mp_order_id)`);
 
         await pgPool.query(`
             CREATE TABLE IF NOT EXISTS marketplace_accounts (
@@ -663,6 +757,43 @@ async function initBanco() {
                 criado_em   TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
         `);
+
+        await pgPool.query(`
+            CREATE TABLE IF NOT EXISTS senha_recuperacoes (
+                id          SERIAL PRIMARY KEY,
+                usuario_id  INTEGER NOT NULL
+                            REFERENCES usuarios(id)
+                            ON DELETE CASCADE,
+                token_hash  VARCHAR(64) NOT NULL UNIQUE,
+                expira_em   TIMESTAMPTZ NOT NULL,
+                usada_em    TIMESTAMPTZ,
+                criado_em   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        `);
+        await pgPool.query(
+            "CREATE INDEX IF NOT EXISTS idx_senha_recuperacoes_expiry " +
+            "ON senha_recuperacoes(expira_em)"
+        );
+
+        /* ===== NOTIFICAÇÕES =====
+           Sistema de notificações para eventos importantes da conta do usuário.
+           Tipos: oferta_recebida, oferta_aceita, oferta_recusada, oferta_cancelada,
+                  nova_mensagem, pagamento_aprovado, figurinha_recebida, nova_meta,
+                  album_proximo, bloco_publicado */
+        await pgPool.query(`
+            CREATE TABLE IF NOT EXISTS notificacoes (
+                id          SERIAL PRIMARY KEY,
+                usuario_id  INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                tipo        VARCHAR(40) NOT NULL,
+                titulo      VARCHAR(200) NOT NULL,
+                mensagem    TEXT NOT NULL,
+                referencia  JSONB NOT NULL DEFAULT '{}',
+                lida_em     TIMESTAMPTZ,
+                criado_em   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        `);
+        await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_notificacoes_usuario ON notificacoes(usuario_id, lida_em NULLS FIRST)`);
+        await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_notificacoes_criado ON notificacoes(criado_em DESC)`);
 
         await pgPool.query(
             "ALTER TABLE transacoes " +
@@ -2727,6 +2858,178 @@ app.post("/api/auth/login", async (req, res) => {
     }
 });
 
+/* =========================
+   ESQUECI A SENHA
+   Solicita recuperação por e-mail e redefine a senha com
+   token de uso único e expiração (30 min). Mensagem sempre
+   genérica para não revelar se o e-mail existe.
+========================= */
+
+app.post("/api/auth/senha-recuperacao", async (req, res) => {
+
+    if (!pgDisponivel || !pgPool) {
+        return res.status(503).json({
+            error: "Recuperação indisponível no momento."
+        });
+    }
+
+    const email = String(req.body.email || "")
+        .trim()
+        .toLowerCase();
+
+    if (!EMAIL_REGEX.test(email)) {
+        return res.status(400).json({
+            error: "Informe um e-mail válido."
+        });
+    }
+
+    try {
+
+        const token = crypto.randomBytes(32).toString("hex");
+        const tokenHash = hashToken(token);
+
+        const result = await pgPool.query(
+            "SELECT id, nome FROM usuarios WHERE email = $1",
+            [email]
+        );
+
+        if (result.rowCount > 0) {
+            const usuario = result.rows[0];
+            await pgPool.query(
+                `UPDATE senha_recuperacoes SET usada_em = NOW() - INTERVAL '1 second'
+                  WHERE usuario_id = $1 AND usada_em IS NULL AND expira_em > NOW()`,
+                [usuario.id]
+            );
+            await pgPool.query(
+                `INSERT INTO senha_recuperacoes (usuario_id, token_hash, expira_em)
+                 VALUES ($1, $2, NOW() + INTERVAL '30 minutes')`,
+                [usuario.id, tokenHash]
+            );
+
+            const link = `${urlBase(req)}/redefinir-senha.html?token=${token}`;
+            const enviado = await enviarEmail(
+                email,
+                "Redefinição de senha — Milhão Door",
+                `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto">
+                   <h2 style="color:#0d9488">Redefinição de senha</h2>
+                   <p>Olá, ${usuario.nome.split(" ")[0]}!</p>
+                   <p>Recebemos um pedido de redefinição da sua senha. O link abaixo é válido por <b>30 minutos</b> e só pode ser usado uma vez:</p>
+                   <p style="text-align:center;margin:24px 0">
+                     <a href="${link}" style="background:#0d9488;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Redefinir minha senha</a>
+                   </p>
+                   <p>Se você não pediu essa redefinição, ignore este e-mail — sua senha continua a mesma.</p>
+                   <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0" />
+                   <p style="color:#6b7280;font-size:12px">Milhão Door — anúncios de outdoor digital.</p>
+                 </div>`
+            );
+            registrarLog("senha_recuperacao_solicitada", {
+                usuarioId: usuario.id,
+                email,
+                emailEnviado: enviado
+            });
+        }
+
+        const resposta = {
+            ok: true,
+            mensagem:
+                "Se existir uma conta com este e-mail, " +
+                "enviaremos um link de redefinição."
+        };
+
+        /* Apenas em modo de teste (ALLOW_TEST_MODE) o token é
+           devolvido para que os testes consigam redefinir a senha. */
+        if (
+            ALLOW_TEST_MODE &&
+            req.get("x-test-mode") === "1" &&
+            result.rowCount > 0
+        ) {
+            resposta.testeToken = token;
+        }
+
+        res.json(resposta);
+
+    } catch (error) {
+        console.error("ERRO na recuperação de senha:", error.message);
+        res.status(500).json({ error: "Não foi possível processar a solicitação." });
+    }
+});
+
+app.post("/api/auth/redefinir-senha", async (req, res) => {
+
+    if (!pgDisponivel || !pgPool) {
+        return res.status(503).json({
+            error: "Recuperação indisponível no momento."
+        });
+    }
+
+    const token = String(req.body.token || "").trim();
+    const novaSenha = String(req.body.novaSenha || "");
+
+    if (!token) {
+        return res.status(400).json({ error: "Link de redefinição inválido ou expirado." });
+    }
+
+    if (
+        typeof novaSenha !== "string" ||
+        novaSenha.length < 6
+    ) {
+        return res.status(400).json({
+            error: "A nova senha deve ter ao menos 6 caracteres."
+        });
+    }
+
+    try {
+
+        const tokenHash = hashToken(token);
+
+        const result = await pgPool.query(
+            `SELECT id, usuario_id, expira_em
+               FROM senha_recuperacoes
+              WHERE token_hash = $1
+                AND usada_em IS NULL`,
+            [tokenHash]
+        );
+
+        const registro = result.rows[0];
+
+        if (
+            !registro ||
+            new Date(registro.expira_em).getTime() <= Date.now()
+        ) {
+            return res.status(400).json({
+                error: "Link de redefinição inválido ou expirado."
+            });
+        }
+
+        await pgPool.query(
+            `UPDATE usuarios SET senha_hash = $1 WHERE id = $2`,
+            [hashSenha(novaSenha), registro.usuario_id]
+        );
+
+        await pgPool.query(
+            `UPDATE senha_recuperacoes SET usada_em = NOW() WHERE id = $1`,
+            [registro.id]
+        );
+
+        await pgPool.query(
+            `INSERT INTO usuario_chaves (usuario_id, tipo, valor)
+             VALUES ($1, 'logout', $2)
+             ON CONFLICT (tipo, valor) DO NOTHING`,
+            [registro.usuario_id, crypto.randomUUID()]
+        );
+
+        registrarLog("senha_redefinida", {
+            usuarioId: registro.usuario_id
+        });
+
+        res.json({ ok: true, mensagem: "Senha redefinida com sucesso." });
+
+    } catch (error) {
+        console.error("ERRO ao redefinir senha:", error.message);
+        res.status(500).json({ error: "Não foi possível redefinir a senha." });
+    }
+});
+
 app.post("/api/auth/logout", authUsuario, async (req, res) => {
 
     try {
@@ -3073,6 +3376,422 @@ app.get("/api/stories", async (req, res) => {
 
 app.get("/api/stories/config", (req, res) => {
     res.json({ ok: true, pricing: STORY_PRICING });
+});
+
+/* =========================
+   DESTAQUES NO STORY — COMPRA, CONFIRMAÇÃO E PUBLICAÇÃO
+   Cobrança REAL via Mercado Pago (PIX ou cartão). O usuário só
+   publica conteúdo depois do pagamento confirmado. Renovação =
+   nova compra. Nada de pagamento fictício.
+========================= */
+
+async function processarPagamentoDestaque({ mpOrderId, totalCents }) {
+    if (!pgDisponivel || !pgPool || !mpOrderId) return false;
+    try {
+        const q = await pgPool.query(
+            `SELECT * FROM destaques WHERE mp_order_id = $1 AND status = 'pendente' LIMIT 1`,
+            [mpOrderId]
+        );
+        const destaque = q.rows[0];
+        if (!destaque) return false;
+
+        if (totalCents != null && Number(totalCents) !== Number(destaque.preco_cents)) {
+            registrarLog("destaque_valor_divergente", {
+                destaqueId: destaque.id,
+                cobradoCents: destaque.preco_cents,
+                pagoCents: totalCents
+            });
+            return false;
+        }
+
+        const horas = Number(String(destaque.duracao || "24h").replace(/\D/g, "")) || 24;
+        await pgPool.query(
+            `UPDATE destaques
+                SET status = 'ativo', pago_em = NOW(), expira_em = NOW() + ($2 || ' hours')::interval
+              WHERE id = $1`,
+            [destaque.id, String(horas)]
+        );
+
+        /* Se o conteúdo já veio na compra, publica automaticamente. */
+        const titulo = String(destaque.titulo || "").trim();
+        if (titulo) {
+            await publicarDestaque(destaque.id);
+        }
+        return true;
+    } catch (error) {
+        console.error("ERRO ao processar pagamento de destaque:", error.message);
+        return false;
+    }
+}
+
+async function publicarDestaque(destaqueId) {
+    if (!pgDisponivel || !pgPool) return false;
+    try {
+        const q = await pgPool.query(
+            `SELECT * FROM destaques WHERE id = $1`,
+            [destaqueId]
+        );
+        const destaque = q.rows[0];
+        if (!destaque) return false;
+        if (destaque.status !== "ativo") return false;
+        if (destaque.expira_em && new Date(destaque.expira_em).getTime() <= Date.now()) return false;
+
+        const titulo = String(destaque.titulo || "").trim();
+        if (!titulo) return false;
+
+        await registrarStoryEvento({
+            eventKey: `destaque:${destaque.id}`,
+            kind: destaque.tipo === "destaque" ? "destaque" : "story",
+            title: titulo.slice(0, 180),
+            subtitle: String(destaque.subtitulo || "").slice(0, 240) || null,
+            usuarioId: destaque.usuario_id,
+            expiresAt: destaque.expira_em
+        });
+
+        await pgPool.query(
+            `UPDATE destaques SET publicado = TRUE WHERE id = $1`,
+            [destaque.id]
+        );
+        return true;
+    } catch (error) {
+        console.error("ERRO ao publicar destaque:", error.message);
+        return false;
+    }
+}
+
+async function expirarDestaquesVencidos() {
+    if (!pgDisponivel || !pgPool) return;
+    try {
+        await pgPool.query(
+            `UPDATE destaques SET status = 'expirado' WHERE status = 'ativo' AND expira_em <= NOW()`
+        );
+        await pgPool.query(`DELETE FROM story_events WHERE expires_at <= NOW()`);
+    } catch (error) {
+        console.error("ERRO ao expirar destaques:", error.message);
+    }
+}
+
+/* ===== NOTIFICAÇÕES ===== */
+async function criarNotificacao(usuarioId, tipo, titulo, mensagem, referencia = {}) {
+    if (!pgDisponivel || !pgPool || !usuarioId) return null;
+    try {
+        const result = await pgPool.query(
+            `INSERT INTO notificacoes (usuario_id, tipo, titulo, mensagem, referencia)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING id, tipo, titulo, mensagem, referencia, criado_em`,
+            [usuarioId, tipo, titulo, mensagem, JSON.stringify(referencia)]
+        );
+        const notificacao = result.rows[0];
+        
+        // Broadcast via SSE para o usuário
+        broadcastNotificacao(usuarioId, notificacao);
+        
+        return notificacao;
+    } catch (error) {
+        console.error("ERRO ao criar notificação:", error.message);
+        return null;
+    }
+}
+
+async function listarNotificacoes(usuarioId, limite = 50) {
+    if (!pgDisponivel || !pgPool || !usuarioId) return [];
+    try {
+        const result = await pgPool.query(
+            `SELECT id, tipo, titulo, mensagem, referencia, lida_em, criado_em
+               FROM notificacoes
+              WHERE usuario_id = $1
+              ORDER BY criado_em DESC
+              LIMIT $2`,
+            [usuarioId, limite]
+        );
+        return result.rows;
+    } catch (error) {
+        console.error("ERRO ao listar notificações:", error.message);
+        return [];
+    }
+}
+
+async function marcarNotificacaoLida(notificacaoId, usuarioId) {
+    if (!pgDisponivel || !pgPool) return false;
+    try {
+        await pgPool.query(
+            `UPDATE notificacoes SET lida_em = NOW() WHERE id = $1 AND usuario_id = $2`,
+            [notificacaoId, usuarioId]
+        );
+        return true;
+    } catch (error) {
+        console.error("ERRO ao marcar notificação lida:", error.message);
+        return false;
+    }
+}
+
+async function marcarTodasNotificacoesLidas(usuarioId) {
+    if (!pgDisponivel || !pgPool) return false;
+    try {
+        await pgPool.query(
+            `UPDATE notificacoes SET lida_em = NOW() WHERE usuario_id = $1 AND lida_em IS NULL`,
+            [usuarioId]
+        );
+        return true;
+    } catch (error) {
+        console.error("ERRO ao marcar todas notificações lidas:", error.message);
+        return false;
+    }
+}
+
+async function contarNotificacoesNaoLidas(usuarioId) {
+    if (!pgDisponivel || !pgPool || !usuarioId) return 0;
+    try {
+        const result = await pgPool.query(
+            `SELECT COUNT(*) as total FROM notificacoes WHERE usuario_id = $1 AND lida_em IS NULL`,
+            [usuarioId]
+        );
+        return parseInt(result.rows[0].total, 10);
+    } catch (error) {
+        console.error("ERRO ao contar notificações:", error.message);
+        return 0;
+    }
+}
+
+/* Compra de um destaque no Story. */
+app.post("/api/stories/destaques", authUsuario, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço de destaques indisponível no momento." });
+    try {
+        const duracao = String(req.body.duracao || "24h").trim();
+        const preco = STORY_PRICING[duracao];
+        if (preco == null) return res.status(400).json({ error: "Duração inválida. Use 5h, 7h, 12h ou 24h." });
+
+        const comprador = normalizarDadosComprador(req.body);
+        if (!comprador.documento || !validarDocumento(comprador.documento)) {
+            return res.status(400).json({ error: "Informe um CPF ou CNPJ válido." });
+        }
+
+        const titulo = String(req.body.titulo || "").slice(0, 180).trim();
+        if (!titulo) return res.status(400).json({ error: "Informe o título do seu destaque." });
+
+        const precoCents = paraCentavos(preco);
+        const orderId = "MEGA-STORY-" + crypto.randomUUID().slice(0, 8).toUpperCase();
+
+        const mp = await criarOrderMercadoPago({
+            idempotencyKey: orderId,
+            externalReference: orderId,
+            value: preco,
+            description: `Milhão Door — Destaque no Story (${duracao})`,
+            customer: {
+                name: req.usuario.nome || comprador.nome,
+                taxID: comprador.documento,
+                email: comprador.email || req.usuario.email
+            },
+            paymentMethod: req.body.paymentMethod || "pix",
+            paymentMethodId: req.body.paymentMethodId,
+            cardToken: req.body.cardToken,
+            installments: req.body.installments
+        });
+
+        const q = await pgPool.query(
+            `INSERT INTO destaques
+                (usuario_id, tipo, duracao, preco_cents, status, order_id, mp_order_id, payment_id, metodo_pagamento, titulo, subtitulo)
+             VALUES ($1,$2,$3,$4,'pendente',$5,$6,$7,$8,$9,$10)
+             RETURNING *`,
+            [req.usuario.id, String(req.body.tipo || "story").slice(0, 20),
+             duracao, precoCents, orderId, String(mp.orderId), String(mp.paymentId || ""),
+             String(req.body.paymentMethod || "pix"), titulo, String(req.body.subtitulo || "").slice(0, 240).trim()]
+        );
+        const destaque = q.rows[0];
+
+        registrarLog("destaque_compra_criada", {
+            destaqueId: destaque.id,
+            usuarioId: req.usuario.id,
+            duracao,
+            orderId
+        });
+
+        res.json({
+            ok: true,
+            id: destaque.id,
+            orderId: String(mp.orderId),
+            externalReference: orderId,
+            qrCodeBase64: mp.qrCodeBase64,
+            payload: mp.payload,
+            ticketUrl: mp.ticketUrl,
+            expiresDate: mp.expirationDate,
+            paymentId: mp.paymentId,
+            total: preco,
+            totalCents: precoCents,
+            duracao,
+            duracaoLabel: String(duracao).replace(/^(\d+)h$/i, "$1 horas")
+        });
+    } catch (error) {
+        console.error("ERRO ao criar compra de destaque:", error.message);
+        res.status(500).json({ error: "Não foi possível iniciar a compra do destaque. Tente novamente." });
+    }
+});
+
+/* Meus destaques (status, tempo restante, publicações). */
+app.get("/api/stories/destaques/meus", authUsuario, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço de destaques indisponível no momento." });
+    try {
+        await expirarDestaquesVencidos();
+        const q = await pgPool.query(
+            `SELECT id, tipo, duracao, preco_cents, status, publicado, titulo, subtitulo,
+                    criado_em, pago_em, expira_em
+               FROM destaques WHERE usuario_id = $1
+              ORDER BY criado_em DESC LIMIT 50`,
+            [req.usuario.id]
+        );
+        const agora = Date.now();
+        res.json({
+            ok: true,
+            destaques: q.rows.map(d => ({
+                id: d.id,
+                tipo: d.tipo,
+                duracao: d.duracao,
+                preco: Number((d.preco_cents / 100).toFixed(2)),
+                precoCents: Number(d.preco_cents),
+                status: d.status,
+                publicado: d.publicado,
+                titulo: d.titulo,
+                subtitulo: d.subtitulo,
+                criadoEm: d.criado_em,
+                pagoEm: d.pago_em,
+                expiraEm: d.expira_em,
+                tempoRestanteSegundos: d.expira_em ? Math.max(0, Math.floor((new Date(d.expira_em).getTime() - agora) / 1000)) : null
+            }))
+        });
+    } catch (error) {
+        res.status(500).json({ error: "Não foi possível carregar seus destaques." });
+    }
+});
+
+/* Consulta do pagamento de um destaque (polling). */
+app.get("/api/stories/destaques/:id", authUsuario, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço de destaques indisponível no momento." });
+    try {
+        const q = await pgPool.query(
+            `SELECT * FROM destaques WHERE id = $1 AND usuario_id = $2`,
+            [Number(req.params.id), req.usuario.id]
+        );
+        const destaque = q.rows[0];
+        if (!destaque) return res.status(404).json({ error: "Destaque não encontrado." });
+
+        if (destaque.status === "pendente" && destaque.mp_order_id) {
+            try {
+                const ordem = await consultarOrderMercadoPago(destaque.mp_order_id);
+                if (orderPagaMercadoPago(ordem)) {
+                    await processarPagamentoDestaque({
+                        mpOrderId: destaque.mp_order_id,
+                        totalCents: Number(ordem.total_amount || 0)
+                    });
+                }
+            } catch (e) { /* consulta falhou — mantém pendente */ }
+        }
+        await expirarDestaquesVencidos();
+
+        const atualizado = await pgPool.query(
+            `SELECT id, tipo, duracao, preco_cents, status, publicado, titulo, subtitulo,
+                    criado_em, pago_em, expira_em
+               FROM destaques WHERE id = $1`,
+            [destaque.id]
+        );
+        const d = atualizado.rows[0];
+        const agora = Date.now();
+        res.json({
+            ok: true,
+            destaque: {
+                id: d.id,
+                tipo: d.tipo,
+                duracao: d.duracao,
+                status: d.status,
+                publicado: d.publicado,
+                titulo: d.titulo,
+                subtitulo: d.subtitulo,
+                criadoEm: d.criado_em,
+                pagoEm: d.pago_em,
+                expiraEm: d.expira_em,
+                tempoRestanteSegundos: d.expira_em ? Math.max(0, Math.floor((new Date(d.expira_em).getTime() - agora) / 1000)) : null
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ error: "Não foi possível consultar o destaque." });
+    }
+});
+
+/* Publica/atualiza o conteúdo do destaque (somente se pago e ativo). */
+app.post("/api/stories/destaques/:id/publicar", authUsuario, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço de destaques indisponível no momento." });
+    try {
+        const q = await pgPool.query(
+            `SELECT * FROM destaques WHERE id = $1 AND usuario_id = $2`,
+            [Number(req.params.id), req.usuario.id]
+        );
+        const destaque = q.rows[0];
+        if (!destaque) return res.status(404).json({ error: "Destaque não encontrado." });
+
+        const titulo = String(req.body.titulo ?? destaque.titulo ?? "").slice(0, 180).trim();
+        const subtitulo = String(req.body.subtitulo ?? destaque.subtitulo ?? "").slice(0, 240).trim();
+        if (!titulo) return res.status(400).json({ error: "Informe o título do seu destaque." });
+
+        if (destaque.status !== "ativo") {
+            return res.status(403).json({ error: destaque.status === "expirado" ? "Este destaque expirou. Adquira novamente para publicar." : "Aguardando a confirmação do pagamento para publicar." });
+        }
+
+        await pgPool.query(
+            `UPDATE destaques SET titulo = $2, subtitulo = $3 WHERE id = $1`,
+            [destaque.id, titulo, subtitulo]
+        );
+        const ok = await publicarDestaque(destaque.id);
+        if (!ok) return res.status(400).json({ error: "Não foi possível publicar o destaque agora. Tente novamente." });
+        res.json({ ok: true, mensagem: "Destaque publicado!" });
+    } catch (error) {
+        res.status(500).json({ error: "Não foi possível publicar o destaque." });
+    }
+});
+
+/* =========================
+   NOTIFICAÇÕES
+========================= */
+
+app.get("/api/notificacoes", authUsuario, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível no momento." });
+    try {
+        const notificacoes = await listarNotificacoes(req.usuario.id, 50);
+        const naoLidas = await contarNotificacoesNaoLidas(req.usuario.id);
+        res.json({ ok: true, notificacoes, naoLidas });
+    } catch (error) {
+        res.status(500).json({ error: "Não foi possível carregar notificações." });
+    }
+});
+
+app.post("/api/notificacoes/:id/lida", authUsuario, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível no momento." });
+    try {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: "ID inválido." });
+        await marcarNotificacaoLida(id, req.usuario.id);
+        res.json({ ok: true });
+    } catch (error) {
+        res.status(500).json({ error: "Não foi possível marcar notificação." });
+    }
+});
+
+app.post("/api/notificacoes/lidas", authUsuario, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível no momento." });
+    try {
+        await marcarTodasNotificacoesLidas(req.usuario.id);
+        res.json({ ok: true });
+    } catch (error) {
+        res.status(500).json({ error: "Não foi possível marcar notificações." });
+    }
+});
+
+app.get("/api/notificacoes/contador", authUsuario, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível no momento." });
+    try {
+        const total = await contarNotificacoesNaoLidas(req.usuario.id);
+        res.json({ ok: true, total });
+    } catch (error) {
+        res.status(500).json({ error: "Não foi possível contar notificações." });
+    }
 });
 
 /* =========================
@@ -3493,11 +4212,35 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
                     ? cupom.discountPercent
                     : 0;
 
-        /* O cliente ganha o melhor desconto: progressivo ou cupom.
+        /* =========================
+           BENEFÍCIO DE INDICAÇÃO (10%)
+        ========================= */
+
+        let beneficioIndicacao = null;
+        let descontoIndicacaoPct = 0;
+
+        if (req.usuario && req.usuario.id) {
+            try {
+                const benefResult = await pgPool.query(
+                    `SELECT id, percentual_desconto FROM beneficios_indicacao 
+                     WHERE indicado_id = $1 AND status = 'PENDENTE' 
+                     ORDER BY criado_em DESC LIMIT 1`,
+                    [req.usuario.id]
+                );
+                if (benefResult.rowCount > 0) {
+                    beneficioIndicacao = benefResult.rows[0];
+                    descontoIndicacaoPct = beneficioIndicacao.percentual_desconto || 10;
+                }
+            } catch (e) {
+                console.error("ERRO ao verificar benefício de indicação:", e.message);
+            }
+        }
+
+        /* O cliente ganha o melhor desconto: progressivo, cupom ou indicação.
            O desconto é aplicado apenas sobre o valor base dos blocos;
            a taxa de licença é cobrada uma única vez por pedido. */
         const descontoPct =
-            Math.max(descontoProgressivoPct, descontoCupomPct);
+            Math.max(descontoProgressivoPct, descontoCupomPct, descontoIndicacaoPct);
 
         const licenca = calcularLicenca(total, licensePlanKey);
 
@@ -4236,6 +4979,7 @@ app.post("/api/test/reserve", authUsuario, async (req, res) => {
                 name: name || "Anunciante",
                 email: email || "",
                 createdAt: now,
+                usuarioId: req.usuario.id,
                 licensePlan: licencaTeste.plan,
                 licenseDurationMonths: licencaTeste.months,
                 licenseFee: licencaTeste.fee,
@@ -6903,13 +7647,373 @@ app.get("/api/chat/stream", (req, res) => {
 });
 
 /* =========================
+   STREAM DE NOTIFICAÇÕES (SSE)
+   Notificações em tempo real
+========================= */
+
+const notificacoesListeners = new Map(); // usuarioId -> Set<response>
+
+function broadcastNotificacao(usuarioId, notificacao) {
+    if (!usuarioId) return;
+    const set = notificacoesListeners.get(usuarioId);
+    if (!set || !set.size) return;
+    const dados = `data: ${JSON.stringify(notificacao)}\n\n`;
+    for (const res of set) {
+        try {
+            res.write(dados);
+        } catch (e) {}
+    }
+}
+
+app.get("/api/notificacoes/stream", authUsuario, (req, res) => {
+    res.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no"
+    });
+
+    res.write(":ok\n\n");
+
+    const set = notificacoesListeners.get(req.usuario.id) || new Set();
+    set.add(res);
+    notificacoesListeners.set(req.usuario.id, set);
+
+    req.on("close", () => {
+        set.delete(res);
+        if (!set.size) {
+            notificacoesListeners.delete(req.usuario.id);
+        }
+    });
+});
+
+/* =========================
+   BISBILHOTAR — Perfis Públicos
+========================= */
+
+app.get("/api/perfis/publicos", async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const busca = String(req.query.busca || "").trim();
+        const limite = Math.min(50, Math.max(1, parseInt(req.query.limite) || 20));
+        const offset = Math.max(0, parseInt(req.query.offset) || 0);
+
+        let query = `
+            SELECT id, nome, apelido, bio, foto_url, album_publico
+            FROM usuarios
+            WHERE album_publico = TRUE
+        `;
+        const params = [];
+
+        if (busca) {
+            query += ` AND (LOWER(nome) LIKE LOWER($1) OR LOWER(apelido) LIKE LOWER($1))`;
+            params.push(`%${busca}%`);
+        }
+
+        query += ` ORDER BY criado_em DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+        params.push(limite, offset);
+
+        const result = await pgPool.query(query, params);
+        res.json({ perfis: result.rows });
+    } catch (error) {
+        console.error("ERRO ao listar perfis públicos:", error.message);
+        res.status(500).json({ error: "Não foi possível listar perfis." });
+    }
+});
+
+/* =========================
+   EDITAR PERFIL
+========================= */
+
+app.put("/api/perfil", authUsuario, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const { apelido, bio, album_publico } = req.body;
+        const usuarioId = req.usuario.id;
+
+        // Validações
+        if (apelido !== undefined) {
+            const apelidoStr = String(apelido || "").trim();
+            if (apelidoStr.length > 50) {
+                return res.status(400).json({ error: "Apelido muito longo (máx. 50 caracteres)." });
+            }
+            if (apelidoStr && !/^[a-zA-Z0-9_]+$/.test(apelidoStr)) {
+                return res.status(400).json({ error: "Apelido contém caracteres inválidos. Use apenas letras, números e underscore." });
+            }
+            // Verifica unicidade do apelido
+            const check = await pgPool.query(
+                `SELECT id FROM usuarios WHERE LOWER(apelido) = LOWER($1) AND id != $2`,
+                [apelidoStr, usuarioId]
+            );
+            if (check.rowCount > 0) {
+                return res.status(400).json({ error: "Este apelido já está em uso." });
+            }
+        }
+
+        if (bio !== undefined) {
+            const bioStr = String(bio || "").trim();
+            if (bioStr.length > 500) {
+                return res.status(400).json({ error: "Bio muito longa (máx. 500 caracteres)." });
+            }
+        }
+
+        // Atualiza o perfil
+        const updates = [];
+        const params = [];
+        let paramIndex = 1;
+
+        if (apelido !== undefined) {
+            updates.push(`apelido = $${paramIndex++}`);
+            params.push(String(apelido || "").trim() || null);
+        }
+        if (bio !== undefined) {
+            updates.push(`bio = $${paramIndex++}`);
+            params.push(String(bio || "").trim() || null);
+        }
+        if (album_publico !== undefined) {
+            updates.push(`album_publico = $${paramIndex++}`);
+            params.push(Boolean(album_publico));
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ error: "Nenhum campo para atualizar." });
+        }
+
+        params.push(usuarioId);
+        const query = `UPDATE usuarios SET ${updates.join(", ")} WHERE id = $${paramIndex} RETURNING id, nome, email, apelido, bio, foto_url, album_publico, criado_em`;
+
+        const result = await pgPool.query(query, params);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Usuário não encontrado." });
+        }
+
+        res.json({ ok: true, perfil: result.rows[0] });
+    } catch (error) {
+        console.error("ERRO ao atualizar perfil:", error.message);
+        res.status(500).json({ error: "Não foi possível atualizar o perfil." });
+    }
+});
+
+/* Upload de foto de perfil */
+app.post("/api/perfil/foto", authUsuario, upload.single("foto"), async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: "Nenhuma foto enviada." });
+        }
+
+        // Valida tipo de arquivo
+        const tiposPermitidos = ["image/jpeg", "image/png", "image/webp"];
+        if (!tiposPermitidos.includes(req.file.mimetype)) {
+            fs.unlink(req.file.path, () => {});
+            return res.status(400).json({ error: "Formato de imagem inválido. Use JPEG, PNG ou WebP." });
+        }
+
+        // Valida tamanho (máx 5MB)
+        if (req.file.size > 5 * 1024 * 1024) {
+            fs.unlink(req.file.path, () => {});
+            return res.status(400).json({ error: "Imagem muito grande. Máximo 5MB." });
+        }
+
+        const fotoUrl = `/uploads/${req.file.filename}`;
+        const usuarioId = req.usuario.id;
+
+        // Remove foto anterior se existir
+        const oldResult = await pgPool.query(`SELECT foto_url FROM usuarios WHERE id = $1`, [usuarioId]);
+        if (oldResult.rows[0] && oldResult.rows[0].foto_url) {
+            const oldPath = path.join(__dirname, "public", oldResult.rows[0].foto_url);
+            fs.unlink(oldPath, () => {});
+        }
+
+        // Atualiza URL da foto
+        await pgPool.query(`UPDATE usuarios SET foto_url = $1 WHERE id = $2`, [fotoUrl, usuarioId]);
+
+        res.json({ ok: true, foto_url: fotoUrl });
+    } catch (error) {
+        console.error("ERRO ao enviar foto:", error.message);
+        if (req.file) fs.unlink(req.file.path, () => {});
+        res.status(500).json({ error: "Não foi possível enviar a foto." });
+    }
+});
+
+/* =========================
+   SISTEMA DE INDICAÇÃO
+========================= */
+
+/* Gera código de indicação único para o usuário */
+app.post("/api/indicacao/gerar-codigo", authUsuario, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const usuarioId = req.usuario.id;
+
+        // Verifica se já tem código
+        const check = await pgPool.query(`SELECT codigo_indicacao FROM usuarios WHERE id = $1`, [usuarioId]);
+        if (check.rows[0] && check.rows[0].codigo_indicacao) {
+            return res.json({ codigo: check.rows[0].codigo_indicacao });
+        }
+
+        // Gera código único
+        let codigo;
+        let tentativas = 0;
+        do {
+            codigo = "MD" + Math.random().toString(36).substring(2, 8).toUpperCase();
+            const exists = await pgPool.query(`SELECT 1 FROM usuarios WHERE codigo_indicacao = $1`, [codigo]);
+            if (exists.rowCount === 0) break;
+            tentativas++;
+        } while (tentativas < 10);
+
+        if (tentativas >= 10) {
+            return res.status(500).json({ error: "Não foi possível gerar código único." });
+        }
+
+        await pgPool.query(`UPDATE usuarios SET codigo_indicacao = $1 WHERE id = $2`, [codigo, usuarioId]);
+        res.json({ codigo });
+    } catch (error) {
+        console.error("ERRO ao gerar código:", error.message);
+        res.status(500).json({ error: "Não foi possível gerar código de indicação." });
+    }
+});
+
+/* Registra indicação (quando novo usuário usa código) */
+app.post("/api/indicacao/registrar", authUsuario, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const indicadoId = req.usuario.id;
+        const { codigo } = req.body;
+
+        if (!codigo || typeof codigo !== "string") {
+            return res.status(400).json({ error: "Código de indicação inválido." });
+        }
+
+        const codigoStr = String(codigo).trim().toUpperCase();
+
+        // Busca indicador
+        const indicadorResult = await pgPool.query(`SELECT id FROM usuarios WHERE codigo_indicacao = $1`, [codigoStr]);
+        if (indicadorResult.rowCount === 0) {
+            return res.status(404).json({ error: "Código de indicação não encontrado." });
+        }
+        const indicadorId = indicadorResult.rows[0].id;
+
+        // Não pode usar próprio código
+        if (indicadorId === indicadoId) {
+            return res.status(400).json({ error: "Você não pode usar seu próprio código de indicação." });
+        }
+
+        // Verifica se já foi indicado
+        const checkIndicacao = await pgPool.query(`SELECT id FROM indicacoes WHERE indicado_id = $1`, [indicadoId]);
+        if (checkIndicacao.rowCount > 0) {
+            return res.status(400).json({ error: "Você já foi indicado por outro usuário." });
+        }
+
+        // Verifica se já tem benefício pendente
+        const checkBeneficio = await pgPool.query(
+            `SELECT id FROM beneficios_indicacao WHERE indicado_id = $1 AND status = 'PENDENTE'`,
+            [indicadoId]
+        );
+        if (checkBeneficio.rowCount > 0) {
+            return res.status(400).json({ error: "Você já possui um benefício de indicação pendente." });
+        }
+
+        // Registra indicação
+        await pgPool.query(
+            `INSERT INTO indicacoes (indicador_id, indicado_id, codigo_indicacao) VALUES ($1, $2, $3)`,
+            [indicadorId, indicadoId, codigoStr]
+        );
+
+        // Cria benefício pendente
+        await pgPool.query(
+            `INSERT INTO beneficios_indicacao (indicado_id, indicador_id, percentual_desconto, status) VALUES ($1, $2, 10, 'PENDENTE')`,
+            [indicadoId, indicadorId]
+        );
+
+        res.json({ ok: true, mensagem: "Indicação registrada com sucesso!" });
+    } catch (error) {
+        console.error("ERRO ao registrar indicação:", error.message);
+        res.status(500).json({ error: "Não foi possível registrar indicação." });
+    }
+});
+
+/* Verifica benefício de indicação do usuário */
+app.get("/api/indicacao/beneficio", authUsuario, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const usuarioId = req.usuario.id;
+
+        const result = await pgPool.query(
+            `SELECT * FROM beneficios_indicacao WHERE indicado_id = $1 ORDER BY criado_em DESC LIMIT 1`,
+            [usuarioId]
+        );
+
+        if (result.rowCount === 0) {
+            return res.json({ beneficio: null });
+        }
+
+        res.json({ beneficio: result.rows[0] });
+    } catch (error) {
+        console.error("ERRO ao verificar benefício:", error.message);
+        res.status(500).json({ error: "Não foi possível verificar benefício." });
+    }
+});
+
+/* Verifica código de indicação (via query param ?ref=) */
+app.get("/api/indicacao/verificar", async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const { ref } = req.query;
+        if (!ref) {
+            return res.json({ valido: false });
+        }
+
+        const codigo = String(ref).trim().toUpperCase();
+        const result = await pgPool.query(`SELECT id FROM usuarios WHERE codigo_indicacao = $1`, [codigo]);
+
+        res.json({ valido: result.rowCount > 0, codigo });
+    } catch (error) {
+        console.error("ERRO ao verificar código:", error.message);
+        res.status(500).json({ error: "Não foi possível verificar código." });
+    }
+});
+
+/* =========================
    UPLOAD FOTO
 ========================= */
 
+/* Validação de propriedade NO BACKEND para publicar/editar um espaço.
+   Aceita: (a) usuário logado que é o dono (usuarioId) do espaço; ou
+   (b) usuário logado cuja conta possui o orderToken do espaço em
+   usuario_chaves; ou (c) o orderToken exato do espaço enviado no body
+   (fluxo por código de acesso). Espaço SEM dono nunca pode ser tomado. */
+async function usuarioEhDonoEspaco(req, space) {
+    const tokenFornecido = String(req.body.orderToken || req.body.token || "").trim();
+    const donoTok = space ? String(space.orderToken || "") : "";
+    if (req.usuario && req.usuario.id) {
+        if (space && space.usuarioId && Number(space.usuarioId) === Number(req.usuario.id)) {
+            return true;
+        }
+        if (donoTok) {
+            if (donoTok === tokenFornecido) return true;
+            if (pgDisponivel && pgPool) {
+                try {
+                    const q = await pgPool.query(
+                        `SELECT 1 FROM usuario_chaves
+                          WHERE usuario_id = $1 AND valor = $2 AND tipo = 'token'
+                          LIMIT 1`,
+                        [req.usuario.id, donoTok]
+                    );
+                    if (q.rows[0]) return true;
+                } catch (e) { /* sem banco, segue pelo token */ }
+            }
+        }
+        return false;
+    }
+    return !!donoTok && donoTok === tokenFornecido;
+}
+
 app.post(
     "/api/upload/:id",
+    authOpcional,
     upload.single("fotos"),
-    (req, res) => {
+    async (req, res) => {
 
         const idRaw =
             String(req.params.id || "");
@@ -7011,19 +8115,15 @@ app.post(
         }
 
         /* =========================
-           TOKEN DE PROPRIEDADE
-           Só o dono pode editar a foto
+           VALIDAÇÃO DE PROPRIEDADE NO BACKEND
+           Só o dono pode editar a foto. Nunca confia só no frontend.
         ========================= */
-
-        const orderToken =
-            (req.body.orderToken || "").trim();
 
         for (const spaceId of ids) {
 
-            const dono =
-                db[spaceId].orderToken;
+            const espaco = db[spaceId];
 
-            if (dono && dono !== orderToken) {
+            if (!(await usuarioEhDonoEspaco(req, espaco))) {
                 return res.status(403).json({
                     error:
                         `Você não é o proprietário do espaço ` +
@@ -7082,7 +8182,7 @@ app.post(
                     : undefined,
                 publishedAt,
                 orderToken:
-                    db[spaceId].orderToken || orderToken,
+                    db[spaceId].orderToken || String(req.body.orderToken || req.body.token || "").trim(),
                 ...(isExtended ? {
                     displayMode: "extended",
                     imageGroupSpaces: ids
@@ -7173,7 +8273,7 @@ app.post(
    trocar a foto
 ========================= */
 
-app.post("/api/link", (req, res) => {
+app.post("/api/link", authOpcional, async (req, res) => {
 
     try {
 
@@ -7206,15 +8306,6 @@ app.post("/api/link", (req, res) => {
                 error:
                     "Link do site inválido. Use um endereço " +
                     "válido, ex: https://seusite.com"
-            });
-        }
-
-        const token =
-            (req.body.orderToken || "").trim();
-
-        if (!token) {
-            return res.status(400).json({
-                error: "Token de proprietário não informado."
             });
         }
 
@@ -7251,9 +8342,7 @@ app.post("/api/link", (req, res) => {
                 });
             }
 
-            const dono = db[sid].orderToken;
-
-            if (dono && dono !== token) {
+            if (!(await usuarioEhDonoEspaco(req, db[sid]))) {
                 return res.status(403).json({
                     error:
                         `Você não é o proprietário do espaço ` +
@@ -7708,6 +8797,54 @@ app.post("/webhooks/mercadopago", async (req, res) => {
             }
         }
 
+        /* Consome benefício de indicação se existir */
+        if (alterado && pgDisponivel && pgPool) {
+            try {
+                // Busca o usuário que fez a compra
+                const firstSpace = Object.values(db).find(s => s.mpOrderId === orderId);
+                if (firstSpace && firstSpace.usuarioId) {
+                    const usuarioId = firstSpace.usuarioId;
+                    
+                    // Verifica se tem benefício pendente
+                    const benefCheck = await pgPool.query(
+                        `SELECT id, percentual_desconto FROM beneficios_indicacao 
+                         WHERE indicado_id = $1 AND status = 'PENDENTE' 
+                         LIMIT 1`,
+                        [usuarioId]
+                    );
+                    
+                    if (benefCheck.rowCount > 0) {
+                        const beneficio = benefCheck.rows[0];
+                        const valorOriginalCents = firstSpace.chargedAmountCents || 0;
+                        const descontoCents = Math.round(valorOriginalCents * beneficio.percentual_desconto / 100);
+                        const valorFinalCents = valorOriginalCents - descontoCents;
+                        
+                        // Marca benefício como utilizado
+                        await pgPool.query(
+                            `UPDATE beneficios_indicacao 
+                             SET status = 'UTILIZADO', 
+                                 utilizado_em = NOW(),
+                                 order_id = $2,
+                                 valor_original_cents = $3,
+                                 valor_desconto_cents = $4,
+                                 valor_final_cents = $5
+                             WHERE id = $1`,
+                            [beneficio.id, orderId, valorOriginalCents, descontoCents, valorFinalCents]
+                        );
+                        
+                        registrarLog("beneficio_indicacao_consumido", {
+                            beneficioId: beneficio.id,
+                            usuarioId,
+                            orderId,
+                            descontoCents
+                        });
+                    }
+                }
+            } catch (eBenef) {
+                console.error("ERRO ao consumir benefício de indicação:", eBenef.message);
+            }
+        }
+
         confirmarPagamentoOferta(orderId);
         pgPagamentoPago({ mpOrderId: orderId });
         await processarRenovacaoPagamento(orderId, totalPagoCents);
@@ -7738,6 +8875,10 @@ app.post("/webhooks/mercadopago", async (req, res) => {
                 eCombos.message
             );
         }
+
+        /* Pagamentos de Destaques no Story. Idempotente —
+           só ativa pedidos pendentes e com valor correto. */
+        await processarPagamentoDestaque({ mpOrderId: orderId, totalCents: totalPagoCents });
 
         registrarLog("pagamento_confirmado_webhook", {
             mpOrderId: orderId,
@@ -8776,7 +9917,8 @@ const colecionaveis = criarColecionaveis({
     obterAuthUsuario: () => authUsuario,
     normalizarDadosComprador,
     validarDocumento,
-    formatarErroPagamento
+    formatarErroPagamento,
+    criarNotificacao
 });
 
 app.use("/api/colecionaveis", limiterLeitura);
@@ -9045,8 +10187,17 @@ app.use((err, req, res, next) => {
     }
 
     if (err.name === "MulterError") {
+        const mensagens = {
+            LIMIT_FILE_SIZE: "A imagem excede o tamanho máximo de 5 MB.",
+            LIMIT_FILE_COUNT: "Envie apenas uma imagem por vez.",
+            LIMIT_UNEXPECTED_FILE: "Campo de arquivo inesperado. Envie apenas uma imagem.",
+            LIMIT_FIELD_COUNT: "Excesso de campos no formulário.",
+            LIMIT_FIELD_KEY: "Campo de formulário inválido.",
+            LIMIT_FIELD_VALUE: "Valor de campo muito grande.",
+            LIMIT_PART_COUNT: "Excesso de partes no formulário."
+        };
         return res.status(400).json({
-            error: err.message
+            error: mensagens[err.code] || "Falha no envio do arquivo. Tente novamente."
         });
     }
 
@@ -9094,6 +10245,9 @@ initBanco()
         /* Varredura periódica: libera reservas que estouraram
            o tempo limite (RESERVA_TTL_MINUTOS). */
         setInterval(limparReservasExpiradas, 60 * 1000);
+
+        /* Expira destaques pagos e limpa Stories vencidos. */
+        setInterval(expirarDestaquesVencidos, 30 * 1000);
 
         console.log(
             "PostgreSQL conectado — migração concluída em background."

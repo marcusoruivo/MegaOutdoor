@@ -353,7 +353,8 @@ module.exports = function criarModuloColecionaveis(deps) {
         criarOrderMercadoPagoSplit = null,
         normalizarDadosComprador,
         validarDocumento,
-        formatarErroPagamento
+        formatarErroPagamento,
+        criarNotificacao
     } = deps;
 
     const router = express.Router();
@@ -381,6 +382,27 @@ module.exports = function criarModuloColecionaveis(deps) {
             return { ok: false, error: "CPF ou CNPJ inválido." };
         }
         return { ok: true, comprador };
+    }
+
+    /* =========================================================
+       MATEMÁTICA FINANCEIRA EM CENTAVOS (INTEIROS)
+       Toda venda/negociação: 10% Milhão Door / 90% vendedor.
+       NUNCA usar float para cálculo — apenas inteiros.
+    ========================================================= */
+
+    function centavosParaReais(cents) {
+        const c = Math.round(Number(cents) || 0);
+        return Number((c / 100).toFixed(2));
+    }
+
+    /* Comissão da plataforma (padrão 10%) e líquido do vendedor.
+       Calculado 100% em centavos (inteiros), sem aritmética float. */
+    function calcularComissao(totalCents, feePercent) {
+        const pct = Math.max(0, Math.min(100, Number(feePercent) || 0));
+        const total = Math.round(Number(totalCents) || 0);
+        const feeCents = Math.round(total * pct / 100);
+        const netSellerCents = total - feeCents;
+        return { totalCents: total, feeCents, netSellerCents };
     }
 
     /* =========================================================
@@ -532,6 +554,26 @@ module.exports = function criarModuloColecionaveis(deps) {
             )
         `);
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_listing_messages ON sticker_listing_messages(listing_id, created_at)`);
+
+        /* Conversa por anúncio (comprador <-> vendedor). Registra quem
+           participa, o momento da última leitura de cada lado (contador
+           de não lidas) e a negociação relacionada quando existir. */
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS sticker_listing_conversations (
+                id             SERIAL PRIMARY KEY,
+                listing_id     INTEGER NOT NULL REFERENCES sticker_listings(id) ON DELETE CASCADE,
+                seller_id      INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                buyer_id       INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                offer_id       INTEGER,
+                seller_read_at TIMESTAMPTZ,
+                buyer_read_at  TIMESTAMPTZ,
+                created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (listing_id, seller_id, buyer_id)
+            )
+        `);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_listing_conv_buyer ON sticker_listing_conversations(buyer_id, updated_at)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_listing_conv_seller ON sticker_listing_conversations(seller_id, updated_at)`);
 
         /* Leilões são independentes do checkout existente. A reserva
            permanece até o pagamento futuro do vencedor. */
@@ -991,6 +1033,20 @@ module.exports = function criarModuloColecionaveis(deps) {
         const bloqLeilao = await bloqueadoPorLeilao(usuarioId, cardId);
         const bloqOfertas = await bloqueadoPorOfertas(usuarioId, cardId);
         return Math.max(0, possui - bloqListagem - bloqTrocas - bloqLeilao - bloqOfertas);
+    }
+
+    /* Cache leve (5s) da disponibilidade por vendedor+figurinha, para o
+       marketplace listar quanto cada anúncio ainda pode vender e marcar
+       RESERVADA sem estourar o banco a cada polling. */
+    const mercadoDispCache = new Map();
+    async function disponivelListagem(sellerId, cardId) {
+        const key = Number(sellerId) + ":" + Number(cardId);
+        const hit = mercadoDispCache.get(key);
+        if (hit && Date.now() - hit.at < 5000) return hit.disp;
+        const disp = await quantidadeDisponivel(sellerId, cardId);
+        mercadoDispCache.set(key, { disp, at: Date.now() });
+        if (mercadoDispCache.size > 500) mercadoDispCache.clear();
+        return disp;
     }
 
     async function registrarTransacaoCol(usuarioId, tipo, detalhe, valor = 0, refId = null) {
@@ -1830,7 +1886,7 @@ module.exports = function criarModuloColecionaveis(deps) {
                 [order.offer_id]
             );
             const offer = oq.rows[0];
-            if (!offer || offer.status !== "ACEITA") {
+            if (!offer || (offer.status !== "ACEITA" && offer.status !== "AGUARDANDO_PAGAMENTO")) {
                 throw new Error("Oferta não está mais aceita.");
             }
             if (Number(offer.amount) !== Number(order.total)) {
@@ -1871,6 +1927,15 @@ module.exports = function criarModuloColecionaveis(deps) {
                 [order.buyer_id, order.card_id, order.quantity]
             );
 
+            /* Confirmação REAL do Mercado Pago: PAGA (momento da
+               confirmação) e, no mesmo bloco transacional, a
+               transferência da figurinha com a oferta em CONCLUIDA. */
+            await client.query(
+                `UPDATE sticker_offers
+                    SET status = 'PAGA', updated_at = NOW()
+                  WHERE id = $1`,
+                [offer.id]
+            );
             await client.query(
                 `UPDATE sticker_offers
                     SET status = 'CONCLUIDA', updated_at = NOW()
@@ -1918,6 +1983,32 @@ module.exports = function criarModuloColecionaveis(deps) {
             Number(order.net_seller),
             order.order_id
         );
+
+        // Notificar comprador sobre pagamento confirmado e figurinha recebida
+        if (typeof criarNotificacao === "function") {
+            await criarNotificacao(
+                order.buyer_id,
+                "pagamento_aprovado",
+                "Pagamento aprovado!",
+                `Seu pagamento de R$ ${Number(order.total).toFixed(2)} foi confirmado.`,
+                { offerId: offer.id, orderId: order.id, valor: Number(order.total) }
+            );
+            await criarNotificacao(
+                order.buyer_id,
+                "figurinha_recebida",
+                "Figurinha recebida!",
+                `Você recebeu ${order.quantity}x ${cardLabel}. Confira seu álbum!`,
+                { cardId: order.card_id, quantidade: order.quantity }
+            );
+            // Notificar vendedor sobre venda
+            await criarNotificacao(
+                order.seller_id,
+                "venda_realizada",
+                "Venda realizada!",
+                `Você vendeu ${order.quantity}x ${cardLabel} por R$ ${Number(order.net_seller).toFixed(2)}.`,
+                { offerId: offer.id, orderId: order.id, valor: Number(order.net_seller) }
+            );
+        }
 
         const colecao = await colecaoAtiva();
         if (colecao) {
@@ -2821,6 +2912,15 @@ module.exports = function criarModuloColecionaveis(deps) {
                 params
             );
 
+            /* Quantidade realmente vendável de cada anúncio (leva em
+               conta reservas de ofertas/leilões/trocas). Marca RESERVADA
+               quando nada mais pode ser vendido. */
+            const listingsComDisponivel = await Promise.all(q.rows.map(async l => {
+                const livre = await disponivelListagem(l.seller_id, l.card_id);
+                const disponivel = Math.max(0, Math.min(Number(l.quantity), livre + Number(l.quantity)));
+                return { ...l, _disponivel: disponivel };
+            }));
+
             const totalQ = await pg().query(
                 `SELECT COUNT(*)::int AS total
                    FROM sticker_listings l
@@ -2832,12 +2932,14 @@ module.exports = function criarModuloColecionaveis(deps) {
 
             res.json({
                 ok: true,
-                listings: q.rows.map(l => ({
+                listings: listingsComDisponivel.map(l => ({
                     id: l.id,
                     seller_id: l.seller_id,
                     seller_nome: l.vendedor_nome,
                     unit_price: Number(l.unit_price),
                     quantity: Number(l.quantity),
+                    disponivel: l._disponivel,
+                    reservada: l._disponivel <= 0,
                     card_id: l.card_id,
                     number: Number(l.number),
                     name: l.name,
@@ -2950,24 +3052,132 @@ module.exports = function criarModuloColecionaveis(deps) {
         }
     });
 
+    /* Contexto e conversa de um anúncio (chat comprador <-> vendedor).
+       Devolve dados da figurinha, preço, vendedor e o contador de
+       mensagens não lidas para quem está abrindo a conversa. */
+    async function contextoChatAnuncio(usuarioId, listingId, buyerId, marcarLido) {
+        const listingQ = await pg().query(
+            `SELECT l.id, l.seller_id, l.unit_price, l.quantity, l.status,
+                    c.id AS card_id, c.number, c.name, c.rarity, c.image_url,
+                    u.nome AS seller_nome
+               FROM sticker_listings l
+               JOIN sticker_cards c ON c.id = l.card_id
+               JOIN usuarios u ON u.id = l.seller_id
+              WHERE l.id = $1`,
+            [Number(listingId)]
+        );
+        const listing = listingQ.rows[0];
+        if (!listing) return { erro: 404, mensagem: "Anúncio não encontrado." };
+        if (listing.status !== "active") return { erro: 410, mensagem: "Este anúncio já foi encerrado." };
+
+        const ehVendedor = listing.seller_id === usuarioId;
+
+        /* O vendedor precisa indicar QUAL interessado (comprador).
+           Sem isso, devolve a lista de interessados em vez de erro. */
+        if (ehVendedor && !buyerId) {
+            const interessadosQ = await pg().query(
+                `SELECT DISTINCT m.buyer_id, u.nome AS nome, u.nome AS buyer_nome
+                   FROM sticker_listing_messages m
+                   JOIN usuarios u ON u.id = m.buyer_id
+                  WHERE m.listing_id = $1 AND m.seller_id = $2
+                  ORDER BY u.nome ASC`,
+                [listing.id, listing.seller_id]
+            );
+            const convsQ = await pg().query(
+                `SELECT c.buyer_id, u.nome AS nome
+                   FROM sticker_listing_conversations c
+                   JOIN usuarios u ON u.id = c.buyer_id
+                  WHERE c.listing_id = $1 AND c.seller_id = $2
+                  ORDER BY c.updated_at DESC`,
+                [listing.id, listing.seller_id]
+            );
+            const jaVistos = new Map();
+            [...interessadosQ.rows, ...convsQ.rows].forEach(r => { if (r.buyer_id != null && !jaVistos.has(Number(r.buyer_id))) jaVistos.set(Number(r.buyer_id), r.nome); });
+            return {
+                contexto: {
+                    listingId: listing.id, cardId: listing.card_id,
+                    numero: listing.number, nome: listing.name, raridade: listing.rarity,
+                    imagem: listing.image_url, preco: Number(listing.unit_price),
+                    vendedorId: listing.seller_id, vendedorNome: listing.seller_nome,
+                    ehVendedor: true
+                },
+                interessados: [...jaVistos.entries()].map(([id, nome]) => ({ id, nome }))
+            };
+        }
+
+        const buyer = buyerId ? Number(buyerId) : usuarioId;
+        if (!Number.isInteger(buyer) || buyer < 1 || buyer === listing.seller_id) {
+            return { erro: 400, mensagem: "Interessado inválido." };
+        }
+        const permitido = listing.seller_id === usuarioId || buyer === usuarioId;
+        if (!permitido) return { erro: 403, mensagem: "Acesso negado à conversa." };
+
+        const convQ = await pg().query(
+            `INSERT INTO sticker_listing_conversations (listing_id, seller_id, buyer_id)
+             VALUES ($1,$2,$3)
+             ON CONFLICT (listing_id, seller_id, buyer_id)
+             DO UPDATE SET updated_at = NOW()
+             RETURNING *`,
+            [listing.id, listing.seller_id, buyer]
+        );
+        const conv = convQ.rows[0];
+
+        const messagesQ = await pg().query(
+            `SELECT m.id, m.author_id, u.nome AS autor_nome, m.text, m.created_at
+               FROM sticker_listing_messages m JOIN usuarios u ON u.id = m.author_id
+              WHERE m.listing_id = $1 AND m.seller_id = $2 AND m.buyer_id = $3
+              ORDER BY m.created_at ASC`,
+            [listing.id, listing.seller_id, buyer]
+        );
+        const minhaLeitura = ehVendedor ? conv.seller_read_at : conv.buyer_read_at;
+        const naoLidas = messagesQ.rows.filter(m => m.author_id !== usuarioId && (!minhaLeitura || new Date(m.created_at) > new Date(minhaLeitura))).length;
+
+        if (marcarLido) {
+            await pg().query(
+                ehVendedor
+                    ? `UPDATE sticker_listing_conversations SET seller_read_at = NOW(), updated_at = NOW() WHERE id = $1`
+                    : `UPDATE sticker_listing_conversations SET buyer_read_at = NOW(), updated_at = NOW() WHERE id = $1`,
+                [conv.id]
+            );
+        }
+
+        /* Negociação relacionada, quando existir (oferta nesta figurinha
+           entre vendedor e comprador). */
+        const ofertaQ = await pg().query(
+            `SELECT id, amount, quantity, status FROM sticker_offers
+              WHERE card_id = $1
+                AND ((offeror_id = $2 AND offeree_id = $3) OR (offeror_id = $3 AND offeree_id = $2))
+              ORDER BY created_at DESC LIMIT 1`,
+            [listing.card_id, listing.seller_id, buyer]
+        );
+        const oferta = ofertaQ.rows[0] || null;
+
+        return {
+            contexto: {
+                listingId: listing.id, cardId: listing.card_id,
+                numero: listing.number, nome: listing.name, raridade: listing.rarity,
+                imagem: listing.image_url, preco: Number(listing.unit_price),
+                quantidadeDisponivel: Number(listing.quantity),
+                vendedorId: listing.seller_id, vendedorNome: listing.seller_nome,
+                compradorId: buyer, ehVendedor
+            },
+            buyerId: buyer,
+            sellerId: listing.seller_id,
+            messages: messagesQ.rows,
+            naoLidas,
+            oferta: oferta
+                ? { id: oferta.id, valor: Number(oferta.amount), quantidade: Number(oferta.quantity), status: oferta.status }
+                : null
+        };
+    }
+
     router.get("/listings/:id/chat", obterAuthUsuario(), async (req, res) => {
         if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
         try {
-            const listingQ = await pg().query(`SELECT id, seller_id FROM sticker_listings WHERE id = $1`, [Number(req.params.id)]);
-            const listing = listingQ.rows[0];
-            if (!listing) return res.status(404).json({ error: "Anúncio não encontrado." });
-            const buyerId = listing.seller_id === req.usuario.id ? Number(req.query.buyerId) : req.usuario.id;
-            if (!buyerId || buyerId === listing.seller_id) return res.status(400).json({ error: "Informe o interessado da conversa." });
-            const allowed = listing.seller_id === req.usuario.id || buyerId === req.usuario.id;
-            if (!allowed) return res.status(403).json({ error: "Acesso negado à conversa." });
-            const messages = await pg().query(
-                `SELECT m.id, m.author_id, u.nome AS autor_nome, m.text, m.created_at
-                   FROM sticker_listing_messages m JOIN usuarios u ON u.id = m.author_id
-                  WHERE m.listing_id = $1 AND m.seller_id = $2 AND m.buyer_id = $3
-                  ORDER BY m.created_at ASC`,
-                [listing.id, listing.seller_id, buyerId]
-            );
-            res.json({ ok: true, listingId: listing.id, sellerId: listing.seller_id, buyerId, messages: messages.rows });
+            const buyerId = Number(req.query.buyerId) || null;
+            const r = await contextoChatAnuncio(req.usuario.id, req.params.id, buyerId, String(req.query.marcarLido) === "1");
+            if (r.erro) return res.status(r.erro).json({ error: r.mensagem });
+            res.json({ ok: true, ...r });
         } catch (error) { res.status(500).json({ error: error.message }); }
     });
 
@@ -2976,18 +3186,88 @@ module.exports = function criarModuloColecionaveis(deps) {
         try {
             const text = String(req.body.text || "").trim();
             if (!text || text.length > 500) return res.status(400).json({ error: "Mensagem inválida." });
-            const listingQ = await pg().query(`SELECT id, seller_id FROM sticker_listings WHERE id = $1`, [Number(req.params.id)]);
+            const listingQ = await pg().query(
+                `SELECT id, seller_id FROM sticker_listings WHERE id = $1`,
+                [Number(req.params.id)]
+            );
             const listing = listingQ.rows[0];
             if (!listing) return res.status(404).json({ error: "Anúncio não encontrado." });
-            const buyerId = listing.seller_id === req.usuario.id ? Number(req.body.buyerId) : req.usuario.id;
-            if (!buyerId || buyerId === listing.seller_id) return res.status(400).json({ error: "Conversa inválida." });
-            if (listing.seller_id !== req.usuario.id && buyerId !== req.usuario.id) return res.status(403).json({ error: "Acesso negado à conversa." });
-            const inserted = await pg().query(
+            const ehVendedor = listing.seller_id === req.usuario.id;
+            const buyerId = ehVendedor ? Number(req.body.buyerId) : req.usuario.id;
+            if (!Number.isInteger(buyerId) || buyerId < 1 || buyerId === listing.seller_id) return res.status(400).json({ error: "Informe o interessado da conversa." });
+            if (!ehVendedor && buyerId !== req.usuario.id) return res.status(403).json({ error: "Acesso negado à conversa." });
+
+            const convQ = await pg().query(
+                `INSERT INTO sticker_listing_conversations (listing_id, seller_id, buyer_id)
+                 VALUES ($1,$2,$3)
+                 ON CONFLICT (listing_id, seller_id, buyer_id)
+                 DO UPDATE SET updated_at = NOW()
+                 RETURNING id`,
+                [listing.id, listing.seller_id, buyerId]
+            );
+            await pg().query(
                 `INSERT INTO sticker_listing_messages (listing_id, seller_id, buyer_id, author_id, text)
                  VALUES ($1,$2,$3,$4,$5) RETURNING id, author_id, text, created_at`,
                 [listing.id, listing.seller_id, buyerId, req.usuario.id, text]
             );
-            res.status(201).json({ ok: true, message: inserted.rows[0] });
+            const r = await contextoChatAnuncio(req.usuario.id, listing.id, buyerId, false);
+            if (r.erro) return res.status(r.erro).json({ error: r.mensagem });
+            res.status(201).json({ ok: true, ...r });
+        } catch (error) { res.status(500).json({ error: error.message }); }
+    });
+
+    /* Conversas do usuário (vendedor ou comprador). */
+    router.get("/chat/conversas", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            const q = await pg().query(
+                `SELECT c.listing_id, c.buyer_id, c.seller_id,
+                        c.seller_read_at, c.buyer_read_at, c.updated_at,
+                        l.card_id, l.unit_price, l.quantity, l.status AS listing_status,
+                        c2.number, c2.name, c2.image_url,
+                        u.nome AS comprador_nome, v.nome AS vendedor_nome
+                   FROM sticker_listing_conversations c
+                   JOIN sticker_listings l ON l.id = c.listing_id
+                   JOIN sticker_cards c2 ON c2.id = l.card_id
+                   JOIN usuarios u ON u.id = c.buyer_id
+                   JOIN usuarios v ON v.id = c.seller_id
+                  WHERE c.seller_id = $1 OR c.buyer_id = $1
+                  ORDER BY c.updated_at DESC
+                  LIMIT 50`,
+                [req.usuario.id]
+            );
+            const conversas = [];
+            for (const c of q.rows) {
+                const souVendedor = c.seller_id === req.usuario.id;
+                const minhaLeitura = souVendedor ? c.seller_read_at : c.buyer_read_at;
+                const msgsQ = await pg().query(
+                    `SELECT author_id, created_at FROM sticker_listing_messages
+                      WHERE listing_id = $1 AND seller_id = $2 AND buyer_id = $3
+                        AND author_id <> $4`,
+                    [c.listing_id, c.seller_id, c.buyer_id, req.usuario.id]
+                );
+                const naoLidas = msgsQ.rows.filter(m =>
+                    !minhaLeitura || new Date(m.created_at) > new Date(minhaLeitura)
+                ).length;
+                conversas.push({
+                    listingId: c.listing_id,
+                    buyerId: c.buyer_id,
+                    sellerId: c.seller_id,
+                    souVendedor,
+                    compradorNome: c.comprador_nome,
+                    vendedorNome: c.vendedor_nome,
+                    cardId: c.card_id,
+                    numero: Number(c.number),
+                    nome: c.name,
+                    imagem: c.image_url,
+                    preco: Number(l.unit_price),
+                    quantidade: Number(l.quantity),
+                    listingStatus: c.listing_status,
+                    atualizadoEm: c.updated_at,
+                    naoLidas
+                });
+            }
+            res.json({ ok: true, conversas });
         } catch (error) { res.status(500).json({ error: error.message }); }
     });
 
@@ -3065,11 +3345,19 @@ module.exports = function criarModuloColecionaveis(deps) {
                 return res.status(503).json({ error: "O pagamento deste anúncio ainda não está disponível porque o Marketplace não está configurado." });
             }
 
-            const qtd = Math.max(1, Math.min(Number(req.body.quantidade) || 1, Number(listing.quantity)));
+            /* Quantidade realmente vendável: o anúncio não pode vender
+               unidade que esteja reservada por oferta/leilão/troca. */
+            const livre = await quantidadeDisponivel(listing.seller_id, listing.card_id);
+            const vendavel = Math.max(0, Math.min(Number(listing.quantity), livre + Number(listing.quantity)));
+            if (vendavel < 1) {
+                return res.status(409).json({ error: "Este anúncio está reservado para outro interessado no momento." });
+            }
+            const qtd = Math.max(1, Math.min(Number(req.body.quantidade) || 1, vendavel));
 
             const total = Math.round(listing.unit_price * qtd * 100) / 100;
-            const fee = Math.round(total * MARKETPLACE_FEE_PERCENT) / 100;
-            const netSeller = Math.round((total - fee) * 100) / 100;
+            const { feeCents, netSellerCents } = calcularComissao(paraCentavos(total), mercadopagoMarketplaceFeePercent || MARKETPLACE_FEE_PERCENT);
+            const fee = centavosParaReais(feeCents);
+            const netSeller = centavosParaReais(netSellerCents);
             const splitUsado = mercadopagoMarketplaceSplitEnabled && typeof criarOrderMercadoPagoSplit === "function" && !!contaVendedor;
 
             const usuario = await usuarioPorId(req.usuario.id);
@@ -3239,6 +3527,18 @@ module.exports = function criarModuloColecionaveis(deps) {
             registrarLog("colecionavel_oferta_criada", {
                 ofertaId: offer.id, offerorId: req.usuario.id, offereeId, cardId, valor: amount
             });
+            
+            // Notificar o destinatário sobre a nova oferta
+            if (typeof criarNotificacao === "function") {
+                await criarNotificacao(
+                    offereeId,
+                    "oferta_recebida",
+                    "Nova oferta recebida",
+                    `Você recebeu uma oferta de R$ ${amount.toFixed(2)} pela figurinha ${cardLabel}.`,
+                    { offerId: offer.id, cardId, offerorId: req.usuario.id }
+                );
+            }
+            
             res.status(201).json({ ok: true, oferta: offer });
         } catch (error) {
             registrarLog("colecionavel_oferta_criar_erro", { erro: error.message, usuarioId: req.usuario && req.usuario.id });
@@ -3258,8 +3558,13 @@ module.exports = function criarModuloColecionaveis(deps) {
 
         const contaVendedor = await marketplaceConta(req.usuario.id);
         const splitHabilitado = mercadopagoMarketplaceSplitEnabled && typeof criarOrderMercadoPagoSplit === "function";
-        if ((!contaVendedor || !splitHabilitado) && process.env.ALLOW_TEST_MODE !== "true") {
-            return res.status(400).json({ error: "Para receber o pagamento de ofertas, conecte sua conta do Mercado Pago." });
+        if (process.env.ALLOW_TEST_MODE !== "true") {
+            if (!contaVendedor) {
+                return res.status(400).json({ error: "Sua conta do Mercado Pago não está conectada. Conecte sua conta para receber pagamentos." });
+            }
+            if (!splitHabilitado) {
+                return res.status(503).json({ error: "O sistema de split do Marketplace está temporariamente indisponível. Tente novamente mais tarde." });
+            }
         }
 
         const client = await pg().connect();
@@ -3306,6 +3611,19 @@ module.exports = function criarModuloColecionaveis(deps) {
             client.release();
         }
 
+        // Notificar o ofertante que a oferta foi aceita
+        if (typeof criarNotificacao === "function") {
+            const card = await cardPorId(offer.card_id);
+            const cardLabel = card ? `#${String(card.number).padStart(3, "0")} ${card.name}` : "figurinha";
+            await criarNotificacao(
+                offer.offeror_id,
+                "oferta_aceita",
+                "Oferta aceita!",
+                `Sua oferta por ${cardLabel} foi aceita. Agora você pode prosseguir para o pagamento.`,
+                { offerId: offer.id, cardId: offer.card_id }
+            );
+        }
+
         res.json({ ok: true, ofertaId: offerId, mensagem: "Oferta aceita! O comprador agora pode prosseguir para o pagamento." });
     });
 
@@ -3322,6 +3640,20 @@ module.exports = function criarModuloColecionaveis(deps) {
                 `UPDATE sticker_offers SET status = 'RECUSADA', responded_at = NOW(), updated_at = NOW() WHERE id = $1`,
                 [offerId]
             );
+            
+            // Notificar o ofertante que a oferta foi recusada
+            if (typeof criarNotificacao === "function") {
+                const card = await cardPorId(offer.card_id);
+                const cardLabel = card ? `#${String(card.number).padStart(3, "0")} ${card.name}` : "figurinha";
+                await criarNotificacao(
+                    offer.offeror_id,
+                    "oferta_recusada",
+                    "Oferta recusada",
+                    `Sua oferta por ${cardLabel} foi recusada.`,
+                    { offerId: offer.id, cardId: offer.card_id }
+                );
+            }
+            
             res.json({ ok: true, ofertaId: offerId, mensagem: "Oferta recusada." });
         } catch (error) {
             registrarLog("colecionavel_oferta_recusar_erro", { erro: error.message, ofertaId: req.params.id });
@@ -3370,6 +3702,21 @@ module.exports = function criarModuloColecionaveis(deps) {
                 return res.status(400).json({ error: "Esta oferta não pode mais ser cancelada." });
             }
             await client.query("COMMIT");
+            
+            // Notificar a outra parte sobre o cancelamento
+            if (typeof criarNotificacao === "function") {
+                const outraParte = offer.offeror_id === req.usuario.id ? offer.offeree_id : offer.offeror_id;
+                const card = await cardPorId(offer.card_id);
+                const cardLabel = card ? `#${String(card.number).padStart(3, "0")} ${card.name}` : "figurinha";
+                await criarNotificacao(
+                    outraParte,
+                    "oferta_cancelada",
+                    "Oferta cancelada",
+                    `A oferta por ${cardLabel} foi cancelada.`,
+                    { offerId: offer.id, cardId: offer.card_id }
+                );
+            }
+            
             res.json({ ok: true, ofertaId: offerId, mensagem: "Oferta cancelada." });
         } catch (error) {
             await client.query("ROLLBACK");
@@ -3409,7 +3756,7 @@ module.exports = function criarModuloColecionaveis(deps) {
                 [req.usuario.id, original.offeror_id, original.card_id, quantidade, amount, mensagem, original.id]
             );
             await pg().query(
-                `UPDATE sticker_offers SET status = 'RECUSADA', responded_at = NOW(), updated_at = NOW() WHERE id = $1`,
+                `UPDATE sticker_offers SET status = 'CONTRAPROPOSTA', responded_at = NOW(), updated_at = NOW() WHERE id = $1`,
                 [original.id]
             );
             const nova = q.rows[0];
@@ -3440,7 +3787,7 @@ module.exports = function criarModuloColecionaveis(deps) {
         const offer = oq.rows[0];
         if (!offer) return res.status(404).json({ error: "Oferta não encontrada." });
         if (offer.offeror_id !== req.usuario.id) return res.status(403).json({ error: "Somente quem ofertou pode pagar esta oferta." });
-        if (offer.status !== "ACEITA") return res.status(400).json({ error: "Esta oferta não está aceita para pagamento." });
+        if (offer.status !== "ACEITA" && offer.status !== "AGUARDANDO_PAGAMENTO") return res.status(400).json({ error: "Esta oferta não está aceita para pagamento." });
 
         const contaVendedor = await marketplaceConta(offer.offeree_id);
         if (!contaVendedor && process.env.ALLOW_TEST_MODE !== "true") {
@@ -3455,8 +3802,9 @@ module.exports = function criarModuloColecionaveis(deps) {
             if (!usuario) return res.status(401).json({ error: "Conta não encontrada." });
 
             const total = Math.round(Number(offer.amount) * 100) / 100;
-            const fee = Math.round(total * mercadopagoMarketplaceFeePercent) / 100;
-            const netSeller = Math.round((total - fee) * 100) / 100;
+            const { feeCents, netSellerCents } = calcularComissao(paraCentavos(total), mercadopagoMarketplaceFeePercent);
+            const fee = centavosParaReais(feeCents);
+            const netSeller = centavosParaReais(netSellerCents);
             const splitUsado = mercadopagoMarketplaceSplitEnabled && typeof criarOrderMercadoPagoSplit === "function" && !!contaVendedor;
 
             const orderId = gerarOrderId("COL-OFFER");
@@ -3501,6 +3849,16 @@ module.exports = function criarModuloColecionaveis(deps) {
                 `Pagamento da oferta aceita (${offer.quantity}x) criado.`,
                 total,
                 orderId
+            );
+
+            /* Estado AGUARDANDO_PAGAMENTO: o comprador iniciou o
+               pagamento; a oferta só vira CONCLUIDA após a
+               confirmação real do Mercado Pago (webhook/polling). */
+            await pg().query(
+                `UPDATE sticker_offers
+                    SET status = 'AGUARDANDO_PAGAMENTO', updated_at = NOW()
+                  WHERE id = $1`,
+                [offer.id]
             );
             registrarLog("colecionavel_oferta_pedido", { ofertaId: offer.id, orderId, usuarioId: req.usuario.id });
 
@@ -3548,11 +3906,12 @@ module.exports = function criarModuloColecionaveis(deps) {
             }
             const orderId = gerarOrderId("COL-AUCTION");
             const total = Number(auction.current_bid);
+            const { feeCents } = calcularComissao(paraCentavos(total), mercadopagoMarketplaceFeePercent);
             const criarOrder = splitDisponivel ? criarOrderMercadoPagoSplit : criarOrderMercadoPago;
             const mp = await criarOrder({
                 idempotencyKey: orderId, externalReference: orderId, value: total,
                 sellerAccount: contaVendedor,
-                platformFee: Math.round(total * mercadopagoMarketplaceFeePercent) / 100,
+                platformFee: centavosParaReais(feeCents),
                 description: "Milhão Door Colecionáveis — Leilão",
                 customer: { name: validacao.comprador.nome || req.usuario.nome, taxID: validacao.comprador.documento, email: validacao.comprador.email || req.usuario.email },
                 paymentMethod: req.body.paymentMethod || "pix",
@@ -3956,7 +4315,7 @@ module.exports = function criarModuloColecionaveis(deps) {
                     externalReference: orderId,
                     value: Number(trade.cash_amount),
                     sellerAccount: sellerAccount,
-                    platformFee: Math.round(Number(trade.cash_amount) * mercadopagoMarketplaceFeePercent) / 100,
+                    platformFee: centavosParaReais(calcularComissao(paraCentavos(trade.cash_amount), mercadopagoMarketplaceFeePercent).feeCents),
                     description: `MegaOutdoor Colecionáveis — Diferença de troca`,
                     customer: {
                         name: comprador.nome || pagante.nome,

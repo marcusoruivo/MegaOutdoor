@@ -341,6 +341,16 @@ body{overflow-x:hidden}
 .listing-preco{font-size:19px;font-weight:900;color:var(--amarelo)}
 .listing-preco small{font-size:11px;color:var(--muted);font-weight:600}
 .listing-vendedor{font-size:12px;color:var(--muted)}
+.listing-badge{
+    display:inline-block;font-size:10px;font-weight:800;letter-spacing:.6px;
+    padding:4px 9px;border-radius:999px;text-transform:uppercase;
+}
+.listing-badge.badge-reservada{background:rgba(215,38,61,.16);color:#ff7a8a;border:1px solid rgba(215,38,61,.5)}
+.listing-badge.badge-parcial{background:rgba(255,191,64,.14);color:#ffcf6e;border:1px solid rgba(255,191,64,.45)}
+.listing-card.reservada{opacity:.82}
+.listing-acoes{display:flex;gap:8px;flex-wrap:wrap}
+.listing-acoes .btn{flex:1 1 auto;min-width:0}
+.listing-acoes .btn:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.6)}
 .paginacao{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:22px;font-size:13px}
 .paginacao .btn{padding:8px 14px}
 
@@ -400,6 +410,30 @@ body{overflow-x:hidden}
 .chat-msg .quem{font-size:10px;font-weight:700;opacity:.8}
 .chat-input{display:flex;gap:8px;margin-top:8px}
 .chat-input input{flex:1}
+.chat-contexto{
+    display:flex;gap:10px;align-items:center;background:var(--painel2);
+    border:1px solid var(--borda);border-radius:12px;padding:10px;margin:10px 0;
+}
+.chat-contexto .mini-arte{
+    width:54px;height:54px;border-radius:10px;overflow:hidden;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;background:var(--painel);
+    border:1px solid var(--borda);
+}
+.chat-contexto .mini-arte img{width:100%;height:100%;object-fit:cover}
+.chat-contexto .info{flex:1;min-width:0}
+.chat-contexto .info .n{font-weight:700;font-size:13px;line-height:1.2}
+.chat-contexto .info .muted{font-size:11px;color:var(--muted)}
+.chat-oferta{
+    font-size:12px;color:var(--amarelo);background:rgba(255,191,64,.08);
+    border:1px solid rgba(255,191,64,.3);border-radius:10px;padding:8px 12px;margin:8px 0;
+}
+.chat-oferta a{color:var(--amarelo);font-weight:700}
+.chat-acoes{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.chat-acoes .btn{flex:1 1 auto}
+.chat-naolidas{
+    display:inline-block;background:var(--laranja);color:#fff;font-size:10px;
+    font-weight:800;border-radius:999px;padding:1px 7px;margin-left:6px;
+}
 
 /* ===== MODAL ===== */
 .modal-overlay{
@@ -426,6 +460,37 @@ body{overflow-x:hidden}
 .modal-arte-premium{background:transparent;height:clamp(170px,34vh,260px);padding:12px 14px 0;flex:0 0 auto;min-height:0;font-size:14px}
 .modal-arte-premium::after{display:none}
 .modal-arte-premium .cc-arte{height:100%;max-height:100%;aspect-ratio:auto;margin:0;border-radius:18px;min-height:0}
+/* ===== MODAL — layout do card NUNCA cobre nome/descrição/botões.
+   A face frontal mostra só a arte (topo + imagem) preenchendo o
+   espaço; nome/descrição ficam no modal-body. O verso mantém a
+   ficha (info + rodapé) e rola internamente se faltar altura. ===== */
+.modal-arte-premium .cc-frente,
+.modal-arte-premium .cc-verso{
+    display:flex;flex-direction:column;align-items:stretch;
+    justify-content:center;overflow:hidden;min-width:0;
+}
+.modal-arte-premium .colecao-card.cc-grande{
+    width:100%;height:100%;margin:0;border-radius:16px;
+    display:flex;flex-direction:column;overflow:hidden;
+    box-shadow:none;transform:none;
+}
+.modal-arte-premium .colecao-card.cc-grande:hover{transform:none;box-shadow:none}
+.modal-arte-premium .colecao-card.cc-grande .cc-topo{
+    flex:0 0 auto;padding:6px 10px;font-size:9px;letter-spacing:1px;min-height:0;
+}
+.modal-arte-premium .colecao-card.cc-grande .cc-arte{
+    flex:1 1 auto;min-height:0;height:auto;max-height:none;
+    aspect-ratio:auto;margin:0 10px 10px;border-radius:12px;width:auto;
+}
+.modal-arte-premium .colecao-card.cc-grande .cc-arte .cc-emoji{font-size:min(72px,18vw)}
+.modal-arte-premium .colecao-card.cc-grande .cc-info{display:none}
+.modal-arte-premium .cc-verso{overflow-y:auto;overscroll-behavior:contain}
+.modal-arte-premium .cc-verso .colecao-card.cc-grande .cc-info{display:block}
+.modal-arte-premium .cc-verso-card{height:auto;min-height:100%;justify-content:space-between}
+@media(max-width:640px){
+    .modal-arte-premium .colecao-card.cc-grande .cc-topo{font-size:8px}
+    .modal-arte-premium .colecao-card.cc-grande .cc-arte{margin:0 8px 8px}
+}
 .cc-curiosidade{font-size:11px;color:var(--muted);line-height:1.5;margin-top:10px;font-style:italic}
 
 /* ===== VERSO DA CARTA E FLIP 3D (modal) — isolados do canvas/mapa.
@@ -499,6 +564,13 @@ body{overflow-x:hidden}
 .login-form{display:flex;flex-direction:column;gap:12px;text-align:left}
 .login-form label{font-size:12px;font-weight:700;color:var(--muted)}
 .login-erro{color:#ffb3bd;font-size:12px;min-height:16px}
+.sessao-bar{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    flex-wrap:wrap;background:var(--painel);border:1px solid var(--borda);
+    border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;
+}
+.sessao-bar .btn{padding:8px 12px}
+.conta-nome{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle}
 
 /* ===== PERFIL ===== */
 .perfil-wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
@@ -559,6 +631,18 @@ body{overflow-x:hidden}
 .produto-nome{font-size:16px;font-weight:800;color:#fff;text-transform:uppercase}
 .produto-preco{font-size:24px;font-weight:900;color:var(--amarelo);margin:4px 0}
 .produto-detalhe{font-size:12px;color:var(--muted)}
+
+/* Modal de pagamento - responsividade */
+@media (max-width:600px){
+    .modal-body{max-height:90vh;overflow-y:auto;padding:16px}
+    .modal-body h2{font-size:18px}
+    .produto-resumo{padding:12px;margin:8px 0}
+    .produto-nome{font-size:14px}
+    .produto-preco{font-size:20px}
+    .modal-form label{font-size:12px}
+    .modal-form input,.modal-form select{font-size:14px;padding:10px}
+    .modal-form button{font-size:14px;padding:12px}
+}
 
 /* =========================================================
    MILHÃO DOOR — ANIMAIS DO MUNDO | CARDS PREMIUM
@@ -769,6 +853,10 @@ body{overflow-x:hidden}
     </div>
     <div class="topo-actions">
         <a class="btn btn-amarelo topo-espacos" href="/" style="text-decoration:none">🟡 MEUS ESPAÇOS</a>
+        <button class="btn btn-ghost" id="btnNotificacoes" onclick="abrirPainelNotificacoes()" style="position:relative;padding:8px 12px" title="Notificações">
+            🔔
+            <span id="notificacoesBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ff4d4d;color:#fff;font-size:10px;font-weight:900;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px">0</span>
+        </button>
         <button class="btn btn-amarelo" id="btnConta" onclick="abrirConta()">👤 ENTRAR</button>
         <a class="btn btn-ghost" href="/" style="text-decoration:none">← Voltar</a>
     </div>
@@ -943,6 +1031,7 @@ body{overflow-x:hidden}
                 <option value="MITICA">MÍTICA</option>
             </select>
             <div class="spacer"></div>
+            <button class="btn btn-ghost" onclick="abrirMeusChats()">💬 MEUS CHATS</button>
             <div class="resultado" id="mkResultado"></div>
         </div>
         <div class="grid-listing" id="mkGrid"></div>
@@ -979,6 +1068,7 @@ body{overflow-x:hidden}
     <section class="secao" id="secao-perfil">
         <div class="secao-titulo">Meu Perfil</div>
         <div class="secao-sub">Estatísticas, conquistas e histórico completo da sua jornada.</div>
+        <div class="sessao-bar" id="sessaoBar" style="display:none"></div>
         <div class="perfil-wrap">
             <div class="perfil-card" id="perfilStatsCard"></div>
             <div class="perfil-card" id="recebimentosCard">
@@ -1027,6 +1117,15 @@ let minhaConta = null;
 try {
     minhaConta = JSON.parse(localStorage.getItem("mega_conta") || "null");
 } catch(e){ minhaConta = null; }
+
+// Iniciar polling de notificações se já estiver logado
+if (minhaConta && minhaConta.token) {
+    setTimeout(() => {
+        if (typeof iniciarPollingNotificacoes === "function") {
+            iniciarPollingNotificacoes();
+        }
+    }, 1000);
+}
 
 /* Resolve o usuário logado de forma defensiva.
    A sessão pode ter sido criada por index.html como { token, nome, email }
@@ -1147,9 +1246,11 @@ function toggleModalFlip(){
 function atualizarHeader(){
     const bt = document.getElementById("btnConta");
     if (minhaConta && minhaConta.token) {
-        bt.textContent = "👤 MINHA CONTA";
+        const u = (minhaConta.usuario && minhaConta.usuario.nome) || minhaConta.nome || "";
+        bt.innerHTML = '🔐 <span class="conta-nome">' + esc(u || "Minha conta") + '</span>';
+        bt.title = "Sessão iniciada — clique para ver sua conta";
     } else {
-        bt.textContent = "👤 ENTRAR";
+        bt.innerHTML = "👤 ENTRAR";
     }
     carregarContaRecebimento();
 }
@@ -1513,7 +1614,8 @@ async function comprarPacote(packId){
         packId,
         nome: pack ? pack.name : "Pacote",
         preco: pack ? pack.price : 0,
-        figurinhas: pack ? pack.sticker_quantity : 0
+        figurinhas: pack ? pack.sticker_quantity : 0,
+        categoria: pack ? pack.category : null
     });
 }
 
@@ -1575,20 +1677,46 @@ function listingHtml(l){
     const image = l.image_url
         ? '<img src="' + esc(l.image_url) + '" alt="' + esc(l.name) + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'
         : '';
-    return '<div class="listing-card">' +
+    const total = Math.max(0, Number(l.quantity) || 0);
+    const disponivel = Math.max(0, Number(l.disponivel != null ? l.disponivel : total) || 0);
+    const reservada = l.reservada === true || disponivel <= 0;
+    const badge = reservada
+        ? '<span class="listing-badge badge-reservada">🔒 RESERVADA</span>'
+        : (disponivel < total ? '<span class="listing-badge badge-parcial">🔒 Parcialmente reservada</span>' : '');
+    const btChat = '<button class="btn btn-ghost" onclick="abrirChatAnuncio(' + l.id + ')">💬 CHAT</button>';
+    const btComprar = reservada
+        ? '<button class="btn btn-laranja" disabled title="Este anúncio está totalmente reservado">🔒 RESERVADA</button>'
+        : '<button class="btn btn-laranja" onclick="comprarDoMercado(' + l.id + ',' + l.unit_price + ',' + disponivel + ',' + resumo + ')">COMPRAR</button>';
+    const btOferta = '<button class="btn btn-ghost" onclick="abrirModalOferta(' + l.card_id + ',' + l.seller_id + ',' + l.unit_price + ',\'' + esc(l.seller_nome || "") + '\',\'' + esc(l.name || "") + '\')">FAZER OFERTA</button>';
+
+    let acoes;
+    if (ehMeu) {
+        acoes = '<div class="listing-acoes">' + btChat +
+            '<button class="btn btn-ghost" onclick="verInteressados(' + l.id + ')">👀 Ver interessados</button>' +
+            '<button class="btn btn-ghost" onclick="cancelarVenda(' + l.id + ')">Meu anúncio — cancelar</button>' +
+        '</div>';
+    } else {
+        acoes = '<div class="listing-acoes">' + btComprar + btOferta + btChat +
+            '<button class="btn btn-ghost" onclick="verPerfilColecionador(' + l.seller_id + ')">VER PERFIL</button>' +
+        '</div>';
+    }
+
+    return '<div class="listing-card' + (reservada ? ' reservada' : '') + '">' +
         '<div class="listing-arte-grande">' + image + '<span class="fallback" style="' + (image ? 'display:none' : '') + '">' + emojiRaridade(l.rarity) + '</span></div>' +
         '<div class="listing-top">' +
             '<div class="info">' +
                 '<div class="n">#' + String(l.number).padStart(3,"0") + ' — ' + esc(l.name) + '</div>' +
-                '<div class="muted">' + nomeRaridade(l.rarity) + ' • ' + finishLabel + ' • ' + l.quantity + ' disponível(is)</div>' +
+                '<div class="muted">' + nomeRaridade(l.rarity) + ' • ' + finishLabel + ' • ' + disponivel + ' disponível(is)' + (ehMeu ? ' • <b>seu anúncio</b>' : '') + '</div>' +
             '</div>' +
         '</div>' +
+        badge +
         '<div class="listing-preco">' + fmtR$(l.unit_price) + ' <small>/ cada</small></div>' +
         '<div class="listing-vendedor">Vendedor: ' + esc(l.seller_nome || "—") + '</div>' +
-        (ehMeu
-            ? '<button class="btn btn-ghost" onclick="cancelarVenda(' + l.id + ')">Meu anúncio — cancelar</button>'
-            : '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-laranja" onclick="comprarDoMercado(' + l.id + ',' + l.unit_price + ',' + l.quantity + ',' + resumo + ')">COMPRAR</button><button class="btn btn-ghost" onclick="abrirModalOferta(' + l.card_id + ',' + l.seller_id + ',' + l.unit_price + ',\'' + esc(l.seller_nome || "") + '\',\'' + esc(l.name || "") + '\')">FAZER OFERTA</button><button class="btn btn-ghost" onclick="verPerfilColecionador(' + l.seller_id + ')">VER PERFIL</button><button class="btn btn-ghost" onclick="abrirChatAnuncio(' + l.id + ')">NEGOCIAR</button></div>') +
+        acoes +
     '</div>';
+}
+function verInteressados(listingId){
+    abrirChatAnuncio(listingId);
 }
 
 /* =========================================================
@@ -1641,45 +1769,222 @@ async function carregarOfertas(){
         const totalPend = recebidas.filter(o => o.status === "PENDENTE").length;
         const pendBadge = document.getElementById("ofertasPendentes");
         if (pendBadge) pendBadge.textContent = totalPend ? totalPend + " oferta(s) pendente(s)" : "";
+        
+        // Layout melhorado com seções claras
         grid.innerHTML =
-            '<div class="secao-titulo">📥 Recebidas</div>' +
-            (recebidas.length ? recebidas.map(o => renderOfertaHtml(o, true)).join("") : '<div class="vazio">Nenhuma oferta recebida.</div>') +
-            '<div class="secao-titulo" style="margin-top:18px">📤 Enviadas</div>' +
-            (enviadas.length ? enviadas.map(o => renderOfertaHtml(o, false)).join("") : '<div class="vazio">Nenhuma oferta enviada.</div>');
+            '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">' +
+                '<div style="flex:1;min-width:200px;background:var(--painel);border:2px solid var(--borda);border-radius:10px;padding:12px;text-align:center">' +
+                    '<div style="font-size:24px;font-weight:900;color:var(--amarelo)">' + recebidas.length + '</div>' +
+                    '<div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">📥 Recebidas</div>' +
+                '</div>' +
+                '<div style="flex:1;min-width:200px;background:var(--painel);border:2px solid var(--borda);border-radius:10px;padding:12px;text-align:center">' +
+                    '<div style="font-size:24px;font-weight:900;color:var(--amarelo)">' + enviadas.length + '</div>' +
+                    '<div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">📤 Enviadas</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="secao-titulo" style="font-size:16px;font-weight:800;color:#fff;margin:16px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--borda)">📥 OFERTAS RECEBIDAS</div>' +
+            (recebidas.length ? recebidas.map(o => renderOfertaHtml(o, true)).join("") : '<div class="vazio" style="text-align:center;padding:20px;color:var(--muted)">Nenhuma oferta recebida ainda.</div>') +
+            '<div class="secao-titulo" style="font-size:16px;font-weight:800;color:#fff;margin:20px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--borda)">📤 OFERTAS ENVIADAS</div>' +
+            (enviadas.length ? enviadas.map(o => renderOfertaHtml(o, false)).join("") : '<div class="vazio" style="text-align:center;padding:20px;color:var(--muted)">Nenhuma oferta enviada ainda.</div>');
     } catch(e){ grid.innerHTML = '<div class="vazio">' + msgErro(e) + '</div>'; }
 }
 
 function renderOfertaHtml(o, recebida){
     const cardLabel = '#' + String(o.card_number || o.card_id).padStart(3,"0") + ' ' + esc(o.card_name || "");
     const parceiro = recebida ? esc(o.offeror_nome || "—") : esc(o.offeree_nome || "—");
-    const rotuloStatus = { PENDENTE:"🕐 Pendente", ACEITA:"✅ Aceita", RECUSADA:"❌ Recusada", CANCELADA:"🚫 Cancelada", EXPIRADA:"⏳ Expirada", CONCLUIDA:"🎉 Concluída" };
+    const rotuloStatus = {
+        PENDENTE:"🕐 Pendente", ACEITA:"✅ Aceita", RECUSADA:"❌ Recusada",
+        CANCELADA:"🚫 Cancelada", EXPIRADA:"⏳ Expirada", CONCLUIDA:"🎉 Concluída",
+        CONTRAPROPOSTA:"↻ Contraproposta", AGUARDANDO_PAGAMENTO:"💳 Aguardando pagamento",
+        PAGA:"💳 Paga"
+    };
     const status = rotuloStatus[o.status] || o.status;
+    const statusCor = {
+        PENDENTE: "#ffa500", ACEITA: "#45d66f", RECUSADA: "#ff4d4d",
+        CANCELADA: "#888", EXPIRADA: "#888", CONCLUIDA: "#45d66f",
+        CONTRAPROPOSTA: "#ffa500", AGUARDANDO_PAGAMENTO: "#ffa500", PAGA: "#45d66f"
+    };
+    const corStatus = statusCor[o.status] || "#888";
+    
+    const botaoPagar = '<button class="btn btn-amarelo" onclick="pagarOferta(' + o.id + ',' + Number(o.amount || 0).toFixed(2) + ',\'' + esc(o.card_name || "") + '\')" style="width:100%">💳 PAGAR OFERTA</button>';
     let acoes = "";
     if (recebida && o.status === "PENDENTE") {
-        acoes = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">' +
-            '<button class="btn btn-amarelo" onclick="aceitarOferta(' + o.id + ')">✓ Aceitar</button>' +
-            '<button class="btn btn-ghost" onclick="recusarOferta(' + o.id + ')">Recusar</button>' +
-            '<button class="btn btn-ghost" onclick="contraporOferta(' + o.id + ')">Contrapor</button>' +
+        acoes = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">' +
+            '<button class="btn btn-amarelo" onclick="aceitarOferta(' + o.id + ')" style="flex:1;min-width:100px">✓ Aceitar</button>' +
+            '<button class="btn btn-ghost" onclick="recusarOferta(' + o.id + ')" style="flex:1;min-width:100px">Recusar</button>' +
+            '<button class="btn btn-ghost" onclick="contraporOferta(' + o.id + ')" style="flex:1;min-width:100px">↻ Contrapor</button>' +
             '</div>';
     } else if (!recebida && o.status === "PENDENTE") {
-        acoes = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">' +
-            '<button class="btn btn-ghost" onclick="cancelarOferta(' + o.id + ')">Cancelar oferta</button>' +
+        acoes = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">' +
+            '<button class="btn btn-ghost" onclick="cancelarOferta(' + o.id + ')" style="flex:1">Cancelar oferta</button>' +
             '</div>';
-    } else if (!recebida && o.status === "ACEITA") {
-        acoes = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">' +
-            '<button class="btn btn-amarelo" onclick="pagarOferta(' + o.id + ',' + Number(o.amount || 0).toFixed(2) + ',\'' + esc(o.card_name || "") + '\')">💳 PAGAR OFERTA</button>' +
-            '<button class="btn btn-ghost" onclick="cancelarOferta(' + o.id + ')">Cancelar</button>' +
+    } else if (!recebida && (o.status === "ACEITA" || o.status === "AGUARDANDO_PAGAMENTO")) {
+        acoes = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">' +
+            botaoPagar +
+            '<button class="btn btn-ghost" onclick="cancelarOferta(' + o.id + ')" style="flex-shrink:0">Cancelar</button>' +
             '</div>';
+    } else if (!recebida && o.status === "CONTRAPROPOSTA") {
+        acoes = '<div style="font-size:12px;color:var(--muted);margin-top:8px;padding:8px;background:rgba(255,165,0,0.1);border-radius:8px">↻ A outra parte contrapropôs. Veja a nova oferta recebida em <b>Recebidas</b>.</div>';
+    } else if (o.status === "PAGA") {
+        acoes = '<div style="font-size:12px;color:var(--verde);margin-top:8px;padding:8px;background:rgba(69,214,111,0.1);border-radius:8px">✅ Pagamento confirmado. A figurinha será liberada ao vendedor confirmar a conclusão.</div>';
     }
-    return '<div class="listing-card" style="margin-bottom:10px">' +
-        '<div class="listing-top"><div class="info">' +
-            '<div class="n">' + cardLabel + '</div>' +
-            '<div class="muted">' + (recebida ? "De " : "Para ") + parceiro + ' • ' + quantidadeOferta(o.quantity) + ' • ' + fmtR$(o.amount) + '</div>' +
-            '<div class="muted">' + status + (o.message ? ' • <em>“' + esc(o.message) + '”</em>' : '') + '</div>' +
-        '</div></div>' + acoes + '</div>';
+    
+    // Card melhorado com layout mais visual
+    return '<div class="oferta-card" style="background:var(--painel);border:2px solid var(--borda);border-radius:12px;padding:14px;margin-bottom:12px;transition:border-color .15s">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px">' +
+            '<div style="flex:1;min-width:0">' +
+                '<div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:4px;word-break:break-word">' + cardLabel + '</div>' +
+                '<div style="font-size:12px;color:var(--muted)">' + (recebida ? "📥 Oferta recebida de " : "📤 Oferta enviada para ") + '<b style="color:#fff">' + parceiro + '</b></div>' +
+            '</div>' +
+            '<div style="font-size:11px;font-weight:700;color:' + corStatus + ';background:rgba(0,0,0,0.3);padding:4px 8px;border-radius:6px;white-space:nowrap">' + status + '</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:12px;margin-bottom:10px;font-size:13px">' +
+            '<div style="flex:1"><span style="color:var(--muted)">Quantidade:</span> <b style="color:#fff">' + quantidadeOferta(o.quantity) + '</b></div>' +
+            '<div style="flex:1"><span style="color:var(--muted)">Valor:</span> <b style="color:var(--amarelo)">' + fmtR$(o.amount) + '</b></div>' +
+        '</div>' +
+        (o.message ? '<div style="font-size:12px;color:var(--muted);font-style:italic;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;margin-bottom:10px">"' + esc(o.message) + '"</div>' : '') +
+        acoes +
+    '</div>';
 }
 
 function quantidadeOferta(q){ return Number(q || 1) + "x"; }
+
+/* ===== NOTIFICAÇÕES ===== */
+let notificacoesSource = null;
+
+async function carregarNotificacoes(){
+    try {
+        const d = await apiGet("/api/notificacoes");
+        const badge = document.getElementById("notificacoesBadge");
+        if (badge) {
+            if (d.naoLidas > 0) {
+                badge.textContent = d.naoLidas > 99 ? "99+" : d.naoLidas;
+                badge.style.display = "flex";
+            } else {
+                badge.style.display = "none";
+            }
+        }
+        return d;
+    } catch(e){ 
+        console.error("Erro ao carregar notificações:", e);
+        return { notificacoes: [], naoLidas: 0 };
+    }
+}
+
+function iniciarSSENotificacoes(){
+    if (notificacoesSource) {
+        notificacoesSource.close();
+    }
+    
+    const token = minhaConta && minhaConta.token;
+    if (!token) return;
+    
+    try {
+        notificacoesSource = new EventSource("/api/notificacoes/stream?token=" + encodeURIComponent(token));
+        
+        notificacoesSource.onmessage = function(event) {
+            try {
+                const notificacao = JSON.parse(event.data);
+                // Atualizar badge imediatamente
+                carregarNotificacoes();
+                // Mostrar toast opcional
+                if (typeof toast === "function") {
+                    toast(notificacao.titulo || "Nova notificação", "ok");
+                }
+            } catch(e) {
+                console.error("Erro ao processar notificação SSE:", e);
+            }
+        };
+        
+        notificacoesSource.onerror = function() {
+            // EventSource reconecta automaticamente
+            console.log("SSE notificações: reconectando...");
+        };
+    } catch(e) {
+        console.error("Erro ao iniciar SSE notificações:", e);
+    }
+}
+
+function pararSSENotificacoes(){
+    if (notificacoesSource) {
+        notificacoesSource.close();
+        notificacoesSource = null;
+    }
+}
+
+async function abrirPainelNotificacoes(){
+    if (!exigirLogin()) return;
+    const d = await carregarNotificacoes();
+    const notificacoes = d.notificacoes || [];
+    
+    let html = '<h2>🔔 NOTIFICAÇÕES</h2>';
+    
+    if (!notificacoes.length) {
+        html += '<div style="text-align:center;padding:40px 20px;color:var(--muted)">Nenhuma notificação ainda.</div>';
+    } else {
+        html += '<div style="margin-bottom:12px">';
+        html += '<button class="btn btn-ghost" onclick="marcarTodasLidas()" style="width:100%">✓ Marcar todas como lidas</button>';
+        html += '</div>';
+        
+        const icones = {
+            oferta_recebida: "📥",
+            oferta_aceita: "✅",
+            oferta_recusada: "❌",
+            oferta_cancelada: "🚫",
+            nova_mensagem: "💬",
+            pagamento_aprovado: "💳",
+            figurinha_recebida: "🎁",
+            nova_meta: "🏆",
+            album_proximo: "📊",
+            bloco_publicado: "🗺️"
+        };
+        
+        for (const n of notificacoes) {
+            const icone = icones[n.tipo] || "🔔";
+            const lida = n.lida_em ? "opacity:0.6" : "";
+            const tempo = new Date(n.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+            
+            html += '<div style="background:var(--painel);border:2px solid ' + (n.lida_em ? "var(--borda)" : "var(--amarelo)") + ';border-radius:10px;padding:12px;margin-bottom:10px;' + lida + '" onclick="marcarLida(' + n.id + ')">';
+            html += '<div style="display:flex;gap:10px;align-items:flex-start">';
+            html += '<div style="font-size:24px">' + icone + '</div>';
+            html += '<div style="flex:1;min-width:0">';
+            html += '<div style="font-weight:800;color:#fff;margin-bottom:4px">' + esc(n.titulo) + '</div>';
+            html += '<div style="font-size:13px;color:var(--muted);margin-bottom:6px">' + esc(n.mensagem) + '</div>';
+            html += '<div style="font-size:11px;color:var(--muted)">' + tempo + '</div>';
+            html += '</div>';
+            if (!n.lida_em) {
+                html += '<div style="width:8px;height:8px;background:var(--amarelo);border-radius:50%;flex-shrink:0"></div>';
+            }
+            html += '</div>';
+            html += '</div>';
+        }
+    }
+    
+    document.getElementById("modalOverlay").classList.remove("hidden");
+    document.getElementById("modalBody").innerHTML = html;
+}
+
+async function marcarLida(id){
+    try {
+        await apiPost("/api/notificacoes/" + id + "/lida", {});
+        abrirPainelNotificacoes();
+    } catch(e){ console.error("Erro ao marcar notificação:", e); }
+}
+
+async function marcarTodasLidas(){
+    try {
+        await apiPost("/api/notificacoes/lidas", {});
+        abrirPainelNotificacoes();
+        carregarNotificacoes();
+    } catch(e){ console.error("Erro ao marcar todas:", e); }
+}
+
+function iniciarPollingNotificacoes(){
+    // Usar SSE em vez de polling
+    iniciarSSENotificacoes();
+    // Fazer load inicial
+    carregarNotificacoes();
+}
 
 async function aceitarOferta(offerId){
     try {
@@ -1742,16 +2047,107 @@ async function comprarDoMercado(listingId, preco, qtdDisp, detalhe){
 }
 
 async function abrirChatAnuncio(listingId, buyerId){
+    if (!exigirLogin()) return;
     try {
-        const query = buyerId ? "?buyerId=" + encodeURIComponent(buyerId) : "";
+        const query = buyerId ? "?buyerId=" + encodeURIComponent(buyerId) + "&marcarLido=1" : "?marcarLido=1";
         const d = await apiGet("/api/colecionaveis/listings/" + listingId + "/chat" + query);
-        document.getElementById("modalBody").innerHTML = '<h2>💬 NEGOCIAR ANÚNCIO #' + listingId + '</h2>' +
-            '<div class="chat-box" id="listingChatMessages">' + (d.messages || []).map(m => '<div class="chat-msg ' + (m.author_id === meuUsuarioId() ? "minha" : "deles") + '"><span class="quem">' + esc(m.autor_nome || "") + '</span>' + esc(m.text) + '</div>').join("") + '</div>' +
-            '<div class="chat-input"><input id="listingChatInput" maxlength="500" placeholder="Escreva sua mensagem..."><button class="btn btn-laranja" onclick="enviarChatAnuncio(' + listingId + ',' + d.buyerId + ')">ENVIAR</button></div>' +
-            '<button class="btn btn-ghost" onclick="fecharModal()">Fechar</button>';
+        const ctx = d.contexto || {};
+        let html = '<h2>💬 NEGOCIAR ANÚNCIO #' + listingId + '</h2>';
+
+        /* Vendedor sem interessado escolhido: lista de interessados. */
+        if (d.interessados) {
+            html += d.interessados.length
+                ? '<div class="desc">Selecione o interessado para conversar:</div>' +
+                  '<div style="display:flex;flex-direction:column;gap:8px;margin:10px 0">' +
+                    d.interessados.map(i => '<button class="btn btn-ghost" style="text-align:left" onclick="abrirChatAnuncio(' + listingId + ',' + i.id + ')">👤 ' + esc(i.nome) + '</button>').join("") +
+                  '</div>'
+                : '<div class="desc">Nenhum interessado ainda. O botão 💬 CHAT aparece para quem visitar seu anúncio.</div>';
+            html += '<button class="btn btn-ghost" onclick="fecharModal()">Fechar</button>';
+            document.getElementById("modalBody").innerHTML = html;
+            document.getElementById("modalOverlay").classList.remove("hidden");
+            return;
+        }
+
+        /* Contexto do anúncio. */
+        const resumo = JSON.stringify({
+            number: ctx.numero, name: ctx.nome, rarity: ctx.raridade,
+            finish: "NORMAL", image_url: ctx.imagem, seller_nome: ctx.vendedorNome
+        }).replace(/"/g, "&quot;");
+        html += '<div class="chat-contexto">' +
+            '<div class="mini-arte">' + (ctx.imagem
+                ? '<img src="' + esc(ctx.imagem) + '" alt="" onerror="this.style.display=\'none\';this.parentNode.innerHTML=\'' + emojiRaridade(ctx.raridade) + '\'">'
+                : emojiRaridade(ctx.raridade)) + '</div>' +
+            '<div class="info">' +
+                '<div class="n">#' + String(ctx.numero || "").padStart(3,"0") + ' — ' + esc(ctx.nome || "") + '</div>' +
+                '<div class="muted">' + nomeRaridade(ctx.raridade) + ' • ' + fmtR$(ctx.preco) + '/cada</div>' +
+                '<div class="muted">Vendedor: ' + esc(ctx.vendedorNome || "—") + '</div>' +
+            '</div>' +
+        '</div>';
+
+        if (d.oferta) {
+            const rotulo = { PENDENTE:"🕐 Pendente", ACEITA:"✅ Aceita", RECUSADA:"❌ Recusada", CANCELADA:"🚫 Cancelada", EXPIRADA:"⏳ Expirada", CONTRAPROPOSTA:"↻ Contraproposta", AGUARDANDO_PAGAMENTO:"💳 Aguardando pagamento", PAGA:"💳 Paga", CONCLUIDA:"🎉 Concluída" };
+            html += '<div class="chat-oferta">🤝 Oferta: ' + fmtR$(d.oferta.valor) + ' · ' + (rotulo[d.oferta.status] || d.oferta.status) + ' — <a href="#" onclick="carregarOfertas();fecharModal();return false">ver ofertas</a></div>';
+        }
+
+        html += '<div class="chat-box" id="listingChatMessages" style="max-height:40vh">' +
+            (d.messages && d.messages.length
+                ? d.messages.map(m => '<div class="chat-msg ' + (m.author_id === meuUsuarioId() ? "minha" : "deles") + '"><span class="quem">' + esc(m.autor_nome || "") + '</span>' + esc(m.text) + '</div>').join("")
+                : '<div style="font-size:12px;color:var(--muted);padding:6px 2px">Nenhuma mensagem ainda. Dê o primeiro passo!</div>') +
+        '</div>';
+
+        if (ctx.ehVendedor !== true) {
+            html += '<div class="chat-acoes">' +
+                '<button class="btn btn-laranja" onclick="comprarDoMercado(' + ctx.listingId + ',' + ctx.preco + ',' + (ctx.quantidadeDisponivel || 1) + ',' + resumo + ')">COMPRAR</button>' +
+                '<button class="btn btn-ghost" onclick="abrirModalOferta(' + ctx.cardId + ',' + ctx.vendedorId + ',' + ctx.preco + ',\'' + esc(ctx.vendedorNome || "") + '\',\'' + esc(ctx.nome || "") + '\')">FAZER OFERTA</button>' +
+            '</div>';
+        }
+
+        html += '<div class="chat-input">' +
+            '<input id="listingChatInput" maxlength="500" placeholder="Escreva sua mensagem..." onkeydown="if(event.key===\'Enter\')enviarChatAnuncio(' + listingId + ',' + d.buyerId + ')">' +
+            '<button class="btn btn-laranja" onclick="enviarChatAnuncio(' + listingId + ',' + d.buyerId + ')">ENVIAR</button>' +
+        '</div>';
+        html += '<button class="btn btn-ghost" onclick="fecharModal()">Fechar</button>';
+
+        document.getElementById("modalBody").innerHTML = html;
         document.getElementById("modalOverlay").classList.remove("hidden");
-        document.getElementById("listingChatInput").focus();
+        const box = document.getElementById("listingChatMessages");
+        if (box) box.scrollTop = box.scrollHeight;
+        const inp = document.getElementById("listingChatInput");
+        if (inp) inp.focus();
     } catch(e) { toast(e.message, "erro"); }
+}
+
+async function enviarChatAnuncio(listingId, buyerId){
+    const input = document.getElementById("listingChatInput");
+    const text = input ? input.value.trim() : "";
+    if(!text) return;
+    try { await apiPost("/api/colecionaveis/listings/" + listingId + "/chat", { text, buyerId }); await abrirChatAnuncio(listingId, buyerId); }
+    catch(e) { toast(e.message, "erro"); }
+}
+
+/* Lista de conversas do usuário (vendedor ou comprador). */
+async function abrirMeusChats(){
+    if (!exigirLogin()) return;
+    try {
+        const d = await apiGet("/api/colecionaveis/chat/conversas");
+        const convs = d.conversas || [];
+        let html = '<h2>💬 MEUS CHATS</h2>';
+        if (!convs.length) {
+            html += '<div class="desc">Nenhuma conversa ainda. Inicie um chat pelo botão 💬 CHAT em um anúncio.</div>';
+        } else {
+            html += '<div style="display:flex;flex-direction:column;gap:8px;margin:12px 0;max-height:50vh;overflow-y:auto">' +
+                convs.map(c => {
+                    const label = '#' + String(c.numero).padStart(3,"0") + ' ' + esc(c.nome) +
+                        (c.souVendedor ? ' — 👤 ' + esc(c.compradorNome || "comprador") : ' — ' + esc(c.vendedorNome || "vendedor"));
+                    const badge = c.naoLidas ? ' <span class="chat-naolidas">' + c.naoLidas + ' nova(s)</span>' : "";
+                    return '<button class="btn btn-ghost" style="text-align:left;white-space:normal" onclick="abrirChatAnuncio(' + c.listingId + ',' + c.buyerId + ')">' + label + badge + '</button>';
+                }).join("") +
+            '</div>';
+        }
+        html += '<button class="btn btn-ghost" onclick="fecharModal()">Fechar</button>';
+        document.getElementById("modalBody").innerHTML = html;
+        document.getElementById("modalOverlay").classList.remove("hidden");
+    } catch(e){ toast(e.message, "erro"); }
 }
 
 async function verPerfilColecionador(usuarioId){
@@ -2137,6 +2533,28 @@ async function confirmarContraproposta(tradeId){
 }
 
 /* =========================================================
+   IMAGEM ILUSTRATIVA DE PACOTE
+   Retorna URL de imagem genérica baseada na categoria.
+   NÃO mostra animal específico, apenas representação visual da categoria.
+========================================================= */
+function resolveIllustrativePackageImage(categoria) {
+    const cat = String(categoria || "").toUpperCase().trim();
+    // Fallback: gradiente CSS inline se não houver imagem
+    const fallback = null;
+    
+    // Mapeamento de categorias para imagens ilustrativas
+    // Usando emojis grandes como representação visual genérica
+    const categoriaImagens = {
+        "OURO": { emoji: "🥇", cor: "#FFD700", label: "OURO" },
+        "PRATA": { emoji: "🥈", cor: "#C0C0C0", label: "PRATA" },
+        "BRONZE": { emoji: "🥉", cor: "#CD7F32", label: "BRONZE" },
+        "COMUM": { emoji: "📦", cor: "#8B7355", label: "COMUM" }
+    };
+    
+    return categoriaImagens[cat] || categoriaImagens["COMUM"];
+}
+
+/* =========================================================
    PAGAMENTO (MP)
 ========================================================= */
 async function abrirModalPagamento(tipo, dados){
@@ -2147,6 +2565,13 @@ async function abrirModalPagamento(tipo, dados){
     html += '<h2>' + esc(titulo) + '</h2>';
 
     if (tipo === "pack") {
+        // Imagem ilustrativa da categoria (NÃO mostra animal específico)
+        const imgInfo = resolveIllustrativePackageImage(dados.categoria);
+        html += '<div style="height:180px;border-radius:12px;overflow:hidden;margin-bottom:16px;background:linear-gradient(135deg,' + imgInfo.cor + '22,' + imgInfo.cor + '44);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;">' +
+            '<div style="font-size:72px;line-height:1;">' + imgInfo.emoji + '</div>' +
+            '<div style="font-size:14px;font-weight:700;color:' + imgInfo.cor + ';letter-spacing:2px;text-transform:uppercase;">Pacote ' + imgInfo.label + '</div>' +
+        '</div>';
+        
         html += '<div class="produto-resumo">' +
             '<div class="produto-nome">' + esc(dados.nome || "Pacote") + '</div>' +
             '<div class="produto-preco">' + fmtR$(dados.preco) + '</div>' +
@@ -2401,7 +2826,7 @@ function renderSlotBack(){
         '</div>' +
         '<div class="pack-contagem">Figurinha ' + (pacoteEstado.idx + 1) + ' de ' + pacoteEstado.figs.length + '</div>';
     pacoteEstado.etapa = "slotBack";
-    if (pacoteEstado.modo !== "manual") pacoteRoda(revelarSlot, 8000);
+    if (pacoteEstado.modo !== "manual") pacoteRoda(revelarSlot, pacoteEstado.modo === "auto" ? 750 : 8000);
 }
 
 function revelarSlot(){
@@ -2413,7 +2838,7 @@ function revelarSlot(){
         ColecaoUI.cardRevelacaoHtml(item.card, pacoteEstado.idx, item.marc) +
         '<div class="pack-contagem">Figurinha ' + (pacoteEstado.idx + 1) + ' de ' + pacoteEstado.figs.length + ' · ' + dica + '</div>';
     pacoteEstado.etapa = "slotReveal";
-    if (pacoteEstado.modo !== "manual") pacoteRoda(avancarPacote, 6500);
+    if (pacoteEstado.modo !== "manual") pacoteRoda(avancarPacote, pacoteEstado.modo === "auto" ? 1500 : 6500);
 }
 
 function avancarPacote(){
@@ -2461,7 +2886,7 @@ function renderPackGrande(){
             badge +
             '<div class="grande-tap">Toque para ver o resumo do pacote →</div>' +
         '</div>';
-    pacoteRoda(renderPackResumo, 9000);
+    pacoteRoda(renderPackResumo, pacoteEstado.modo === "auto" ? 3200 : 9000);
 }
 
 function renderPackResumo(){
@@ -2523,6 +2948,13 @@ function abrirOutroPacote(){
 async function carregarPerfil(){
     if (!exigirLogin()) return;
     try {
+        const u = meuUsuarioId() != null ? (minhaConta.usuario || minhaConta) : null;
+        const sessaoBar = document.getElementById("sessaoBar");
+        if (sessaoBar) {
+            sessaoBar.style.display = "flex";
+            sessaoBar.innerHTML = '<span>🔐 Sessão iniciada: <b>' + esc((u && u.nome) || "") + '</b> · ' + esc((u && u.email) || "") + '</span>' +
+                '<button class="btn btn-ghost" onclick="sairConta()">🚪 Sair da conta</button>';
+        }
         const d = await apiGet("/api/colecionaveis/perfil");
         carregarContaRecebimento();
         const p = d.perfil;
@@ -2678,6 +3110,7 @@ function abrirModalLogin(){
             '<label>Senha</label><input id="lgSenha" type="password" placeholder="••••••••">' +
             '<div class="login-erro" id="lgErro"></div>' +
             '<button class="btn btn-amarelo" onclick="fazerLogin()">Entrar</button>' +
+            '<div style="text-align:center;margin-top:10px"><a href="#" onclick="abrirModalEsqueciSenha();return false" style="color:var(--muted);font-size:12px">Esqueci minha senha</a></div>' +
         '</div>' +
         '<div class="login-form hidden" id="regForm">' +
             '<label>Nome</label><input id="rgNome" placeholder="Seu nome">' +
@@ -2693,6 +3126,35 @@ function alternarLoginTab(modo){
     document.getElementById("tabReg").classList.toggle("ativa", modo === "reg");
     document.getElementById("loginForm").classList.toggle("hidden", modo !== "login");
     document.getElementById("regForm").classList.toggle("hidden", modo !== "reg");
+}
+
+/* ===== ESQUECI A SENHA ===== */
+function abrirModalEsqueciSenha(){
+    document.getElementById("modalOverlay").classList.remove("hidden");
+    document.getElementById("modalBody").innerHTML =
+        '<div class="login-panel">' +
+            '<h2>🔑 Recuperar senha</h2>' +
+            '<div class="sub">Informe seu e-mail. Se existir uma conta, enviaremos um link de redefinição válido por 30 minutos.</div>' +
+            '<div class="login-form">' +
+                '<label>E-mail</label><input id="recEmail" type="email" placeholder="voce@email.com">' +
+                '<div class="login-erro" id="recErro"></div>' +
+                '<button class="btn btn-amarelo" onclick="enviarEsqueciSenha()">Enviar link de redefinição</button>' +
+                '<button class="btn btn-ghost" onclick="abrirModalLogin()">Voltar</button>' +
+            '</div>' +
+        '</div>';
+}
+async function enviarEsqueciSenha(){
+    const email = document.getElementById("recEmail").value.trim();
+    const erroEl = document.getElementById("recErro");
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { erroEl.textContent = "Informe um e-mail válido."; return; }
+    try {
+        const d = await apiPost("/api/auth/senha-recuperacao", { email });
+        erroEl.style.color = "var(--verde)";
+        erroEl.textContent = "✅ " + (d.mensagem || "Se existir uma conta, enviaremos o link de redefinição.");
+    } catch(e){
+        erroEl.style.color = "";
+        erroEl.textContent = e.message;
+    }
 }
 async function fazerLogin(){
     const email = document.getElementById("lgEmail").value.trim();
@@ -2722,6 +3184,27 @@ function salvarSessao(d){
     minhaConta = { token: d.token, usuario: d.usuario };
     localStorage.setItem("mega_conta", JSON.stringify(minhaConta));
     atualizarHeader();
+    iniciarPollingNotificacoes();
+}
+
+async function sairConta(){
+    const token = minhaConta && minhaConta.token;
+    minhaConta = null;
+    localStorage.removeItem("mega_conta");
+    atualizarHeader();
+    pararSSENotificacoes();
+    const badge = document.getElementById("notificacoesBadge");
+    if (badge) badge.style.display = "none";
+    const bar = document.getElementById("sessaoBar");
+    if (bar) { bar.style.display = "none"; bar.innerHTML = ""; }
+    try {
+        if (token) await fetch("/api/auth/logout", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token }
+        });
+    } catch(e){ /* logout local é suficiente */ }
+    toast("Você saiu da sua conta.", "ok");
+    mudarAba("album");
 }
 
 function fecharModal(){
@@ -2750,7 +3233,30 @@ window.addEventListener("load", () => {
         const match = window.location.hash.match(/^#figurinha-(\d+)$/);
         if (match) setTimeout(() => abrirModalFigurinha(Number(match[1])), 250);
     });
+    iniciarPollingColecionaveis();
 });
+
+/* ===== POLLING INTELIGENTE =====
+   Atualiza a aba visível a cada 15s; pausa quando a aba do
+   navegador está oculta e retoma ao voltar (visibilidade). */
+let _pollColTimer = null;
+function iniciarPollingColecionaveis(){
+    if (_pollColTimer) clearInterval(_pollColTimer);
+    _pollColTimer = setInterval(() => {
+        if (document.visibilityState !== "visible") return;
+        const aba = estado.aba || "album";
+        try {
+            if (aba === "mercado") carregarMercado(estado.mercado.pagina || 1);
+            else if (aba === "ofertas") carregarOfertas();
+            else if (aba === "leiloes") carregarLeiloes();
+            else if (aba === "trocas") carregarTrocas();
+            else if (aba === "acervo") carregarAcervo();
+        } catch(e){ /* ignora falha pontual de polling */ }
+    }, 15000);
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible" && estado.aba === "ofertas") carregarOfertas();
+    });
+}
 </script>
 </body>
 </html>

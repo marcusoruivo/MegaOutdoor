@@ -153,7 +153,7 @@ const limiterOfertas = rateLimit({
 
 const limiterUpload = rateLimit({
     windowMs: 60 * 1000,
-    limit: 5,
+    limit: ALLOW_TEST_MODE ? 300 : 5,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -704,8 +704,8 @@ async function initBanco() {
 
         /* Tabela de benefícios de indicação (desconto de 10%) */
         try {
-            await pgPool.query(`
-                CREATE TABLE IF NOT EXISTS beneficios_indicacao (
+        await pgPool.query(`
+            CREATE TABLE IF NOT EXISTS beneficios_indicacao (
                     id SERIAL PRIMARY KEY,
                     indicado_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
                     indicador_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -721,6 +721,21 @@ async function initBanco() {
                 )
             `);
         } catch (e) { /* se a tabela já existir, segue o boot */ }
+
+        await pgPool.query(`
+            CREATE TABLE IF NOT EXISTS concessoes_administrativas (
+                id             BIGSERIAL PRIMARY KEY,
+                admin_usuario  VARCHAR(200) NOT NULL,
+                usuario_id     INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+                tipo           VARCHAR(40) NOT NULL,
+                itens          JSONB NOT NULL DEFAULT '[]',
+                quantidade     INTEGER NOT NULL DEFAULT 0,
+                motivo         TEXT NOT NULL,
+                criado_em      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        `);
+        await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_concessoes_usuario ON concessoes_administrativas(usuario_id, criado_em DESC)`);
+        await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_concessoes_criado ON concessoes_administrativas(criado_em DESC)`);
 
         /* Tabela de últimas compras (feed público) */
         try {
@@ -8525,6 +8540,33 @@ async function usuarioEhDonoEspaco(req, space) {
     return !!donoTok && donoTok === tokenFornecido;
 }
 
+/* Verifica se um conjunto de ids forma um grupo contíguo no grid
+   (cada espaço é vizinho de pelo menos um outro do grupo). */
+function espacosSaoContiguos(ids) {
+    if (!Array.isArray(ids) || ids.length <= 1) return true;
+    const set = new Set(ids.map(Number));
+    const visitados = new Set();
+    const fila = [Number(ids[0])];
+    visitados.add(Number(ids[0]));
+    while (fila.length) {
+        const atual = fila.shift();
+        const indice = atual - 1;
+        const linha = Math.floor(indice / 1000);
+        const coluna = indice % 1000;
+        const vizinhos = [];
+        if (coluna > 0) vizinhos.push(atual - 1);
+        if (coluna < 999) vizinhos.push(atual + 1);
+        if (linha > 0) vizinhos.push(atual - 1000);
+        if (linha < 999) vizinhos.push(atual + 1000);
+        for (const v of vizinhos) {
+            if (!set.has(v) || visitados.has(v)) continue;
+            visitados.add(v);
+            fila.push(v);
+        }
+    }
+    return visitados.size === set.size;
+}
+
 app.post(
     "/api/upload/:id",
     authOpcional,
@@ -8595,6 +8637,14 @@ app.post(
                     error: "Máximo de 1.000 espaços por anúncio."
                 });
             }
+
+            if (!espacosSaoContiguos(ids)) {
+                return res.status(400).json({
+                    error:
+                        "Os espaços do bloco precisam ser consecutivos " +
+                        "(vizinhos entre si no mapa)."
+                });
+            }
         }
 
         for (const spaceId of ids) {
@@ -8648,18 +8698,51 @@ app.post(
             }
         }
 
-        if (!req.file) {
+        const removeImage =
+            req.body.removeImage === "true" ||
+            req.body.removeImage === "1";
+
+        const keepImage =
+            req.body.keepImage === "true" ||
+            req.body.keepImage === "1";
+
+        let image = null;
+
+        if (req.file) {
+
+            image =
+                `/uploads/${req.file.filename}`;
+
+        } else if (removeImage) {
+
+            image = null;
+
+        } else if (keepImage) {
+
+            image =
+                db[ids[0]] && db[ids[0]].image
+                ? db[ids[0]].image
+                : null;
+
+            if (!image) {
+                return res.status(400).json({
+                    error:
+                        "Este espaço ainda não possui imagem " +
+                        "para manter."
+                });
+            }
+
+        } else {
+
             return res.status(400).json({
                 error: "Envie uma imagem."
             });
         }
 
-        const image =
-            `/uploads/${req.file.filename}`;
-
         const title =
             req.body.name ||
             req.body.nome ||
+            db[ids[0]].title ||
             "Anunciante";
 
         const linkInput =
@@ -8687,8 +8770,24 @@ app.post(
 
         for (const spaceId of ids) {
 
+            const atual = db[spaceId];
+
+            if (removeImage) {
+
+                db[spaceId] = {
+                    ...atual,
+                    status: "paid",
+                    image: undefined,
+                    publishedAt: undefined,
+                    displayMode: "individual",
+                    imageGroupSpaces: [spaceId]
+                };
+
+                continue;
+            }
+
             db[spaceId] = {
-                ...db[spaceId],
+                ...atual,
                 status: "published",
                 image,
                 title,
@@ -8698,7 +8797,7 @@ app.post(
                     : undefined,
                 publishedAt,
                 orderToken:
-                    db[spaceId].orderToken || String(req.body.orderToken || req.body.token || "").trim(),
+                    atual.orderToken || String(req.body.orderToken || req.body.token || "").trim(),
                 ...(isExtended ? {
                     displayMode: "extended",
                     imageGroupSpaces: ids
@@ -10119,6 +10218,153 @@ app.get("/api/admin/usuarios", authAdmin, async (req, res) => {
         console.error("ERRO admin/usuarios:", error.message);
         res.status(500).json({ error: error.message });
     }
+});
+
+/* =========================
+   CONCESSÕES ADMINISTRATIVAS
+   Operações sem compra, pagamento ou receita.
+========================= */
+app.get("/api/admin/concessoes/usuarios", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Banco de dados não configurado." });
+    try {
+        const busca = String(req.query.busca || "").trim().toLowerCase();
+        if (!busca) return res.json({ ok: true, usuarios: [] });
+        const q = await pgPool.query(
+            `SELECT id, nome, apelido, email, foto_url, criado_em
+               FROM usuarios
+              WHERE CAST(id AS TEXT) = $1
+                 OR LOWER(nome) LIKE $2
+                 OR LOWER(COALESCE(apelido,'')) LIKE $2
+                 OR LOWER(email) LIKE $2
+              ORDER BY id DESC LIMIT 30`,
+            [busca, `%${busca}%`]
+        );
+        res.json({ ok: true, usuarios: q.rows });
+    } catch (error) { res.status(500).json({ error: "Não foi possível buscar usuários." }); }
+});
+
+app.get("/api/admin/concessoes/cards", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Banco de dados não configurado." });
+    try {
+        const busca = String(req.query.busca || "").trim().toLowerCase();
+        const q = await pgPool.query(
+            `SELECT c.id, c.number, c.name, c.rarity, c.image_url, c.collection_id, sc.name AS collection_name
+               FROM sticker_cards c JOIN sticker_collections sc ON sc.id = c.collection_id
+              WHERE c.is_active = TRUE
+                AND ($1 = '' OR LOWER(c.name) LIKE $2 OR CAST(c.number AS TEXT) = $1 OR CAST(c.id AS TEXT) = $1)
+              ORDER BY c.number LIMIT 100`,
+            [busca, `%${busca}%`]
+        );
+        res.json({ ok: true, cards: q.rows });
+    } catch (error) { res.status(500).json({ error: "Não foi possível buscar figurinhas." }); }
+});
+
+app.get("/api/admin/concessoes/espacos", authAdmin, (req, res) => {
+    const busca = String(req.query.busca || "").trim();
+    const db = readDB();
+    const espacos = Object.values(db).filter(s => !busca || String(s.id) === busca).slice(0, 50);
+    res.json({ ok: true, espacos });
+});
+
+app.get("/api/admin/concessoes/historico", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Banco de dados não configurado." });
+    try {
+        const q = await pgPool.query(
+            `SELECT ca.*, u.nome AS usuario_nome, u.apelido AS usuario_apelido
+               FROM concessoes_administrativas ca
+               LEFT JOIN usuarios u ON u.id = ca.usuario_id
+              ORDER BY ca.criado_em DESC LIMIT 100`
+        );
+        res.json({ ok: true, concessoes: q.rows });
+    } catch (error) { res.status(500).json({ error: "Não foi possível carregar o histórico." }); }
+});
+
+app.post("/api/admin/concessoes/espacos", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Banco de dados não configurado." });
+    const usuarioId = Number(req.body && req.body.usuarioId);
+    const motivo = String(req.body && req.body.motivo || "").trim();
+    const ids = [...new Set((Array.isArray(req.body && req.body.ids) ? req.body.ids : [])
+        .map(Number).filter(id => Number.isInteger(id) && id >= 1 && id <= 1000000))];
+    if (!Number.isInteger(usuarioId) || !ids.length || !motivo) return res.status(400).json({ error: "Usuário, espaços e motivo são obrigatórios." });
+    if (motivo.length > 1000) return res.status(400).json({ error: "Motivo muito longo." });
+    const usuarioQ = await pgPool.query("SELECT id, nome, email FROM usuarios WHERE id = $1", [usuarioId]);
+    if (!usuarioQ.rows[0]) return res.status(404).json({ error: "Usuário não encontrado." });
+    const db = readDB();
+    const ocupados = ids.filter(id => db[String(id)]);
+    if (ocupados.length) return res.status(409).json({ error: "Um ou mais espaços já pertencem a outro usuário.", ocupados: ocupados.map(id => ({ id, proprietario: db[String(id)].name || db[String(id)].email || "desconhecido" })) });
+    const token = gerarToken();
+    const accessCode = gerarAccessCode();
+    const original = JSON.stringify(db);
+    const client = await pgPool.connect();
+    try {
+        await client.query("BEGIN");
+        const audit = await client.query(
+            `INSERT INTO concessoes_administrativas (admin_usuario, usuario_id, tipo, itens, quantidade, motivo)
+             VALUES ($1,$2,'ESPACOS',$3,$4,$5) RETURNING id`,
+            [req.admin.usuario, usuarioId, JSON.stringify(ids), ids.length, motivo]
+        );
+        await client.query("INSERT INTO usuario_chaves (usuario_id, tipo, valor) VALUES ($1,'token',$2),($1,'access',$3)", [usuarioId, token, accessCode]);
+        const agora = new Date().toISOString();
+        for (const id of ids) db[String(id)] = {
+            id, status: "published", title: "", link: "", image: "",
+            name: usuarioQ.rows[0].nome, email: usuarioQ.rows[0].email,
+            orderToken: token, accessCode, usuarioId,
+            operationType: "CONCESSAO_ADMINISTRATIVA", test: false,
+            publishedAt: agora, grantedAt: agora
+        };
+        writeDB(db);
+        await client.query("COMMIT");
+        registrarLog("concessao_administrativa_espacos", { concessaoId: audit.rows[0].id, usuarioId, ids, admin: req.admin.usuario, motivo });
+        res.json({ ok: true, concessaoId: audit.rows[0].id, ids });
+    } catch (error) {
+        try { await client.query("ROLLBACK"); } catch {}
+        try { writeDB(JSON.parse(original)); } catch {}
+        res.status(500).json({ error: "Não foi possível conceder os espaços." });
+    } finally { client.release(); }
+});
+
+app.post("/api/admin/concessoes/figurinhas", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Banco de dados não configurado." });
+    const usuarioId = Number(req.body && req.body.usuarioId);
+    const motivo = String(req.body && req.body.motivo || "").trim();
+    const ids = [...new Set((Array.isArray(req.body && req.body.cardIds) ? req.body.cardIds : [])
+        .map(Number).filter(id => Number.isInteger(id) && id > 0))];
+    if (!Number.isInteger(usuarioId) || !ids.length || !motivo) return res.status(400).json({ error: "Usuário, figurinhas e motivo são obrigatórios." });
+    if (ids.length > 100 || motivo.length > 1000) return res.status(400).json({ error: "Limite de itens ou tamanho de motivo excedido." });
+    const client = await pgPool.connect();
+    try {
+        await client.query("BEGIN");
+        const userQ = await client.query("SELECT id FROM usuarios WHERE id = $1", [usuarioId]);
+        const cardsQ = await client.query(
+            `SELECT id, number, name, rarity, image_url FROM sticker_cards WHERE id IN (${ids.join(",")}) AND is_active = TRUE`
+        );
+        if (!userQ.rows[0]) throw new Error("Usuário não encontrado.");
+        if (cardsQ.rows.length !== ids.length) throw new Error("Uma ou mais figurinhas não existem no catálogo oficial.");
+        const itens = cardsQ.rows.map(c => ({ id: c.id, number: c.number, name: c.name, rarity: c.rarity }));
+        const audit = await client.query(
+            `INSERT INTO concessoes_administrativas (admin_usuario, usuario_id, tipo, itens, quantidade, motivo)
+             VALUES ($1,$2,'FIGURINHAS',$3,$4,$5) RETURNING id`,
+            [req.admin.usuario, usuarioId, JSON.stringify(itens), ids.length, motivo]
+        );
+        for (const card of cardsQ.rows) {
+            await client.query(
+                `INSERT INTO user_stickers (usuario_id, card_id, quantity) VALUES ($1,$2,1)
+                 ON CONFLICT (usuario_id, card_id) DO UPDATE SET quantity = user_stickers.quantity + 1`,
+                [usuarioId, card.id]
+            );
+            await client.query(
+                `INSERT INTO sticker_transactions (usuario_id, tipo, detalhe, valor, ref_id) VALUES ($1,'CONCESSAO_ADMINISTRATIVA',$2,0,$3)`,
+                [usuarioId, `Concessão administrativa: #${card.number} ${card.name}`, `ADM-CONCESSAO-${audit.rows[0].id}`]
+            );
+        }
+        await client.query("COMMIT");
+        registrarLog("concessao_administrativa_figurinhas", { concessaoId: audit.rows[0].id, usuarioId, ids, admin: req.admin.usuario, motivo });
+        res.json({ ok: true, concessaoId: audit.rows[0].id, itens });
+    } catch (error) {
+        try { await client.query("ROLLBACK"); } catch {}
+        const status = /não encontrado|não existem|catálogo/i.test(error.message) ? 400 : 500;
+        res.status(status).json({ error: error.message || "Não foi possível conceder as figurinhas." });
+    } finally { client.release(); }
 });
 
 app.get("/api/admin/logs", authAdmin, (req, res) => {

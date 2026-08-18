@@ -499,6 +499,17 @@ input::placeholder,textarea::placeholder{color:#b0b0b0;opacity:1}
 .story-consent input{width:auto;margin-top:3px;accent-color:#ffd400}
 .story-consent b{display:block;color:#ffd400;font-size:11px;letter-spacing:.3px}
 .story-consent small{display:block;color:#aaa;font-size:11px;line-height:1.4;margin-top:3px}
+.modo-pub-btn{display:flex;flex-direction:column;align-items:center;gap:7px;padding:10px 8px;border:1px solid #333;border-radius:10px;background:#111;color:#ccc;cursor:pointer;font-size:11px;font-weight:700;line-height:1.25;text-align:center;transition:all .2s;min-width:0}
+.modo-pub-btn svg{width:100%;height:38px;border-radius:6px;flex:none}
+.modo-pub-btn:hover{border-color:#ffd400;color:#fff}
+.modo-pub-btn.selecionado{border-color:#ffd400;background:rgba(255,212,0,.08);color:#ffd400;box-shadow:0 0 0 1px #ffd400 inset}
+.modo-pub-btn:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.6)}
+.modo-pub-btn:disabled:hover{border-color:#333;color:#ccc}
+.modo-ext-chip{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border:1px solid #333;border-radius:9px;background:#111;color:#ccc;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;margin:4px 4px 0 0}
+.modo-ext-chip input{width:auto;margin:0;accent-color:#ffd400}
+.modo-ext-chip.selecionado{border-color:#45d66f;background:rgba(69,214,111,.08);color:#45d66f}
+.modo-ext-preview{display:flex;align-items:stretch;gap:3px;height:52px;margin-top:8px;border-radius:8px;overflow:hidden;border:1px solid #333}
+.modo-ext-preview div{flex:1;background-size:cover;background-position:center;background-repeat:no-repeat}
 .stories-shell{display:none;width:calc(100% - 32px);max-width:1680px;margin:10px auto 0;padding:10px 16px;background:rgba(17,17,17,.88);border:1px solid rgba(255,212,0,.18);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
 .stories-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;font-size:10px;font-weight:900;letter-spacing:1.4px;color:var(--accent);padding:0}
 .stories-ticker{font-size:11px;color:var(--text-secondary);font-weight:600;letter-spacing:0;text-transform:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -4749,10 +4760,6 @@ placeholder="Cupom de indicação (opcional)">
   <input type="hidden" id="regrasVisualizadas" value="false">
 </div>
 
-<div class="story-consent">
-  <label><input type="checkbox" id="storyOptIn"> <span><b>📣 QUER DESTACAR SUA COMPRA?</b><small>Permitir que esta compra apareça nos Stories do Milhão Door. É opcional e nenhum dado pessoal será exibido.</small></span></label>
-</div>
-
 <div style="margin:16px 0 8px 0;">
   <label style="display:block;font-weight:700;margin-bottom:8px;">Forma de pagamento</label>
   <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;">
@@ -4887,7 +4894,13 @@ Aguardando pagamento...
   <div class="statusPix">
     <span class="sucesso">✅ PAGAMENTO CONFIRMADO!</span>
     <br>
-    Seu espaço está liberado para publicação.
+    Seu espaço é seu. Você pode publicar agora ou depois.
+  </div>
+
+  <div style="font-size:12px;color:#aaa;margin-top:8px;line-height:1.5;">
+    A publicação é <b style="color:#ffd400;">opcional</b>. Se preferir,
+    feche esta janela e publique depois em
+    <b style="color:#45d66f;">MEUS BLOCOS</b> ou clicando no seu espaço no mapa.
   </div>
 
   <input
@@ -4914,32 +4927,20 @@ Aguardando pagamento...
 
 <div style="margin-top:10px;">
 
-    <label style="font-size:13px; color:#aaa;">
+    <label style="font-size:13px; color:#aaa; display:block; margin-bottom:6px;">
         MODO DE PUBLICAÇÃO
     </label>
 
+    <div id="modoPublicacaoOpcoes" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+
+    <div id="modoPublicacaoExplica" style="font-size:12px;color:#aaa;margin-top:6px;line-height:1.4;"></div>
+
     <select
         id="modoAnuncio"
-        onchange="atualizarAtribuicao()"
-        style="
-            width:100%;
-            padding:12px;
-            margin-top:5px;
-            border-radius:8px;
-            background:#111;
-            color:#fff;
-            border:1px solid #333;
-        "
+        style="display:none;"
     >
-
-        <option value="individual">
-            🖼️ Uma imagem por espaço
-        </option>
-
-        <option value="estendida">
-            🖼️ Estender uma imagem pelos espaços
-        </option>
-
+        <option value="individual">individual</option>
+        <option value="estendida">estendida</option>
     </select>
 
 </div>
@@ -4948,13 +4949,23 @@ Aguardando pagamento...
     id="previewAnuncio"
     style="display:none; width:100%; max-height:220px; object-fit:contain; margin-top:10px; border-radius:8px;">
 
+<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
 <button
     class="btn"
     id="btnPublicar"
     onclick="publicarAnuncio()"
-    style="margin-top:10px;">
+    style="margin:0;">
     PUBLICAR ANÚNCIO
 </button>
+
+<button
+    class="btn sec"
+    id="btnPublicarDepois"
+    onclick="pularPublicacaoAgora()"
+    style="margin:0;">
+    ⏭️ PUBLICAR DEPOIS
+</button>
+</div>
 
 <p
     id="msgPublicacao"
@@ -5006,7 +5017,7 @@ onclick="fecharDonoModal()">
 </div>
 
 
-<!-- MODAL EDITAR FOTO -->
+<!-- MODAL EDITAR PUBLICAÇÃO -->
 
 <div class="modal" id="editModal" style="display:none;">
 
@@ -5018,22 +5029,57 @@ onclick="fecharEditarFoto()">
 ×
 </button>
 
-<h2 style="color:#ffd400;">Editar foto</h2>
+<h2 style="color:#ffd400;">🖼️ Editar publicação</h2>
 
 <p
 id="editInfo"
 style="color:#aaa;font-size:13px;margin:0 0 12px;">
 </p>
 
+<div style="font-size:11px;color:#888;margin-bottom:4px;">IMAGEM ATUAL</div>
 <img
 id="editPreviewAtual"
-style="width:100%; max-height:160px; object-fit:contain; margin-bottom:10px; border-radius:8px; display:none;">
+style="width:100%; max-height:150px; object-fit:contain; margin-bottom:8px; border-radius:8px; display:none;">
+<div
+id="editSemImagem"
+style="display:none;color:#888;font-size:12px;margin-bottom:8px;">
+Este espaço ainda não possui imagem.
+</div>
+
+<div style="display:flex;gap:8px;flex-wrap:wrap;">
+<button
+type="button"
+class="btn sec"
+onclick="document.getElementById('editFoto').click()"
+style="margin:0;padding:10px 12px;font-size:12px;">
+🖼️ ALTERAR IMAGEM
+</button>
+<button
+type="button"
+class="btn sec"
+id="btnRemoverImagem"
+onclick="removerImagemEdicao()"
+style="margin:0;padding:10px 12px;font-size:12px;">
+🗑️ REMOVER IMAGEM
+</button>
+</div>
+
+<input
+id="editFoto"
+type="file"
+accept="image/*"
+onchange="previewEdicao()"
+style="display:none;">
+
+<img
+id="editPreview"
+style="display:none; width:100%; max-height:180px; object-fit:contain; margin-top:10px; border-radius:8px;">
 
 <input
 id="editTitulo"
 type="text"
 placeholder="Nome da empresa ou anunciante"
-style="width:100%; padding:12px; margin-top:6px; box-sizing:border-box;">
+style="width:100%; padding:12px; margin-top:12px; box-sizing:border-box;">
 
 <input
 id="editLink"
@@ -5041,38 +5087,28 @@ type="text"
 placeholder="Link do seu site (opcional) — ex: https://seusite.com"
 style="width:100%; padding:12px; margin-top:10px; box-sizing:border-box;">
 
-<input
-id="editFoto"
-type="file"
-accept="image/*"
-onchange="previewEdicao()"
-style="width:100%; margin-top:10px;">
-
-<div id="editModoInfo" style="font-size:12px;color:#aaa;margin-top:10px;"></div>
-
-<div id="editEscopo" style="margin-top:10px;font-size:13px;color:#ccc;">
-  <label style="display:block;margin:6px 0;cursor:pointer;">
-    <input type="radio" name="editEscopo" id="editRadioSolo" value="solo" checked>
-    Aplicar somente a este espaço
-  </label>
-  <label id="editEscopoBloco" style="display:none;margin:6px 0;cursor:pointer;">
-    <input type="radio" name="editEscopo" id="editRadioBloco" value="bloco">
-    Aplicar a todos os vizinhos do bloco
-    (<span id="editBlocoCount"></span> espaços)
-  </label>
+<div style="margin-top:12px;">
+  <label style="font-size:13px;color:#aaa;display:block;margin-bottom:6px;">MODO DE PUBLICAÇÃO</label>
+  <div id="editModoPublicacao" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+  <div id="editModoExplica" style="font-size:12px;color:#aaa;margin-top:6px;line-height:1.4;"></div>
+  <div id="editExtensao" style="margin-top:10px;"></div>
 </div>
 
-<img
-id="editPreview"
-style="display:none; width:100%; max-height:220px; object-fit:contain; margin-top:10px; border-radius:8px;">
-
+<div style="display:flex;gap:8px;margin-top:14px;">
+<button
+class="btn sec"
+onclick="fecharEditarFoto()"
+style="margin:0;">
+CANCELAR
+</button>
 <button
 class="btn"
 id="btnSalvarEdicao"
 onclick="salvarEdicaoFoto()"
-style="margin-top:10px;">
-SALVAR FOTO
+style="margin:0;">
+SALVAR ALTERAÇÕES
 </button>
+</div>
 
 <p
 id="editMsg"
@@ -7372,16 +7408,37 @@ JSON.stringify(myOffers)
 
 }
 
+function ehMeuEspaco(n){
+
+const s = db[n];
+
+if(!s)return false;
+
+/* Posse por token local (compra feita neste navegador) */
+if(
+orderTokens[n] &&
+orderTokens[n] === s.orderToken
+)return true;
+
+/* Posse por conta (usuário logado é dono do espaço) */
+if(
+minhaConta &&
+minhaConta.id &&
+s.usuarioId &&
+Number(s.usuarioId) === Number(minhaConta.id)
+)return true;
+
+return false;
+
+}
+
 function minhaPropriedade(id){
 
 const s = db[id];
 
 if(!s)return false;
 
-return (
-orderTokens[id] &&
-orderTokens[id] === s.orderToken
-);
+return ehMeuEspaco(id);
 
 }
 
@@ -7695,19 +7752,36 @@ function mostrarDonoEspaco(numero){
     nomeEl.textContent =
       titulo || nome || "Proprietário";
 
-    acoesEl.innerHTML =
-      minhaPropriedade(numero)
-      ? '<div style="color:#45d66f;font-weight:700;">' +
-        '✅ Este espaço é seu.</div>' +
+    if(minhaPropriedade(numero)){
+
+      const temVizinhos =
+        meusEspacosDoDono(numero).length > 1;
+
+      acoesEl.innerHTML =
+        '<div style="color:#45d66f;font-weight:700;">' +
+          '✅ Este espaço é seu.</div>' +
         '<button class="btn" style="width:100%;margin-top:10px;" ' +
-        'onclick="fecharDonoModal(); editarFoto(' + numero + ')">' +
-        '🖼️ EDITAR FOTO</button>' +
+          'onclick="fecharDonoModal(); editarFoto(' + numero + ')">' +
+          '🖼️ EDITAR PUBLICAÇÃO</button>' +
         '<button class="btn sec" style="width:100%;margin-top:8px;" ' +
-        'onclick="fecharDonoModal(); editarLink(' + numero + ')">' +
-        '🌐 EDITAR LINK</button>'
-      : '<button class="btn" style="width:100%;" ' +
-        'onclick="fecharDonoModal(); abrirOferta(' + numero + ')">' +
-        '💰 FAZER OFERTA</button>';
+          'onclick="fecharDonoModal(); editarLink(' + numero + ')">' +
+          '🌐 EDITAR LINK</button>' +
+        (temVizinhos
+          ? '<button class="btn sec" style="width:100%;margin-top:8px;" ' +
+            'onclick="fecharDonoModal(); editarExtensao(' + numero + ')">' +
+            '🔗 ESTENDER IMAGEM</button>'
+          : '') +
+        '<button class="btn sec" style="width:100%;margin-top:8px;" ' +
+          'onclick="fecharDonoModal(); visualizarAnuncio(' + numero + ')">' +
+          '👁️ VISUALIZAR</button>';
+
+    }else{
+
+      acoesEl.innerHTML =
+        '<button class="btn" style="width:100%;" ' +
+          'onclick="fecharDonoModal(); abrirOferta(' + numero + ')">' +
+          '💰 FAZER OFERTA</button>';
+    }
 
   }else if(s.status === "reserved"){
 
@@ -7722,17 +7796,88 @@ function mostrarDonoEspaco(numero){
   }else{
 
     statusEl.textContent =
-      "Vendido";
+      minhaPropriedade(numero)
+      ? "Aguardando publicação"
+      : "Vendido";
 
     nomeEl.textContent =
       titulo || nome || "Proprietário";
 
     acoesEl.innerHTML =
-      '<div style="font-size:13px;color:#aaa;">' +
-      'Aguardando publicação do proprietário.</div>';
+      minhaPropriedade(numero)
+      ? '<div style="color:#45d66f;font-weight:700;">' +
+          '✅ Este espaço é seu.</div>' +
+        '<div style="font-size:13px;color:#aaa;margin-top:6px;">' +
+          'Publicado em MEUS BLOCOS ou clicando aqui.</div>' +
+        '<button class="btn" style="width:100%;margin-top:10px;" ' +
+          'onclick="fecharDonoModal(); editarFoto(' + numero + ')">' +
+          '🖼️ PUBLICAR IMAGEM</button>' +
+        '<button class="btn sec" style="width:100%;margin-top:8px;" ' +
+          'onclick="fecharDonoModal(); editarLink(' + numero + ')">' +
+          '🌐 ADICIONAR LINK</button>'
+      : '<div style="font-size:13px;color:#aaa;">' +
+          'Aguardando publicação do proprietário.</div>';
   }
 
   document.getElementById("donoModal").style.display = "flex";
+}
+
+function visualizarAnuncio(numero){
+
+  const s = db[numero];
+
+  if(!s) return;
+
+  const titulo = s.title || s.name || "Proprietário";
+
+  const body =
+    '<div style="text-align:center;padding:8px 0 2px;">' +
+      '<div style="font-size:12px;color:#888;letter-spacing:1px;">' +
+        'ESPAÇO #' + Number(numero).toLocaleString("pt-BR") +
+      '</div>' +
+      '<div style="font-size:18px;font-weight:800;color:#fff;margin:6px 0 12px;">' +
+        escStr(titulo) +
+      '</div>' +
+      (s.image
+        ? '<img src="' + escAttr(s.image) + '" style="width:100%;max-height:320px;' +
+          'object-fit:contain;border-radius:10px;border:1px solid #333;">'
+        : '<div style="padding:26px;color:#888;border:1px dashed #444;border-radius:10px;">' +
+            'Este espaço ainda não possui imagem publicada.</div>') +
+      (s.link
+        ? '<a href="' + escAttr(s.link) + '" target="_blank" rel="noopener" ' +
+          'style="display:block;margin-top:12px;padding:12px;border-radius:8px;' +
+          'background:#1b3a2a;color:#45d66f;font-weight:800;text-decoration:none;">' +
+          '🌐 VISITAR SITE</a>'
+        : '') +
+    '</div>';
+
+  const overlay = document.createElement("div");
+
+  overlay.id = "visualizarOverlay";
+
+  overlay.style.cssText =
+    "position:fixed;inset:0;z-index:20000;background:rgba(0,0,0,.85);" +
+    "display:flex;align-items:center;justify-content:center;padding:16px;";
+
+  overlay.onclick = function(ev){
+    if(ev.target === overlay) overlay.remove();
+  };
+
+  const cartao = document.createElement("div");
+
+  cartao.style.cssText =
+    "position:relative;max-width:520px;width:100%;max-height:90vh;overflow:auto;" +
+    "background:#111;border:1px solid #333;border-radius:14px;padding:20px;color:#fff;";
+
+  cartao.innerHTML =
+    '<button onclick="document.getElementById(\'visualizarOverlay\').remove()" ' +
+    'style="position:absolute;top:10px;right:14px;background:none;border:0;color:#aaa;' +
+    'font-size:22px;cursor:pointer;line-height:1;">×</button>' +
+    body;
+
+  overlay.appendChild(cartao);
+
+  document.body.appendChild(overlay);
 }
 
 function fecharDonoModal(){
@@ -10808,9 +10953,29 @@ console.error(error);
 
 }
 
-function exibirAreaPublicacao(){
+function prepararPublicacaoPosCompra(){
     const pub = document.getElementById("publicacao");
-    if(pub) pub.style.display = "block";
+    if(!pub) return;
+    const t = document.getElementById("tituloAnuncio");
+    if(t) t.value = "";
+    const l = document.getElementById("linkAnuncio");
+    if(l) l.value = "";
+    const f = document.getElementById("fotoAnuncio");
+    if(f) f.value = "";
+    const pv = document.getElementById("previewAnuncio");
+    if(pv){ pv.style.display = "none"; pv.src = ""; }
+    const at = document.getElementById("atribuicao");
+    if(at){ at.style.display = "none"; at.innerHTML = ""; }
+    const msg = document.getElementById("msgPublicacao");
+    if(msg) msg.textContent = "";
+    const btnPub = document.getElementById("btnPublicar");
+    if(btnPub) btnPub.disabled = false;
+    if(typeof iniciarModoPublicacaoCheckout === "function") iniciarModoPublicacaoCheckout();
+    pub.style.display = "block";
+}
+
+function exibirAreaPublicacao(){
+    prepararPublicacaoPosCompra();
 }
 
 /* =========================
@@ -10837,7 +11002,7 @@ document.getElementById(
 "statusPix"
 ).innerHTML =
 '<span class="sucesso">✓ PAGAMENTO CONFIRMADO!</span><br><br>'+
-'Seus espaços foram liberados para publicação.'+
+'Seus espaços agora são seus. Publique agora ou depois.'+
 (ultimoCupom
     ?'<br><br><b>🎁 Seu cupom de indicação:</b><br>'+
      '<span style="font-size:18px;color:#ffd400;font-weight:800;">'+
@@ -10861,7 +11026,7 @@ document.getElementById(
      'Quando esta compra for confirmada, você ganha 5% na sua próxima.</span>'
     :'');
 
-document.getElementById("publicacao").style.display = "block";
+prepararPublicacaoPosCompra();
 
 if(data.accessCode){
 
@@ -11275,6 +11440,124 @@ carregarStoryConfig();
    ATRIBUIR IMAGENS AOS ESPAÇOS
 ========================= */
 
+/* =========================
+   MODO DE PUBLICAÇÃO — MINIATURAS VISUAIS
+   Dois modos com prévia SVG para facilitar a escolha.
+   Compartilhado entre o checkout pós-compra e o modal
+   de edição (EDITAR PUBLICAÇÃO).
+========================= */
+
+function svgModoIndividual(){
+    return '<svg viewBox="0 0 64 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">' +
+        '<rect x="1" y="1" width="30" height="18" rx="2" fill="#3b82f6"/>' +
+        '<rect x="33" y="1" width="30" height="18" rx="2" fill="#d7263d"/>' +
+        '<rect x="1" y="21" width="30" height="18" rx="2" fill="#2ecc71"/>' +
+        '<rect x="33" y="21" width="30" height="18" rx="2" fill="#ffbf40"/>' +
+        '</svg>';
+}
+
+function svgModoEstendida(){
+    return '<svg viewBox="0 0 64 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">' +
+        '<defs><linearGradient id="mpg-ext" x1="0" y1="0" x2="1" y2="0">' +
+        '<stop offset="0" stop-color="#3b82f6"/><stop offset=".5" stop-color="#a855f7"/><stop offset="1" stop-color="#ffbf40"/>' +
+        '</linearGradient></defs>' +
+        '<rect x="1" y="1" width="62" height="38" rx="3" fill="url(#mpg-ext)"/>' +
+        '<line x1="22" y1="1" x2="22" y2="39" stroke="#000" stroke-opacity=".4" stroke-width="1"/>' +
+        '<line x1="42" y1="1" x2="42" y2="39" stroke="#000" stroke-opacity=".4" stroke-width="1"/>' +
+        '</svg>';
+}
+
+function marcarCartaoModo(containerId, valor){
+    const box = document.getElementById(containerId);
+    if(!box) return;
+    box.querySelectorAll(".modo-pub-btn").forEach(b => {
+        b.classList.toggle("selecionado", b.dataset.modo === valor);
+    });
+}
+
+function explicarModo(valor, elId){
+    const el = document.getElementById(elId);
+    if(!el) return;
+    el.textContent =
+        (valor === "estendida")
+        ? "Uma única imagem será exibida de forma contínua ocupando todos os espaços selecionados."
+        : "Cada espaço terá sua própria imagem.";
+}
+
+function espacosContiguosFront(ids){
+    const lista = [...new Set((ids || []).map(Number))];
+    if(lista.length <= 1) return true;
+    const set = new Set(lista);
+    const visitados = new Set();
+    const fila = [lista[0]];
+    visitados.add(lista[0]);
+    while(fila.length){
+        const atual = fila.shift();
+        const indice = atual - 1;
+        const linha = Math.floor(indice / C);
+        const coluna = indice % C;
+        const vizinhos = [];
+        if(coluna > 0) vizinhos.push(atual - 1);
+        if(coluna < C - 1) vizinhos.push(atual + 1);
+        if(linha > 0) vizinhos.push(atual - C);
+        if(linha < 999) vizinhos.push(atual + C);
+        for(const v of vizinhos){
+            if(!set.has(v) || visitados.has(v)) continue;
+            visitados.add(v);
+            fila.push(v);
+        }
+    }
+    return visitados.size === set.size;
+}
+
+function montarCartoesModo(containerId, selecionado, aoMudar, desabilitarEstendida){
+    const box = document.getElementById(containerId);
+    if(!box) return;
+    const individ = (selecionado !== "estendida");
+    box.innerHTML =
+        '<button type="button" class="modo-pub-btn" data-modo="individual">' +
+            svgModoIndividual() + '<span>Uma imagem por espaço</span>' +
+        '</button>' +
+        '<button type="button" class="modo-pub-btn" data-modo="estendida"' +
+            (desabilitarEstendida ? ' disabled' : '') + '>' +
+            svgModoEstendida() + '<span>Estender uma imagem pelos espaços</span>' +
+        '</button>';
+    box.querySelectorAll(".modo-pub-btn").forEach(btn => {
+        btn.addEventListener("click", function(){
+            if(btn.disabled) return;
+            marcarCartaoModo(containerId, btn.dataset.modo);
+            if(typeof aoMudar === "function") aoMudar(btn.dataset.modo);
+        });
+    });
+    marcarCartaoModo(containerId, individ ? "individual" : "estendida");
+    if(typeof aoMudar === "function") aoMudar(individ ? "individual" : "estendida");
+}
+
+function iniciarModoPublicacaoCheckout(){
+    const qtd = (paidSpaces || []).length;
+    montarCartoesModo("modoPublicacaoOpcoes", "individual", function(valor){
+        const sel = document.getElementById("modoAnuncio");
+        if(sel) sel.value = (valor === "estendida") ? "estendida" : "individual";
+        explicarModo(valor, "modoPublicacaoExplica");
+        if(valor === "estendida" && qtd <= 1){
+            const ex = document.getElementById("modoPublicacaoExplica");
+            if(ex) ex.innerHTML += "<br><span style='color:#ffd400;'>Para usar este modo, possua 2 ou mais espaços consecutivos.</span>";
+        }
+        if(typeof atualizarAtribuicao === "function") atualizarAtribuicao();
+    }, qtd <= 1);
+}
+
+function pularPublicacaoAgora(){
+    const pub = document.getElementById("publicacao");
+    if(pub) pub.style.display = "none";
+    const msg = document.getElementById("msgPublicacao");
+    if(msg){
+        msg.textContent =
+            "Sem problema! Você pode publicar depois em MEUS BLOCOS " +
+            "ou clicando no seu espaço no mapa.";
+    }
+}
+
 function atualizarAtribuicao(){
 
     const box =
@@ -11418,6 +11701,15 @@ async function publicarAnuncio() {
 
             msg.textContent =
                 "No modo estendido, selecione apenas 1 imagem.";
+
+            return;
+        }
+
+        if (!espacosContiguosFront(paidSpaces)) {
+
+            msg.textContent =
+                "Para estender uma imagem, os espaços precisam ser " +
+                "consecutivos (vizinhos entre si no mapa).";
 
             return;
         }
@@ -11731,6 +12023,60 @@ function blocoVizinhanca(numero){
     return blocoPorDono(numero, ["published"]);
 }
 
+/* Retorna todos os espaços consecutivos que pertencem ao
+   mesmo dono (por token ou por conta), independente do status.
+   Usado para montar a seleção de extensão. */
+function meusEspacosDoDono(numero){
+
+    const inicio = Number(numero);
+
+    const s = db[inicio];
+
+    if(!s) return [inicio];
+
+    const grupo = new Set([inicio]);
+
+    const fila = [inicio];
+
+    while(fila.length){
+
+        const atual = fila.shift();
+
+        const indice = atual - 1;
+
+        const linha = Math.floor(indice / C);
+
+        const coluna = indice % C;
+
+        const vizinhos = [];
+
+        if(coluna > 0) vizinhos.push(atual - 1);
+        if(coluna < C - 1) vizinhos.push(atual + 1);
+        if(linha > 0) vizinhos.push(atual - C);
+        if(linha < 999) vizinhos.push(atual + C);
+
+        for(const v of vizinhos){
+
+            if(grupo.has(v)) continue;
+
+            const espaco = db[v];
+
+            if(espaco && ehMeuEspaco(v)){
+                grupo.add(v);
+                fila.push(v);
+            }
+        }
+    }
+
+    return [...grupo].sort((a, b) => a - b);
+}
+
+let editModoAtual = "individual";
+
+let editExtensaoIds = [];
+
+let editRemovendoImagem = false;
+
 function editarFoto(numero){
 
     const id = Number(numero);
@@ -11742,12 +12088,14 @@ function editarFoto(numero){
         return;
     }
 
-    if(!minhaPropriedade(id)){
+    if(!ehMeuEspaco(id)){
         alert("Você não é o proprietário deste espaço.");
         return;
     }
 
     editingSpaceId = id;
+
+    editRemovendoImagem = false;
 
     document.getElementById("editTitulo").value =
         s.title || "";
@@ -11764,68 +12112,257 @@ function editarFoto(numero){
     const atual =
         document.getElementById("editPreviewAtual");
 
+    const semImagem =
+        document.getElementById("editSemImagem");
+
     if(s.image){
         atual.src = s.image;
         atual.style.display = "block";
+        if(semImagem) semImagem.style.display = "none";
     }else{
         atual.style.display = "none";
+        if(semImagem) semImagem.style.display = "block";
     }
 
-    const estendido =
-        s.displayMode === "extended" &&
-        Array.isArray(s.imageGroupSpaces) &&
-        s.imageGroupSpaces.length > 1;
+    const btnRem =
+        document.getElementById("btnRemoverImagem");
 
-    const bloco = blocoVizinhanca(id);
-
-    editBlocoIds = bloco;
-
-    const temVizinhos = bloco.length > 1;
+    if(btnRem){
+        btnRem.textContent = "🗑️ REMOVER IMAGEM";
+        btnRem.disabled = false;
+    }
 
     document.getElementById("editInfo").textContent =
-        "Espaço #" + id.toLocaleString("pt-BR");
+        "Espaço #" + id.toLocaleString("pt-BR") +
+        " — " +
+        (s.status === "published"
+            ? "publicado"
+            : "comprado · aguardando publicação");
 
-    const radioSolo =
-        document.getElementById("editRadioSolo");
-
-    const radioBloco =
-        document.getElementById("editRadioBloco");
-
-    const labelBloco =
-        document.getElementById("editEscopoBloco");
-
-    document.getElementById("editBlocoCount").textContent =
-        bloco.length;
-
-    if(temVizinhos){
-
-        labelBloco.style.display = "block";
-
-        if(estendido){
-            radioBloco.checked = true;
-        }else{
-            radioSolo.checked = true;
-        }
-
-    }else{
-
-        labelBloco.style.display = "none";
-
-        radioSolo.checked = true;
-    }
-
-    document.getElementById("editModoInfo").textContent =
-        estendido
-        ? "⚠️ Este espaço faz parte de um bloco de " +
-          s.imageGroupSpaces.length +
-          " espaço(s). Escolha abaixo o alcance da nova foto."
-        : (temVizinhos
-            ? "Você é dono de " +
-              bloco.length +
-              " espaço(s) vizinho(s). Escolha o alcance da nova foto."
-            : "A foto será aplicada somente a este espaço.");
+    montarModoEdicao();
 
     document.getElementById("editModal").style.display = "flex";
+}
+
+function editarExtensao(numero){
+
+    const id = Number(numero);
+
+    const s = db[id];
+
+    if(!s){
+        alert("Espaço não encontrado.");
+        return;
+    }
+
+    if(!ehMeuEspaco(id)){
+        alert("Você não é o proprietário deste espaço.");
+        return;
+    }
+
+    const dono = meusEspacosDoDono(id);
+
+    if(dono.length <= 1){
+        alert("Você precisa possuir 2 ou mais espaços consecutivos para estender uma imagem.");
+        return;
+    }
+
+    /* Abre o modal já no modo estendido */
+    editarFoto(id);
+
+    /* Força o modo estendido */
+    editModoAtual = "estendida";
+
+    marcarCartaoModo("editModoPublicacao", "estendida");
+
+    explicarModo("estendida", "editModoExplica");
+
+    montarExtensaoEdicao();
+
+    if(editExtensaoIds.length <= 1){
+        editExtensaoIds = dono;
+        const principal = Number(id);
+        document.querySelectorAll("#editExtensao input[data-id]").forEach(cb => {
+            const val = Number(cb.dataset.id);
+            const forcar = (val === principal) || (dono.indexOf(val) !== -1);
+            cb.checked = forcar;
+            const chip = cb.closest(".modo-ext-chip");
+            if(chip) chip.classList.toggle("selecionado", cb.checked);
+        });
+        atualizarEditExtensaoPreview();
+    }
+}
+
+function montarModoEdicao(){
+
+    const s = db[editingSpaceId];
+
+    const estendido =
+        s && s.displayMode === "extended";
+
+    const dono = meusEspacosDoDono(editingSpaceId);
+
+    const desabilitar = dono.length <= 1;
+
+    editModoAtual =
+        (estendido && dono.length > 1)
+        ? "estendida"
+        : "individual";
+
+    montarCartoesModo("editModoPublicacao", editModoAtual, function(valor){
+        editModoAtual = valor;
+        explicarModo(valor, "editModoExplica");
+        if(valor === "estendida" && desabilitar){
+            const ex = document.getElementById("editModoExplica");
+            if(ex) ex.innerHTML += "<br><span style='color:#ffd400;'>Para usar este modo, possua 2 ou mais espaços consecutivos.</span>";
+        }
+        montarExtensaoEdicao();
+    }, desabilitar);
+
+    explicarModo(editModoAtual, "editModoExplica");
+
+    if(editModoAtual === "estendida" && desabilitar){
+        const ex = document.getElementById("editModoExplica");
+        if(ex) ex.innerHTML += "<br><span style='color:#ffd400;'>Para usar este modo, possua 2 ou mais espaços consecutivos.</span>";
+    }
+
+    montarExtensaoEdicao();
+}
+
+function montarExtensaoEdicao(){
+
+    const box = document.getElementById("editExtensao");
+
+    if(!box) return;
+
+    if(editModoAtual !== "estendida"){
+
+        box.innerHTML = "";
+
+        editExtensaoIds = [];
+
+        return;
+    }
+
+    const dono = meusEspacosDoDono(editingSpaceId);
+
+    const principal = Number(editingSpaceId);
+
+    editExtensaoIds = dono.slice();
+
+    box.innerHTML =
+        '<div style="font-size:13px;color:#ccc;margin-bottom:6px;">' +
+            '<b style="color:#45d66f;">Você possui espaços ao lado deste bloco.</b>' +
+            '<div style="font-size:12px;color:#aaa;margin-top:3px;">' +
+                'Selecione os espaços consecutivos que farão parte da extensão:' +
+            '</div>' +
+        '</div>' +
+        '<div>' +
+            dono.map(id => {
+                const checado = (id === principal || dono.length > 1) ? ' checked' : '';
+                return '<label class="modo-ext-chip' + (id === principal ? ' selecionado' : '') + '">' +
+                    '<input type="checkbox" data-id="' + id + '"' + checado +
+                    ' onchange="atualizarEditExtensao()">' +
+                    '#' + Number(id).toLocaleString("pt-BR") +
+                    '</label>';
+            }).join("") +
+        '</div>' +
+        '<div id="editExtensaoPreview"></div>';
+
+    document.querySelectorAll("#editExtensao input:checked").forEach(cb => {
+        const chip = cb.closest(".modo-ext-chip");
+        if(chip) chip.classList.toggle("selecionado", cb.checked);
+    });
+
+    atualizarEditExtensaoPreview();
+}
+
+function atualizarEditExtensao(){
+
+    editExtensaoIds = [...document.querySelectorAll("#editExtensao input:checked")]
+        .map(x => Number(x.dataset.id))
+        .filter(id => {
+            const s = db[id];
+            return s && (s.status === "paid" || s.status === "published");
+        });
+
+    document.querySelectorAll("#editExtensao .modo-ext-chip").forEach(chip => {
+        const cb = chip.querySelector("input");
+        if(cb) chip.classList.toggle("selecionado", cb.checked);
+    });
+
+    atualizarEditExtensaoPreview();
+}
+
+function atualizarEditExtensaoPreview(){
+
+    const box = document.getElementById("editExtensaoPreview");
+
+    if(!box) return;
+
+    const lista = [...editExtensaoIds].sort((a, b) => a - b);
+
+    if(!lista.length){
+        box.innerHTML = "";
+        return;
+    }
+
+    const s = db[editingSpaceId];
+
+    const img =
+        (s && s.image) ||
+        (db[lista[0]] && db[lista[0]].image) ||
+        "";
+
+    if(!img){
+        box.innerHTML =
+            '<div style="font-size:12px;color:#888;margin-top:8px;">' +
+            'Prévia da extensão aparecerá após escolher a imagem.</div>';
+        return;
+    }
+
+    box.innerHTML =
+        '<div style="font-size:11px;color:#888;margin-top:8px;">' +
+        'PRÉVIA — uma única imagem atravessando ' +
+        lista.length + ' espaço(s):</div>' +
+        '<div class="modo-ext-preview">' +
+        lista.map(() => '<div style="background-image:url(\'' + escAttr(img) + '\');"></div>').join("") +
+        '</div>';
+}
+
+function removerImagemEdicao(){
+
+    const s = db[editingSpaceId];
+
+    if(!s) return;
+
+    if(!s.image){
+        alert("Este espaço não possui imagem para remover.");
+        return;
+    }
+
+    if(!confirm(
+        "Remover a imagem desta publicação? " +
+        "O espaço voltará a ficar como 'Aguardando publicação'."
+    )) return;
+
+    editRemovendoImagem = true;
+
+    document.getElementById("editPreview").style.display = "none";
+
+    document.getElementById("editFoto").value = "";
+
+    const prev = document.getElementById("editPreviewAtual");
+    if(prev) prev.style.display = "none";
+
+    const sem = document.getElementById("editSemImagem");
+    if(sem) sem.style.display = "block";
+
+    const btnRem = document.getElementById("btnRemoverImagem");
+    if(btnRem){
+        btnRem.textContent = "🗑️ Imagem será removida";
+        btnRem.disabled = true;
+    }
 }
 
 function fecharEditarFoto(){
@@ -12002,6 +12539,15 @@ function previewEdicao(){
         return;
     }
 
+    /* Ao escolher uma nova imagem, cancela o modo "remover" */
+    editRemovendoImagem = false;
+
+    const btnRem = document.getElementById("btnRemoverImagem");
+    if(btnRem){
+        btnRem.textContent = "🗑️ REMOVER IMAGEM";
+        btnRem.disabled = false;
+    }
+
     prev.src =
         URL.createObjectURL(arquivo);
 
@@ -12013,6 +12559,8 @@ async function salvarEdicaoFoto(){
     const id = editingSpaceId;
 
     if(!id)return;
+
+    const s = db[id];
 
     const titulo =
         document.getElementById("editTitulo").value.trim();
@@ -12029,27 +12577,51 @@ async function salvarEdicaoFoto(){
         return;
     }
 
-    if(!arquivo){
-        msg.textContent =
-            "Escolha uma imagem.";
-        return;
+    const modo =
+        editModoAtual === "estendida"
+        ? "estendida"
+        : "individual";
+
+    let ids = [id];
+
+    if(modo === "estendida"){
+
+        ids = [...editExtensaoIds]
+            .map(Number)
+            .filter(x => {
+                const es = db[x];
+                return es && (es.status === "paid" || es.status === "published");
+            });
+
+        if(!ids.includes(id)) ids.unshift(id);
+
+        if(ids.length < 2){
+            msg.textContent =
+                "Selecione pelo menos 2 espaços consecutivos para estender a imagem.";
+            return;
+        }
+
+        if(!espacosContiguosFront(ids)){
+            msg.textContent =
+                "Os espaços da extensão precisam ser consecutivos (vizinhos entre si no mapa).";
+            return;
+        }
     }
 
-    const escopo =
-        document.querySelector(
-            'input[name="editEscopo"]:checked'
-        )?.value || "solo";
+    if(!editRemovendoImagem && !arquivo){
 
-    const estendido =
-        escopo === "bloco";
+        /* Sem arquivo novo: mantém a imagem atual (só altera modo/link) */
+        const temImagem = s.image || (db[ids[0]] && db[ids[0]].image);
 
-    const ids =
-        estendido
-        ? editBlocoIds
-        : [id];
+        if(!temImagem){
+            msg.textContent =
+                "Escolha uma imagem para publicar.";
+            return;
+        }
+    }
 
     msg.textContent =
-        "Salvando nova foto...";
+        "Salvando alterações...";
 
     document
         .getElementById("btnSalvarEdicao")
@@ -12059,10 +12631,18 @@ async function salvarEdicaoFoto(){
 
         const formData = new FormData();
 
-        formData.append(
-            "fotos",
-            arquivo
-        );
+        if(arquivo){
+
+            formData.append("fotos", arquivo);
+
+        }else if(editRemovendoImagem){
+
+            formData.append("removeImage", "true");
+
+        }else{
+
+            formData.append("keepImage", "true");
+        }
 
         formData.append(
             "name",
@@ -12076,7 +12656,7 @@ async function salvarEdicaoFoto(){
 
         formData.append(
             "mode",
-            estendido ? "extended" : "individual"
+            modo === "estendida" ? "extended" : "individual"
         );
 
         formData.append(
@@ -12102,13 +12682,13 @@ async function salvarEdicaoFoto(){
         if(!resposta.ok){
             throw new Error(
                 data.error ||
-                "Erro ao salvar a foto."
+                "Erro ao salvar a publicação."
             );
         }
 
         msg.innerHTML =
             '<span class="sucesso">' +
-            '✅ Foto atualizada com sucesso!' +
+            '✅ Publicação atualizada com sucesso!' +
             '</span>';
 
         await load();
@@ -12117,13 +12697,17 @@ async function salvarEdicaoFoto(){
 
         fecharInfoEspaco();
 
+        fecharDonoModal();
+
+        if(typeof carregarMeusBlocos === "function") carregarMeusBlocos();
+
     }catch(error){
 
         console.error(error);
 
         msg.textContent =
             error.message ||
-            "Erro ao salvar a foto.";
+            "Erro ao salvar a publicação.";
 
         document
             .getElementById("btnSalvarEdicao")
@@ -15358,16 +15942,9 @@ function meusBlocos(){
 
         if(!espaco)continue;
 
-        if(
-            !orderTokens[n] ||
-            orderTokens[n] !== espaco.orderToken
-        ){
-            continue;
-        }
+        if(!ehMeuEspaco(n))continue;
 
         if(visitados.has(n))continue;
-
-        const token = espaco.orderToken;
 
         const grupo = new Set([n]);
 
@@ -15394,13 +15971,7 @@ function meusBlocos(){
 
                 if(grupo.has(v) || visitados.has(v))continue;
 
-                const viz = db[v];
-
-                if(
-                    viz &&
-                    viz.orderToken === token &&
-                    orderTokens[v] === token
-                ){
+                if(ehMeuEspaco(v)){
                     grupo.add(v);
                     fila.push(v);
                 }
@@ -15585,6 +16156,27 @@ function renderMeusBlocos(list, blocos){
         const tituloBloco = "BLOCO #" + String(b[0]).padStart(4, "0") +
             " — " + dimensoes.largura + "x" + dimensoes.altura;
 
+        const sPrin = db[b[0]];
+        const algumPublicado =
+            b.some(id => db[id] && db[id].status === "published");
+        const estendido =
+            sPrin && sPrin.displayMode === "extended";
+        const img = sPrin && sPrin.image;
+
+        const thumb =
+            img
+            ? (estendido
+                ? '<div class="modo-ext-preview" style="margin:8px 0 4px;">' +
+                  ((sPrin.imageGroupSpaces && sPrin.imageGroupSpaces.length) ? sPrin.imageGroupSpaces : b)
+                    .map(() => '<div style="background-image:url(\'' + escAttr(img) + '\');"></div>')
+                    .join("") +
+                  '</div>'
+                : '<img src="' + escAttr(img) + '" ' +
+                  'style="width:100%;max-height:120px;object-fit:contain;' +
+                  'border-radius:8px;margin:8px 0 4px;border:1px solid #333;">')
+            : '<div style="font-size:12px;color:#ffd400;margin:8px 0 4px;">' +
+              '⏳ Aguardando publicação</div>';
+
         html += `
           <div style="border:1px solid #333;border-radius:12px;
                       padding:12px 14px;margin-bottom:10px;
@@ -15592,21 +16184,37 @@ function renderMeusBlocos(list, blocos){
             <div style="display:flex;justify-content:space-between;
                         align-items:center;">
               <b style="color:#45d66f;">${tituloBloco}</b>
+              <span style="font-size:11px;font-weight:700;
+                           color:${algumPublicado ? "#45d66f" : "#ffd400"};">
+                ${algumPublicado ? "PUBLICADO" : "AGUARDANDO PUBLICAÇÃO"}
+              </span>
             </div>
             <div style="color:#aaa;margin-top:4px;font-size:12px;">
               ${intervalo}
             </div>
-            <div style="margin-top:8px;">
+            ${thumb}
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn"
                        onclick="verBlocoNoMapa(${b[0]})"
                        style="margin:0;padding:8px 12px;font-size:12px;">
                  🗺️ IR PARA MEU BLOCO
               </button>
+              <button class="btn"
+                      onclick="editarFoto(${b[0]})"
+                      style="margin:0;padding:8px 12px;font-size:12px;">
+                ${algumPublicado ? "🖼️ EDITAR PUBLICAÇÃO" : "🖼️ PUBLICAR IMAGEM"}
+              </button>
               <button class="btn sec"
                       onclick="editarLink(${b[0]})"
-                      style="margin:0 0 0 8px;padding:8px 12px;font-size:12px;">
+                      style="margin:0;padding:8px 12px;font-size:12px;">
                 🌐 EDITAR LINK
               </button>
+              ${algumPublicado
+                ? '<button class="btn sec" ' +
+                  'onclick="visualizarAnuncio(' + b[0] + ')" ' +
+                  'style="margin:0;padding:8px 12px;font-size:12px;">' +
+                  '👁️ VISUALIZAR</button>'
+                : ''}
             </div>
           </div>`;
     }
@@ -15923,6 +16531,26 @@ function renderMeusEspacos(list, espacos) {
             : "—";
         const dias = diasRestantes(s.expiresAt);
 
+        const estendido =
+            s.displayMode === "extended";
+
+        const thumb =
+            s.image
+            ? (estendido
+                ? '<div class="modo-ext-preview" style="margin:8px 0 4px;">' +
+                  ((s.imageGroupSpaces && s.imageGroupSpaces.length) ? s.imageGroupSpaces : [s.id])
+                    .map(() => '<div style="background-image:url(\'' + escAttr(s.image) + '\');"></div>')
+                    .join("") +
+                  '</div>'
+                : '<img src="' + escAttr(s.image) + '" ' +
+                  'style="width:100%;max-height:110px;object-fit:contain;' +
+                  'border-radius:8px;margin:8px 0 4px;border:1px solid #333;">')
+            : '<div style="font-size:12px;color:#ffd400;margin:8px 0 4px;">' +
+              '⏳ Aguardando publicação</div>';
+
+        const publicado =
+            s.status === "published";
+
         html += `
           <div style="border:1px solid #333;border-radius:12px;
                       padding:12px 14px;margin-bottom:10px;
@@ -15935,19 +16563,37 @@ function renderMeusEspacos(list, espacos) {
                 ${status.label}
               </span>
             </div>
+            ${thumb}
             <div style="color:#aaa;margin-top:6px;font-size:12px;
                         line-height:1.6;">
-              <div><b>Status:</b> ${s.status === "published" ? "publicado" : s.status === "paid" ? "ativo" : s.status}</div>
+              <div><b>Publicação:</b> ${publicado ? '<span style="color:#45d66f;">publicado</span>' : '<span style="color:#ffd400;">aguardando publicação</span>'}</div>
+              ${s.title ? '<div><b>Nome:</b> ' + escStr(s.title) + '</div>' : ""}
               <div><b>Plano:</b> ${plano}</div>
               <div><b>Compra:</b> ${compra}</div>
               <div><b>Vencimento:</b> ${vencimento}</div>
               <div><b>Dias restantes:</b> ${dias}</div>
             </div>
-            <div style="margin-top:10px;display:flex;gap:8px;">
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn"
+                      onclick="editarFoto(${s.id})"
+                      style="margin:0;padding:8px 12px;font-size:12px;">
+                ${publicado ? "🖼️ EDITAR PUBLICAÇÃO" : "🖼️ PUBLICAR IMAGEM"}
+              </button>
+              <button class="btn sec"
+                      onclick="editarLink(${s.id})"
+                      style="margin:0;padding:8px 12px;font-size:12px;">
+                🌐 EDITAR LINK
+              </button>
+              ${publicado
+                ? '<button class="btn sec" ' +
+                  'onclick="visualizarAnuncio(' + s.id + ')" ' +
+                  'style="margin:0;padding:8px 12px;font-size:12px;">' +
+                  '👁️ VISUALIZAR</button>'
+                : ""}
+              <button class="btn sec"
                       onclick="verBlocoNoMapa(${s.id})"
                       style="margin:0;padding:8px 12px;font-size:12px;">
-                👁 VER
+                👁 VER NO MAPA
               </button>
               <button class="btn"
                       onclick="abrirRenovacao(${s.id})"

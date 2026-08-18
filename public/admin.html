@@ -510,6 +510,7 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
                 <button id="colTabEstoque" onclick="colAba('estoque')">📦 ESTOQUE</button>
                 <button id="colTabTransacoes" onclick="colAba('transacoes')">💸 TRANSAÇÕES</button>
                 <button id="colTabConquistas" onclick="colAba('conquistas')">🏆 CONQUISTAS</button>
+                <button id="colTabConcessoes" onclick="colAba('concessoes')">🎁 CONCESSÕES</button>
             </div>
 
             <div id="colViewResumo" style="padding-top:16px;">
@@ -521,6 +522,45 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
                 <div class="card">
                     <h3 style="color:#ffd400;margin-bottom:10px;">Negociações</h3>
                     <div id="colResumoTrocas"></div>
+                </div>
+            </div>
+
+            <div id="colViewConcessoes" style="display:none;padding-top:16px;">
+                <div class="card">
+                    <h3 style="color:#ffd400;margin-bottom:6px;">🎁 Conceder benefícios</h3>
+                    <p class="fade" style="margin-bottom:14px;">Operação administrativa auditada. Não cria compra, pagamento ou receita.</p>
+                    <div class="toolbar">
+                        <input id="conBuscaUsuario" placeholder="Buscar usuário por nome, apelido, e-mail ou ID">
+                        <button onclick="buscarConcessaoUsuarios()">BUSCAR USUÁRIO</button>
+                    </div>
+                    <div id="conUsuariosResultados" style="display:grid;gap:8px;margin-bottom:14px;"></div>
+                    <div id="conUsuarioSelecionado" class="card" style="display:none;background:#101018;border-color:#ffd400;margin:0 0 14px;"></div>
+                    <div class="grid" style="margin-bottom:14px;">
+                        <div>
+                            <label class="fade">Figurinhas do catálogo</label>
+                            <input id="conBuscaCard" placeholder="Buscar por nome, número ou ID">
+                            <button style="margin-top:8px" onclick="buscarConcessaoCards()">BUSCAR FIGURINHAS</button>
+                            <div id="conCardsResultados" style="display:grid;gap:6px;margin-top:8px;max-height:260px;overflow:auto"></div>
+                        </div>
+                        <div>
+                            <label class="fade">Espaços específicos</label>
+                            <input id="conBuscaEspaco" placeholder="Número do espaço">
+                            <button style="margin-top:8px" onclick="buscarConcessaoEspacos()">BUSCAR ESPAÇO</button>
+                            <div id="conEspacosResultados" style="display:grid;gap:6px;margin-top:8px;max-height:260px;overflow:auto"></div>
+                        </div>
+                    </div>
+                    <label class="fade">Motivo obrigatório</label>
+                    <textarea id="conMotivo" placeholder="Premiação, evento, parceria, suporte..." style="width:100%;min-height:70px;margin-top:6px"></textarea>
+                    <div id="conResumo" class="card" style="margin-top:12px;background:#101018"></div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+                        <button onclick="concederFigurinhasAdmin()">CONCEDER FIGURINHAS</button>
+                        <button onclick="concederEspacosAdmin()">CONCEDER ESPAÇOS</button>
+                        <button class="sec" onclick="limparConcessaoForm()">LIMPAR</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 style="color:#ffd400;margin-bottom:10px;">Histórico de concessões</h3>
+                    <div style="overflow:auto;max-height:50vh"><table id="conHistoricoTabela"><thead><tr><th>Data</th><th>Admin</th><th>Usuário</th><th>Tipo</th><th>Itens</th><th>Motivo</th></tr></thead><tbody></tbody></table></div>
                 </div>
             </div>
 
@@ -1722,7 +1762,7 @@ async function removerAviso(){
 ========================================================= */
 
 function colAba(nome){
-    for(const n of ["resumo","cards","packs","usuarios","compras","vendas","trocas","estoque","transacoes","conquistas"]){
+    for(const n of ["resumo","cards","packs","usuarios","compras","vendas","trocas","estoque","transacoes","conquistas","concessoes"]){
         const bt = document.getElementById("colTab" + n.charAt(0).toUpperCase() + n.slice(1));
         const vw = document.getElementById("colView" + n.charAt(0).toUpperCase() + n.slice(1));
         if(bt) bt.className = n === nome ? "ativa" : "";
@@ -1738,9 +1778,77 @@ function colAba(nome){
     if(nome === "estoque") carregarColEstoque();
     if(nome === "transacoes") carregarColTransacoes();
     if(nome === "conquistas") carregarColConquistas();
+    if(nome === "concessoes") carregarConcessoes();
 }
 
 const fmtColDin = (n) => "R$ " + Number(n || 0).toLocaleString("pt-BR", {minimumFractionDigits: 2});
+
+let concessaoUsuario = null;
+let concessaoCards = [];
+let concessaoEspacos = [];
+
+function renderConResumo(){
+    const el = document.getElementById("conResumo");
+    if(!el) return;
+    const u = concessaoUsuario;
+    el.innerHTML = '<b style="color:#ffd400">RESUMO DA CONCESSÃO</b><br>' +
+        '<span>Usuário: ' + (u ? esc(u.nome || u.email) + ' (ID ' + u.id + ')' : 'selecione um usuário') + '</span><br>' +
+        '<span>Figurinhas: ' + concessaoCards.length + ' · Espaços: ' + concessaoEspacos.length + '</span>';
+}
+function carregarConcessoes(){
+    renderConResumo();
+    api("/api/admin/concessoes/historico").then(d => {
+        const tbody = document.querySelector("#conHistoricoTabela tbody");
+        if(!tbody) return;
+        tbody.innerHTML = (d.concessoes || []).map(c => '<tr><td>' + fmtData(c.criado_em) + '</td><td>' + esc(c.admin_usuario) + '</td><td>' + esc(c.usuario_apelido || c.usuario_nome || "ID " + c.usuario_id) + '</td><td>' + esc(c.tipo) + '</td><td>' + esc(JSON.stringify(c.itens || [])) + '</td><td>' + esc(c.motivo) + '</td></tr>').join("") || '<tr><td colspan="6" class="fade">Nenhuma concessão registrada.</td></tr>';
+    }).catch(err => { const el = document.querySelector("#conHistoricoTabela tbody"); if(el) el.innerHTML = '<tr><td colspan="6" class="fade">' + esc(err.message) + '</td></tr>'; });
+}
+function buscarConcessaoUsuarios(){
+    const busca = document.getElementById("conBuscaUsuario").value.trim();
+    if(!busca) return;
+    api("/api/admin/concessoes/usuarios?busca=" + encodeURIComponent(busca)).then(d => {
+        document.getElementById("conUsuariosResultados").innerHTML = (d.usuarios || []).map(u => '<button class="sec" style="text-align:left;min-height:0" onclick=\'selecionarConcessaoUsuario(' + JSON.stringify(u).replace(/'/g,"&#39;") + ')\'>#' + u.id + ' — ' + esc(u.apelido || u.nome) + ' · ' + esc(u.email) + '</button>').join("") || '<span class="fade">Nenhum usuário encontrado.</span>';
+    }).catch(err => alert(err.message));
+}
+function selecionarConcessaoUsuario(u){
+    concessaoUsuario = u;
+    const el = document.getElementById("conUsuarioSelecionado");
+    el.style.display = "block";
+    el.innerHTML = '<b style="color:#ffd400">USUÁRIO BENEFICIADO</b><br>' + (u.foto_url ? '<img src="' + esc(u.foto_url) + '" alt="" style="width:42px;height:42px;border-radius:50%;object-fit:cover;vertical-align:middle;margin:6px 8px 6px 0">' : '') + '<b>' + esc(u.apelido || u.nome) + '</b><br>ID: ' + u.id + ' · ' + esc(u.email) + '<br>Cadastro: ' + fmtData(u.criado_em);
+    renderConResumo();
+}
+function buscarConcessaoCards(){
+    api("/api/admin/concessoes/cards?busca=" + encodeURIComponent(document.getElementById("conBuscaCard").value.trim())).then(d => {
+        document.getElementById("conCardsResultados").innerHTML = (d.cards || []).map(c => '<label style="display:flex;gap:8px;align-items:center;background:#111;padding:6px;border:1px solid #333;border-radius:8px"><input type="checkbox" value="' + c.id + '" onchange="atualizarConcessaoItens()">' + (c.image_url ? '<img src="' + esc(c.image_url) + '" style="width:36px;height:36px;object-fit:cover;border-radius:5px">' : '') + '<span>#' + c.number + ' ' + esc(c.name) + ' · ' + esc(c.rarity) + '</span></label>').join("") || '<span class="fade">Nenhuma figurinha encontrada.</span>';
+    }).catch(err => alert(err.message));
+}
+function buscarConcessaoEspacos(){
+    api("/api/admin/concessoes/espacos?busca=" + encodeURIComponent(document.getElementById("conBuscaEspaco").value.trim())).then(d => {
+        document.getElementById("conEspacosResultados").innerHTML = (d.espacos || []).map(s => '<label style="display:flex;gap:8px;align-items:center;background:#111;padding:8px;border:1px solid #333;border-radius:8px"><input type="checkbox" value="' + s.id + '" onchange="atualizarConcessaoItens()"><span>#' + s.id + ' · ' + esc(s.status || "disponível") + (s.name ? ' · ' + esc(s.name) : '') + '</span></label>').join("") || '<span class="fade">Nenhum espaço encontrado.</span>';
+    }).catch(err => alert(err.message));
+}
+function atualizarConcessaoItens(){
+    concessaoCards = [...document.querySelectorAll("#conCardsResultados input:checked")].map(x => Number(x.value));
+    concessaoEspacos = [...document.querySelectorAll("#conEspacosResultados input:checked")].map(x => Number(x.value));
+    renderConResumo();
+}
+function motivoConcessao(){
+    const motivo = document.getElementById("conMotivo").value.trim();
+    if(!concessaoUsuario) { alert("Selecione o usuário beneficiado."); return null; }
+    if(!motivo) { alert("Informe o motivo da concessão."); return null; }
+    return motivo;
+}
+async function concederFigurinhasAdmin(){
+    const motivo = motivoConcessao(); if(!motivo || !concessaoCards.length) { if(motivo && !concessaoCards.length) alert("Selecione ao menos uma figurinha."); return; }
+    if(!confirm("Confirmar concessão de " + concessaoCards.length + " figurinha(s) para " + (concessaoUsuario.apelido || concessaoUsuario.nome) + "?")) return;
+    try { await api("/api/admin/concessoes/figurinhas", {method:"POST", body:JSON.stringify({usuarioId:concessaoUsuario.id,cardIds:concessaoCards,motivo})}); alert("Figurinhas concedidas."); carregarConcessoes(); } catch(err){ alert(err.message); }
+}
+async function concederEspacosAdmin(){
+    const motivo = motivoConcessao(); if(!motivo || !concessaoEspacos.length) { if(motivo && !concessaoEspacos.length) alert("Selecione ao menos um espaço."); return; }
+    if(!confirm("Confirmar concessão de " + concessaoEspacos.length + " espaço(s) para " + (concessaoUsuario.apelido || concessaoUsuario.nome) + "?")) return;
+    try { await api("/api/admin/concessoes/espacos", {method:"POST", body:JSON.stringify({usuarioId:concessaoUsuario.id,ids:concessaoEspacos,motivo})}); alert("Espaços concedidos."); carregarConcessoes(); } catch(err){ alert(err.message); }
+}
+function limparConcessaoForm(){ concessaoUsuario=null; concessaoCards=[]; concessaoEspacos=[]; ["conBuscaUsuario","conBuscaCard","conBuscaEspaco","conMotivo"].forEach(id=>{const e=document.getElementById(id);if(e)e.value=""}); document.getElementById("conUsuarioSelecionado").style.display="none"; document.getElementById("conUsuariosResultados").innerHTML=""; document.getElementById("conCardsResultados").innerHTML=""; document.getElementById("conEspacosResultados").innerHTML=""; renderConResumo(); }
 
 const COL_RAR_COLORES = {
     COMUM:"#9aa0a6", INCOMUM:"#2ecc71", RARA:"#3b82f6",

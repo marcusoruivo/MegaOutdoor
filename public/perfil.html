@@ -173,12 +173,21 @@ async function carregar(){
 function renderHeader(){
     const p = PERFIL;
     const visibilidade = p.privado ? "PRIVADO" : "PÚBLICO";
+    const fotoUrl = p.fotoUrl || p.foto_url;
+    const avatarHtml = fotoUrl
+        ? '<img src="' + esc(fotoUrl) + '" alt="' + esc(p.nome || "Colecionador") + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'"><span class="fallback" style="display:none">👤</span>'
+        : '👤';
+    const meu = meuId();
+    const ehMeu = meu != null && p.id === meu;
+    const btnBisbilhotar = !ehMeu && !p.privado
+        ? '<button class="btn btn-amarelo" style="margin-top:10px;padding:8px 14px;font-size:12px" onclick="bisbilhotarAlbum()">👀 BISBILHOTAR</button>'
+        : '';
     document.getElementById("perfilHeader").innerHTML =
         '<div class="header-perfil">' +
-            '<div class="avatar">👤</div>' +
+            '<div class="avatar">' + avatarHtml + '</div>' +
             '<div class="header-info">' +
                 '<h1>' + esc(p.nome || "Colecionador") + '</h1>' +
-                '<div class="sub">Álbum ' + visibilidade + (p.id && p.id === meuId() ? " • <b style='color:var(--verde)'>este é você</b>" : "") + '</div>' +
+                '<div class="sub">Álbum ' + visibilidade + (ehMeu ? " • <b style='color:var(--verde)'>este é você</b>" : "") + '</div>' +
             '</div>' +
             '<div class="stats">' +
                 '<div class="stat-box"><div class="v">' + (p.diferentes||0) + '/' + 100 + '</div><div class="l">PROGRESSO</div></div>' +
@@ -187,7 +196,13 @@ function renderHeader(){
                 '<div class="stat-box"><div class="v">' + (p.disponiveis_troca||0) + '</div><div class="l">P/ TROCA</div></div>' +
                 '<div class="stat-box"><div class="v">' + (p.vendas||0) + '</div><div class="l">À VENDA</div></div>' +
             '</div>' +
+            (btnBisbilhotar ? '<div style="margin-top:10px;text-align:center">' + btnBisbilhotar + '</div>' : '') +
         '</div>';
+}
+
+function bisbilhotarAlbum(){
+    if (!PERFIL || !PERFIL.id) return;
+    window.open('/perfil.html?id=' + encodeURIComponent(PERFIL.id), '_blank');
 }
 
 function renderAlbum(){

@@ -951,6 +951,38 @@ module.exports = function criarModuloColecionaveis(deps) {
         return q.rows[0] || null;
     }
 
+    /* Regra central de elegibilidade (mesma do server.js).
+       Apenas contas ACTIVE participam de negociações. */
+    async function usuarioElegivel(usuarioId) {
+        if (usuarioId == null) return true;
+        if (typeof deps.usuarioPodeNegociar === "function") {
+            return deps.usuarioPodeNegociar(usuarioId);
+        }
+        const u = await usuarioPorId(usuarioId);
+        if (!u) return false;
+        let st = String(u.account_status || "ACTIVE").toUpperCase();
+        if (st === "ACTIVE" && u.bloqueado === true) st = "BLOCKED";
+        return st === "ACTIVE";
+    }
+
+    /* Retorna mensagem de bloqueio (403) ou null se liberado. */
+    async function motivoBloqueio(usuarioId) {
+        if (usuarioId == null) return null;
+        const ok = await usuarioElegivel(usuarioId);
+        if (ok) return null;
+        return "Esta conta está bloqueada para negociações no marketplace.";
+    }
+
+    /* Verifica vários ids de uma vez. */
+    async function verificarElegibilidade(...ids) {
+        for (const id of ids) {
+            if (id == null) continue;
+            const motivo = await motivoBloqueio(id);
+            if (motivo) return { bloqueado: true, motivo };
+        }
+        return { bloqueado: false };
+    }
+
     /* Quantidade que o usuário possui de uma figurinha. */
     async function quantidadePossuida(usuarioId, cardId) {
         const q = await pg().query(
@@ -2747,6 +2779,11 @@ module.exports = function criarModuloColecionaveis(deps) {
 
     router.post("/auctions", obterAuthUsuario(), async (req, res) => {
         if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+
+        /* Regra central de status: vendedor deve poder negociar. */
+        const bloqueioSeller = await verificarElegibilidade(req.usuario.id);
+        if (bloqueioSeller.bloqueado) return res.status(403).json({ error: bloqueioSeller.motivo });
+
         const contaRecebimento = await marketplaceConta(req.usuario.id);
         if (!contaRecebimento && process.env.ALLOW_TEST_MODE !== "true") {
             return res.status(400).json({ error: "Para vender ou leiloar figurinhas, conecte sua conta do Mercado Pago." });
@@ -2799,6 +2836,11 @@ module.exports = function criarModuloColecionaveis(deps) {
     router.post("/auctions/:id/bids", obterAuthUsuario(), async (req, res) => {
         if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
         await expirarLeiloesVencidos();
+
+        /* Regra central de status: lances requerem pagamento futuro (winner),
+           logo o bidder deve estar elegível para participar do marketplace. */
+        const bloqueioBidder = await verificarElegibilidade(req.usuario.id);
+        if (bloqueioBidder.bloqueado) return res.status(403).json({ error: bloqueioBidder.motivo });
         const amount = Math.round(Number(req.body.amount ?? req.body.lance) * 100) / 100;
         if (!isFinite(amount) || amount <= 0) return res.status(400).json({ error: "Valor do lance inválido." });
         const client = await pg().connect();
@@ -2961,6 +3003,10 @@ module.exports = function criarModuloColecionaveis(deps) {
             return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
         }
         try {
+            /* Regra central de status: vendedor deve poder negociar. */
+            const bloqueioSeller = await verificarElegibilidade(req.usuario.id);
+            if (bloqueioSeller.bloqueado) return res.status(403).json({ error: bloqueioSeller.motivo });
+
             const contaRecebimento = await marketplaceConta(req.usuario.id);
             if (!contaRecebimento && process.env.ALLOW_TEST_MODE !== "true") {
                 return res.status(400).json({ error: "Para vender ou leiloar figurinhas, conecte sua conta do Mercado Pago." });
@@ -3498,6 +3544,10 @@ module.exports = function criarModuloColecionaveis(deps) {
             const offeree = await usuarioPorId(offereeId);
             if (!offeree) return res.status(404).json({ error: "Colecionador não encontrado." });
 
+            /* Regra central de elegibilidade. */
+            const bloqueioOferta = await verificarElegibilidade(req.usuario.id, offereeId);
+            if (bloqueioOferta.bloqueado) return res.status(403).json({ error: bloqueioOferta.motivo });
+
             const dupQ = await pg().query(
                 `SELECT id FROM sticker_offers
                   WHERE offeror_id = $1 AND offeree_id = $2 AND card_id = $3
@@ -3555,6 +3605,14 @@ module.exports = function criarModuloColecionaveis(deps) {
         if (!offer) return res.status(404).json({ error: "Oferta não encontrada." });
         if (offer.offeree_id !== req.usuario.id) return res.status(403).json({ error: "Somente quem recebeu a oferta pode aceitá-la." });
         if (offer.status !== "PENDENTE") return res.status(400).json({ error: "Esta oferta não está mais pendente." });
+
+        /* Regra central de status: vendedor (offeree) deve poder negociar. */
+        const bloqueioVendedor = await verificarElegibilidade(offer.offeree_id);
+        if (bloqueioVendedor.bloqueado) return res.status(403).json({ error: bloqueioVendedor.motivo });
+
+        /* Ofertante (offeror) também deve poder negociar. */
+        const bloqueioOfertante = await verificarElegibilidade(offer.offeror_id);
+        if (bloqueioOfertante.bloqueado) return res.status(403).json({ error: "O ofertante não pode mais participar de negociações." });
 
         const contaVendedor = await marketplaceConta(req.usuario.id);
         const splitHabilitado = mercadopagoMarketplaceSplitEnabled && typeof criarOrderMercadoPagoSplit === "function";
@@ -3743,6 +3801,12 @@ module.exports = function criarModuloColecionaveis(deps) {
             if (original.status !== "PENDENTE") return res.status(400).json({ error: "A oferta original não está mais pendente." });
             if (!isFinite(amount) || amount <= 0 || amount > 99999) return res.status(400).json({ error: "Valor da contraproposta inválido." });
             if (quantidade < 1 || quantidade > 99) return res.status(400).json({ error: "Quantidade inválida." });
+
+            /* Regra central de status: ambos os usuários devem poder negociar. */
+            const bloqueioCounter = await verificarElegibilidade(req.usuario.id);
+            if (bloqueioCounter.bloqueado) return res.status(403).json({ error: bloqueioCounter.motivo });
+            const bloqueioOriginalOfferor = await verificarElegibilidade(original.offeror_id);
+            if (bloqueioOriginalOfferor.bloqueado) return res.status(403).json({ error: "O ofertante original não pode mais participar de negociações." });
 
             const card = await cardPorId(original.card_id);
             if (!card || !card.is_active) return res.status(400).json({ error: "Figurinha inválida." });
@@ -3966,6 +4030,12 @@ module.exports = function criarModuloColecionaveis(deps) {
             if (!receptor) {
                 return res.status(404).json({ error: "Usuário não encontrado." });
             }
+
+            /* Regra central de status: ambos os usuários devem poder negociar. */
+            const bloqueioProposer = await verificarElegibilidade(req.usuario.id);
+            if (bloqueioProposer.bloqueado) return res.status(403).json({ error: bloqueioProposer.motivo });
+            const bloqueioReceiver = await verificarElegibilidade(receiverId);
+            if (bloqueioReceiver.bloqueado) return res.status(403).json({ error: "Este usuário não pode participar de trocas no momento." });
 
             const minhas = await validarItemsTroca(req.body.ofereco);
             if (minhas.error) return res.status(400).json({ error: minhas.error });

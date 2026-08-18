@@ -45,6 +45,7 @@ input,select,textarea{
     width:100%;
 }
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--laranja)}
+input::placeholder,select::placeholder,textarea::placeholder{color:#b0b0bd;opacity:1}
 ::-webkit-scrollbar{width:10px;height:10px}
 ::-webkit-scrollbar-thumb{background:#2a2a3a;border-radius:6px}
 .hidden{display:none!important}
@@ -84,7 +85,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--laranja)
 .btn-laranja{background:linear-gradient(90deg,var(--laranja),var(--vermelho));color:#fff}
 .btn-ghost{background:transparent;border:1px solid var(--borda);color:var(--texto)}
 .btn-ghost:hover{border-color:var(--amarelo)}
-.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn:disabled{opacity:.68;cursor:not-allowed;transform:none}
 .badge-user{
     background:var(--painel);border:1px solid var(--borda);
     border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;
@@ -510,7 +511,7 @@ body{overflow-x:hidden}
     mask-image:radial-gradient(ellipse at 30% 45%,#000 18%,transparent 55%),radial-gradient(ellipse at 70% 35%,#000 14%,transparent 50%),radial-gradient(ellipse at 55% 70%,#000 12%,transparent 48%);
     -webkit-mask-image:radial-gradient(ellipse at 30% 45%,#000 18%,transparent 55%),radial-gradient(ellipse at 70% 35%,#000 14%,transparent 50%),radial-gradient(ellipse at 55% 70%,#000 12%,transparent 48%)}
 .cc-verso-card .cc-info,.cc-verso-card .cc-topo,.cc-verso-card .cc-rodape{position:relative;z-index:1}
-.modal-body{padding:18px 20px 20px;min-width:0;overflow:auto;overscroll-behavior:contain}
+.modal-body{padding:18px 20px 20px;min-width:0;min-height:0;flex:1 1 auto;overflow:auto;overscroll-behavior:contain}
 .modal-body h2{font-size:clamp(18px,4vw,22px);line-height:1.2;margin:8px 0 4px;overflow-wrap:anywhere}
 .modal-body .num{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:1px}
 .modal-body .desc{font-size:13px;color:var(--muted);line-height:1.6;margin:10px 0}
@@ -2787,7 +2788,8 @@ function packEtapaClicada(){
     } else if (etapa === "slotBack") {
         revelarSlot();
     } else if (etapa === "slotReveal") {
-        avancarPacote();
+        if (!pacoteEstado.virado) virarSlot();
+        else avancarPacote();
     } else if (etapa === "grande") {
         renderPackResumo();
     } else if (etapa === "resumo") {
@@ -2814,7 +2816,7 @@ function renderPackLuz(){
     const stage = document.getElementById("packStage");
     stage.innerHTML = '<div class="pack-luz"></div>';
     pacoteEstado.etapa = "luz";
-    pacoteRoda(renderSlotBack, 900);
+    pacoteRoda(revelarSlot, 900);
 }
 
 function renderSlotBack(){
@@ -2833,12 +2835,26 @@ function revelarSlot(){
     if (!pacoteEstado || (pacoteEstado.etapa !== "slotBack" && pacoteEstado.etapa !== "slotReveal")) return;
     const item = pacoteEstado.figs[pacoteEstado.idx];
     const stage = document.getElementById("packStage");
-    const dica = pacoteEstado.modo === "manual" ? "Toque para virar a próxima" : "Toque para acelerar";
+    pacoteEstado.virado = false;
     stage.innerHTML = '<div class="pack-titulo">🎁 ' + esc(pacoteEstado.nome) + '</div>' +
-        ColecaoUI.cardRevelacaoHtml(item.card, pacoteEstado.idx, item.marc) +
-        '<div class="pack-contagem">Figurinha ' + (pacoteEstado.idx + 1) + ' de ' + pacoteEstado.figs.length + ' · ' + dica + '</div>';
+        '<div class="pack-flip-container cc-flip-container" id="packFlipContainer"><div class="cc-flipper">' +
+            '<div class="cc-frente">' + ColecaoUI.cardRevelacaoHtml(item.card, pacoteEstado.idx, item.marc) + '</div>' +
+            '<div class="cc-verso">' + ColecaoUI.cardVersoHtml(item.card) + '</div>' +
+        '</div></div>' +
+        '<div class="pack-contagem">Figurinha ' + (pacoteEstado.idx + 1) + ' de ' + pacoteEstado.figs.length + '</div>' +
+        '<button class="btn btn-amarelo" style="margin-top:12px" onclick="event.stopPropagation();packEtapaClicada()">VIRAR CARTA</button>';
     pacoteEstado.etapa = "slotReveal";
-    if (pacoteEstado.modo !== "manual") pacoteRoda(avancarPacote, pacoteEstado.modo === "auto" ? 1500 : 6500);
+    if (pacoteEstado.modo !== "manual") pacoteRoda(virarSlot, 1100);
+}
+
+function virarSlot(){
+    if (!pacoteEstado || pacoteEstado.etapa !== "slotReveal" || pacoteEstado.virado) return;
+    pacoteEstado.virado = true;
+    const flipper = document.querySelector("#packFlipContainer .cc-flipper");
+    const botao = document.querySelector("#packStage > .btn");
+    if (flipper) flipper.classList.add("virado");
+    if (botao) botao.textContent = pacoteEstado.idx === pacoteEstado.figs.length - 1 ? "FINALIZAR" : "PRÓXIMA FIGURINHA";
+    if (pacoteEstado.modo !== "manual") pacoteRoda(avancarPacote, 1400);
 }
 
 function avancarPacote(){
@@ -2851,7 +2867,7 @@ function avancarPacote(){
         if (especial) { renderPackGrande(); } else { renderPackResumo(); }
         return;
     }
-    renderSlotBack();
+    revelarSlot();
 }
 
 function renderPackGrande(){

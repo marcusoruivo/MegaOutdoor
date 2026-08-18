@@ -123,6 +123,9 @@
 
 /* ===== REVELAÇÃO (cards dentro do pacote) ===== */
 .rev-card{padding:10px;display:flex;flex-direction:column;gap:6px;text-align:left}
+.pack-flip-container{width:min(300px,86vw);height:min(520px,calc(100vh - 170px));margin:0 auto}
+.pack-flip-container .cc-frente,.pack-flip-container .cc-verso{overflow:auto;overscroll-behavior:contain}
+.pack-flip-container .rev-card,.pack-flip-container .cc-verso-card{min-height:100%;box-sizing:border-box}
 .rev-card .cc-topo{padding:0 0 4px}
 .rev-card .cc-arte{margin:0;aspect-ratio:4/3}
 .rev-card.r-COMUM{border-color:#6b7280}

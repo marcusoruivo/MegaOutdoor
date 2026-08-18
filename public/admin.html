@@ -47,6 +47,8 @@ input,select{
     outline:none;
 }
 input:focus,select:focus{border-color:#ffd400;}
+input::placeholder,textarea::placeholder{color:#b8b8b8;opacity:1;}
+button:disabled{opacity:.68;color:#eee;cursor:not-allowed;}
 table{
     width:100%;
     border-collapse:collapse;
@@ -105,7 +107,7 @@ tr:hover td{background:#141414;}
     text-align:center;
 }
 .metric b{display:block;font-size:24px;color:#ffd400;font-weight:900;}
-.metric span{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.4px;}
+.metric span{font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;}
 .toolbar input{flex:1;min-width:180px;}
 main{padding:20px;}
@@ -124,10 +126,10 @@ main{padding:20px;}
 #login input{width:100%;margin-bottom:10px;}
 #loginMsg{color:#ff6b6b;font-size:12px;min-height:16px;margin-top:8px;}
 .mono{font-family:Consolas,monospace;font-size:11px;color:#bbb;}
-.fade{color:#888;}
+.fade{color:#aaa;}
 img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px solid #333;display:block;}
 .badge-count{background:#222;border-radius:10px;padding:2px 8px;font-size:11px;color:#ccc;margin-left:6px;}
-.paginacao{display:flex;gap:8px;margin-top:12px;align-items:center;font-size:12px;color:#888;}
+.paginacao{display:flex;gap:8px;margin-top:12px;align-items:center;font-size:12px;color:#aaa;}
 .paginacao button{padding:4px 10px;font-size:11px;}
 .btn-csv{text-decoration:none;}
 
@@ -139,7 +141,7 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
 .modal-box p{color:#ccc;margin-bottom:20px;line-height:1.5;}
 .modal-box .modal-actions{display:flex;gap:10px;justify-content:flex-end;}
 .modal-box input,.modal-box textarea{width:100%;margin-bottom:12px;}
-.modal-box label{display:block;color:#888;font-size:12px;margin-bottom:6px;margin-top:12px;}
+.modal-box label{display:block;color:#aaa;font-size:12px;margin-bottom:6px;margin-top:12px;}
 .btn-modal{padding:10px 20px;border-radius:8px;font-weight:700;cursor:pointer;border:0;font-size:13px;}
 .btn-modal.cancel{background:#222;color:#ddd;border:1px solid #444;}
 .btn-modal.confirm{background:#ffd400;color:#111;}

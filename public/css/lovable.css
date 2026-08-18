@@ -90,6 +90,10 @@ body{
 .l-text-gold{color:var(--gold)!important}
 .l-text-muted{color:var(--muted-foreground)!important}
 .l-text-foreground{color:var(--foreground)!important}
+.l-header input::placeholder,
+.l-header textarea::placeholder,
+input::placeholder,
+textarea::placeholder{color:color-mix(in oklab, var(--foreground) 62%, transparent);opacity:1}
 .l-bg{background:var(--background)}
 .l-bg-surface{background:var(--surface)}
 .l-bg-surface-2{background:var(--surface-2)}
@@ -219,7 +223,7 @@ body{
     margin: 0 auto;
     height: 100%;
     display: grid;
-    grid-template-columns: auto minmax(0,1fr) auto;
+    grid-template-columns: minmax(150px, auto) minmax(0, 1fr) minmax(max-content, auto);
     align-items: center;
     gap: 12px;
     padding: 0 16px;
@@ -234,14 +238,14 @@ body{
 }
 
 .l-header-logo{
-    height: 44px;
+    height: 58px;
     width: auto;
     object-fit: contain;
     display: none;
 }
 
 .l-header-logo-mobile{
-    height: 40px;
+    height: 48px;
     width: auto;
     object-fit: contain;
     display: block;
@@ -264,6 +268,13 @@ body{
 
 @media (min-width: 1280px){
     .l-header-nav{gap: 32px}
+}
+
+@media (min-width: 1024px) and (max-width: 1399px){
+    .l-header-inner{gap: 16px}
+    .l-header-nav{gap: 14px}
+    .l-header-nav a{font-size: 10px; letter-spacing: .07em}
+    .l-header-account-info{max-width: 86px}
 }
 
 .l-header-nav a{
@@ -321,7 +332,7 @@ body{
 }
 
 .l-menu-toggle{display: grid}
-@media (min-width: 1024px){.l-menu-toggle{display: none}}
+@media (min-width: 1024px){.l-header-btn.l-menu-toggle{display: none}}
 
 .l-header-btn{
     position: relative;
@@ -341,6 +352,9 @@ body{
     border-color: var(--gold-40);
     color: var(--gold);
 }
+
+button:disabled,
+.l-buy-cta:disabled{opacity:.68;color:var(--foreground)}
 
 .l-header-btn svg{
     width: 18px;
@@ -1465,12 +1479,20 @@ body{
 .l-collectible-card:hover{transform: translateY(-4px)}
 
 .l-collectible-glow{
-    width: 64px;
-    height: 64px;
+    width: 82px;
+    height: 82px;
     margin: 0 auto;
     border-radius: 50%;
     display: grid;
     place-items: center;
+}
+
+.l-collectible-glow img{
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
 }
 
 .l-collectible-glow svg{

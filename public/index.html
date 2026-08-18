@@ -310,11 +310,13 @@ html,body{
 }
 
 .btn:disabled{
-    opacity:.4;
+    opacity:.68;
     cursor:not-allowed;
     transform:none;
     box-shadow:none
 }
+
+input::placeholder,textarea::placeholder{color:#b0b0b0;opacity:1}
 
 .sec{
     background:#232323;
@@ -4271,6 +4273,22 @@ LIMPAR
                 <span class="l-buy-total-value" id="buyPanelTotal">R$ 0,00</span>
             </div>
 
+            <!-- Seleção fica junto do resumo da compra, antes da ação final. -->
+            <div class="card" id="selectionCard" style="margin-top:0; background:transparent; border-color:color-mix(in oklab, var(--border) 60%, transparent);">
+                <div class="card-header-collapse" onclick="toggleCollapse(this.parentElement)">
+                    <span class="card-collapse-label">🛒 SELEÇÃO ATUAL</span>
+                    <span class="card-collapse-icon">▾</span>
+                </div>
+                <div id="selectionEmpty" style="font-size:12px; color:var(--muted-foreground); padding:8px 0;">Nenhum espaço selecionado.</div>
+                <div id="selectionContent" style="display:none;">
+                    <div style="font-size:24px; font-weight:900; color:var(--gold);" id="qty">0</div>
+                    <div style="font-size:12px; color:var(--muted-foreground);">espaços selecionados</div>
+                    <div style="margin-top:8px; font-size:18px; font-weight:800; color:var(--foreground);" id="total">R$ 0,00</div>
+                    <button class="btn" id="go" style="width:100%; margin-top:12px;" onclick="checkout()">COMPRAR AGORA</button>
+                    <button class="btn sec" style="width:100%; margin-top:8px;" onclick="clearSel()">LIMPAR SELEÇÃO</button>
+                </div>
+            </div>
+
             <button type="button" class="l-buy-cta" id="buyPanelCta" onclick="checkoutFromPanel()">
                 <span class="l-buy-cta-content">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
@@ -4310,21 +4328,6 @@ LIMPAR
                 </div>
             </div>
 
-            <!-- Card de seleção atual (preservado) -->
-            <div class="card" id="selectionCard" style="margin-top:16px; background:transparent; border-color:color-mix(in oklab, var(--border) 60%, transparent);">
-                <div class="card-header-collapse" onclick="toggleCollapse(this.parentElement)">
-                    <span class="card-collapse-label">🛒 SELEÇÃO ATUAL</span>
-                    <span class="card-collapse-icon">▾</span>
-                </div>
-                <div id="selectionEmpty" style="font-size:12px; color:var(--muted-foreground); padding:8px 0;">Nenhum espaço selecionado.</div>
-                <div id="selectionContent" style="display:none;">
-                    <div style="font-size:24px; font-weight:900; color:var(--gold);" id="qty">0</div>
-                    <div style="font-size:12px; color:var(--muted-foreground);">espaços selecionados</div>
-                    <div style="margin-top:8px; font-size:18px; font-weight:800; color:var(--foreground);" id="total">R$ 0,00</div>
-                    <button class="btn" id="go" style="width:100%; margin-top:12px;" onclick="checkout()">COMPRAR AGORA</button>
-                    <button class="btn sec" style="width:100%; margin-top:8px;" onclick="clearSel()">LIMPAR SELEÇÃO</button>
-                </div>
-            </div>
         </aside>
     </div>
 
@@ -4340,7 +4343,7 @@ LIMPAR
                     <button type="button" class="l-map-control-btn" onclick="zoom(0.83)" title="Afastar" aria-label="Diminuir zoom">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     </button>
-                    <span class="l-map-zoom-value" id="zoomLevel">16%</span>
+                     <span class="l-map-zoom-value" id="zoomLevel">35%</span>
                     <button type="button" class="l-map-control-btn" onclick="zoom(1.2)" title="Aproximar" aria-label="Aumentar zoom">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     </button>
@@ -4432,32 +4435,24 @@ LIMPAR
                 </div>
                 <div class="l-collectibles-grid">
                     <div class="l-collectible-card" style="--tone: var(--gold);">
-                        <div class="l-collectible-glow" style="background: radial-gradient(circle, color-mix(in oklab, var(--gold) 55%, transparent), transparent 70%);">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5c.67 0 1.35.09 2 .26 1.78-2 5.03-2.84 6.42-2.26 1.4.58-.42 7-.42 7 .57 1.07 1 2.24 1 3.44C21 17.9 16.97 21 12 21s-9-3.1-9-7.56c0-1.25.5-2.4 1-3.44 0 0-1.89-6.42-.5-7 1.39-.58 4.72.23 6.5 2.23A9.04 9.04 0 0 1 12 5Z"></path><path d="M8 14v1"></path><path d="M16 14v1"></path><path d="M12 14v1"></path></svg>
-                        </div>
-                        <p class="l-collectible-name">Lince Dourado</p>
-                        <p class="l-collectible-rarity" style="color:var(--gold)">Lendária</p>
+                         <div class="l-collectible-glow" style="background: radial-gradient(circle, color-mix(in oklab, var(--gold) 55%, transparent), transparent 70%);"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Leontopithecus_rosalia_-_Copenhagen_Zoo_-_DSC09082.JPG/960px-Leontopithecus_rosalia_-_Copenhagen_Zoo_-_DSC09082.JPG" alt="Mico-leão-dourado" loading="lazy"></div>
+                         <p class="l-collectible-name">Mico-leão-dourado</p>
+                         <p class="l-collectible-rarity" style="color:var(--gold)">Lendária</p>
                     </div>
                     <div class="l-collectible-card" style="--tone: var(--st-sold);">
-                        <div class="l-collectible-glow" style="background: radial-gradient(circle, color-mix(in oklab, var(--st-sold) 55%, transparent), transparent 70%);">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--st-sold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                        </div>
-                        <p class="l-collectible-name">Coruja Real</p>
-                        <p class="l-collectible-rarity" style="color:var(--st-sold)">Épica</p>
+                         <div class="l-collectible-glow" style="background: radial-gradient(circle, color-mix(in oklab, var(--st-sold) 55%, transparent), transparent 70%);"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/015_Wild_Golden_Eagle_in_flight_at_Pfyn-Finges_%28Switzerland%29_Photo_by_Giles_Laurent.jpg/960px-015_Wild_Golden_Eagle_in_flight_at_Pfyn-Finges_%28Switzerland%29_Photo_by_Giles_Laurent.jpg" alt="Águia-dourada" loading="lazy"></div>
+                         <p class="l-collectible-name">Águia-dourada</p>
+                         <p class="l-collectible-rarity" style="color:var(--st-sold)">Épica</p>
                     </div>
                     <div class="l-collectible-card" style="--tone: var(--st-selected);">
-                        <div class="l-collectible-glow" style="background: radial-gradient(circle, color-mix(in oklab, var(--st-selected) 55%, transparent), transparent 70%);">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--st-selected)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6v12"></path><path d="M16 6v12"></path><path d="M2 12h20"></path></svg>
-                        </div>
-                        <p class="l-collectible-name">Tucano Neon</p>
-                        <p class="l-collectible-rarity" style="color:var(--st-selected)">Rara</p>
+                         <div class="l-collectible-glow" style="background: radial-gradient(circle, color-mix(in oklab, var(--st-selected) 55%, transparent), transparent 70%);"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/006_Toco_toucan_in_Encontro_das_%C3%81guas_State_Park_Photo_by_Giles_Laurent.jpg/960px-006_Toco_toucan_in_Encontro_das_%C3%81guas_State_Park_Photo_by_Giles_Laurent.jpg" alt="Tucano-toco" loading="lazy"></div>
+                         <p class="l-collectible-name">Tucano-toco</p>
+                         <p class="l-collectible-rarity" style="color:var(--st-selected)">Rara</p>
                     </div>
                     <div class="l-collectible-card" style="--tone: var(--st-free);">
-                        <div class="l-collectible-glow" style="background: radial-gradient(circle, color-mix(in oklab, var(--st-free) 55%, transparent), transparent 70%);">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--st-free)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v3h10Z"></path><path d="M7 8v12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V8"></path><path d="M9 12h6"></path></svg>
-                        </div>
-                        <p class="l-collectible-name">Raposa Ígnea</p>
-                        <p class="l-collectible-rarity" style="color:var(--st-free)">Comum</p>
+                         <div class="l-collectible-glow" style="background: radial-gradient(circle, color-mix(in oklab, var(--st-free) 55%, transparent), transparent 70%);"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Portrait_of_a_red_fox_in_Rautas_fj%C3%A4llurskog_%28cropped%29.jpg/960px-Portrait_of_a_red_fox_in_Rautas_fj%C3%A4llurskog_%28cropped%29.jpg" alt="Raposa-vermelha" loading="lazy"></div>
+                         <p class="l-collectible-name">Raposa-vermelha</p>
+                         <p class="l-collectible-rarity" style="color:var(--st-free)">Comum</p>
                     </div>
                 </div>
                 <button type="button" class="l-side-btn" onclick="abrirTutorialColecionaveis(event)">Ver coleção completa</button>
@@ -5691,6 +5686,7 @@ document.getElementById("area");
 
 
 let sc = .35;
+atualizarZoomVisual();
 
 /* =========================
    UTILIDADES DE INTERFACE
@@ -6263,9 +6259,11 @@ function renderizarStories(){
         : '';
     const items = storiesState.length ? storiesState.map((story, index) => {
         const seenClass = lidos.includes(story.id) ? " opacity-60" : "";
-        const avatar = story.fotoUrl
-            ? '<img src="' + escHtml(story.fotoUrl) + '" alt="">'
-            : '<span class="l-story-initials">' + (story.apelido || story.nome || "U").charAt(0).toUpperCase() + '</span>';
+        const storyImage = story.fotoUrl || story.imagem || (story.metadata && story.metadata.imagem);
+        const initials = (story.apelido || story.nome || "U").charAt(0).toUpperCase();
+        const avatar = storyImage
+            ? '<img src="' + escHtml(storyImage) + '" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="l-story-initials" hidden>' + escHtml(initials) + '</span>'
+            : '<span class="l-story-initials">' + escHtml(initials) + '</span>';
         return '<button type="button" class="l-story-item' + seenClass + '" onclick="abrirStory(' + index + ')" aria-label="' + escHtml(story.title) + '">' +
             '<span class="l-story-ring"><span class="l-story-ring-inner">' + avatar + '</span></span>' +
             '<span class="l-story-label">' + escHtml(story.apelido || story.nome || "usuário") + '</span>' +
@@ -6332,8 +6330,8 @@ function renderizarUltimasCompras(){
     const itemHtml = ultimasComprasState.map(compra => {
         return '<span class="l-ticker-item">' +
             '<span class="l-ticker-dot"></span>' +
-            escHtml(compra.apelido || "Alguém") + ' comprou ' + escHtml(compra.descricao.replace(/^comprou\\s*/, "")) +
-            ' · <span class="l-ticker-value">' + fmtMoeda(compra.valorTotal / 100) + '</span>' +
+             escHtml(compra.apelido || "Alguém") + ' comprou ' + escHtml(String(compra.descricao || `${compra.quantidade || 0} espaços`).replace(/^comprou\s*/, "")) +
+             ' · <span class="l-ticker-value">' + formatarReais(compra.valorCents) + '</span>' +
         '</span>';
     }).join("");
     const vezes = Math.max(3, Math.ceil(10 / Math.max(1, ultimasComprasState.length)));
@@ -6380,10 +6378,11 @@ function abrirStory(index){
     document.getElementById("storyIcon").textContent = storyIcon(story.kind);
 
     const meta = story.metadata || {};
+    const storyImage = story.fotoUrl || story.imagem || meta.imagem;
     const imgEl = document.getElementById("storyImage");
-    if(meta.imagem){
+    if(storyImage){
         imgEl.style.display = "block";
-        imgEl.innerHTML = '<img src="' + escHtml(meta.imagem) + '" alt="Foto do destaque">';
+        imgEl.innerHTML = '<img src="' + escHtml(storyImage) + '" alt="Foto do destaque" onerror="this.hidden=true">';
     }else{
         imgEl.style.display = "none";
         imgEl.innerHTML = "";
@@ -7419,11 +7418,11 @@ function localizarEspaco(){
   const numero = Number(input.value);
 
   if(!Number.isInteger(numero) || numero < 1 || numero > 1000000){
-    alert("Digite um número de espaço entre 1 e 1.000.000.");
+     toastMsg("Digite um número de espaço entre 1 e 1.000.000.");
     return;
   }
 
-  centralizarNoEspaco(numero);
+  navegarParaEspaco(numero);
 
 }
 
@@ -8256,6 +8255,7 @@ function setInitialMapViewport(){
 
     if(temBloco){
         sc = 0.8;
+        atualizarZoomVisual();
     }
 
     const indice = alvo - 1;
@@ -8271,6 +8271,7 @@ function setInitialMapViewport(){
         /* A primeira célula fica junto ao canto inicial do mural,
            em vez de começar no centro do milhão de espaços. */
         sc = .35;
+        atualizarZoomVisual();
         const margem = Math.max(18, Math.min(64, Math.min(canvas.width, canvas.height) * .08));
         x = margem - (coluna * T + T / 2) * sc;
         y = margem - (linha * T + T / 2) * sc;
@@ -8434,11 +8435,17 @@ mx-wx*n;
 y =
 my-wy*n;
 
-sc =
-n;
+ sc =
+ n;
 
-draw();
+ atualizarZoomVisual();
+ draw();
 
+}
+
+function atualizarZoomVisual(){
+ const el = document.getElementById("zoomLevel");
+ if(el) el.textContent = Math.round(sc * 100) + "%";
 }
 
 function toggleMapaFullscreen(){
@@ -8502,10 +8509,11 @@ mx-wx*n;
 y =
 my-wy*n;
 
-sc =
-n;
+ sc =
+ n;
 
-draw();
+ atualizarZoomVisual();
+ draw();
 
 },
 {passive:false}
@@ -9499,9 +9507,10 @@ y =
 my-
 ((my-y)/sc)*n;
 
-sc = n;
+ sc = n;
 
-touchPinch.d = d;
+ atualizarZoomVisual();
+ touchPinch.d = d;
 
 draw();
 
@@ -9814,10 +9823,10 @@ function selecionarAleatorioPainel(){
 function localizarEspacoPorInput(val){
     const id = parseInt(val, 10);
     if(!id || id < 1 || id > 1000000){
-        abrirInfoModal("Espaço inválido", "<p>Digite um número entre 1 e 1.000.000.</p>");
+        toastMsg("Digite um número de espaço entre 1 e 1.000.000.");
         return;
     }
-    localizarEspaco();
+    navegarParaEspaco(id);
 }
 
 /* =========================
@@ -17437,10 +17446,10 @@ async function carregarUltimasComprasDash(){
             return;
         }
         el.innerHTML = compras.map(function(c){
-            const nome = escHtml(c.usuario_nome || c.nome || "Anônimo");
+            const nome = escHtml(c.apelido || c.usuario_nome || c.nome || "Anônimo");
             const espacos = c.espacos || c.quantidade || 0;
-            const valor = c.valor_total || c.valor || 0;
-            const quando = c.tempo || c.created_at || "";
+            const valor = c.valorCents;
+            const quando = c.tempo || c.created_at || c.criadoEm || "";
             const avatar = (nome.charAt(0) || "?").toUpperCase();
             return '<li class="l-widget-item">' +
                 '<span class="l-widget-avatar">' + avatar + '</span>' +
@@ -17448,7 +17457,7 @@ async function carregarUltimasComprasDash(){
                     '<span class="l-widget-name">' + nome + '</span>' +
                     '<span class="l-widget-meta">' + espacos + ' espaço(s) · ' + escHtml(quando) + '</span>' +
                 '</span>' +
-                '<span class="l-widget-value">' + formatarReais(valor) + '</span>' +
+                '<span class="l-widget-value">' + (Number.isFinite(Number(valor)) ? formatarReais(valor) : "R$ 0,00") + '</span>' +
             '</li>';
         }).join("");
     } catch(e){

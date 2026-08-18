@@ -275,6 +275,7 @@ body{overflow-x:hidden}
 .meus-pacotes h4{margin:0 0 10px;color:var(--amarelo);font-size:15px}
 .meus-pacotes-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
 .meu-pacote{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;border:1px solid var(--borda);border-radius:10px;background:var(--painel2)}
+.meu-pacote-art{width:48px;height:48px;flex:0 0 48px;border-radius:8px;object-fit:contain;background:var(--painel);border:1px solid var(--borda)}
 .meu-pacote b{font-size:12px;color:var(--texto)}
 .meu-pacote small{display:block;color:var(--muted);font-size:10px;margin-top:2px}
 .pack-card{
@@ -290,7 +291,9 @@ body{overflow-x:hidden}
         radial-gradient(300px 120px at 85% -10%, rgba(255,122,0,.22), transparent 60%),
         linear-gradient(160deg, rgba(255,255,255,.06), transparent 40%);
 }
-.pack-card .icone{font-size:40px}
+.pack-card .icone{height:150px;border-radius:12px;overflow:hidden;background:var(--painel2);border:1px solid var(--borda);display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.pack-card .icone img{width:100%;height:100%;object-fit:contain;display:block}
+.pack-card .icone .fallback{font-size:40px}
 .pack-card h3{font-family:'Orbitron',sans-serif;font-size:17px;letter-spacing:1px}
 .pack-card .preco{font-size:26px;font-weight:900;color:var(--amarelo)}
 .pack-card .preco small{font-size:13px;color:var(--muted);font-weight:600}
@@ -352,6 +355,34 @@ body{overflow-x:hidden}
 .listing-acoes{display:flex;gap:8px;flex-wrap:wrap}
 .listing-acoes .btn{flex:1 1 auto;min-width:0}
 .listing-acoes .btn:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.6)}
+.oferta-card{display:grid;grid-template-columns:116px minmax(0,1fr);gap:14px;align-items:stretch;background:var(--painel);border:1px solid var(--borda);border-radius:14px;padding:12px;margin-bottom:12px;transition:border-color .15s,box-shadow .15s}
+.oferta-card:hover{border-color:var(--amarelo);box-shadow:0 8px 24px rgba(0,0,0,.24)}
+.oferta-card-arte{min-height:116px;border-radius:10px;overflow:hidden;background:var(--painel2);border:1px solid var(--borda);display:flex;align-items:center;justify-content:center}
+.oferta-card-arte img{width:100%;height:100%;object-fit:cover;display:block}
+.oferta-card-arte .fallback{font-size:42px}
+.oferta-card-body{min-width:0;display:flex;flex-direction:column;justify-content:center}
+.oferta-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px}
+.oferta-card-title{font-size:15px;font-weight:800;color:#fff;line-height:1.3;overflow-wrap:anywhere}
+.oferta-card-sub{font-size:11px;color:var(--muted);font-style:italic;margin-top:3px;overflow-wrap:anywhere}
+.oferta-card-status{font-size:11px;font-weight:700;padding:4px 8px;border-radius:6px;white-space:nowrap;background:rgba(0,0,0,.3)}
+.oferta-card-meta{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;margin-bottom:8px}
+.oferta-card-meta span{color:var(--muted)}
+.oferta-card-meta b{color:#fff}
+.oferta-card-meta .valor{color:var(--amarelo)}
+.oferta-card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.oferta-card-actions .btn{flex:1 1 120px;min-width:0;margin:0}
+@media(max-width:640px){
+    .oferta-card{grid-template-columns:84px minmax(0,1fr);gap:10px;padding:10px}
+    .oferta-card-arte{min-height:84px}
+    .oferta-card-title{font-size:13px}
+    .oferta-card-head{gap:6px;flex-direction:column}
+    .oferta-card-status{align-self:flex-start}
+}
+
+.package-art{height:180px;border-radius:12px;overflow:hidden;margin-bottom:16px;background:linear-gradient(135deg,var(--package-color-soft),var(--package-color-faint));border:1px solid color-mix(in oklab, var(--package-color) 45%, var(--borda));display:flex;align-items:center;justify-content:center;text-align:center}
+.package-art img{width:100%;height:100%;object-fit:contain;display:block}
+.package-art-missing{display:none;padding:20px;color:var(--package-color);font-weight:800;letter-spacing:1.5px;text-transform:uppercase}
+.package-art-missing small{display:block;margin-top:8px;color:var(--muted);font-size:10px;font-weight:500;letter-spacing:0;text-transform:none}
 .paginacao{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:22px;font-size:13px}
 .paginacao .btn{padding:8px 14px}
 
@@ -468,7 +499,7 @@ body{overflow-x:hidden}
 .modal-arte-premium .cc-frente,
 .modal-arte-premium .cc-verso{
     display:flex;flex-direction:column;align-items:stretch;
-    justify-content:center;overflow:hidden;min-width:0;
+    justify-content:center;overflow:hidden;min-width:0;min-height:0;
 }
 .modal-arte-premium .colecao-card.cc-grande{
     width:100%;height:100%;margin:0;border-radius:16px;
@@ -485,9 +516,11 @@ body{overflow-x:hidden}
 }
 .modal-arte-premium .colecao-card.cc-grande .cc-arte .cc-emoji{font-size:min(72px,18vw)}
 .modal-arte-premium .colecao-card.cc-grande .cc-info{display:none}
-.modal-arte-premium .cc-verso{overflow-y:auto;overscroll-behavior:contain}
-.modal-arte-premium .cc-verso .colecao-card.cc-grande .cc-info{display:block}
-.modal-arte-premium .cc-verso-card{height:auto;min-height:100%;justify-content:space-between}
+.modal-arte-premium .cc-verso{justify-content:flex-start;overflow-y:auto;overscroll-behavior:contain}
+.modal-arte-premium .cc-verso .colecao-card.cc-grande .cc-info{display:block;overflow:visible;flex:0 0 auto}
+.modal-arte-premium .cc-verso-card{height:max-content;min-height:100%;justify-content:flex-start;overflow:visible}
+.modal-arte-premium .cc-verso-card .cc-verso-lista{max-height:none;overflow:visible}
+.modal-arte-premium .cc-verso-card .cc-curiosidade{overflow-wrap:anywhere;word-break:normal}
 @media(max-width:640px){
     .modal-arte-premium .colecao-card.cc-grande .cc-topo{font-size:8px}
     .modal-arte-premium .colecao-card.cc-grande .cc-arte{margin:0 8px 8px}
@@ -499,7 +532,7 @@ body{overflow-x:hidden}
    .modal-arte (que tinha font-size:90px) nem de variáveis do mapa. ===== */
 .modal-arte .cc-verso-lista{font-size:11px;line-height:1.7;color:var(--muted);word-break:break-word}
 .modal-arte .cc-verso-lista b{color:var(--texto)}
-.cc-flip-container{perspective:1200px;width:100%;height:100%}
+.cc-flip-container{perspective:1200px;width:100%;height:100%;min-height:0;overflow:visible}
 .cc-flipper{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .6s cubic-bezier(.4,0,.2,1)}
 .cc-flipper.virado{transform:rotateY(180deg)}
 .cc-frente,.cc-verso{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
@@ -1549,7 +1582,7 @@ async function carregarPacks(){
         const packs = d.packs || [];
         document.getElementById("packsGrid").innerHTML = packs.map(p =>
             '<div class="pack-card pack-' + esc(p.slug) + '">' +
-                '<div class="icone">' + (p.slug==="especial"?"💎":p.slug==="ouro"?"🏆":p.slug==="prata"?"🥈":"🥉") + '</div>' +
+                '<div class="icone"><img src="' + esc(getPacoteImagem(p.slug)) + '" alt="' + esc(p.name) + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'"><span class="fallback" style="display:none">' + (p.slug==="especial"?"💎":p.slug==="ouro"?"🏆":p.slug==="prata"?"🥈":"🥉") + '</span></div>' +
                 '<h3>' + esc(p.name) + '</h3>' +
                 '<div class="preco">' + fmtR$(p.price) + ' <small>por pacote</small></div>' +
                 '<div class="desc">' + esc(p.description) + '</div>' +
@@ -1590,7 +1623,7 @@ async function carregarMeusPacotes(){
         box.style.display = pacotes.length ? "block" : "none";
         if(!pacotes.length) return;
         box.innerHTML = '<h4>🎁 PACOTES NÃO ABERTOS: ' + pacotes.length + '</h4><div class="meus-pacotes-lista">' +
-            pacotes.map(p => '<div class="meu-pacote"><span><b>' + esc(p.nome) + '</b><small>' + (p.tipo === "kit" ? "Incluído em KIT" : "Compra confirmada") + '</small></span>' +
+            pacotes.map(p => '<div class="meu-pacote"><img class="meu-pacote-art" src="' + esc(getPacoteImagem(p.nome)) + '" alt="' + esc(p.nome) + '"><span><b>' + esc(p.nome) + '</b><small>' + (p.tipo === "kit" ? "Incluído em KIT" : "Compra confirmada") + '</small></span>' +
                 '<button class="btn btn-amarelo" style="margin:0;padding:8px 10px;font-size:11px" onclick="abrirPacoteDisponivel(\'' + p.tipo + '\',' + p.id + ')">ABRIR</button></div>').join("") +
             '</div>';
     } catch(e) { box.style.display = "none"; }
@@ -1616,7 +1649,7 @@ async function comprarPacote(packId){
         nome: pack ? pack.name : "Pacote",
         preco: pack ? pack.price : 0,
         figurinhas: pack ? pack.sticker_quantity : 0,
-        categoria: pack ? pack.category : null
+        categoria: pack ? (pack.slug || pack.name) : null
     });
 }
 
@@ -1792,6 +1825,7 @@ async function carregarOfertas(){
 
 function renderOfertaHtml(o, recebida){
     const cardLabel = '#' + String(o.card_number || o.card_id).padStart(3,"0") + ' ' + esc(o.card_name || "");
+    const imagem = imagemOfertaUrl(o);
     const parceiro = recebida ? esc(o.offeror_nome || "—") : esc(o.offeree_nome || "—");
     const rotuloStatus = {
         PENDENTE:"🕐 Pendente", ACEITA:"✅ Aceita", RECUSADA:"❌ Recusada",
@@ -1830,22 +1864,34 @@ function renderOfertaHtml(o, recebida){
         acoes = '<div style="font-size:12px;color:var(--verde);margin-top:8px;padding:8px;background:rgba(69,214,111,0.1);border-radius:8px">✅ Pagamento confirmado. A figurinha será liberada ao vendedor confirmar a conclusão.</div>';
     }
     
-    // Card melhorado com layout mais visual
-    return '<div class="oferta-card" style="background:var(--painel);border:2px solid var(--borda);border-radius:12px;padding:14px;margin-bottom:12px;transition:border-color .15s">' +
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px">' +
-            '<div style="flex:1;min-width:0">' +
-                '<div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:4px;word-break:break-word">' + cardLabel + '</div>' +
-                '<div style="font-size:12px;color:var(--muted)">' + (recebida ? "📥 Oferta recebida de " : "📤 Oferta enviada para ") + '<b style="color:#fff">' + parceiro + '</b></div>' +
+    const arte = imagem
+        ? '<img src="' + esc(imagem) + '" alt="' + esc(o.card_name || "Figurinha") + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
+          '<span class="fallback" style="display:none">' + emojiRaridade(o.card_rarity) + '</span>'
+        : '<span class="fallback">' + emojiRaridade(o.card_rarity) + '</span>';
+    return '<div class="oferta-card">' +
+        '<div class="oferta-card-arte">' + arte + '</div>' +
+        '<div class="oferta-card-body">' +
+            '<div class="oferta-card-head">' +
+                '<div>' +
+                    '<div class="oferta-card-title">' + cardLabel + '</div>' +
+                    '<div class="oferta-card-sub">' + (recebida ? "📥 Recebida de " : "📤 Enviada para ") + parceiro + '</div>' +
+                '</div>' +
+                '<div class="oferta-card-status" style="color:' + corStatus + '">' + status + '</div>' +
             '</div>' +
-            '<div style="font-size:11px;font-weight:700;color:' + corStatus + ';background:rgba(0,0,0,0.3);padding:4px 8px;border-radius:6px;white-space:nowrap">' + status + '</div>' +
+            '<div class="oferta-card-meta"><div><span>Quantidade:</span> <b>' + quantidadeOferta(o.quantity) + '</b></div><div><span>Valor:</span> <b class="valor">' + fmtR$(o.amount) + '</b></div></div>' +
+            (o.message ? '<div style="font-size:12px;color:var(--muted);font-style:italic;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;margin-bottom:8px;overflow-wrap:anywhere">"' + esc(o.message) + '"</div>' : '') +
+            '<div class="oferta-card-actions">' + acoes.replace(/^<div[^>]*>|<\/div>$/g, "") + '</div>' +
         '</div>' +
-        '<div style="display:flex;gap:12px;margin-bottom:10px;font-size:13px">' +
-            '<div style="flex:1"><span style="color:var(--muted)">Quantidade:</span> <b style="color:#fff">' + quantidadeOferta(o.quantity) + '</b></div>' +
-            '<div style="flex:1"><span style="color:var(--muted)">Valor:</span> <b style="color:var(--amarelo)">' + fmtR$(o.amount) + '</b></div>' +
-        '</div>' +
-        (o.message ? '<div style="font-size:12px;color:var(--muted);font-style:italic;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;margin-bottom:10px">"' + esc(o.message) + '"</div>' : '') +
-        acoes +
     '</div>';
+}
+
+function imagemOfertaUrl(o){
+    const imagens = window.ANIMAIS_DADOS && window.ANIMAIS_DADOS.IMAGENS_ANIMAIS;
+    if (!imagens) return "";
+    if (o && o.image_url) return o.image_url;
+    if (o && o.card_name && imagens[o.card_name]) return imagens[o.card_name];
+    const numero = Number(o && o.card_number);
+    return numero > 0 ? (Object.values(imagens)[numero - 1] || "") : "";
 }
 
 function quantidadeOferta(q){ return Number(q || 1) + "x"; }
@@ -2533,26 +2579,17 @@ async function confirmarContraproposta(tradeId){
     } catch(e){ toast(msgErro(e), "erro"); }
 }
 
-/* =========================================================
-   IMAGEM ILUSTRATIVA DE PACOTE
-   Retorna URL de imagem genérica baseada na categoria.
-   NÃO mostra animal específico, apenas representação visual da categoria.
-========================================================= */
-function resolveIllustrativePackageImage(categoria) {
+function getPacoteImagem(tipoPacote){
+    const tipo = String(tipoPacote || "").toLowerCase();
+    const slug = tipo.includes("especial") ? "especial" : tipo.includes("ouro") ? "ouro" : tipo.includes("prata") ? "prata" : "bronze";
+    return "/imagens/pacotes/" + slug + "8ksf.png";
+}
+
+function resolvePackageVisual(categoria) {
     const cat = String(categoria || "").toUpperCase().trim();
-    // Fallback: gradiente CSS inline se não houver imagem
-    const fallback = null;
-    
-    // Mapeamento de categorias para imagens ilustrativas
-    // Usando emojis grandes como representação visual genérica
-    const categoriaImagens = {
-        "OURO": { emoji: "🥇", cor: "#FFD700", label: "OURO" },
-        "PRATA": { emoji: "🥈", cor: "#C0C0C0", label: "PRATA" },
-        "BRONZE": { emoji: "🥉", cor: "#CD7F32", label: "BRONZE" },
-        "COMUM": { emoji: "📦", cor: "#8B7355", label: "COMUM" }
-    };
-    
-    return categoriaImagens[cat] || categoriaImagens["COMUM"];
+    const chave = cat.includes("OURO") ? "OURO" : cat.includes("PRATA") ? "PRATA" : cat.includes("BRONZE") ? "BRONZE" : cat.includes("ESPECIAL") ? "ESPECIAL" : "PACOTE";
+    const cores = { OURO: "#FFD700", PRATA: "#C0C0C0", BRONZE: "#CD7F32", ESPECIAL: "#C39BFF", PACOTE: "#B0A080" };
+    return { label: chave, cor: cores[chave], imagem: getPacoteImagem(categoria) };
 }
 
 /* =========================================================
@@ -2566,11 +2603,10 @@ async function abrirModalPagamento(tipo, dados){
     html += '<h2>' + esc(titulo) + '</h2>';
 
     if (tipo === "pack") {
-        // Imagem ilustrativa da categoria (NÃO mostra animal específico)
-        const imgInfo = resolveIllustrativePackageImage(dados.categoria);
-        html += '<div style="height:180px;border-radius:12px;overflow:hidden;margin-bottom:16px;background:linear-gradient(135deg,' + imgInfo.cor + '22,' + imgInfo.cor + '44);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;">' +
-            '<div style="font-size:72px;line-height:1;">' + imgInfo.emoji + '</div>' +
-            '<div style="font-size:14px;font-weight:700;color:' + imgInfo.cor + ';letter-spacing:2px;text-transform:uppercase;">Pacote ' + imgInfo.label + '</div>' +
+        const imgInfo = resolvePackageVisual(dados.categoria || dados.nome);
+        html += '<div class="package-art" style="--package-color:' + imgInfo.cor + ';--package-color-soft:' + imgInfo.cor + '22;--package-color-faint:' + imgInfo.cor + '08">' +
+            '<img src="' + esc(imgInfo.imagem) + '" alt="Pacote ' + esc(imgInfo.label) + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
+            '<div class="package-art-missing">Pacote ' + imgInfo.label + '<small>Imagem indisponível</small></div>' +
         '</div>';
         
         html += '<div class="produto-resumo">' +
@@ -2608,7 +2644,6 @@ async function abrirModalPagamento(tipo, dados){
         '<label>Forma de pagamento</label>' +
         '<select id="pgMetodo"><option value="pix">💠 Pix</option><option value="credit_card">💳 Cartão de crédito</option></select>' +
         '<label>CPF/CNPJ</label><input id="pgCpf" placeholder="Somente números" maxlength="18">' +
-        (tipo === "pack" ? '<label style="display:flex;align-items:flex-start;gap:8px;margin-top:10px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="pgStoryOptIn" style="margin-top:2px"><span><b style="color:var(--amarelo)">📣 QUER DESTACAR SUA COMPRA?</b><br>Permitir que este pacote apareça nos Stories. É opcional e sem dados pessoais.</span></label>' : '') +
         '<button class="btn btn-amarelo" onclick="iniciarPagamento(\'' + tipo + '\',' + JSON.stringify(dados).replace(/"/g,"&quot;") + ')">Gerar pagamento</button>' +
         '<button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>' +
     '</div>';
@@ -2623,7 +2658,7 @@ async function iniciarPagamento(tipo, dados){
     let url, body;
     if (tipo === "pack") {
         url = "/api/colecionaveis/packs/" + dados.packId + "/checkout";
-        body = { paymentMethod: metodo, cpfCnpj: cpf, storyOptIn: !!(document.getElementById("pgStoryOptIn") && document.getElementById("pgStoryOptIn").checked) };
+        body = { paymentMethod: metodo, cpfCnpj: cpf, storyOptIn: false };
     } else if (tipo === "mercado") {
         url = "/api/colecionaveis/listings/" + dados.listingId + "/buy";
         body = { quantidade: 1, paymentMethod: metodo, cpfCnpj: cpf };

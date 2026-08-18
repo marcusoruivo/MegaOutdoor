@@ -180,7 +180,16 @@ function renderHeader(){
     const meu = meuId();
     const ehMeu = meu != null && p.id === meu;
     const btnBisbilhotar = !ehMeu && !p.privado
-        ? '<button class="btn btn-amarelo" style="margin-top:10px;padding:8px 14px;font-size:12px" onclick="bisbilhotarAlbum()">👀 BISBILHOTAR</button>'
+        ? '<button class="btn btn-amarelo" style="margin:4px;padding:8px 14px;font-size:12px" onclick="bisbilhotarAlbum()">👀 BISBILHOTAR</button>'
+        : '';
+    const btnVerOfertas = !ehMeu && !p.privado && (p.vendas||0) > 0
+        ? '<button class="btn btn-ghost" style="margin:4px;padding:8px 14px;font-size:12px" onclick="verOfertasUsuario()">💰 VER OFERTAS</button>'
+        : '';
+    const btnNegociar = !ehMeu && !p.privado
+        ? '<button class="btn btn-amarelo" style="margin:4px;padding:8px 14px;font-size:12px" onclick="abrirNegociacaoUsuario()">🤝 NEGOCIAR</button>'
+        : '';
+    const botoesContainer = (btnBisbilhotar || btnVerOfertas || btnNegociar)
+        ? '<div style="margin-top:10px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">' + btnBisbilhotar + btnVerOfertas + btnNegociar + '</div>'
         : '';
     document.getElementById("perfilHeader").innerHTML =
         '<div class="header-perfil">' +
@@ -196,13 +205,28 @@ function renderHeader(){
                 '<div class="stat-box"><div class="v">' + (p.disponiveis_troca||0) + '</div><div class="l">P/ TROCA</div></div>' +
                 '<div class="stat-box"><div class="v">' + (p.vendas||0) + '</div><div class="l">À VENDA</div></div>' +
             '</div>' +
-            (btnBisbilhotar ? '<div style="margin-top:10px;text-align:center">' + btnBisbilhotar + '</div>' : '') +
+            botoesContainer +
         '</div>';
 }
 
 function bisbilhotarAlbum(){
     if (!PERFIL || !PERFIL.id) return;
     window.open('/perfil.html?id=' + encodeURIComponent(PERFIL.id), '_blank');
+}
+
+function verOfertasUsuario(){
+    if (!PERFIL || !PERFIL.id) return;
+    window.open('/colecionaveis.html?sellerId=' + encodeURIComponent(PERFIL.id) + '#mercado', '_blank');
+}
+
+function abrirNegociacaoUsuario(){
+    if (!PERFIL || !PERFIL.id) return;
+    const meu = meuId();
+    if (meu != null && PERFIL.id === meu) {
+        toast("Você não pode negociar com você mesmo.", "erro");
+        return;
+    }
+    window.open('/colecionaveis.html?negociarCom=' + encodeURIComponent(PERFIL.id) + '#mercado', '_blank');
 }
 
 function renderAlbum(){

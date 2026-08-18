@@ -3512,7 +3512,7 @@ body.footer-visible #area{
 }
 .como-funciona-modal{display:flex;flex-direction:column;gap:10px;margin-top:8px}
 .cfm-passo{display:flex;align-items:flex-start;gap:12px;background:var(--painel);border:1px solid var(--borda);border-radius:10px;padding:10px 12px}
-.cfm-num{flex:0 0 28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:linear-gradient(135deg,var(--amarelo),var(--laranja));color:#000;font-weight:900;font-size:13px}
+.cfm-num{flex:0 0 28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:linear-gradient(135deg,var(--amarelo),var(--laranja));color:#000;font-family:'Orbitron',sans-serif;font-weight:900;font-size:13px}
 .cfm-passo b{display:block;font-size:13px;color:var(--texto);margin-bottom:2px}
 .cfm-passo span{font-size:12px;color:var(--text-muted);line-height:1.4}
 .kit-breakdown{background:var(--painel);border:1px solid var(--borda);border-radius:12px;padding:12px;margin:12px 0}
@@ -4593,45 +4593,45 @@ onclick="fecharChatModal()">
 ×
 </button>
 
-<h2 id="chatTitulo" style="color:#ffd400;margin-top:0;">
+<h2 id="chatTitulo" style="color:#ffd400;margin-top:0;margin-bottom:4px;font-size:18px;font-weight:800;">
 💬 Chat geral
 </h2>
 
-<div id="chatOnlineStatus" style="font-size:12px;color:#4ade80;margin-top:-6px;margin-bottom:8px;display:none;">🟢 Online</div>
+<div id="chatOnlineStatus" style="font-size:11px;color:#4ade80;margin-bottom:8px;display:none;">🟢 Online</div>
 
 <div
 id="chatMsgErro"
-style="color:#ff4d4d;font-size:12px;margin-bottom:6px;">
+style="color:#ff4d4d;font-size:11px;font-weight:700;margin-bottom:8px;min-height:14px;">
 </div>
 
 <div
 id="chatMensagens"
-style="flex:1;overflow-y:auto;border:1px solid #2a2a2a;border-radius:10px;background:#111;padding:10px;font-size:13px;margin-bottom:10px;min-height:320px;max-height:55vh;">
+style="flex:1;overflow-y:auto;border:1px solid #2a2a2a;border-radius:10px;background:#111;padding:12px;font-size:13px;line-height:1.5;margin-bottom:10px;min-height:320px;max-height:55vh;word-wrap:break-word;">
 Carregando...
 </div>
 
-<div style="display:flex;flex-direction:column;gap:8px;">
+<div style="display:flex;flex-direction:column;gap:10px;">
 
 <div style="border:1px solid #2a2a2a;border-radius:10px;background:#161616;overflow:hidden;">
 <button
 id="chatMsgRapidasToggle"
 type="button"
 onclick="toggleMensagensRapidas()"
-style="width:100%;text-align:left;background:transparent;border:none;color:#ffd400;font-size:12px;font-weight:800;padding:8px 10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+style="width:100%;text-align:left;background:transparent;border:none;color:#ffd400;font-size:12px;font-weight:800;padding:10px 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
 <span>💬 MENSAGENS RÁPIDAS</span>
 <span id="chatMsgRapidasIcon">▼</span>
 </button>
-<div id="chatMsgRapidas" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;border-top:1px solid #2a2a2a;"></div>
+<div id="chatMsgRapidas" style="display:flex;flex-wrap:wrap;gap:6px;padding:10px;border-top:1px solid #2a2a2a;"></div>
 </div>
 
-<div style="display:flex;align-items:center;gap:6px;">
+<div style="display:flex;align-items:center;gap:8px;">
 <button
 class="btn sec"
 id="btnEmojiChat"
 type="button"
 onclick="alternarEmojiPicker()"
 title="Emojis"
-style="margin:0;padding:8px 10px;font-size:14px;line-height:1;">
+style="margin:0;padding:10px 12px;font-size:16px;line-height:1;min-width:44px;">
 😊
 </button>
 <button
@@ -4640,7 +4640,7 @@ id="btnLimparChat"
 type="button"
 onclick="limparCampoChat()"
 title="Limpar campo"
-style="margin:0;padding:8px 10px;font-size:14px;line-height:1;">
+style="margin:0;padding:10px 12px;font-size:14px;line-height:1;min-width:44px;">
 🗑️
 </button>
 </div>
@@ -4652,19 +4652,19 @@ id="chatInput"
 class="copia"
 rows="2"
 placeholder="Escreva sua mensagem..."
-style="width:100%;box-sizing:border-box;margin:0;resize:vertical;min-height:48px;font-family:inherit;"
+style="width:100%;box-sizing:border-box;margin:0;resize:vertical;min-height:56px;font-family:inherit;font-size:14px;line-height:1.5;padding:10px 12px;"
 oninput="atualizarContadorChat()"></textarea>
 
-<div style="display:flex;justify-content:space-between;align-items:center;">
-<span id="chatCharCount" style="font-size:11px;color:#777;">0 / 500</span>
-<span style="font-size:11px;color:#777;">Enter envia · Shift+Enter nova linha</span>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+<span id="chatCharCount" style="font-size:11px;color:#888;">0 / 500</span>
+<span style="font-size:11px;color:#888;">Enter envia · Shift+Enter nova linha</span>
 </div>
 
 <button
 class="btn"
 id="btnEnviarChat"
 onclick="enviarMensagemChat()"
-style="margin:0;padding:12px;width:100%;box-sizing:border-box;">
+style="margin:0;padding:14px;width:100%;box-sizing:border-box;font-weight:800;letter-spacing:.5px;">
 ENVIAR
 </button>
 </div>
@@ -5832,7 +5832,7 @@ function abrirInfoModal(titulo, html){
     if(!modal || !t || !c) return;
     t.textContent = titulo;
     c.innerHTML = html;
-    modal.style.display = "flex";
+    abrirModalComPrioridade("infoModal", 10050);
 }
 
 function abrirPacotesModal(event){
@@ -7821,7 +7821,7 @@ function mostrarDonoEspaco(numero){
           'Aguardando publicação do proprietário.</div>';
   }
 
-  document.getElementById("donoModal").style.display = "flex";
+  abrirModalComPrioridade("donoModal", 10050);
 }
 
 function visualizarAnuncio(numero){
@@ -8842,7 +8842,7 @@ document.getElementById("offerValue").value = "";
 document.getElementById("offerMessage").value = "";
 document.getElementById("offerMsg").textContent = "";
 
-document.getElementById("offerModal").style.display = "flex";
+abrirModalComPrioridade("offerModal", 10050);
 
 }
 
@@ -12143,7 +12143,7 @@ function editarFoto(numero){
 
     montarModoEdicao();
 
-    document.getElementById("editModal").style.display = "flex";
+    abrirModalComPrioridade("editModal", 10050);
 }
 
 function editarExtensao(numero){
@@ -12426,7 +12426,7 @@ function editarLink(numero){
 
     document.getElementById("linkMsg").textContent = "";
 
-    document.getElementById("linkModal").style.display = "flex";
+    abrirModalComPrioridade("linkModal", 10050);
 }
 
 function fecharEditarLink(){
@@ -12793,7 +12793,7 @@ function abrirOferta(numero){
     document.getElementById("offerMessage").value = "";
     document.getElementById("offerMsg").textContent = "";
 
-    document.getElementById("offerModal").style.display = "flex";
+    abrirModalComPrioridade("offerModal", 10050);
 
     fecharInfoEspaco();
 }
@@ -13163,6 +13163,67 @@ function fecharChatModal(){
     document.getElementById("chatModal").style.display = "none";
 }
 
+/* ===== SISTEMA DE GERENCIAMENTO DE MODAIS =====
+   Hierarquia de z-index (maior = mais acima):
+   - 11000: authModal (login) - sempre no topo
+   - 10100: chatModal (negociação/chat) - prioridade máxima entre modais de app
+   - 10050: infoModal, kitModal, bugModal, ownerModal, editModal, linkModal, offerModal, donoModal
+   - 10000: modal genérico (base)
+   ===== */
+
+function fecharTodosModaisApp(){
+    const modais = [
+        "chatModal", "modal", "donoModal", "editModal", "linkModal",
+        "offerModal", "ownerModal", "infoModal", "kitModal",
+        "kitSelecaoModal", "bugModal"
+    ];
+    for(const id of modais){
+        const el = document.getElementById(id);
+        if(el) el.style.display = "none";
+    }
+}
+
+function abrirModalComPrioridade(modalId, zIndex){
+    fecharTodosModaisApp();
+    const el = document.getElementById(modalId);
+    if(el){
+        el.style.zIndex = String(zIndex);
+        el.style.display = "flex";
+    }
+}
+
+function abrirChatNegociacao(offerId, email, token){
+    chatCtx = {
+        tipo: "negociacao",
+        offerId,
+        email,
+        token
+    };
+    document.getElementById("chatTitulo").textContent = "💬 Negociação";
+    const badge = document.getElementById("chatOnlineStatus");
+    if(badge) badge.style.display = "none";
+    document.getElementById("chatInput").placeholder = "Escreva para a outra parte...";
+    document.getElementById("chatMsgErro").textContent = "";
+    abrirModalComPrioridade("chatModal", 10100);
+    iniciarChat();
+}
+
+function abrirChatGeral(){
+    chatCtx = {
+        tipo: "geral",
+        offerId: "",
+        email: "",
+        token: ""
+    };
+    document.getElementById("chatTitulo").textContent = "💬 Chat geral";
+    const badge = document.getElementById("chatOnlineStatus");
+    if(badge) badge.style.display = "block";
+    document.getElementById("chatInput").placeholder = "Escreva sua mensagem...";
+    document.getElementById("chatMsgErro").textContent = "";
+    abrirModalComPrioridade("chatModal", 10100);
+    iniciarChat();
+}
+
 function escapeHtml(t){
 
     return String(t)
@@ -13525,11 +13586,8 @@ function montarMensagensRapidas(){
     const box = document.getElementById("chatMsgRapidas");
     if(!box || box.childElementCount > 0)return;
     box.innerHTML = CHAT_MSG_RAPIDAS.map(t =>
-        '<button type="button" onclick="usarMensagemRapida(\'' +
-        t.replace(/'/g, "\\'") + '\')" ' +
-        'style="font-size:12px;background:#1e1e1e;border:1px solid #333;' +
-        'border-radius:14px;padding:5px 10px;color:#ddd;cursor:pointer;' +
-        'transition:border-color .15s ease,color .15s ease;">' +
+        '<button type="button" class="btn btn-ghost" style="font-size:11px;padding:6px 10px;" onclick="usarMensagemRapida(\'' +
+        t.replace(/'/g, "\\'") + '\')">' +
         escapeHtml(t) + '</button>'
     ).join("");
     expandirMensagensRapidas(false);
@@ -13636,7 +13694,7 @@ function setAbaAtiva(){
 
 function abrirPainelComando(){
 
-    document.getElementById("ownerModal").style.display = "flex";
+    abrirModalComPrioridade("ownerModal", 10050);
 
     abaOfertas();
 }
@@ -16740,7 +16798,7 @@ function mostrarPagamentoRenovacao(data) {
 
     document.getElementById("formulario").style.display = "none";
     document.getElementById("pix").style.display = "block";
-    document.getElementById("modal").style.display = "flex";
+    abrirModalComPrioridade("modal", 10000);
 
     if (data.mpOrderId) {
         iniciarPollingPagamento(data.mpOrderId);
@@ -17164,7 +17222,7 @@ function abrirKit(kitId){
         "Política de reembolso conforme os Termos de Uso.</p>";
 
     document.getElementById("kitModalConteudo").innerHTML = html;
-    document.getElementById("kitModal").style.display = "flex";
+    abrirModalComPrioridade("kitModal", 10050);
     document.getElementById("kitLicencas").dataset.kitId = kit.id;
 }
 
@@ -17375,7 +17433,7 @@ async function abrirSelecaoKit(){
                     "</div>"
                 ).join("");
         }
-        box.style.display = "flex";
+        abrirModalComPrioridade("kitSelecaoModal", 10050);
     }catch(error){
         moToast(error.message || "Erro ao carregar seus kits.", "err");
     }
@@ -17593,7 +17651,7 @@ function abrirBugSugestao(){
         email.placeholder = minhaConta.usuario.email;
     }
 
-    document.getElementById("bugModal").style.display = "flex";
+    abrirModalComPrioridade("bugModal", 10050);
 }
 
 function fecharBugModal(){

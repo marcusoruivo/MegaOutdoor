@@ -1,4 +1,4 @@
-﻿?<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#050505">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Marcellus&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/lovable.css">
 <style>
 /* =========================================================
@@ -90,11 +90,11 @@ html{
 html,body{
     margin:0;
     width:100%;
-    height:100%;
-    overflow:hidden;
+    min-height:100%;
+    overflow-x:hidden;
     background:var(--bg-primary);
     color:var(--text-primary);
-    font-family:'Inter',Arial,Helvetica,sans-serif;
+    font-family:var(--font-sans), 'Inter', Arial, Helvetica, sans-serif;
     -webkit-font-smoothing:antialiased;
     -moz-osx-font-smoothing:grayscale
 }
@@ -213,7 +213,7 @@ html,body{
     position:absolute;
     inset:82px 0 0;
     overflow:hidden;
-    background:radial-gradient(circle,#171717,#050505 72%);
+    background:transparent;
     cursor:grab;
     touch-action:none;
     -webkit-user-select:none;
@@ -1151,6 +1151,20 @@ html,body{
         align-items:flex-end;
     }
 
+    .modalTutorial{
+        align-items:flex-end;
+        padding:0;
+        padding-top:12vh
+    }
+
+    .tutBox{
+        width:100%;
+        max-width:100%;
+        max-height:80vh;
+        border-radius:18px 18px 0 0;
+        padding:22px 18px 18px
+    }
+
     .box{
         width:100%;
         max-width:100%;
@@ -1296,8 +1310,11 @@ html,body{
 ========================= */
 
 .modalTutorial{
-    background:rgba(0,0,0,.85);
-    backdrop-filter:blur(4px);
+    background:rgba(0,0,0,.55);
+    backdrop-filter:blur(2px);
+    padding:24px;
+    align-items:flex-start;
+    padding-top:8vh
 }
 
 .tutBox{
@@ -2109,10 +2126,10 @@ body.has-benefits{
 /* --- BOTÕES FIXOS INFERIORES --- */
 .fab-actions{
     position:fixed;
-    left:20px;
+    right:20px;
     bottom:calc(20px + env(safe-area-inset-bottom, 0px));
     z-index:50;
-    display:flex;
+    display:none;
     flex-direction:column;
     gap:10px
 }
@@ -2847,6 +2864,7 @@ body.has-benefits{
         display:none
     }
     .fab-actions{
+        display:flex;
         left:12px;
         bottom:12px;
         flex-direction:row
@@ -2968,6 +2986,7 @@ body.has-benefits{
         grid-template-columns:1fr
     }
     .fab-actions{
+        display:flex;
         left:12px;
         bottom:calc(12px + env(safe-area-inset-bottom, 0px));
         gap:8px
@@ -3740,6 +3759,7 @@ body.footer-visible #area{
         display:none
     }
     .fab-actions{
+        display:flex;
         left:12px;
         bottom:12px;
         flex-direction:row
@@ -3910,27 +3930,58 @@ body.footer-visible #area{
 <body>
 
 <header class="l-header" id="mainHeader">
-    <div class="l-header-left">
-        <button class="l-header-btn" id="btnMenuMobile" onclick="toggleMenuMobile()" aria-label="Menu">
+    <div class="l-header-inner">
+        <button class="l-header-btn l-menu-toggle" id="btnMenuMobile" onclick="toggleMenuMobile()" aria-label="Menu">
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
         </button>
-    </div>
 
-    <a href="#inicio" class="l-header-logo-link" onclick="scrollToTop(event)" style="display:flex;align-items:center;justify-content:center;">
-        <img src="/logo-milhao-door.png" alt="Milhão Door" class="l-header-logo">
-    </a>
+        <a href="#top" class="l-header-logo-link" onclick="scrollToTop(event)" style="display:flex;align-items:center;">
+            <img src="/logo-milhao-door.png" alt="Milhão Door — o maior outdoor da internet" class="l-header-logo">
+            <img src="/logo-milhao-door.png" alt="Milhão Door" class="l-header-logo-mobile">
+        </a>
 
-    <div class="l-header-right">
-        <button class="l-header-btn" id="btnNotificacoes" onclick="abrirPainelNotificacoes()" title="Notificações" style="display:none;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
-            <span class="l-notif-badge" id="notificacoesBadge" style="display:none;">0</span>
-        </button>
-        <button class="l-header-btn" id="btnTema" onclick="toggleTema()" title="Alternar tema">
-            <span id="btnTemaIcon">🌙</span>
-        </button>
-        <button class="l-header-avatar" id="btnEntrarHeader" onclick="abrirLogin()">👤</button>
-        <div class="l-header-avatar online" id="userAvatarHeader" onclick="abrirContaDropdown(event)" style="display:none;">
-            <span id="avatarInitials">M</span>
+        <nav class="l-header-nav">
+            <a href="#top" class="active" onclick="scrollToTop(event)">Início</a>
+            <a href="#como-funciona" onclick="scrollToSection(event,'comoFuncionaSection')">Como funciona</a>
+            <a href="#precos" onclick="abrirPrecos(event)">Preços</a>
+            <a href="#combos" onclick="verTodosKits(event)">Combos & Kits</a>
+            <a href="#faq" onclick="abrirFaq(event)">FAQ</a>
+            <a href="/colecionaveis.html"><span class="l-header-nav-dot"></span>Colecionáveis</a>
+            <a href="#contato" onclick="scrollToFooter(event)">Contato</a>
+        </nav>
+
+        <div class="l-header-actions">
+            <button class="l-header-btn" id="btnNotificacoes" onclick="abrirPainelNotificacoes()" title="Notificações" style="display:none;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
+                <span class="l-notif-badge" id="notificacoesBadge" style="display:none;">0</span>
+            </button>
+            <button class="l-header-btn l-grid-sm" id="btnTema" onclick="toggleTema()" title="Alternar tema">
+                <span id="btnTemaIcon">🌙</span>
+            </button>
+
+            <button class="l-header-account" id="btnEntrarHeader" onclick="abrirLogin()">
+                <span class="l-header-avatar-wrap">
+                    <span class="l-header-avatar">👤</span>
+                </span>
+                <span class="l-header-account-info">
+                    <span class="l-header-account-name">Entrar</span>
+                    <span class="l-header-account-label">Minha conta</span>
+                </span>
+            </button>
+
+            <button class="l-header-account" id="userAvatarHeader" onclick="abrirContaDropdown(event)" style="display:none;">
+                <span class="l-header-avatar-wrap">
+                    <span class="l-header-avatar">
+                        <span id="avatarInitials">M</span>
+                    </span>
+                    <span class="l-header-avatar-status"></span>
+                </span>
+                <span class="l-header-account-info">
+                    <span class="l-header-account-name" id="avatarName">Usuário</span>
+                    <span class="l-header-account-label">Minha conta</span>
+                </span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
         </div>
     </div>
 
@@ -3938,11 +3989,12 @@ body.footer-visible #area{
         <div class="conta-dropdown-head">
             <div class="avatar-initials" id="contaDropInitials">M</div>
             <div>
-                <b id="contaDropNome">Marcus</b>
+                <b id="contaDropNome">Usuário</b>
                 <span id="contaDropEmail">minha conta</span>
             </div>
         </div>
         <a href="#" onclick="event.preventDefault();abrirPainelComando();fecharContaDropdown()">⚙️ Painel de Comando</a>
+        <a href="#" onclick="event.preventDefault();abrirChatGeral();fecharContaDropdown()">💬 Chat ao vivo</a>
         <a href="/colecionaveis.html">🃏 Meus Colecionáveis</a>
         <a href="#" onclick="event.preventDefault();abrirEditarPerfil();fecharContaDropdown()">✏️ Editar Perfil</a>
         <a href="#" onclick="event.preventDefault();abrirMeusDestaques();fecharContaDropdown()">✨ Meus Destaques</a>
@@ -3952,81 +4004,76 @@ body.footer-visible #area{
 </header>
 
 <!-- MENU MOBILE -->
-<div class="mobile-menu" id="mobileMenu" onclick="fecharMenuMobile(event)">
-    <div class="mobile-menu-content" onclick="event.stopPropagation()">
-        <a href="#inicio" onclick="scrollToTop(event);fecharMenuMobile()">INÍCIO</a>
-        <a href="#como-funciona" onclick="abrirComoFunciona(event);fecharMenuMobile()">COMO FUNCIONA</a>
-        <a href="#precos" onclick="abrirPrecos(event);fecharMenuMobile()">PREÇOS</a>
-        <a href="#combos" onclick="verTodosKits(event);fecharMenuMobile()">COMBOS & KITS</a>
-        <a href="#faq" onclick="abrirFaq(event);fecharMenuMobile()">FAQ</a>
-        <a class="topo-colecionaveis" href="/colecionaveis.html" onclick="fecharMenuMobile()">🟡 COLECIONÁVEIS</a>
-        <a href="#contato" onclick="scrollToFooter(event);fecharMenuMobile()">CONTATO</a>
-        <button class="btn-entrar" id="btnEntrarMobile" onclick="abrirLogin();fecharMenuMobile()">👤 ENTRAR</button>
+<div class="l-mobile-menu-overlay" id="mobileMenuOverlay" onclick="fecharMenuMobile(event)"></div>
+<div class="l-mobile-menu" id="mobileMenu">
+    <div class="l-mobile-menu-head">
+        <img src="/logo-milhao-door.png" alt="Milhão Door">
+        <button class="l-mobile-menu-close" onclick="fecharMenuMobile()" aria-label="Fechar menu">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
     </div>
+    <nav class="l-mobile-menu-nav">
+        <a href="#top" onclick="scrollToTop(event);fecharMenuMobile()">Início</a>
+        <a href="#como-funciona" onclick="scrollToSection(event,'comoFuncionaSection');fecharMenuMobile()">Como funciona</a>
+        <a href="#precos" onclick="abrirPrecos(event);fecharMenuMobile()">Preços</a>
+        <a href="#combos" onclick="verTodosKits(event);fecharMenuMobile()">Combos & Kits</a>
+        <a href="#faq" onclick="abrirFaq(event);fecharMenuMobile()">FAQ</a>
+        <a href="/colecionaveis.html" onclick="fecharMenuMobile()">Colecionáveis</a>
+        <a href="#contato" onclick="scrollToFooter(event);fecharMenuMobile()">Contato</a>
+    </nav>
+    <a href="#comprar" class="l-mobile-menu-cta" onclick="fecharMenuMobile()">Comprar espaço</a>
 </div>
 
 <!-- BENEFÍCIOS LOVABLE -->
-<div class="l-container" id="benefitsBar" style="margin-top:calc(var(--l-header-height) + 16px);">
-    <div class="l-benefits-grid">
-        <div class="l-benefit-card">
-            <div class="l-benefit-icon">🛒</div>
-            <div>
-                <p class="l-benefit-title">Compre do seu jeito</p>
-                <p class="l-benefit-sub">PIX, Cartão ou Boleto</p>
-            </div>
+<section class="l-benefits-strip" id="benefitsBar">
+    <div class="l-benefits-inner">
+        <div class="l-benefit-item">
+            <span class="l-benefit-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+            </span>
+            <span class="l-benefit-text">
+                <span class="l-benefit-title">Compre do seu jeito</span>
+                <span class="l-benefit-sub">PIX, Cartão ou Boleto</span>
+            </span>
         </div>
-        <div class="l-benefit-card">
-            <div class="l-benefit-icon">🔒</div>
-            <div>
-                <p class="l-benefit-title">Pagamento seguro</p>
-                <p class="l-benefit-sub">Ambiente 100% seguro</p>
-            </div>
+        <div class="l-benefit-item">
+            <span class="l-benefit-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            </span>
+            <span class="l-benefit-text">
+                <span class="l-benefit-title">Pagamento seguro</span>
+                <span class="l-benefit-sub">Ambiente 100% seguro</span>
+            </span>
         </div>
-        <div class="l-benefit-card">
-            <div class="l-benefit-icon">⚡</div>
-            <div>
-                <p class="l-benefit-title">Liberação automática</p>
-                <p class="l-benefit-sub">Após a confirmação</p>
-            </div>
+        <div class="l-benefit-item">
+            <span class="l-benefit-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            </span>
+            <span class="l-benefit-text">
+                <span class="l-benefit-title">Liberação automática</span>
+                <span class="l-benefit-sub">Após a confirmação</span>
+            </span>
         </div>
-        <div class="l-benefit-card">
-            <div class="l-benefit-icon">🎧</div>
-            <div>
-                <p class="l-benefit-title">Suporte rápido</p>
-                <p class="l-benefit-sub">Atendimento humanizado</p>
-            </div>
+        <div class="l-benefit-item">
+            <span class="l-benefit-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            </span>
+            <span class="l-benefit-text">
+                <span class="l-benefit-title">Suporte rápido</span>
+                <span class="l-benefit-sub">Atendimento humanizado</span>
+            </span>
         </div>
-        <div class="l-benefit-card">
-            <div class="l-benefit-icon">🎁</div>
-            <div>
-                <p class="l-benefit-title">Pacotes e kits</p>
-                <p class="l-benefit-sub">Figurinhas colecionáveis</p>
-            </div>
+        <div class="l-benefit-item">
+            <span class="l-benefit-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg>
+            </span>
+            <span class="l-benefit-text">
+                <span class="l-benefit-title">Pacotes e kits</span>
+                <span class="l-benefit-sub">Figurinhas colecionáveis</span>
+            </span>
         </div>
     </div>
-</div>
-    <div class="benefit-item">
-        <span class="icon">🔒</span>
-        <span>PAGAMENTO SEGURO</span>
-    </div>
-    <div class="benefit-item">
-        <span class="icon">⚡</span>
-        <span>LIBERAÇÃO AUTOMÁTICA</span>
-    </div>
-    <div class="benefit-item">
-        <span class="icon">🎧</span>
-        <span>SUPORTE RÁPIDO</span>
-    </div>
-</div>
-
-<button
-id="btnEntrar"
-class="btn btnConta"
-onclick="abrirLogin()"
-title="Entrar / Criar conta">
-👤 ENTRAR
-</button>
-
+</section>
 
 <div
 id="offerBar"
@@ -4121,21 +4168,28 @@ LIMPAR
 </div>
 
 
-<section class="l-stories-shell l-container" id="storiesShell" aria-label="Stories do Milhão Door" style="margin-top:16px;">
-    <div class="l-stories-head">
-        <h2 class="l-section-title">Stories</h2>
-        <a href="#" class="l-story-link" onclick="event.preventDefault();abrirDestaqueStory();">Ver todos <span style="font-size:14px;">›</span></a>
+<section class="l-stories-section" id="storiesShell" aria-label="Stories do Milhão Door">
+    <div class="l-stories-head-mobile">
+        <h2 class="l-stories-title">Stories</h2>
+        <a href="#" class="l-stories-link" onclick="event.preventDefault();abrirDestaqueStory();">Ver todos <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></a>
     </div>
     <div class="l-stories-list" id="storiesList"></div>
 </section>
 
 <!-- ÚLTIMAS COMPRAS -->
-<section class="l-ticker-shell l-container" id="ultimasComprasShell" aria-label="Últimas Vendas" style="margin-top:16px;">
-    <div class="l-ticker-label">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-        Últimas vendas
+<section class="l-ticker-section" id="ultimasComprasShell" aria-label="Últimas Vendas">
+    <div class="l-ticker">
+        <span class="l-ticker-label">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            <span class="l-show-sm">Últimas vendas</span>
+        </span>
+        <div class="l-ticker-track-wrap">
+            <div class="l-ticker-track" id="ultimasComprasTicker"></div>
+        </div>
+        <button type="button" class="l-ticker-pause" id="tickerPauseBtn" onclick="alternarPausaTicker()" aria-label="Pausar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+        </button>
     </div>
-    <div class="l-ticker-track" id="ultimasComprasTicker"></div>
 </section>
 
 <!-- QUER APARECER NOS STORIES? -->
@@ -4171,342 +4225,317 @@ LIMPAR
     </div>
 </section>
 
-<main class="main-layout" id="mainLayout">
+<main class="l-main" id="mainLayout">
 
-    <!-- SIDEBAR ESQUERDA -->
-    <aside class="sidebar-left" id="inicio">
-
-        <div class="card">
-            <div class="card-title">1 Milhão de Espaços</div>
-            <div class="card-value">1.000 × 1.000</div>
-            <div class="card-sub">O maior outdoor da internet</div>
-        </div>
-
-        <div class="card">
-            <div class="card-header-collapse" onclick="toggleCollapse(this.parentElement)">
-                <span class="card-collapse-label">🏠 LOCALIZAR & COMPRAR</span>
-                <span class="card-collapse-icon">▾</span>
-            </div>
-            <div class="card-title">Localizar Espaço</div>
-            <div class="search-box">
-                <input
-                    id="spaceSearch"
-                    type="number"
-                    min="1"
-                    max="1000000"
-                    placeholder="Digite o número do espaço"
-                    onkeydown="if(event.key==='Enter') localizarEspaco()"
-                />
-                <button onclick="localizarEspaco()">🔍</button>
-            </div>
-
-            <div class="mode-options">
-                <button class="mode-btn" id="btnOferta" onclick="toggleOfferMode()">
-                    <span class="mode-icon" style="background:rgba(255,122,0,.15);color:var(--offer)">💰</span>
-                    <span class="mode-text">
-                        <b>OFERTA EM BLOCOS</b>
-                        <span>Monte seu bloco e pague menos</span>
-                    </span>
-                </button>
-
-                <button class="mode-btn" id="btnArea" onclick="toggleSelectArea()">
-                    <span class="mode-icon" style="background:rgba(90,162,255,.15);color:var(--info)">⬜</span>
-                    <span class="mode-text">
-                        <b>SELECIONAR VÁRIOS (ÁREA)</b>
-                        <span>Selecione uma área personalizada</span>
-                    </span>
-                </button>
-
-                <button class="mode-btn" id="btnMeusBlocos" onclick="toggleMeusBlocos()">
-                    <span class="mode-icon" style="background:rgba(69,223,110,.15);color:var(--success)">👁</span>
-                    <span class="mode-text">
-                        <b>SELECIONAR ESPAÇOS</b>
-                        <span>Escolha os espaços desejados</span>
-                    </span>
-                </button>
-            </div>
-
-            <div style="margin-top:14px;">
-                <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:6px;">
-                    Selecionar bloco (Largura × Altura)
-                </label>
-                <div class="block-inputs">
-                    <input id="blkL" type="number" min="1" max="1000" value="10">
-                    <span style="color:var(--text-muted)">×</span>
-                    <input id="blkH" type="number" min="1" max="1000" value="10">
-                    <button class="btn" style="margin:0;flex:1;" onclick="selecionarBloco()">SELECIONAR</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="card selection-card" id="selectionCard">
-            <div class="card-header-collapse" onclick="toggleCollapse(this.parentElement)">
-                <span class="card-collapse-label">📦 SELEÇÃO ATUAL</span>
-                <span class="card-collapse-icon">▾</span>
-            </div>
-            <div class="selection-empty" id="selectionEmpty">
-                <span class="icon">🖱️</span>
-                <div>Nenhum espaço selecionado ainda.<br>Clique no mapa para começar.</div>
-            </div>
-            <div id="selectionContent" style="display:none;">
-                <div class="card-title">Seleção Atual</div>
-                <div class="selection-count"><b id="qty">0</b> espaço(s) selecionado(s)</div>
-                <div class="selection-total">Total: <span id="total">R$ 0,00</span></div>
-                <button class="btn btn-pagar" id="go" onclick="checkout()">
-                    VER RESUMO E PAGAR →
-                </button>
-                <button class="btn sec" onclick="clearSel()">LIMPAR SELEÇÃO</button>
-
-                <div class="mini-stats">
-                    <div>VENDIDOS<b id="sold2">0</b></div>
-                    <div>LIVRES<b id="free">1.000.000</b></div>
-                </div>
-            </div>
-        </div>
-
-    </aside>
-
-        <!-- MAPA LOVABLE -->
-    <section class="l-map-shell" id="mapaSection" style="flex:1;min-width:0;display:flex;flex-direction:column;">
-        <div class="l-map-head">
+    <!-- COLUNA ESQUERDA: PAINEL DE COMPRA -->
+    <div class="l-main-col l-main-col-left" id="comprar">
+        <aside class="panel l-buy-panel" id="buyPanel">
             <div>
-                <h2 class="l-map-title">Mapa do <span>Outdoor</span></h2>
-                <p class="l-map-sub">1.000.000 de espaÃ§os Â· toque para selecionar o seu</p>
+                <h2>Comprar <span class="l-text-gold">espaço</span></h2>
+                <p>Selecione seus espaços no mapa ou escolha uma quantidade para começar.</p>
             </div>
-            <div class="l-map-controls">
-                <button class="l-map-control-btn" onclick="zoom(0.83)" title="Afastar">âˆ’</button>
-                <span class="l-map-zoom-value" id="zoomLevel">100%</span>
-                <button class="l-map-control-btn" onclick="zoom(1.2)" title="Aproximar">+</button>
-                <button class="l-map-control-btn" onclick="toggleMapaFullscreen()" title="Tela cheia">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M21 8V5a2 2 0 0 0-2-2h-3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>
+
+            <div class="l-buy-packs">
+                <button type="button" class="l-buy-pack" id="pack1" onclick="selecionarPackCompra(1)">
+                    <span class="l-buy-pack-label">1 espaço</span>
+                    <span class="l-buy-pack-price" id="packPrice1">R$ 1,00</span>
+                </button>
+                <button type="button" class="l-buy-pack active" id="pack10" onclick="selecionarPackCompra(10)">
+                    <span class="l-buy-pack-tag">Popular</span>
+                    <span class="l-buy-pack-label">10 espaços</span>
+                    <span class="l-buy-pack-price" id="packPrice10">R$ 10,00</span>
+                </button>
+                <button type="button" class="l-buy-pack" id="pack50" onclick="selecionarPackCompra(50)">
+                    <span class="l-buy-pack-label">50 espaços</span>
+                    <span class="l-buy-pack-price" id="packPrice50">R$ 50,00</span>
+                </button>
+                <button type="button" class="l-buy-pack" id="pack100" onclick="selecionarPackCompra(100)">
+                    <span class="l-buy-pack-tag">Kit</span>
+                    <span class="l-buy-pack-label">100 espaços</span>
+                    <span class="l-buy-pack-price" id="packPrice100">R$ 100,00</span>
                 </button>
             </div>
-        </div>
-        <div id="area" style="flex:1;min-height:0;">
-            <canvas id="canvas"></canvas>
 
-            <div class="zoom" style="display:none;">
-                <button onclick="zoom(1.2)" title="Aproximar">+</button>
-                <button onclick="zoom(.83)" title="Afastar">âˆ’</button>
-                <button onclick="toggleMapaFullscreen()" title="Tela cheia">â›¶</button>
+            <div class="l-buy-qty">
+                <button type="button" aria-label="Menos" onclick="ajustarQtyCompra(-1)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+                <span class="l-buy-qty-value" id="buyPanelQty">0</span>
+                <button type="button" aria-label="Mais" onclick="ajustarQtyCompra(1)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
             </div>
 
-            <div class="map-legend" style="display:none;"></div>
-        </div>
-        <div class="l-map-legend">
-            <span class="l-map-legend-item"><span class="l-map-legend-dot free"></span>DisponÃ­vel</span>
-            <span class="l-map-legend-item"><span class="l-map-legend-dot selected"></span>Selecionado</span>
-            <span class="l-map-legend-item"><span class="l-map-legend-dot sold"></span>Vendido</span>
-            <span class="l-map-legend-item"><span class="l-map-legend-dot offer"></span>Em oferta</span>
-        </div>
-    </section>
+            <div class="l-buy-total">
+                <span class="l-buy-total-label">Total</span>
+                <span class="l-buy-total-value" id="buyPanelTotal">R$ 0,00</span>
+            </div>
 
-    <!-- SIDEBAR DIREITA -->
-    <aside class="sidebar-right" id="comoFuncionaSection">
-
-        <div class="card how-it-works">
-            <div class="card-header-collapse" onclick="toggleCollapse(this.parentElement)">
-                <span class="card-collapse-label">❓ COMO FUNCIONA?</span>
-                <span class="card-collapse-icon">▾</span>
-            </div>
-            <div class="card-title">Como Funciona?</div>
-            <div class="steps">
-                <div class="step">
-                    <div class="step-num">1</div>
-                    <div>
-                        <b>Escolha seu método</b>
-                        <span>Selecione como deseja comprar seu espaço ou bloco.</span>
-                    </div>
-                </div>
-                <div class="step">
-                    <div class="step-num">2</div>
-                    <div>
-                        <b>Selecione os espaços</b>
-                        <span>Clique nos quadradinhos ou selecione uma área.</span>
-                    </div>
-                </div>
-                <div class="step">
-                    <div class="step-num">3</div>
-                    <div>
-                        <b>Revise e aceite as regras</b>
-                        <span>Confira seus dados, leia e aceite as regras da licença e de conteúdo, e escolha o pagamento.</span>
-                    </div>
-                </div>
-                <div class="step">
-                    <div class="step-num">4</div>
-                    <div>
-                        <b>Seu espaço será exibido!</b>
-                        <span>Após a confirmação do pagamento, seu bloco aparecerá para todos.</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card how-it-works" style="border-color:rgba(255,122,0,.35);">
-            <div class="card-header-collapse" onclick="toggleCollapse(this.parentElement)">
-                <span class="card-collapse-label" style="color:#ffd400;">🃏 COLECIONÁVEIS</span>
-                <span class="card-collapse-icon">▾</span>
-            </div>
-            <div class="card-title" style="color:#ffd400;">🃏 Colecionáveis — Como Funciona</div>
-            <div class="steps">
-                <div class="step">
-                    <div class="step-num">1</div>
-                    <div>
-                        <b>Abra pacotes</b>
-                        <span>Compre um pacote (Bronze, Prata, Ouro ou Especial) e receba figurinhas digitais na hora após o pagamento confirmar.</span>
-                    </div>
-                </div>
-                <div class="step">
-                    <div class="step-num">2</div>
-                    <div>
-                        <b>Monte seu álbum</b>
-                        <span>Complete as <b>100 figurinhas</b> da 1ª edição. Cada raridade tem chances diferentes de sair.</span>
-                    </div>
-                </div>
-                <div class="step">
-                    <div class="step-num">3</div>
-                    <div>
-                        <b>Venda e troque</b>
-                        <span>Anuncie repetidas no mercado ou proponha trocas com outros colecionadores.</span>
-                    </div>
-                </div>
-            </div>
-            <button class="btn" style="width:100%;margin-top:14px;"
-                onclick="abrirTutorialColecionaveis(event)">
-                VER GUIA COMPLETO →
+            <button type="button" class="l-buy-cta" id="buyPanelCta" onclick="checkoutFromPanel()">
+                <span class="l-buy-cta-content">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                    Comprar agora
+                </span>
+                <span class="l-buy-cta-sheen"></span>
             </button>
-        </div>
 
-        <div class="card kits-section" id="combosSection">
-            <div class="card-header-collapse" onclick="toggleCollapse(this.parentElement)">
-                <span class="card-collapse-label">🔥 COMBOS & KITS</span>
-                <span class="card-collapse-icon">▾</span>
+            <div class="l-buy-actions">
+                <button type="button" class="l-buy-action-btn" onclick="selecionarAleatorioPainel()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>
+                    Aleatório
+                </button>
+                <button type="button" class="l-buy-action-btn" onclick="abrirPacotesModal(event)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    Sortear kit
+                </button>
             </div>
-            <div class="card-title">🔥 COMBOS & KITS
-                <span class="kits-mini">economize até R$120</span>
-            </div>
-            <div class="kit-list" id="kitList">
-                <div style="font-size:12px;color:var(--text-muted);padding:8px 0;">
-                    Carregando kits...
+
+            <!-- Controles funcionais preservados -->
+            <div style="margin-top:16px; padding-top:16px; border-top:1px solid color-mix(in oklab, var(--border) 60%, transparent);">
+                <label style="font-size:11px; color:var(--muted-foreground); display:block; margin-bottom:6px;">Localizar espaço</label>
+                <div class="l-map-search">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input id="spaceSearch" type="number" min="1" max="1000000" placeholder="Número do espaço" onkeydown="if(event.key==='Enter') localizarEspaco()">
+                </div>
+                <div style="display:flex; gap:8px; margin-top:8px;">
+                    <button type="button" class="l-buy-action-btn" style="flex:1;" id="btnArea" onclick="toggleSelectArea()">⬜ Área</button>
+                    <button type="button" class="l-buy-action-btn" style="flex:1;" id="btnOferta" onclick="toggleOfferMode()">💰 Oferta</button>
+                </div>
+                <label style="font-size:11px; color:var(--muted-foreground); display:block; margin:10px 0 6px;">Bloco (L × A)</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input id="blkL" type="number" min="1" max="1000" value="10" style="flex:1; padding:8px; border-radius:var(--radius-md); border:1px solid var(--border); background:transparent; color:var(--foreground); font-size:12px;">
+                    <span style="color:var(--muted-foreground);">×</span>
+                    <input id="blkH" type="number" min="1" max="1000" value="10" style="flex:1; padding:8px; border-radius:var(--radius-md); border:1px solid var(--border); background:transparent; color:var(--foreground); font-size:12px;">
+                    <button type="button" class="l-buy-action-btn" onclick="selecionarBloco()" style="flex:1;">Selecionar</button>
                 </div>
             </div>
-            <button class="btn" style="width:100%;margin-top:12px;"
-                onclick="verTodosKits(event)">
-                VER TODOS OS KITS →
-            </button>
-        </div>
 
-        <div class="card discount-card" id="precos">
-            <div class="card-header-collapse" onclick="toggleCollapse(this.parentElement)">
-                <span class="card-collapse-label">💰 DESCONTO PROGRESSIVO</span>
-                <span class="card-collapse-icon">▾</span>
+            <!-- Card de seleção atual (preservado) -->
+            <div class="card" id="selectionCard" style="margin-top:16px; background:transparent; border-color:color-mix(in oklab, var(--border) 60%, transparent);">
+                <div class="card-header-collapse" onclick="toggleCollapse(this.parentElement)">
+                    <span class="card-collapse-label">🛒 SELEÇÃO ATUAL</span>
+                    <span class="card-collapse-icon">▾</span>
+                </div>
+                <div id="selectionEmpty" style="font-size:12px; color:var(--muted-foreground); padding:8px 0;">Nenhum espaço selecionado.</div>
+                <div id="selectionContent" style="display:none;">
+                    <div style="font-size:24px; font-weight:900; color:var(--gold);" id="qty">0</div>
+                    <div style="font-size:12px; color:var(--muted-foreground);">espaços selecionados</div>
+                    <div style="margin-top:8px; font-size:18px; font-weight:800; color:var(--foreground);" id="total">R$ 0,00</div>
+                    <button class="btn" id="go" style="width:100%; margin-top:12px;" onclick="checkout()">COMPRAR AGORA</button>
+                    <button class="btn sec" style="width:100%; margin-top:8px;" onclick="clearSel()">LIMPAR SELEÇÃO</button>
+                </div>
             </div>
-            <h3>DESCONTO PROGRESSIVO</h3>
-            <p>Quanto mais espaços, maior o desconto!</p>
-            <button class="btn" onclick="abrirPrecos(event)">
-                VER TABELA DE PREÇOS →
-            </button>
-        </div>
+        </aside>
+    </div>
 
-        <div class="card pacotes-card" id="pacotesDisponiveis">
-            <div class="card-header-collapse" onclick="toggleCollapse(this.parentElement)">
-                <span class="card-collapse-label">🎁 PACOTES DISPONÍVEIS</span>
-                <span class="card-collapse-icon">▾</span>
+    <!-- COLUNA CENTRAL: MAPA -->
+    <div class="l-main-col l-main-col-center">
+        <section class="panel l-map-section" id="mapaSection">
+            <div class="l-map-head">
+                <div>
+                    <h2 class="l-map-title">Mapa do <span>Outdoor</span></h2>
+                    <p class="l-map-sub">1.000.000 de espaços · toque para selecionar o seu</p>
+                </div>
+                <div class="l-map-controls">
+                    <button type="button" class="l-map-control-btn" onclick="zoom(0.83)" title="Afastar" aria-label="Diminuir zoom">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                    <span class="l-map-zoom-value" id="zoomLevel">16%</span>
+                    <button type="button" class="l-map-control-btn" onclick="zoom(1.2)" title="Aproximar" aria-label="Aumentar zoom">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                    <button type="button" class="l-map-control-btn l-grid-sm" onclick="toggleMapaFullscreen()" title="Tela cheia" aria-label="Tela cheia">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M21 8V5a2 2 0 0 0-2-2h-3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>
+                    </button>
+                </div>
             </div>
-            <div class="pacotes-thumb">
-                <img src="/logo-milhao-door.png" alt="Pacotes Milhão Door">
-            </div>
-            <p class="pacotes-desc">Abra pacotes de figurinhas digitais e colecione todas!</p>
-            <div class="pacotes-preco">
-                <span>A partir de</span>
-                <b>R$ 9,90</b>
-            </div>
-            <button class="btn" onclick="abrirPacotesModal(event)">
-                VER PACOTES →
-            </button>
-        </div>
 
-        <div class="card">
-            <div class="card-header-collapse" onclick="toggleCollapse(this.parentElement)">
-                <span class="card-collapse-label">📊 ESTATÍSTICAS</span>
-                <span class="card-collapse-icon">▾</span>
+            <div class="l-map-body">
+                <div id="area" class="l-map-canvas-area">
+                    <canvas id="canvas"></canvas>
+                    <div class="zoom" style="display:none;">
+                        <button onclick="zoom(1.2)" title="Aproximar">+</button>
+                        <button onclick="zoom(.83)" title="Afastar">−</button>
+                        <button onclick="toggleMapaFullscreen()" title="Tela cheia">⛶</button>
+                    </div>
+                    <div class="map-legend" style="display:none;"></div>
+                </div>
             </div>
-            <div class="card-title">Estatísticas</div>
-            <div class="mini-stats">
-                <div>TOTAIS<b>1.000.000</b></div>
-                <div>DISPONÍVEIS<b class="g" id="freeTop">1.000.000</b></div>
-                <div>VENDIDOS<b id="sold">0</b></div>
-                <div>FATURAMENTO<b class="y" id="rev">R$ 0,00</b></div>
-            </div>
-        </div>
 
-    </aside>
+            <div class="l-map-foot">
+                <div class="l-map-legend">
+                    <span class="l-map-legend-item"><span class="l-map-legend-dot free"></span>Disponível</span>
+                    <span class="l-map-legend-item"><span class="l-map-legend-dot selected"></span>Selecionado</span>
+                    <span class="l-map-legend-item"><span class="l-map-legend-dot sold"></span>Vendido</span>
+                    <span class="l-map-legend-item"><span class="l-map-legend-dot offer"></span>Em oferta</span>
+                </div>
+                <label class="l-map-search">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" placeholder="Buscar espaço por número" onkeydown="if(event.key==='Enter') localizarEspacoPorInput(this.value)">
+                </label>
+            </div>
+        </section>
+    </div>
+
+    <!-- COLUNA DIREITA: SIDE PANELS -->
+    <div class="l-main-col l-main-col-right" id="como-funciona">
+        <div class="l-side-stack">
+            <section class="panel l-side-panel">
+                <h2>Como <span class="l-text-gold">funciona</span></h2>
+                <ol class="l-steps">
+                    <li class="l-step">
+                        <span class="l-step-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path></svg>
+                        </span>
+                        <span>
+                            <span class="l-step-title">1. Escolha seu espaço</span>
+                            <span class="l-step-desc">Clique no mapa e selecione os pixels.</span>
+                        </span>
+                    </li>
+                    <li class="l-step">
+                        <span class="l-step-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                        </span>
+                        <span>
+                            <span class="l-step-title">2. Pague com PIX</span>
+                            <span class="l-step-desc">Confirmação em segundos.</span>
+                        </span>
+                    </li>
+                    <li class="l-step">
+                        <span class="l-step-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        </span>
+                        <span>
+                            <span class="l-step-title">3. Envie sua arte</span>
+                            <span class="l-step-desc">Logo, link e mensagem.</span>
+                        </span>
+                    </li>
+                    <li class="l-step">
+                        <span class="l-step-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                        </span>
+                        <span>
+                            <span class="l-step-title">4. Fique para sempre</span>
+                            <span class="l-step-desc">Seu espaço eternizado.</span>
+                        </span>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="panel l-side-panel" id="colecionaveis">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                    <h2>Figurinhas <span class="l-text-gold">colecionáveis</span></h2>
+                    <span class="l-side-badge">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+                        Novo
+                    </span>
+                </div>
+                <div class="l-collectibles-grid">
+                    <div class="l-collectible-card" style="--tone: var(--gold);">
+                        <div class="l-collectible-glow" style="background: radial-gradient(circle, color-mix(in oklab, var(--gold) 55%, transparent), transparent 70%);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5c.67 0 1.35.09 2 .26 1.78-2 5.03-2.84 6.42-2.26 1.4.58-.42 7-.42 7 .57 1.07 1 2.24 1 3.44C21 17.9 16.97 21 12 21s-9-3.1-9-7.56c0-1.25.5-2.4 1-3.44 0 0-1.89-6.42-.5-7 1.39-.58 4.72.23 6.5 2.23A9.04 9.04 0 0 1 12 5Z"></path><path d="M8 14v1"></path><path d="M16 14v1"></path><path d="M12 14v1"></path></svg>
+                        </div>
+                        <p class="l-collectible-name">Lince Dourado</p>
+                        <p class="l-collectible-rarity" style="color:var(--gold)">Lendária</p>
+                    </div>
+                    <div class="l-collectible-card" style="--tone: var(--st-sold);">
+                        <div class="l-collectible-glow" style="background: radial-gradient(circle, color-mix(in oklab, var(--st-sold) 55%, transparent), transparent 70%);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--st-sold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </div>
+                        <p class="l-collectible-name">Coruja Real</p>
+                        <p class="l-collectible-rarity" style="color:var(--st-sold)">Épica</p>
+                    </div>
+                    <div class="l-collectible-card" style="--tone: var(--st-selected);">
+                        <div class="l-collectible-glow" style="background: radial-gradient(circle, color-mix(in oklab, var(--st-selected) 55%, transparent), transparent 70%);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--st-selected)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6v12"></path><path d="M16 6v12"></path><path d="M2 12h20"></path></svg>
+                        </div>
+                        <p class="l-collectible-name">Tucano Neon</p>
+                        <p class="l-collectible-rarity" style="color:var(--st-selected)">Rara</p>
+                    </div>
+                    <div class="l-collectible-card" style="--tone: var(--st-free);">
+                        <div class="l-collectible-glow" style="background: radial-gradient(circle, color-mix(in oklab, var(--st-free) 55%, transparent), transparent 70%);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--st-free)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v3h10Z"></path><path d="M7 8v12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V8"></path><path d="M9 12h6"></path></svg>
+                        </div>
+                        <p class="l-collectible-name">Raposa Ígnea</p>
+                        <p class="l-collectible-rarity" style="color:var(--st-free)">Comum</p>
+                    </div>
+                </div>
+                <button type="button" class="l-side-btn" onclick="abrirTutorialColecionaveis(event)">Ver coleção completa</button>
+            </section>
+
+            <section class="panel l-side-panel" id="pacotesDisponiveis">
+                <h2>Pacotes <span class="l-text-gold">disponíveis</span></h2>
+                <p style="margin-top:8px; font-size:12px; color:var(--muted-foreground);">Abra pacotes de figurinhas digitais e colecione todas as 100 espécies da 1ª edição.</p>
+                <button type="button" class="l-side-btn" style="margin-top:14px;" onclick="abrirPacotesModal(event)">Ver pacotes</button>
+            </section>
+        </div>
+    </div>
 
 </main>
 
+
 <!-- BOTÃO RECOLHER TODOS -->
-<div class="collapse-all-bar" id="collapseAllBar">
+<div class="collapse-all-bar" id="collapseAllBar" style="display:none;">
     <button class="collapse-all-btn" id="collapseAllBtn" onclick="toggleCollapseAll()" title="Recolher/expandir todos os painéis">
         <span class="collapse-icon">◂◂</span>
         <span>RECOLHER PAINÉIS</span>
     </button>
 </div>
 
-<!-- SEÇÕES INFERIORES -->
-<div class="dashboard-bottom" id="dashboardBottom">
+<!-- DASHBOARD WIDGETS -->
+<section class="l-dashboard" id="dashboardBottom">
 
     <!-- ÚLTIMAS COMPRAS -->
-    <div class="card">
-        <div class="card-title">
-            <span>🛒 ÚLTIMAS COMPRAS</span>
-            <span class="ver-todas" onclick="abrirPainelComando()">Ver todas</span>
-        </div>
-        <div id="ultimasComprasDash">
-            <div style="color:var(--text-muted);font-size:12px;padding:8px 0;">Carregando...</div>
-        </div>
+    <div class="panel l-widget">
+        <h2>Últimas <span class="l-text-gold">compras</span></h2>
+        <ul class="l-widget-list" id="ultimasComprasDash">
+            <li class="l-widget-empty">Carregando...</li>
+        </ul>
     </div>
 
     <!-- OFERTAS ATIVAS -->
-    <div class="card">
-        <div class="card-title">
-            <span>💎 OFERTAS ATIVAS</span>
-            <span class="ver-todas" onclick="abrirPainelComando()">Ver todas</span>
-        </div>
+    <div class="panel l-widget" id="precos">
+        <h2>Ofertas <span class="l-text-gold">ativas</span></h2>
         <div id="ofertasAtivasDash">
-            <div style="color:var(--text-muted);font-size:12px;padding:8px 0;">Carregando...</div>
+            <p class="l-widget-empty">Carregando...</p>
         </div>
     </div>
 
     <!-- RESUMO GERAL -->
-    <div class="card">
-        <div class="card-title">
-            <span>📊 RESUMO GERAL</span>
+    <div class="panel l-widget">
+        <h2>Resumo <span class="l-text-gold">geral</span></h2>
+        <div class="l-stats-grid" id="resumoGeralDash">
+            <div class="l-stat-card">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                <p class="l-stat-value" id="resumoTotal">1.000.000</p>
+                <p class="l-stat-label">Espaços totais</p>
+            </div>
+            <div class="l-stat-card">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                <p class="l-stat-value" style="color:var(--danger)" id="resumoVendidos">0</p>
+                <p class="l-stat-label">Vendidos</p>
+            </div>
+            <div class="l-stat-card">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <p class="l-stat-value" style="color:var(--success)" id="resumoDisponiveis">1.000.000</p>
+                <p class="l-stat-label">Disponíveis</p>
+            </div>
+            <div class="l-stat-card">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                <p class="l-stat-value" style="color:var(--info)" id="resumoUsuarios">0</p>
+                <p class="l-stat-label">Compradores</p>
+            </div>
         </div>
-        <div class="resumo-grid" id="resumoGeralDash">
-            <div class="resumo-box">
-                <div class="valor" id="resumoTotal">1.000.000</div>
-                <div class="label">ESPAÇOS TOTAIS</div>
-                <div class="sub">100%</div>
-            </div>
-            <div class="resumo-box">
-                <div class="valor" style="color:var(--danger);" id="resumoVendidos">0</div>
-                <div class="label">VENDIDOS</div>
-                <div class="sub" id="resumoVendidosPct">0%</div>
-            </div>
-            <div class="resumo-box">
-                <div class="valor" style="color:var(--success);" id="resumoDisponiveis">1.000.000</div>
-                <div class="label">DISPONÍVEIS</div>
-                <div class="sub" id="resumoDisponiveisPct">100%</div>
-            </div>
-            <div class="resumo-box">
-                <div class="valor" style="color:var(--info);" id="resumoUsuarios">0</div>
-                <div class="label">USUÁRIOS</div>
-                <div class="sub" id="resumoUsuariosHoje">+0 hoje</div>
-            </div>
+        <div class="l-progress-label">
+            <span>Progresso do outdoor</span>
+            <span class="l-text-gold" id="resumoProgressoPct">0%</span>
+        </div>
+        <div class="l-progress-bar">
+            <div class="l-progress-fill" id="resumoProgressoBar" style="width:0%"></div>
         </div>
     </div>
 
-</div>
+</section>
 
 <div class="hint">
     🖱️ Arraste • Role ou pinça para zoom • Clique/toque para selecionar
@@ -4546,8 +4575,6 @@ LIMPAR
     <span class="bug-icone">🐞</span>
     <span class="bug-label">BUG / SUGESTÃO</span>
 </button>
-
-
 <!-- CHAT -->
 
 <div class="modal" id="chatModal" style="display:none;">
@@ -5663,7 +5690,7 @@ const area =
 document.getElementById("area");
 
 
-let sc = .16;
+let sc = .35;
 
 /* =========================
    UTILIDADES DE INTERFACE
@@ -5694,12 +5721,16 @@ function aplicarTema(){
 
 function toggleMenuMobile(){
     const m = document.getElementById("mobileMenu");
+    const o = document.getElementById("mobileMenuOverlay");
     if(m) m.classList.toggle("open");
+    if(o) o.classList.toggle("open");
 }
 
 function fecharMenuMobile(event){
     const m = document.getElementById("mobileMenu");
+    const o = document.getElementById("mobileMenuOverlay");
     if(m) m.classList.remove("open");
+    if(o) o.classList.remove("open");
 }
 
 function scrollToTop(event){
@@ -6225,22 +6256,36 @@ function renderizarStories(){
     shell.style.display = "block";
     const lidos = storiesLidos();
     const addStory = minhaConta && minhaConta.token
-        ? '<div class="l-story-item" onclick="abrirDestaqueStory()" title="Criar destaque no Story">' +
-            '<div class="l-story-ring l-add"><div class="l-story-avatar" style="font-size:22px;">+</div></div>' +
-            '<span class="l-story-name">Seu Story</span>' +
-          '</div>'
+        ? '<button type="button" class="l-story-item" onclick="abrirDestaqueStory()" title="Criar destaque no Story">' +
+            '<span class="l-story-add"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></span>' +
+            '<span class="l-story-label">Seu Story</span>' +
+          '</button>'
         : '';
     const items = storiesState.length ? storiesState.map((story, index) => {
         const seenClass = lidos.includes(story.id) ? " opacity-60" : "";
         const avatar = story.fotoUrl
             ? '<img src="' + escHtml(story.fotoUrl) + '" alt="">'
-            : (story.apelido || story.nome || "U").charAt(0).toUpperCase();
-        return '<div class="l-story-item' + seenClass + '" onclick="abrirStory(' + index + ')" aria-label="' + escHtml(story.title) + '">' +
-            '<div class="l-story-ring"><div class="l-story-avatar">' + avatar + '</div></div>' +
-            '<span class="l-story-name">' + escHtml(story.apelido || story.nome || "usuário") + '</span>' +
-        '</div>';
+            : '<span class="l-story-initials">' + (story.apelido || story.nome || "U").charAt(0).toUpperCase() + '</span>';
+        return '<button type="button" class="l-story-item' + seenClass + '" onclick="abrirStory(' + index + ')" aria-label="' + escHtml(story.title) + '">' +
+            '<span class="l-story-ring"><span class="l-story-ring-inner">' + avatar + '</span></span>' +
+            '<span class="l-story-label">' + escHtml(story.apelido || story.nome || "usuário") + '</span>' +
+        '</button>';
     }).join("") : '';
-    list.innerHTML = addStory + items;
+
+    if(!addStory && !items){
+        list.innerHTML =
+            '<div class="l-story-empty">' +
+                '<div class="l-story-empty-ring">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>' +
+                '</div>' +
+                '<div class="l-story-empty-text">' +
+                    '<span>Confira os destaques dos colecionadores.</span>' +
+                    '<small>Novos destaques aparecerão aqui.</small>' +
+                '</div>' +
+            '</div>';
+    }else{
+        list.innerHTML = addStory + items;
+    }
     let tickerIndex = 0;
     const ticker = document.getElementById("storiesTicker");
     const updateTicker = () => {
@@ -6279,7 +6324,7 @@ function renderizarUltimasCompras(){
     const shell = document.getElementById("ultimasComprasShell");
     const ticker = document.getElementById("ultimasComprasTicker");
     if(!shell || !ticker) return;
-    shell.style.display = ultimasComprasState.length ? "flex" : "none";
+    shell.style.display = ultimasComprasState.length ? "block" : "none";
     if(!ultimasComprasState.length){
         if(comprasTickerTimer) clearInterval(comprasTickerTimer);
         return;
@@ -6783,12 +6828,15 @@ function authHeaders(extra){
 }
 
 function updateBtnConta(){
-    const labels = ["btnEntrar","btnEntrarHeader","btnEntrarMobile"];
+    // Botões legados (mobile e flutuante) mantêm o texto tradicional
+    const labels = ["btnEntrar","btnEntrarMobile"];
     const text = minhaConta ? "👤 MINHA CONTA" : "👤 ENTRAR";
     labels.forEach(id => {
         const b = document.getElementById(id);
         if(b) b.textContent = text;
     });
+    // Header Lovable usa avatar/ícone
+    if(typeof atualizarAvatarHeader === "function") atualizarAvatarHeader();
     
     // Mostrar/esconder botão de notificações baseado no login
     const btnNotif = document.getElementById("btnNotificacoes");
@@ -7743,12 +7791,8 @@ draw();
 
 function draw(){
 
-ctx.clearRect(
-0,
-0,
-canvas.width,
-canvas.height
-);
+ctx.fillStyle = "#0a0a0f";
+ctx.fillRect(0, 0, canvas.width, canvas.height);
 
 ctx.save();
 
@@ -7953,7 +7997,7 @@ if(
 }else{
 
 ctx.fillStyle =
-v ? "#241f08" : "#111";
+v ? "#3a2f14" : "#2a2a38";
 
 ctx.fillRect(
 px+1,
@@ -8011,7 +8055,7 @@ ctx.lineWidth =
 ctx.strokeStyle =
 sel.has(id)
 ? "#ffd400"
-: "#252525";
+: "#5a5a6e";
 
 ctx.lineWidth =
 sel.has(id)
@@ -8226,7 +8270,7 @@ function setInitialMapViewport(){
     }else{
         /* A primeira célula fica junto ao canto inicial do mural,
            em vez de começar no centro do milhão de espaços. */
-        sc = .16;
+        sc = .35;
         const margem = Math.max(18, Math.min(64, Math.min(canvas.width, canvas.height) * .08));
         x = margem - (coluna * T + T / 2) * sc;
         y = margem - (linha * T + T / 2) * sc;
@@ -8320,45 +8364,20 @@ const s =
 await reqJSON(response);
 
 
-document.getElementById(
-"sold"
-).textContent =
-s.sold.toLocaleString(
-"pt-BR"
-);
+const elSold = document.getElementById("sold");
+if(elSold) elSold.textContent = s.sold.toLocaleString("pt-BR");
 
+const elSold2 = document.getElementById("sold2");
+if(elSold2) elSold2.textContent = s.sold.toLocaleString("pt-BR");
 
-document.getElementById(
-"sold2"
-).textContent =
-s.sold.toLocaleString(
-"pt-BR"
-);
+const elFree = document.getElementById("free");
+if(elFree) elFree.textContent = s.available.toLocaleString("pt-BR");
 
+const elFreeTop = document.getElementById("freeTop");
+if(elFreeTop) elFreeTop.textContent = s.available.toLocaleString("pt-BR");
 
-document.getElementById(
-"free"
-).textContent =
-s.available.toLocaleString(
-"pt-BR"
-);
-
-
-document.getElementById(
-"freeTop"
-).textContent =
-s.available.toLocaleString(
-"pt-BR"
-);
-
-
-document.getElementById(
-"rev"
-).textContent =
-"R$ "+
-s.revenue.toLocaleString(
-"pt-BR"
-)+",00";
+const elRev = document.getElementById("rev");
+if(elRev) elRev.textContent = "R$ " + s.revenue.toLocaleString("pt-BR") + ",00";
 
 }
 
@@ -9717,6 +9736,10 @@ n>40
 );
 
 
+
+
+atualizarBuyPanel();
+
 draw();
 
 }
@@ -9735,6 +9758,68 @@ updateCart();
 fecharInfoEspaco();
 
 }
+
+/* =========================
+   BUY PANEL (LOVABLE)
+======================== */
+let buyPanelQtyDesejada = 10;
+
+function selecionarPackCompra(qty){
+    buyPanelQtyDesejada = qty;
+    document.querySelectorAll(".l-buy-pack").forEach(function(el){ el.classList.remove("active"); });
+    const btn = document.getElementById("pack" + qty);
+    if(btn) btn.classList.add("active");
+    atualizarBuyPanel();
+}
+
+function ajustarQtyCompra(delta){
+    buyPanelQtyDesejada = Math.max(1, buyPanelQtyDesejada + delta);
+    document.querySelectorAll(".l-buy-pack").forEach(function(el){ el.classList.remove("active"); });
+    atualizarBuyPanel();
+}
+
+function atualizarBuyPanel(){
+    const qtyEl = document.getElementById("buyPanelQty");
+    const totalEl = document.getElementById("buyPanelTotal");
+    const cta = document.getElementById("buyPanelCta");
+    const n = sel.size || buyPanelQtyDesejada;
+    if(qtyEl) qtyEl.textContent = n.toLocaleString("pt-BR");
+    if(totalEl) totalEl.textContent = formatarReais(n * 100);
+    if(cta) cta.disabled = !sel.size;
+}
+
+function checkoutFromPanel(){
+    if(!sel.size){
+        abrirInfoModal("Selecione espaços", "<p>Clique no mapa ou use <b>Aleatório</b> para selecionar espaços antes de comprar.</p>");
+        return;
+    }
+    checkout();
+}
+
+function selecionarAleatorioPainel(){
+    const quantidade = buyPanelQtyDesejada;
+    sel.clear();
+    const livres = [];
+    for(let i = 1; i <= 1000000 && livres.length < quantidade * 3; i++){
+        if(!db[i]) livres.push(i);
+    }
+    while(sel.size < quantidade && livres.length > 0){
+        const idx = Math.floor(Math.random() * livres.length);
+        sel.add(livres.splice(idx, 1)[0]);
+    }
+    updateCart();
+    abrirInfoModal("Espaços aleatórios", "<p>Foram selecionados <b>" + sel.size + "</b> espaços aleatórios. Você pode ajustar no mapa.</p>");
+}
+
+function localizarEspacoPorInput(val){
+    const id = parseInt(val, 10);
+    if(!id || id < 1 || id > 1000000){
+        abrirInfoModal("Espaço inválido", "<p>Digite um número entre 1 e 1.000.000.</p>");
+        return;
+    }
+    localizarEspaco();
+}
+
 /* =========================
    UTILITÁRIOS DE QR CODE
 ========================= */
@@ -11172,6 +11257,7 @@ center();
 
 load();
 
+if(typeof aplicarColapsoInicial === "function") aplicarColapsoInicial();
 mostrarTutorial();
 carregarStories();
 carregarStoryConfig();
@@ -17295,7 +17381,24 @@ function toggleCollapse(card){
 }
 
 /* ===== RECOLHER TODOS / EXPANDIR MAPA ===== */
-let _allCollapsed = false;
+let _allCollapsed = true;
+
+function aplicarColapsoInicial(){
+    const layout = document.getElementById("mainLayout");
+    const btn = document.getElementById("collapseAllBtn");
+    if(!layout || !btn) return;
+    layout.classList.add("all-collapsed");
+    btn.classList.add("active");
+    const span = btn.querySelector("span:last-child");
+    if(span) span.textContent = "EXPANDIR PAINÉIS";
+    const cards = layout.querySelectorAll(".card");
+    cards.forEach(function(c){ c.classList.add("collapsed"); });
+    setTimeout(function(){
+        if(typeof draw === "function") draw();
+        if(typeof center === "function") center();
+    }, 350);
+}
+
 function toggleCollapseAll(){
     _allCollapsed = !_allCollapsed;
     const layout = document.getElementById("mainLayout");
@@ -17330,26 +17433,26 @@ async function carregarUltimasComprasDash(){
         const data = await resp.json();
         const compras = data.compras || [];
         if(!compras.length){
-            el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">Nenhuma compra ainda.</div>';
+            el.innerHTML = '<li class="l-widget-empty">Nenhuma compra ainda.</li>';
             return;
         }
         el.innerHTML = compras.map(function(c){
             const nome = escHtml(c.usuario_nome || c.nome || "Anônimo");
             const espacos = c.espacos || c.quantidade || 0;
             const valor = c.valor_total || c.valor || 0;
-            const cuando = c.tempo || c.created_at || "";
+            const quando = c.tempo || c.created_at || "";
             const avatar = (nome.charAt(0) || "?").toUpperCase();
-            return '<div class="oferta-item">' +
-                '<div class="oferta-avatar">' + avatar + '</div>' +
-                '<div class="oferta-info">' +
-                    '<div class="nome">' + nome + '</div>' +
-                    '<div class="detalhe">' + espacos + ' espaço(s) · ' + formatarReais(valor) + '</div>' +
-                '</div>' +
-                '<div class="oferta-status enviada">' + escHtml(cuando) + '</div>' +
-            '</div>';
+            return '<li class="l-widget-item">' +
+                '<span class="l-widget-avatar">' + avatar + '</span>' +
+                '<span class="l-widget-main">' +
+                    '<span class="l-widget-name">' + nome + '</span>' +
+                    '<span class="l-widget-meta">' + espacos + ' espaço(s) · ' + escHtml(quando) + '</span>' +
+                '</span>' +
+                '<span class="l-widget-value">' + formatarReais(valor) + '</span>' +
+            '</li>';
         }).join("");
     } catch(e){
-        el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Erro ao carregar.</div>';
+        el.innerHTML = '<li class="l-widget-empty">Erro ao carregar.</li>';
     }
 }
 
@@ -17360,7 +17463,7 @@ async function carregarOfertasAtivasDash(){
     try {
         const token = (minhaConta && minhaConta.token) || "";
         if(!token){
-            el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">Faça login para ver suas ofertas.</div>';
+            el.innerHTML = '<p class="l-widget-empty">Faça login para ver suas ofertas.</p>';
             return;
         }
         const resp = await fetch("/api/offers", {
@@ -17369,28 +17472,24 @@ async function carregarOfertasAtivasDash(){
         const data = await resp.json();
         const ofertas = data.ofertas || [];
         if(!ofertas.length){
-            el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">Nenhuma oferta ativa.</div>';
+            el.innerHTML = '<p class="l-widget-empty">Nenhuma oferta ativa.</p>';
             return;
         }
         el.innerHTML = ofertas.slice(0, 5).map(function(o){
             const nome = escHtml(o.comprador_nome || o.vendedor_nome || "—");
             const valor = o.valor || 0;
-            const status = (o.status || "pendente").toLowerCase();
-            let statusClass = "enviada";
-            if(status === "aceita" || status === "pago") statusClass = "recebida";
-            else if(status === "recusada" || status === "cancelada") statusClass = "recusada";
-            return '<div class="oferta-item">' +
-                '<div class="oferta-avatar">💎</div>' +
-                '<div class="oferta-info">' +
-                    '<div class="nome">#' + (o.id || "—") + ' ' + nome + '</div>' +
-                    '<div class="detalhe">' + (o.espacos || 1) + ' espaço(s)</div>' +
-                '</div>' +
-                '<div class="oferta-valor">' + formatarReais(valor) + '</div>' +
-                '<div class="oferta-status ' + statusClass + '">' + escHtml(status) + '</div>' +
+            return '<div class="l-offer-item">' +
+                '<span class="l-offer-dot"></span>' +
+                '<span class="l-widget-main">' +
+                    '<span class="l-offer-id">Espaço #' + (o.id || "—") + '</span>' +
+                    '<span class="l-offer-by">Oferta de ' + nome + '</span>' +
+                '</span>' +
+                '<span class="l-offer-price">' + formatarReais(valor) + '</span>' +
             '</div>';
-        }).join("");
+        }).join("") +
+        '<button type="button" class="l-widget-btn" onclick="abrirPainelComando()">Ver todas as ofertas</button>';
     } catch(e){
-        el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Erro ao carregar.</div>';
+        el.innerHTML = '<p class="l-widget-empty">Erro ao carregar.</p>';
     }
 }
 
@@ -17402,22 +17501,20 @@ async function carregarResumoGeral(){
         const total = data.total || 1000000;
         const vendidos = data.vendidos || 0;
         const disponiveis = total - vendidos;
-        const pctVendidos = ((vendidos / total) * 100).toFixed(2);
-        const pctDisponiveis = ((disponiveis / total) * 100).toFixed(2);
+        const pctVendidos = ((vendidos / total) * 100);
 
         const elTotal = document.getElementById("resumoTotal");
         const elVendidos = document.getElementById("resumoVendidos");
-        const elVendidosPct = document.getElementById("resumoVendidosPct");
         const elDisponiveis = document.getElementById("resumoDisponiveis");
-        const elDisponiveisPct = document.getElementById("resumoDisponiveisPct");
         const elUsuarios = document.getElementById("resumoUsuarios");
-        const elUsuariosHoje = document.getElementById("resumoUsuariosHoje");
+        const elProgressoPct = document.getElementById("resumoProgressoPct");
+        const elProgressoBar = document.getElementById("resumoProgressoBar");
 
         if(elTotal) elTotal.textContent = total.toLocaleString("pt-BR");
         if(elVendidos) elVendidos.textContent = vendidos.toLocaleString("pt-BR");
-        if(elVendidosPct) elVendidosPct.textContent = pctVendidos + "%";
         if(elDisponiveis) elDisponiveis.textContent = disponiveis.toLocaleString("pt-BR");
-        if(elDisponiveisPct) elDisponiveisPct.textContent = pctDisponiveis + "%";
+        if(elProgressoPct) elProgressoPct.textContent = pctVendidos.toFixed(1) + "%";
+        if(elProgressoBar) elProgressoBar.style.width = Math.min(100, pctVendidos) + "%";
 
         /* Usuários via endpoint público de contagem */
         try {
@@ -17426,7 +17523,6 @@ async function carregarResumoGeral(){
                 const dataU = await respU.json();
                 const usuarios = dataU.total || 0;
                 if(elUsuarios) elUsuarios.textContent = usuarios.toLocaleString("pt-BR");
-                if(elUsuariosHoje) elUsuariosHoje.textContent = "+" + Math.min(usuarios, 3) + " hoje";
             }
         } catch(ignored){}
     } catch(e){
@@ -17437,45 +17533,48 @@ async function carregarResumoGeral(){
 /* ===== ATUALIZAR AVATAR NO HEADER ===== */
 function atualizarAvatarHeader(){
     const btnEntrar = document.getElementById("btnEntrarHeader");
-    const avatar = document.getElementById("userAvatarHeader");
+    const avatarBtn = document.getElementById("userAvatarHeader");
     const initials = document.getElementById("avatarInitials");
     const name = document.getElementById("avatarName");
-    if(!btnEntrar || !avatar) return;
+    const avatarRing = avatarBtn ? avatarBtn.querySelector(".l-header-avatar") : null;
+    if(!btnEntrar || !avatarBtn) return;
 
     if(minhaConta && minhaConta.token){
         const u = minhaConta.usuario || minhaConta;
         const nome = u.nome || u.email || "Usuário";
+        const primeiroNome = nome.split(" ")[0];
         const iniciais = nome.split(" ").map(function(p){ return p.charAt(0); }).join("").substring(0, 2).toUpperCase();
-        btnEntrar.classList.add("oculto");
-        avatar.classList.add("logado");
+        btnEntrar.style.display = "none";
+        avatarBtn.style.display = "flex";
         const fotoUrl = u.fotoUrl || u.foto_url || u.foto;
-        const imgExistente = avatar.querySelector("img.avatar-photo");
+        let imgExistente = avatarRing ? avatarRing.querySelector("img") : null;
         if(fotoUrl){
             if(initials) initials.style.display = "none";
             if(!imgExistente){
                 const img = document.createElement("img");
-                img.className = "avatar-photo";
                 img.alt = nome;
                 img.src = fotoUrl;
-                avatar.insertBefore(img, initials);
+                if(avatarRing){
+                    avatarRing.innerHTML = "";
+                    avatarRing.appendChild(img);
+                }
             } else {
                 imgExistente.src = fotoUrl;
-                imgExistente.style.display = "block";
             }
         } else {
-            if(initials){
-                initials.style.display = "flex";
-                initials.textContent = iniciais;
+            if(avatarRing){
+                avatarRing.innerHTML = '<span id="avatarInitials"></span>';
+                const newInitials = avatarRing.querySelector("#avatarInitials");
+                if(newInitials){
+                    newInitials.style.display = "flex";
+                    newInitials.textContent = iniciais;
+                }
             }
-            if(imgExistente) imgExistente.style.display = "none";
         }
-        if(name) name.textContent = nome.split(" ")[0];
+        if(name) name.textContent = primeiroNome;
     } else {
-        btnEntrar.classList.remove("oculto");
-        avatar.classList.remove("logado");
-        const imgExistente = avatar.querySelector("img.avatar-photo");
-        if(imgExistente) imgExistente.remove();
-        if(initials) initials.style.display = "flex";
+        btnEntrar.style.display = "flex";
+        avatarBtn.style.display = "none";
     }
 }
 
@@ -17518,64 +17617,65 @@ if(typeof salvarTokens === "function"){
 <!-- RODAPÉ -->
 <!-- BOTTOM NAVIGATION MOBILE -->
 <nav class="l-bottom-nav" id="bottomNav">
-    <ul>
-        <li><a href="#inicio" class="active" onclick="scrollToTop(event)">
+    <div class="l-bottom-nav-inner">
+        <a href="#top" class="l-bottom-nav-item active" onclick="scrollToTop(event)">
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
-            <span>InÃ­cio</span>
-        </a></li>
-        <li><a href="#mapa" onclick="scrollToSection(event,'mapaSection')">
+            <span>Início</span>
+        </a>
+        <a href="#mapa" class="l-bottom-nav-item" onclick="scrollToSection(event,'mapaSection')">
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M3 15h18"></path><path d="M9 3v18"></path><path d="M15 3v18"></path></svg>
             <span>Mapa</span>
-        </a></li>
-        <li><a href="#combos" class="l-buy-btn" onclick="verTodosKits(event)">
+        </a>
+        <a href="#comprar" class="l-bottom-nav-primary" onclick="scrollToSection(event,'comprar')">
             <span><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"></circle><circle cx="19" cy="21" r="1"></circle><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path></svg></span>
             <span>Comprar</span>
-        </a></li>
-        <li><a href="/colecionaveis.html">
+        </a>
+        <a href="/colecionaveis.html" class="l-bottom-nav-item">
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><circle cx="4" cy="20" r="2"></circle></svg>
-            <span>ColeÃ§Ã£o</span>
-        </a></li>
-        <li><a href="#contato" onclick="abrirContaDropdown(event)">
+            <span>Coleção</span>
+        </a>
+        <a href="#contato" class="l-bottom-nav-item" onclick="abrirContaDropdown(event)">
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
             <span>Conta</span>
-        </a></li>
-    </ul>
+        </a>
+    </div>
 </nav>
 
 <!-- FOOTER LOVABLE -->
 <footer class="l-footer" id="contato">
-    <div class="l-footer-hairline"></div>
-    <div class="l-footer-grid">
-        <div class="l-footer-brand">
-            <img src="/logo-milhao-door.png" alt="MilhÃ£o Door" class="l-footer-logo">
-            <p class="l-footer-desc">Um milhÃ£o de espaÃ§os digitais. Uma porta para cada histÃ³ria que ainda nÃ£o foi contada.</p>
+    <div class="l-footer-inner">
+        <div>
+            <div class="l-footer-brand">
+                <img src="/logo-milhao-door.png" alt="Milhão Door">
+            </div>
+            <p class="l-footer-desc">Um milhão de espaços digitais. Uma porta para cada história que ainda não foi contada.</p>
             <div class="l-footer-social">
-                <a href="#" aria-label="Instagram"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line></svg></a>
-                <a href="#" aria-label="Twitter"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path></svg></a>
-                <a href="#" aria-label="Contato"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"></path><path d="m21.854 2.147-10.94 10.939"></path></svg></a>
+                <a href="#" aria-label="Instagram"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line></svg></a>
+                <a href="#" aria-label="Twitter"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path></svg></a>
+                <a href="#" aria-label="Contato"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"></path><path d="m21.854 2.147-10.94 10.939"></path></svg></a>
             </div>
         </div>
-        <div class="l-footer-links">
+        <div class="l-footer-columns">
             <div class="l-footer-col">
-                <h4>Plataforma</h4>
+                <h3>Plataforma</h3>
                 <ul>
-                    <li><a href="#inicio" onclick="scrollToTop(event)">EspaÃ§os</a></li>
-                    <li><a href="#mapa" onclick="scrollToSection(event,'mapaSection')">Mapa do milhÃ£o</a></li>
+                    <li><a href="#top" onclick="scrollToTop(event)">Espaços</a></li>
+                    <li><a href="#mapa" onclick="scrollToSection(event,'mapaSection')">Mapa do milhão</a></li>
                     <li><a href="#" onclick="event.preventDefault();abrirDestaqueStory()">Stories</a></li>
                     <li><a href="/colecionaveis.html">Descobrir</a></li>
                 </ul>
             </div>
             <div class="l-footer-col">
-                <h4>Conta</h4>
+                <h3>Conta</h3>
                 <ul>
                     <li><a href="#" onclick="event.preventDefault();abrirLogin()">Entrar</a></li>
                     <li><a href="#" onclick="event.preventDefault();abrirLogin()">Criar conta</a></li>
-                    <li><a href="#" onclick="event.preventDefault();abrirPainelComando()">Meus espaÃ§os</a></li>
+                    <li><a href="#" onclick="event.preventDefault();abrirPainelComando()">Meus espaços</a></li>
                     <li><a href="#" onclick="event.preventDefault();abrirMeusDestaques()">Compras</a></li>
                 </ul>
             </div>
             <div class="l-footer-col">
-                <h4>Institucional</h4>
+                <h3>Institucional</h3>
                 <ul>
                     <li><a href="#" onclick="event.preventDefault();abrirComoFunciona(event)">Sobre o conceito</a></li>
                     <li><a href="/termos.html">Termos de uso</a></li>
@@ -17586,7 +17686,7 @@ if(typeof salvarTokens === "function"){
         </div>
     </div>
     <div class="l-footer-bottom">
-        <p>Â© 2026 MilhÃ£o Door. Todos os direitos reservados.</p>
+        <p>© 2026 Milhão Door. Todos os direitos reservados.</p>
         <span>Feito para quem gosta de descobrir</span>
     </div>
 </footer>

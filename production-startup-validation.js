@@ -31,6 +31,41 @@ function assertDirectory(fsImpl, directory, label) {
     }
 }
 
+/* Cria, de forma recursiva e segura, APENAS os dois subdiretórios esperados
+   (DATA_DIR e UPLOAD_DIR) dentro do Persistent Disk já montado. Só executa
+   quando:
+     - o ambiente é produção (chamado a partir de validateProductionEnvironment);
+     - DATA_DIR e UPLOAD_DIR estão EXATAMENTE nos caminhos esperados;
+     - o Persistent Disk raiz já existe, é diretório e é gravável.
+   Se qualquer condição falhar, NADA é criado — a validação bloqueia em
+   seguida, sem jamais criar diretório em caminho arbitrário. */
+function criarSubdiretoriosPersistentes(env, fsImpl) {
+    if (
+        env.DATA_DIR !== EXPECTED_DATA_DIR ||
+        env.UPLOAD_DIR !== EXPECTED_UPLOAD_DIR
+    ) {
+        return;
+    }
+    if (typeof fsImpl.mkdirSync !== "function") return;
+
+    const raiz = EXPECTED_PERSISTENT_ROOT;
+    if (!fsImpl.existsSync(raiz) || !fsImpl.statSync(raiz).isDirectory()) {
+        return;
+    }
+    try {
+        fsImpl.accessSync(raiz, fsImpl.constants.R_OK | fsImpl.constants.W_OK);
+    } catch (error) {
+        return;
+    }
+
+    if (!fsImpl.existsSync(EXPECTED_DATA_DIR)) {
+        fsImpl.mkdirSync(EXPECTED_DATA_DIR, { recursive: true });
+    }
+    if (!fsImpl.existsSync(EXPECTED_UPLOAD_DIR)) {
+        fsImpl.mkdirSync(EXPECTED_UPLOAD_DIR, { recursive: true });
+    }
+}
+
 function validateProductionEnvironment(env = process.env, fsImpl = fs) {
     if (!isProduction(env)) return { production: false };
 
@@ -54,6 +89,7 @@ function validateProductionEnvironment(env = process.env, fsImpl = fs) {
     }
 
     assertDirectory(fsImpl, EXPECTED_PERSISTENT_ROOT, "o disco persistente");
+    criarSubdiretoriosPersistentes(env, fsImpl);
     assertDirectory(fsImpl, EXPECTED_DATA_DIR, "DATA_DIR");
     assertDirectory(fsImpl, EXPECTED_UPLOAD_DIR, "UPLOAD_DIR");
     return { production: true };

@@ -1,4 +1,4 @@
-?<!DOCTYPE html>
+﻿?<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/lovable.css">
 <style>
 /* =========================================================
    VARIÁVEIS DE TEMA
@@ -3908,74 +3909,46 @@ body.footer-visible #area{
 
 <body>
 
-<header class="topo" id="mainHeader">
-
-    <div class="logo">
-        <img src="/logo-milhao-door.png" alt="Milhão Door">
+<header class="l-header" id="mainHeader">
+    <div class="l-header-left">
+        <button class="l-header-btn" id="btnMenuMobile" onclick="toggleMenuMobile()" aria-label="Menu">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
     </div>
 
-    <nav class="nav-desktop">
-        <a href="#inicio" class="active" onclick="scrollToTop(event)">INÍCIO</a>
-        <a href="#como-funciona" onclick="abrirComoFunciona(event)">COMO FUNCIONA</a>
-        <a href="#precos" onclick="abrirPrecos(event)">PREÇOS</a>
-        <a href="#combos" onclick="verTodosKits(event)">COMBOS & KITS</a>
-        <a href="#faq" onclick="abrirFaq(event)">FAQ</a>
-        <a class="topo-colecionaveis" href="/colecionaveis.html">🟡 COLECIONÁVEIS</a>
-        <a href="#contato" onclick="scrollToFooter(event)">CONTATO</a>
-    </nav>
+    <a href="#inicio" class="l-header-logo-link" onclick="scrollToTop(event)" style="display:flex;align-items:center;justify-content:center;">
+        <img src="/logo-milhao-door.png" alt="Milhão Door" class="l-header-logo">
+    </a>
 
-    <div class="topo-actions">
-        <button
-            class="btn-notificacoes"
-            id="btnNotificacoes"
-            onclick="abrirPainelNotificacoes()"
-            title="Notificações"
-            style="position:relative;padding:8px 12px;background:transparent;border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);cursor:pointer;display:none;">
-            🔔
-            <span id="notificacoesBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ff4d4d;color:#fff;font-size:10px;font-weight:900;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px">0</span>
+    <div class="l-header-right">
+        <button class="l-header-btn" id="btnNotificacoes" onclick="abrirPainelNotificacoes()" title="Notificações" style="display:none;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
+            <span class="l-notif-badge" id="notificacoesBadge" style="display:none;">0</span>
         </button>
-        <button
-            class="btn-tema"
-            id="btnTema"
-            onclick="toggleTema()"
-            title="Alternar tema">
-            🌙
+        <button class="l-header-btn" id="btnTema" onclick="toggleTema()" title="Alternar tema">
+            <span id="btnTemaIcon">🌙</span>
         </button>
-        <button
-            class="btn-entrar"
-            id="btnEntrarHeader"
-            onclick="abrirLogin()">
-            👤 ENTRAR
-        </button>
-        <div class="user-avatar-header" id="userAvatarHeader" onclick="abrirContaDropdown(event)">
-            <div class="avatar-initials" id="avatarInitials">M</div>
-            <span class="avatar-name" id="avatarName">Marcus</span>
-            <span class="avatar-chevron">▾</span>
+        <button class="l-header-avatar" id="btnEntrarHeader" onclick="abrirLogin()">👤</button>
+        <div class="l-header-avatar online" id="userAvatarHeader" onclick="abrirContaDropdown(event)" style="display:none;">
+            <span id="avatarInitials">M</span>
         </div>
-        <div class="conta-dropdown" id="contaDropdown">
-            <div class="conta-dropdown-head">
-                <div class="avatar-initials" id="contaDropInitials">M</div>
-                <div>
-                    <b id="contaDropNome">Marcus</b>
-                    <span id="contaDropEmail">minha conta</span>
-                </div>
+    </div>
+
+    <div class="conta-dropdown" id="contaDropdown">
+        <div class="conta-dropdown-head">
+            <div class="avatar-initials" id="contaDropInitials">M</div>
+            <div>
+                <b id="contaDropNome">Marcus</b>
+                <span id="contaDropEmail">minha conta</span>
             </div>
-            <a href="#" onclick="event.preventDefault();abrirPainelComando();fecharContaDropdown()">⚙️ Painel de Comando</a>
-            <a href="/colecionaveis.html">🃏 Meus Colecionáveis</a>
-            <a href="#" onclick="event.preventDefault();abrirEditarPerfil();fecharContaDropdown()">✏️ Editar Perfil</a>
-            <a href="#" onclick="event.preventDefault();abrirMeusDestaques();fecharContaDropdown()">✨ Meus Destaques</a>
-            <a href="#" onclick="event.preventDefault();abrirSistemaIndicacao();fecharContaDropdown()">🎁 Indique e Ganhe</a>
-            <a href="#" id="contaDropSair" onclick="event.preventDefault();sairConta();fecharContaDropdown()">🚪 Sair</a>
         </div>
-        <button
-            class="btn-menu-mobile"
-            id="btnMenuMobile"
-            onclick="toggleMenuMobile()"
-            aria-label="Menu">
-            ☰
-        </button>
+        <a href="#" onclick="event.preventDefault();abrirPainelComando();fecharContaDropdown()">⚙️ Painel de Comando</a>
+        <a href="/colecionaveis.html">🃏 Meus Colecionáveis</a>
+        <a href="#" onclick="event.preventDefault();abrirEditarPerfil();fecharContaDropdown()">✏️ Editar Perfil</a>
+        <a href="#" onclick="event.preventDefault();abrirMeusDestaques();fecharContaDropdown()">✨ Meus Destaques</a>
+        <a href="#" onclick="event.preventDefault();abrirSistemaIndicacao();fecharContaDropdown()">🎁 Indique e Ganhe</a>
+        <a href="#" id="contaDropSair" onclick="event.preventDefault();sairConta();fecharContaDropdown()">🚪 Sair</a>
     </div>
-
 </header>
 
 <!-- MENU MOBILE -->
@@ -3988,21 +3961,50 @@ body.footer-visible #area{
         <a href="#faq" onclick="abrirFaq(event);fecharMenuMobile()">FAQ</a>
         <a class="topo-colecionaveis" href="/colecionaveis.html" onclick="fecharMenuMobile()">🟡 COLECIONÁVEIS</a>
         <a href="#contato" onclick="scrollToFooter(event);fecharMenuMobile()">CONTATO</a>
-        <button
-            class="btn-entrar"
-            id="btnEntrarMobile"
-            onclick="abrirLogin();fecharMenuMobile()">
-            👤 ENTRAR
-        </button>
+        <button class="btn-entrar" id="btnEntrarMobile" onclick="abrirLogin();fecharMenuMobile()">👤 ENTRAR</button>
     </div>
 </div>
 
-<!-- BARRA DE BENEFÍCIOS -->
-<div class="benefits-bar" id="benefitsBar">
-    <div class="benefit-item">
-        <span class="icon">🛒</span>
-        <span>COMPRE DO SEU JEITO</span>
+<!-- BENEFÍCIOS LOVABLE -->
+<div class="l-container" id="benefitsBar" style="margin-top:calc(var(--l-header-height) + 16px);">
+    <div class="l-benefits-grid">
+        <div class="l-benefit-card">
+            <div class="l-benefit-icon">🛒</div>
+            <div>
+                <p class="l-benefit-title">Compre do seu jeito</p>
+                <p class="l-benefit-sub">PIX, Cartão ou Boleto</p>
+            </div>
+        </div>
+        <div class="l-benefit-card">
+            <div class="l-benefit-icon">🔒</div>
+            <div>
+                <p class="l-benefit-title">Pagamento seguro</p>
+                <p class="l-benefit-sub">Ambiente 100% seguro</p>
+            </div>
+        </div>
+        <div class="l-benefit-card">
+            <div class="l-benefit-icon">⚡</div>
+            <div>
+                <p class="l-benefit-title">Liberação automática</p>
+                <p class="l-benefit-sub">Após a confirmação</p>
+            </div>
+        </div>
+        <div class="l-benefit-card">
+            <div class="l-benefit-icon">🎧</div>
+            <div>
+                <p class="l-benefit-title">Suporte rápido</p>
+                <p class="l-benefit-sub">Atendimento humanizado</p>
+            </div>
+        </div>
+        <div class="l-benefit-card">
+            <div class="l-benefit-icon">🎁</div>
+            <div>
+                <p class="l-benefit-title">Pacotes e kits</p>
+                <p class="l-benefit-sub">Figurinhas colecionáveis</p>
+            </div>
+        </div>
     </div>
+</div>
     <div class="benefit-item">
         <span class="icon">🔒</span>
         <span>PAGAMENTO SEGURO</span>
@@ -4119,26 +4121,21 @@ LIMPAR
 </div>
 
 
-<section class="stories-shell" id="storiesShell" aria-label="Stories do Milhão Door">
-    <div class="stories-head">
-        <div>
-            <span style="font-weight:800;">STORIES DO MILHÃO DOOR</span>
-            <span style="font-size:12px;color:var(--text-muted);display:block;margin-top:2px;">Veja quem acabou de comprar e está em destaque!</span>
-        </div>
-        <button class="story-sponsor" onclick="abrirDestaqueStory()">✨ DESTAQUE NO STORY</button>
+<section class="l-stories-shell l-container" id="storiesShell" aria-label="Stories do Milhão Door" style="margin-top:16px;">
+    <div class="l-stories-head">
+        <h2 class="l-section-title">Stories</h2>
+        <a href="#" class="l-story-link" onclick="event.preventDefault();abrirDestaqueStory();">Ver todos <span style="font-size:14px;">›</span></a>
     </div>
-    <div class="stories-list" id="storiesList"></div>
+    <div class="l-stories-list" id="storiesList"></div>
 </section>
 
 <!-- ÚLTIMAS COMPRAS -->
-<section class="ultimas-compras-shell" id="ultimasComprasShell" aria-label="Últimas Vendas">
-    <div class="ultimas-compras-head">
-        <span>⚡ ÚLTIMAS VENDAS</span>
-        <span class="ao-vivo-badge">AO VIVO</span>
-        <span class="atualizando-info">Atualizando a cada 5 segundos</span>
-        <button class="ticker-pause-btn" id="tickerPauseBtn" onclick="alternarPausaTicker()" title="Pausar">❚❚</button>
+<section class="l-ticker-shell l-container" id="ultimasComprasShell" aria-label="Últimas Vendas" style="margin-top:16px;">
+    <div class="l-ticker-label">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        Últimas vendas
     </div>
-    <div class="ultimas-compras-ticker" id="ultimasComprasTicker"></div>
+    <div class="l-ticker-track" id="ultimasComprasTicker"></div>
 </section>
 
 <!-- QUER APARECER NOS STORIES? -->
@@ -4269,39 +4266,40 @@ LIMPAR
 
     </aside>
 
-    <!-- MAPA -->
-    <div id="area">
-        <canvas id="canvas"></canvas>
-
-        <div class="zoom">
-            <button onclick="zoom(1.2)" title="Aproximar">+</button>
-            <button onclick="zoom(.83)" title="Afastar">−</button>
-            <button onclick="toggleMapaFullscreen()" title="Tela cheia">⛶</button>
-        </div>
-
-        <div class="map-legend">
-            <div class="legend-item">
-                <span class="legend-dot" style="background:#1a1a1a;border:1px solid #333"></span>
-                <span>Disponível</span>
+        <!-- MAPA LOVABLE -->
+    <section class="l-map-shell" id="mapaSection" style="flex:1;min-width:0;display:flex;flex-direction:column;">
+        <div class="l-map-head">
+            <div>
+                <h2 class="l-map-title">Mapa do <span>Outdoor</span></h2>
+                <p class="l-map-sub">1.000.000 de espaÃ§os Â· toque para selecionar o seu</p>
             </div>
-            <div class="legend-item">
-                <span class="legend-dot" style="background:#45df6e"></span>
-                <span>Selecionado</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-dot" style="background:#5aa2ff"></span>
-                <span>Seu bloco</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-dot" style="background:#b06bff"></span>
-                <span>Vendido</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-dot" style="background:#ff7a00"></span>
-                <span>Em oferta</span>
+            <div class="l-map-controls">
+                <button class="l-map-control-btn" onclick="zoom(0.83)" title="Afastar">âˆ’</button>
+                <span class="l-map-zoom-value" id="zoomLevel">100%</span>
+                <button class="l-map-control-btn" onclick="zoom(1.2)" title="Aproximar">+</button>
+                <button class="l-map-control-btn" onclick="toggleMapaFullscreen()" title="Tela cheia">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M21 8V5a2 2 0 0 0-2-2h-3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>
+                </button>
             </div>
         </div>
-    </div>
+        <div id="area" style="flex:1;min-height:0;">
+            <canvas id="canvas"></canvas>
+
+            <div class="zoom" style="display:none;">
+                <button onclick="zoom(1.2)" title="Aproximar">+</button>
+                <button onclick="zoom(.83)" title="Afastar">âˆ’</button>
+                <button onclick="toggleMapaFullscreen()" title="Tela cheia">â›¶</button>
+            </div>
+
+            <div class="map-legend" style="display:none;"></div>
+        </div>
+        <div class="l-map-legend">
+            <span class="l-map-legend-item"><span class="l-map-legend-dot free"></span>DisponÃ­vel</span>
+            <span class="l-map-legend-item"><span class="l-map-legend-dot selected"></span>Selecionado</span>
+            <span class="l-map-legend-item"><span class="l-map-legend-dot sold"></span>Vendido</span>
+            <span class="l-map-legend-item"><span class="l-map-legend-dot offer"></span>Em oferta</span>
+        </div>
+    </section>
 
     <!-- SIDEBAR DIREITA -->
     <aside class="sidebar-right" id="comoFuncionaSection">
@@ -6224,18 +6222,25 @@ function renderizarStories(){
     const shell = document.getElementById("storiesShell");
     const list = document.getElementById("storiesList");
     if(!shell || !list) return;
-    shell.style.display = storiesState.length ? "block" : "none";
-    if(!storiesState.length){
-        if(storyTickerTimer) clearInterval(storyTickerTimer);
-        return;
-    }
+    shell.style.display = "block";
     const lidos = storiesLidos();
-    list.innerHTML = storiesState.map((story, index) =>
-        '<button class="story-bubble ' + (lidos.includes(story.id) ? "seen" : "") + '" onclick="abrirStory(' + index + ')" aria-label="' + escHtml(story.title) + '">' +
-            '<span class="story-ring"><span class="story-face">' + (story.fotoUrl ? '<img src="' + escHtml(story.fotoUrl) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">' : storyIcon(story.kind)) + '</span></span>' +
-            '<span class="story-label">@' + escHtml(story.apelido || "usuario") + '</span>' +
-        '</button>'
-    ).join("");
+    const addStory = minhaConta && minhaConta.token
+        ? '<div class="l-story-item" onclick="abrirDestaqueStory()" title="Criar destaque no Story">' +
+            '<div class="l-story-ring l-add"><div class="l-story-avatar" style="font-size:22px;">+</div></div>' +
+            '<span class="l-story-name">Seu Story</span>' +
+          '</div>'
+        : '';
+    const items = storiesState.length ? storiesState.map((story, index) => {
+        const seenClass = lidos.includes(story.id) ? " opacity-60" : "";
+        const avatar = story.fotoUrl
+            ? '<img src="' + escHtml(story.fotoUrl) + '" alt="">'
+            : (story.apelido || story.nome || "U").charAt(0).toUpperCase();
+        return '<div class="l-story-item' + seenClass + '" onclick="abrirStory(' + index + ')" aria-label="' + escHtml(story.title) + '">' +
+            '<div class="l-story-ring"><div class="l-story-avatar">' + avatar + '</div></div>' +
+            '<span class="l-story-name">' + escHtml(story.apelido || story.nome || "usuário") + '</span>' +
+        '</div>';
+    }).join("") : '';
+    list.innerHTML = addStory + items;
     let tickerIndex = 0;
     const ticker = document.getElementById("storiesTicker");
     const updateTicker = () => {
@@ -6249,7 +6254,6 @@ function renderizarStories(){
     if(storyTickerTimer) clearInterval(storyTickerTimer);
     storyTickerTimer = setInterval(updateTicker, 5000);
 }
-
 /* ===== ÚLTIMAS COMPRAS ===== */
 let ultimasComprasState = [];
 let comprasTickerTimer = null;
@@ -6275,29 +6279,23 @@ function renderizarUltimasCompras(){
     const shell = document.getElementById("ultimasComprasShell");
     const ticker = document.getElementById("ultimasComprasTicker");
     if(!shell || !ticker) return;
-    shell.style.display = ultimasComprasState.length ? "block" : "none";
+    shell.style.display = ultimasComprasState.length ? "flex" : "none";
     if(!ultimasComprasState.length){
         if(comprasTickerTimer) clearInterval(comprasTickerTimer);
         return;
     }
     const itemHtml = ultimasComprasState.map(compra => {
-        const avatarHtml = compra.fotoUrl 
-            ? '<img src="' + escHtml(compra.fotoUrl) + '" alt="' + escHtml(compra.apelido) + '">'
-            : (compra.apelido || "U").charAt(0).toUpperCase();
-        return '<div class="compra-item">' +
-            '<div class="compra-avatar">' + avatarHtml + '</div>' +
-            '<div class="compra-info">' +
-                '<div class="compra-texto"><b>@' + escHtml(compra.apelido) + '</b> ' + escHtml(compra.descricao) + '</div>' +
-                '<div class="compra-tempo">' + formatarTempoAtras(compra.tempoAtrasSegundos) + '</div>' +
-            '</div>' +
-        '</div>';
+        return '<span class="l-ticker-item">' +
+            '<span class="l-ticker-dot"></span>' +
+            escHtml(compra.apelido || "Alguém") + ' comprou ' + escHtml(compra.descricao.replace(/^comprou\\s*/, "")) +
+            ' · <span class="l-ticker-value">' + fmtMoeda(compra.valorTotal / 100) + '</span>' +
+        '</span>';
     }).join("");
-    const vezes = Math.max(2, Math.ceil(4 / Math.max(1, ultimasComprasState.length)));
-    ticker.innerHTML = '<div class="ultimas-compras-track">' + itemHtml.repeat(vezes) + '</div>';
+    const vezes = Math.max(3, Math.ceil(10 / Math.max(1, ultimasComprasState.length)));
+    ticker.innerHTML = itemHtml.repeat(vezes);
     if(comprasTickerTimer) clearInterval(comprasTickerTimer);
     comprasTickerTimer = setInterval(carregarUltimasCompras, 5000);
 }
-
 function alternarPausaTicker(){
     const btn = document.getElementById("tickerPauseBtn");
     const ticker = document.getElementById("ultimasComprasTicker");
@@ -17518,36 +17516,78 @@ if(typeof salvarTokens === "function"){
 </script>
 
 <!-- RODAPÉ -->
-<footer class="site-footer" id="contato">
-    <div class="footer-content">
-        <div class="footer-brand">
-            <img src="/logo-milhao-door.png" alt="Milhão Door">
-            <p>O maior painel digital colaborativo do Brasil. Um milhão de espaços para você mostrar sua ideia, produto ou marca ao mundo.</p>
+<!-- BOTTOM NAVIGATION MOBILE -->
+<nav class="l-bottom-nav" id="bottomNav">
+    <ul>
+        <li><a href="#inicio" class="active" onclick="scrollToTop(event)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+            <span>InÃ­cio</span>
+        </a></li>
+        <li><a href="#mapa" onclick="scrollToSection(event,'mapaSection')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M3 15h18"></path><path d="M9 3v18"></path><path d="M15 3v18"></path></svg>
+            <span>Mapa</span>
+        </a></li>
+        <li><a href="#combos" class="l-buy-btn" onclick="verTodosKits(event)">
+            <span><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"></circle><circle cx="19" cy="21" r="1"></circle><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path></svg></span>
+            <span>Comprar</span>
+        </a></li>
+        <li><a href="/colecionaveis.html">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><circle cx="4" cy="20" r="2"></circle></svg>
+            <span>ColeÃ§Ã£o</span>
+        </a></li>
+        <li><a href="#contato" onclick="abrirContaDropdown(event)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            <span>Conta</span>
+        </a></li>
+    </ul>
+</nav>
+
+<!-- FOOTER LOVABLE -->
+<footer class="l-footer" id="contato">
+    <div class="l-footer-hairline"></div>
+    <div class="l-footer-grid">
+        <div class="l-footer-brand">
+            <img src="/logo-milhao-door.png" alt="MilhÃ£o Door" class="l-footer-logo">
+            <p class="l-footer-desc">Um milhÃ£o de espaÃ§os digitais. Uma porta para cada histÃ³ria que ainda nÃ£o foi contada.</p>
+            <div class="l-footer-social">
+                <a href="#" aria-label="Instagram"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line></svg></a>
+                <a href="#" aria-label="Twitter"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path></svg></a>
+                <a href="#" aria-label="Contato"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"></path><path d="m21.854 2.147-10.94 10.939"></path></svg></a>
+            </div>
         </div>
-        <div class="footer-col">
-            <h4>LINKS</h4>
-            <a href="#inicio" onclick="scrollToTop(event)">Início</a>
-            <a href="#como-funciona" onclick="scrollToSection(event,'comoFuncionaSection')">Como Funciona</a>
-            <a href="#precos" onclick="abrirPrecos(event)">Preços</a>
-            <a href="#combos" onclick="scrollToSection(event,'combosSection')">🔥 Combos & Kits</a>
-            <a href="#faq" onclick="abrirFaq(event)">FAQ</a>
-            <a href="/colecionaveis.html" target="_blank">🃏 Colecionáveis</a>
-        </div>
-        <div class="footer-col">
-            <h4>LEGAL</h4>
-            <a href="/termos.html" target="_blank">Termos de Uso</a>
-            <a href="/privacidade.html" target="_blank">Política de Privacidade</a>
-            <a href="/regras.html" target="_blank">Regras de Conteúdo</a>
-        </div>
-        <div class="footer-col">
-            <h4>CONTATO</h4>
-            <a href="mailto:milhaodoor@gmail.com">milhaodoor@gmail.com</a>
-            <a href="#" onclick="abrirChatGeral();return false;">Chat ao Vivo</a>
-            <a href="https://instagram.com/milhaodoor" target="_blank">Instagram</a>
+        <div class="l-footer-links">
+            <div class="l-footer-col">
+                <h4>Plataforma</h4>
+                <ul>
+                    <li><a href="#inicio" onclick="scrollToTop(event)">EspaÃ§os</a></li>
+                    <li><a href="#mapa" onclick="scrollToSection(event,'mapaSection')">Mapa do milhÃ£o</a></li>
+                    <li><a href="#" onclick="event.preventDefault();abrirDestaqueStory()">Stories</a></li>
+                    <li><a href="/colecionaveis.html">Descobrir</a></li>
+                </ul>
+            </div>
+            <div class="l-footer-col">
+                <h4>Conta</h4>
+                <ul>
+                    <li><a href="#" onclick="event.preventDefault();abrirLogin()">Entrar</a></li>
+                    <li><a href="#" onclick="event.preventDefault();abrirLogin()">Criar conta</a></li>
+                    <li><a href="#" onclick="event.preventDefault();abrirPainelComando()">Meus espaÃ§os</a></li>
+                    <li><a href="#" onclick="event.preventDefault();abrirMeusDestaques()">Compras</a></li>
+                </ul>
+            </div>
+            <div class="l-footer-col">
+                <h4>Institucional</h4>
+                <ul>
+                    <li><a href="#" onclick="event.preventDefault();abrirComoFunciona(event)">Sobre o conceito</a></li>
+                    <li><a href="/termos.html">Termos de uso</a></li>
+                    <li><a href="/privacidade.html">Privacidade</a></li>
+                    <li><a href="#contato">Contato</a></li>
+                </ul>
+            </div>
         </div>
     </div>
-    <div class="footer-bottom">
-        © 2026 Milhão Door — Todos os direitos reservados. CNPJ 00.000.000/0001-00
+    <div class="l-footer-bottom">
+        <p>Â© 2026 MilhÃ£o Door. Todos os direitos reservados.</p>
+        <span>Feito para quem gosta de descobrir</span>
     </div>
 </footer>
 

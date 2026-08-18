@@ -10,7 +10,7 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const pdfkit = require("pdfkit");
 const { Pool } = require("pg");
-const { isProduction, isStarterBootstrap, validateProductionEnvironment } = require("./production-startup-validation");
+const { isProduction, validateProductionEnvironment } = require("./production-startup-validation");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,13 +32,6 @@ const ALLOW_TEST_MODE =
 
 /* Fail-closed: isto ocorre antes de diretórios, JWT, seeds, migrations ou listen. */
 validateProductionEnvironment();
-
-if (isStarterBootstrap(process.env)) {
-    console.log(
-        "⚠️  STARTER BOOTSTRAP TEMPORÁRIO ATIVO — " +
-        "REMOVER APÓS CONFIGURAÇÃO DO PERSISTENT DISK"
-    );
-}
 
 /* Configuração central dos destaques patrocinados. */
 const STORY_PRICING = Object.freeze({

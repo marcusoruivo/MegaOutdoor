@@ -416,7 +416,7 @@ input::placeholder,textarea::placeholder{color:#b0b0b0;opacity:1}
 .modal{
     display:none;
     position:fixed;
-    z-index:2000;
+    z-index:10000;
     inset:0;
     background:#000e;
     align-items:center;
@@ -491,7 +491,7 @@ input::placeholder,textarea::placeholder{color:#b0b0b0;opacity:1}
 }
 
 #authModal{
-    z-index:9999;
+    z-index:11000;
 }
 .auth-box{background:linear-gradient(180deg,#111 0%,#0a0a0a 100%);border:1px solid rgba(255,212,0,.25);box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 40px rgba(255,212,0,.08)}
 .story-consent{margin:12px 0 16px;padding:12px;border:1px solid rgba(255,212,0,.22);border-radius:10px;background:rgba(255,212,0,.05)}
@@ -553,7 +553,9 @@ input::placeholder,textarea::placeholder{color:#b0b0b0;opacity:1}
 .ultimas-compras-ticker.pausado .ultimas-compras-track{animation-play-state:paused}
 @keyframes ledMarquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media(max-width:640px){.ultimas-compras-shell{margin:8px 8px 0;padding:8px 10px;width:calc(100% - 16px)}}
-.compra-item{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(69,223,110,.08);border:1px solid rgba(69,223,110,.2);border-radius:12px;white-space:nowrap}
+.compra-item{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(69,223,110,.08);border:1px solid rgba(69,223,110,.2);border-radius:12px}
+.compra-info{min-width:0}
+.compra-texto{font-size:12px;color:var(--text-primary);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .compra-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--success),#2dd36f);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#000;flex-shrink:0;overflow:hidden}
 .compra-avatar img{width:100%;height:100%;object-fit:cover}
 .compra-info{display:flex;flex-direction:column;gap:2px}

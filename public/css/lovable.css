@@ -923,6 +923,7 @@ button:disabled,
 .l-ticker-value{
     font-weight: 800;
     color: var(--gold);
+    flex-shrink: 0;
 }
 
 .l-ticker-pause{
@@ -1498,8 +1499,10 @@ button:disabled,
     height: 82px;
     margin: 0 auto;
     border-radius: 50%;
-    display: grid;
-    place-items: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
 }
 
 .l-collectible-glow img{

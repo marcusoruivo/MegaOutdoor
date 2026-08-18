@@ -216,7 +216,10 @@
     }
 
     function imagemAnimal(card) {
-        return ((card && card.image_url) || IMAGENS_ANIMAIS[(card && card.name) || ""] || null);
+        if (card && card.image_url) return card.image_url;
+        if (card && card.name && IMAGENS_ANIMAIS[card.name]) return IMAGENS_ANIMAIS[card.name];
+        const numero = Number(card && (card.number || card.card_number));
+        return numero > 0 ? (Object.values(IMAGENS_ANIMAIS)[numero - 1] || null) : null;
     }
 
     function regiaoAnimal(card) {
@@ -260,7 +263,8 @@
         const imgUrl = imagemAnimal(card);
         let conteudo;
         if (imgUrl) {
-            conteudo = '<img class="cc-img" src="' + esc(imgUrl) + '" alt="' + esc(card.name || "") + '" data-nome="' + esc(card.name || "") + '" loading="lazy" decoding="async" onerror="window.ColecaoUIFallbackImg&&ColecaoUIFallbackImg(this)">';
+            const eager = String(extraClass || "").indexOf("cc-arte-rev") >= 0;
+            conteudo = '<img class="cc-img" src="' + esc(imgUrl) + '" alt="' + esc(card.name || "") + '" data-nome="' + esc(card.name || "") + '" loading="' + (eager ? "eager" : "lazy") + '" decoding="async" onerror="window.ColecaoUIFallbackImg&&ColecaoUIFallbackImg(this)">';
         } else {
             conteudo = '<span class="cc-emoji">' + emojiAnimal(card) + '</span>';
         }

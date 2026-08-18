@@ -571,7 +571,7 @@ input::placeholder,textarea::placeholder{color:#b0b0b0;opacity:1}
 .btn-destaque:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(255,212,0,.4)}
 @media(max-width:768px){.stories-cta-content{grid-template-columns:1fr}.stories-cta-beneficios{grid-template-columns:1fr 1fr}}
 .auth-header{position:relative;text-align:center;padding:28px 20px 18px;margin:-25px -25px 18px;border-radius:14px 14px 0 0;background:linear-gradient(135deg,#1a1a1a,#0d0d0d);overflow:hidden}
-.auth-logo{font-size:46px;line-height:1;margin-bottom:4px;filter:drop-shadow(0 0 8px rgba(255,212,0,.4))}
+.auth-logo{display:block;width:150px;height:auto;max-width:70%;margin:0 auto 8px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(255,212,0,.4))}
 .auth-title{font-size:22px;font-weight:900;letter-spacing:2px;background:linear-gradient(90deg,#ffd400,#ff9d00);-webkit-background-clip:text;background-clip:text;color:transparent}
 .auth-subtitle{font-size:10px;font-weight:700;letter-spacing:3px;color:var(--text-muted);margin-top:3px}
 .auth-shine{position:absolute;top:0;left:-50%;width:50%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);animation:authShine 3.5s infinite}
@@ -3866,9 +3866,7 @@ body.footer-visible #area{
         height:auto;
         min-height:100%
     }
-    body{
-        padding-top:calc(var(--header-height) + var(--benefits-height))
-    }
+    body{padding-top:0}
     .main-layout{
         position:relative;
         top:auto;
@@ -3944,7 +3942,7 @@ body.footer-visible #area{
 
         <nav class="l-header-nav">
             <a href="#top" class="active" onclick="scrollToTop(event)">Início</a>
-            <a href="#como-funciona" onclick="scrollToSection(event,'comoFuncionaSection')">Como funciona</a>
+            <a href="#como-funciona" onclick="abrirComoFunciona(event)">Como funciona</a>
             <a href="#precos" onclick="abrirPrecos(event)">Preços</a>
             <a href="#combos" onclick="verTodosKits(event)">Combos & Kits</a>
             <a href="#faq" onclick="abrirFaq(event)">FAQ</a>
@@ -4016,7 +4014,7 @@ body.footer-visible #area{
     </div>
     <nav class="l-mobile-menu-nav">
         <a href="#top" onclick="scrollToTop(event);fecharMenuMobile()">Início</a>
-        <a href="#como-funciona" onclick="scrollToSection(event,'comoFuncionaSection');fecharMenuMobile()">Como funciona</a>
+        <a href="#como-funciona" onclick="abrirComoFunciona(event);fecharMenuMobile()">Como funciona</a>
         <a href="#precos" onclick="abrirPrecos(event);fecharMenuMobile()">Preços</a>
         <a href="#combos" onclick="verTodosKits(event);fecharMenuMobile()">Combos & Kits</a>
         <a href="#faq" onclick="abrirFaq(event);fecharMenuMobile()">FAQ</a>
@@ -4284,7 +4282,7 @@ LIMPAR
                     <div style="font-size:24px; font-weight:900; color:var(--gold);" id="qty">0</div>
                     <div style="font-size:12px; color:var(--muted-foreground);">espaços selecionados</div>
                     <div style="margin-top:8px; font-size:18px; font-weight:800; color:var(--foreground);" id="total">R$ 0,00</div>
-                    <button class="btn" id="go" style="width:100%; margin-top:12px;" onclick="checkout()">COMPRAR AGORA</button>
+                    <button class="btn selection-continue" id="go" style="width:100%; margin-top:12px;" onclick="checkout()">COMPRAR AGORA</button>
                     <button class="btn sec" style="width:100%; margin-top:8px;" onclick="clearSel()">LIMPAR SELEÇÃO</button>
                 </div>
             </div>
@@ -5217,7 +5215,7 @@ onclick="fecharLogin()">
 </button>
 
 <div class="auth-header">
-  <div class="auth-logo">🦁</div>
+  <img class="auth-logo" src="/logo-milhao-door.png" alt="Milhão Door">
   <div class="auth-title">MILHÃO DOOR</div>
   <div class="auth-subtitle">COLEÇÃO ANIMAIS DO MUNDO</div>
   <div class="auth-shine"></div>
@@ -6259,7 +6257,7 @@ function renderizarStories(){
         : '';
     const items = storiesState.length ? storiesState.map((story, index) => {
         const seenClass = lidos.includes(story.id) ? " opacity-60" : "";
-        const storyImage = story.fotoUrl || story.imagem || (story.metadata && story.metadata.imagem);
+        const storyImage = story.imagem || story.fotoUrl || (story.metadata && story.metadata.imagem);
         const initials = (story.apelido || story.nome || "U").charAt(0).toUpperCase();
         const avatar = storyImage
             ? '<img src="' + escHtml(storyImage) + '" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="l-story-initials" hidden>' + escHtml(initials) + '</span>'
@@ -6378,7 +6376,7 @@ function abrirStory(index){
     document.getElementById("storyIcon").textContent = storyIcon(story.kind);
 
     const meta = story.metadata || {};
-    const storyImage = story.fotoUrl || story.imagem || meta.imagem;
+    const storyImage = story.imagem || story.fotoUrl || meta.imagem;
     const imgEl = document.getElementById("storyImage");
     if(storyImage){
         imgEl.style.display = "block";
@@ -9686,16 +9684,18 @@ go.disabled =
 !n;
 
 
-go.textContent =
-n
-?`CONTINUAR — ${n.toLocaleString("pt-BR")} ESPAÇO${n>1?"S":""} — ${formatarReais(n * 100)}`
-:"SELECIONE ESPAÇOS";
+go.innerHTML =
+ n
+ ?`CONTINUAR — ${n.toLocaleString("pt-BR")} ESPAÇO${n>1?"S":""} — <span class="selection-continue-value">${formatarReais(n * 100)}</span>`
+ :"SELECIONE ESPAÇOS";
 
 
 const empty = document.getElementById("selectionEmpty");
 const content = document.getElementById("selectionContent");
 if(empty) empty.style.display = n ? "none" : "block";
 if(content) content.style.display = n ? "block" : "none";
+const selectionCard = document.getElementById("selectionCard");
+if(selectionCard) selectionCard.classList.toggle("collapsed", !n);
 
 
 document.getElementById(
@@ -13068,9 +13068,10 @@ function abrirContaDropdown(ev){
         return;
     }
 
-    const nome = localStorage.getItem("usuario_nome") || "Marcus";
+    const contaAtual = (minhaConta && (minhaConta.usuario || minhaConta)) || {};
+    const nome = contaAtual.apelido || contaAtual.nome || contaAtual.email || "Usuário";
 
-    const email = localStorage.getItem("usuario_email") || "minha conta";
+    const email = contaAtual.email || "minha conta";
 
     const ini = (nome.trim()[0] || "M").toUpperCase();
 
@@ -13094,7 +13095,7 @@ function abrirContaDropdown(ev){
 
     if(minhaConta){
         const u = minhaConta.usuario || minhaConta;
-        const fotoUrl = u.fotoUrl || u.foto_url || u.foto;
+        const fotoUrl = u.fotoUrl || u.foto_url || u.foto || minhaConta.fotoUrl || minhaConta.foto_url || minhaConta.foto;
         if(fotoUrl){
             if(elIni) elIni.style.display = "none";
             if(!dropHeadImg){
@@ -17222,6 +17223,7 @@ async function salvarPerfil(){
             if(!respFoto.ok) throw new Error(dataFoto.error || "Erro ao enviar foto");
             
             minhaConta.foto_url = dataFoto.foto_url;
+            if (typeof atualizarAvatarHeader === "function") atualizarAvatarHeader();
         }
         
         // Atualizar perfil
@@ -17242,6 +17244,7 @@ async function salvarPerfil(){
         minhaConta.bio = data.perfil.bio;
         minhaConta.album_publico = data.perfil.album_publico;
         localStorage.setItem("mega_conta", JSON.stringify(minhaConta));
+        if (typeof atualizarAvatarHeader === "function") atualizarAvatarHeader();
         
         msg.innerHTML = '<span style="color:var(--success);">✅ Perfil atualizado com sucesso!</span>';
         setTimeout(() => fecharInfoModal(), 1500);
@@ -17550,12 +17553,12 @@ function atualizarAvatarHeader(){
 
     if(minhaConta && minhaConta.token){
         const u = minhaConta.usuario || minhaConta;
-        const nome = u.nome || u.email || "Usuário";
+        const nome = u.apelido || u.nome || u.email || "Usuário";
         const primeiroNome = nome.split(" ")[0];
         const iniciais = nome.split(" ").map(function(p){ return p.charAt(0); }).join("").substring(0, 2).toUpperCase();
         btnEntrar.style.display = "none";
         avatarBtn.style.display = "flex";
-        const fotoUrl = u.fotoUrl || u.foto_url || u.foto;
+        const fotoUrl = u.fotoUrl || u.foto_url || u.foto || minhaConta.fotoUrl || minhaConta.foto_url || minhaConta.foto;
         let imgExistente = avatarRing ? avatarRing.querySelector("img") : null;
         if(fotoUrl){
             if(initials) initials.style.display = "none";

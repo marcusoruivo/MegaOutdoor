@@ -1164,6 +1164,21 @@ button:disabled,
     z-index: 1;
 }
 
+.selection-continue{
+    white-space:normal;
+    text-wrap:balance;
+    font-size:clamp(10px,1.1vw,12px);
+    letter-spacing:.04em;
+}
+.selection-continue-value{white-space:nowrap}
+
+@media(max-width:640px){
+    .selection-continue{
+        line-height:1.25;
+        min-height:42px;
+    }
+}
+
 .l-buy-actions{
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -1658,6 +1673,13 @@ button:disabled,
     color: var(--gold);
     font-variant-numeric: tabular-nums;
     flex-shrink: 0;
+}
+
+@media(max-width:640px){
+    .l-widget-item{grid-template-columns:36px minmax(0,1fr);align-items:start;gap:8px}
+    .l-widget-main{min-width:0}
+    .l-widget-name,.l-widget-meta{white-space:normal;overflow-wrap:anywhere;word-break:break-word}
+    .l-widget-value{grid-column:2;justify-self:start;margin-top:-2px;white-space:nowrap}
 }
 
 .l-widget-empty{

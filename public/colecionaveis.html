@@ -248,8 +248,15 @@ body{overflow-x:hidden}
 .rev-card.rev-EPICA{border-color:var(--roxo);box-shadow:0 0 18px rgba(168,85,247,.4)}
 .rev-card.rev-LENDARIA{border-color:var(--ouro);box-shadow:0 0 22px rgba(255,191,64,.5)}
 .rev-card.rev-MITICA{border-color:var(--vermelho);box-shadow:0 0 26px rgba(215,38,61,.6)}
-.rev-card.rev-novo{animation:revEntra .45s ease both}
-@keyframes revEntra{from{transform:scale(.4) rotateY(90deg);opacity:0}to{transform:scale(1) rotateY(0);opacity:1}}
+.rev-card.rev-novo{animation:revEntrada .45s ease-out both}
+@keyframes revEntrada{0%{transform:translateY(18px) scale(.94);opacity:0}70%{transform:translateY(-2px) scale(1.01);opacity:1}100%{transform:none;opacity:1}}
+.rev-card.rev-novo.r-COMUM{animation:revEntrada .42s ease-out both}
+.rev-card.rev-novo.r-INCOMUM{animation:revEntrada .52s ease-out both,brilho 2.8s ease-in-out .52s infinite}
+.rev-card.rev-novo.r-RARA{animation:revEntrada .58s ease-out both,brilho 2.5s ease-in-out .58s infinite}
+.rev-card.rev-novo.r-EPICA{animation:revEntrada .68s cubic-bezier(.2,.85,.3,1.2) both,brilho 2.2s ease-in-out .68s infinite}
+.rev-card.rev-novo.r-LENDARIA{animation:revEntrada .78s cubic-bezier(.16,1,.3,1) both,brilho 1.8s ease-in-out .78s infinite}
+.rev-card.rev-novo.r-MITICA{animation:revEntrada .9s cubic-bezier(.16,1,.3,1) both,brilho 1.5s ease-in-out .9s infinite}
+@media(prefers-reduced-motion:reduce){.rev-card.rev-novo{animation:none!important}}
 @keyframes brilho{0%,100%{filter:brightness(1)}50%{filter:brightness(1.14)}}
 .pill-raridade{
     font-size:10px;font-weight:800;letter-spacing:.8px;
@@ -533,6 +540,7 @@ body{overflow-x:hidden}
 .modal-arte .cc-verso-lista{font-size:11px;line-height:1.7;color:var(--muted);word-break:break-word}
 .modal-arte .cc-verso-lista b{color:var(--texto)}
 .cc-flip-container{perspective:1200px;width:100%;height:100%;min-height:0;overflow:visible}
+.pack-flip-container.cc-flip-container{height:min(520px,calc(100vh - 170px));min-height:280px}
 .cc-flipper{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .6s cubic-bezier(.4,0,.2,1)}
 .cc-flipper.virado{transform:rotateY(180deg)}
 .cc-frente,.cc-verso{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
@@ -2836,7 +2844,7 @@ function renderPackFechado(){
     const stage = document.getElementById("packStage");
         stage.innerHTML = '<div class="pack-titulo">🎁 ' + esc(pacoteEstado.nome) + '</div>' +
         '<div class="pack-fechado" id="packFechado">' +
-            '<span class="pf-icone">🐾</span>' +
+            '<span class="pf-icone"><img src="' + esc(getPacoteImagem(pacoteEstado.nome)) + '" alt="Pacote ' + esc(pacoteEstado.nome) + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline\'"><span style="display:none">🐾</span></span>' +
             '<span class="pf-nome">MILHÃO DOOR</span>' +
             '<span class="pf-sub">ANIMAIS DO MUNDO</span>' +
             '<span class="pf-qtd">' + pacoteEstado.figs.length + ' FIGURINHAS</span>' +

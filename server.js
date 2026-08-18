@@ -10,6 +10,7 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const pdfkit = require("pdfkit");
 const { Pool } = require("pg");
+const { isProduction, validateProductionEnvironment } = require("./production-startup-validation");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,11 +25,13 @@ if (
 }
 
 const PRODUCAO =
-    process.env.NODE_ENV === "production" ||
-    Boolean(process.env.RENDER);
+    isProduction(process.env);
 
 const ALLOW_TEST_MODE =
     process.env.ALLOW_TEST_MODE === "true";
+
+/* Fail-closed: isto ocorre antes de diretórios, JWT, seeds, migrations ou listen. */
+validateProductionEnvironment();
 
 /* Configuração central dos destaques patrocinados. */
 const STORY_PRICING = Object.freeze({
@@ -4068,6 +4071,7 @@ app.get("/api/stories", async (req, res) => {
             usuarioId: s.usuario_id,
             apelido: s.apelido || `Usuário ${s.id}`,
             fotoUrl: s.foto_url,
+            imagem: s.imagem || null,
             tipo: s.tipo,
             duracao: s.duracao,
             titulo: s.titulo,

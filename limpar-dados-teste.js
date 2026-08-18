@@ -35,6 +35,21 @@ const path = require("path");
 
 const APPLY = process.argv.includes("--apply");
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, "uploads");
+
+function detectarProducao() {
+    const databaseUrl = String(process.env.DATABASE_URL || "");
+    return process.env.NODE_ENV === "production" ||
+        /^(true|1)$/i.test(String(process.env.RENDER || "")) ||
+        DATA_DIR === "/var/lib/megaoutdoor/data" ||
+        UPLOAD_DIR === "/var/lib/megaoutdoor/uploads" ||
+        (databaseUrl && !/localhost|127\.0\.0\.1|memoria/i.test(databaseUrl));
+}
+
+if (APPLY && detectarProducao()) {
+    console.error("Limpeza bloqueada: ambiente de produção detectado. Remoções não foram executadas.");
+    process.exit(1);
+}
 
 /* Domínios de e-mail claramente de teste */
 const TEST_EMAIL_DOMAINS = [

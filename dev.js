@@ -18,6 +18,9 @@
    ATENÇÃO: nunca use este modo em produção.
 ========================================================= */
 
+if (process.env.DATABASE_URL && !/^postgres(?:ql)?:\/\/memoria(?:[-\w]*)$/i.test(process.env.DATABASE_URL)) {
+    throw new Error("Modo dev bloqueado: DATABASE_URL real detectada. Use pg-mem.");
+}
 process.env.DATABASE_URL = process.env.DATABASE_URL || "postgres://memoria";
 process.env.ALLOW_TEST_MODE = "true";
 process.env.MERCADOPAGO_SANDBOX = process.env.MERCADOPAGO_SANDBOX || "true";

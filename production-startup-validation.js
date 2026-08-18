@@ -9,6 +9,32 @@ function isProduction(env) {
     return env.NODE_ENV === "production" || render === "true" || render === "1";
 }
 
+/* Bootstrap TEMPORÁRIO e estritamente controlado, apenas para permitir UM
+   deploy bem-sucedido no serviço original do Render (necessário para o
+   Render efetivar o plano Starter, que é pré-requisito para anexar o
+   Persistent Disk — o qual não pode ser adicionado em instância Free).
+
+   ATIVO SOMENTE quando TODAS as condições abaixo forem verdadeiras:
+     - NODE_ENV=production;
+     - RENDER=true (o Render injeta RENDER=true automaticamente em todos
+       os serviços; também aceita "1");
+     - RENDER_STARTER_BOOTSTRAP=true (chave temporária inequívoca).
+
+   Nesta janela, apenas as checagens de diretório persistente são liberadas
+   (DATA_DIR/UPLOAD_DIR caem para o padrão local/efêmero do contêiner para
+   o startup ter sucesso). TODAS as demais proteções de produção continuam
+   ativas: RESET_DATA, DATABASE_URL, ALLOW_TEST_MODE e MERCADOPAGO_SANDBOX.
+
+   Com a chave ausente ou "false", a proteção original retorna a valer
+   integralmente — sem qualquer caminho de exceção.
+*/
+function isStarterBootstrap(env = process.env) {
+    if (String(env.NODE_ENV || "") !== "production") return false;
+    const render = String(env.RENDER || "").toLowerCase();
+    if (render !== "true" && render !== "1") return false;
+    return String(env.RENDER_STARTER_BOOTSTRAP || "").toLowerCase() === "true";
+}
+
 function isValidProductionDatabaseUrl(value) {
     if (!value || !String(value).trim()) return false;
     try {
@@ -34,23 +60,33 @@ function assertDirectory(fsImpl, directory, label) {
 function validateProductionEnvironment(env = process.env, fsImpl = fs) {
     if (!isProduction(env)) return { production: false };
 
+    const bootstrap = isStarterBootstrap(env);
+
     if (String(env.RESET_DATA || "").toLowerCase() === "true") {
         throw new Error("Startup bloqueado: RESET_DATA=true não é permitido em produção.");
     }
     if (!isValidProductionDatabaseUrl(env.DATABASE_URL)) {
         throw new Error("Startup bloqueado: DATABASE_URL não configurada ou inválida para produção.");
     }
-    if (env.DATA_DIR !== EXPECTED_DATA_DIR) {
-        throw new Error("Startup bloqueado: DATA_DIR não aponta para o armazenamento persistente de produção.");
-    }
-    if (env.UPLOAD_DIR !== EXPECTED_UPLOAD_DIR) {
-        throw new Error("Startup bloqueado: UPLOAD_DIR não aponta para o armazenamento persistente de produção.");
-    }
     if (String(env.ALLOW_TEST_MODE || "").toLowerCase() === "true") {
         throw new Error("Startup bloqueado: ALLOW_TEST_MODE=true não é permitido em produção.");
     }
     if (String(env.MERCADOPAGO_SANDBOX || "").toLowerCase() === "true") {
         throw new Error("Startup bloqueado: MERCADOPAGO_SANDBOX=true não é permitido em produção.");
+    }
+
+    /* As checagens de armazenamento persistente (DISCO) são as ÚNICAS
+       liberadas durante o bootstrap temporário. Fora dele, continuam
+       obrigatórias exatamente como antes. */
+    if (bootstrap) {
+        return { production: true, starterBootstrap: true };
+    }
+
+    if (env.DATA_DIR !== EXPECTED_DATA_DIR) {
+        throw new Error("Startup bloqueado: DATA_DIR não aponta para o armazenamento persistente de produção.");
+    }
+    if (env.UPLOAD_DIR !== EXPECTED_UPLOAD_DIR) {
+        throw new Error("Startup bloqueado: UPLOAD_DIR não aponta para o armazenamento persistente de produção.");
     }
 
     assertDirectory(fsImpl, EXPECTED_PERSISTENT_ROOT, "o disco persistente");
@@ -64,6 +100,7 @@ module.exports = {
     EXPECTED_UPLOAD_DIR,
     EXPECTED_PERSISTENT_ROOT,
     isProduction,
+    isStarterBootstrap,
     isValidProductionDatabaseUrl,
     validateProductionEnvironment
 };

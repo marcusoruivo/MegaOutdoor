@@ -4,6 +4,7 @@ const {
     EXPECTED_DATA_DIR,
     EXPECTED_UPLOAD_DIR,
     EXPECTED_PERSISTENT_ROOT,
+    isStarterBootstrap,
     isValidProductionDatabaseUrl,
     validateProductionEnvironment
 } = require("./production-startup-validation");
@@ -54,6 +55,66 @@ assert.strictEqual(isValidProductionDatabaseUrl("postgres://memoria"), false);
 console.log("PASS | configuração válida permite startup");
 console.log("PASS | desenvolvimento permanece permitido");
 console.log("PASS | URL pg-mem rejeitada em produção");
+
+/* =========================
+   BOOTSTRAP TEMPORÁRIO (RENDER_STARTER_BOOTSTRAP)
+   A chave só libera as checagens de DISCO; as demais
+   proteções continuam valendo. Sem a chave, nada muda.
+========================= */
+
+const bootstrapEnv = {
+    NODE_ENV: "production",
+    RENDER: "true",
+    RENDER_STARTER_BOOTSTRAP: "true",
+    DATABASE_URL: "postgres://db.example.invalid:5432/mega",
+    DATA_DIR: "C:/data",
+    UPLOAD_DIR: "C:/uploads",
+    ALLOW_TEST_MODE: "false",
+    MERCADOPAGO_SANDBOX: "false"
+};
+
+/* 1. Bootstrap permite startup SEM disco persistente e com DATA_DIR/UPLOAD_DIR errados */
+assert.deepStrictEqual(
+    validateProductionEnvironment(bootstrapEnv, fakeFs({ missing: [EXPECTED_PERSISTENT_ROOT, EXPECTED_DATA_DIR, EXPECTED_UPLOAD_DIR] })),
+    { production: true, starterBootstrap: true }
+);
+console.log("PASS | bootstrap permite startup sem disco persistente");
+
+/* 2. Bootstrap NÃO libera ALLOW_TEST_MODE */
+assert.throws(() => validateProductionEnvironment({ ...bootstrapEnv, ALLOW_TEST_MODE: "true" }, fakeFs()), /ALLOW_TEST_MODE/);
+console.log("PASS | bootstrap não libera ALLOW_TEST_MODE");
+
+/* 3. Bootstrap NÃO libera sandbox do Mercado Pago */
+assert.throws(() => validateProductionEnvironment({ ...bootstrapEnv, MERCADOPAGO_SANDBOX: "true" }, fakeFs()), /MERCADOPAGO_SANDBOX/);
+console.log("PASS | bootstrap não libera sandbox do Mercado Pago");
+
+/* 4. Bootstrap NÃO libera RESET_DATA */
+assert.throws(() => validateProductionEnvironment({ ...bootstrapEnv, RESET_DATA: "true" }, fakeFs()), /RESET_DATA/);
+console.log("PASS | bootstrap não libera RESET_DATA");
+
+/* 5. Bootstrap continua exigindo DATABASE_URL válida */
+assert.throws(() => validateProductionEnvironment({ ...bootstrapEnv, DATABASE_URL: "postgres://memoria" }, fakeFs()), /DATABASE_URL/);
+console.log("PASS | bootstrap continua exigindo DATABASE_URL válida");
+
+/* 6. Sem a chave temporária, a proteção original bloqueia o startup */
+assert.throws(
+    () => validateProductionEnvironment({ ...bootstrapEnv, RENDER_STARTER_BOOTSTRAP: "false" }, fakeFs()),
+    /DATA_DIR/
+);
+assert.throws(
+    () => validateProductionEnvironment({ ...bootstrapEnv, RENDER_STARTER_BOOTSTRAP: undefined }, fakeFs()),
+    /DATA_DIR/
+);
+console.log("PASS | sem a chave temporária, proteção original volta a valer");
+
+/* 7. A chave exige produção + Render juntos */
+assert.strictEqual(isStarterBootstrap({ NODE_ENV: "production", RENDER: "true", RENDER_STARTER_BOOTSTRAP: "true" }), true);
+assert.strictEqual(isStarterBootstrap({ NODE_ENV: "production", RENDER: "1", RENDER_STARTER_BOOTSTRAP: "true" }), true);
+assert.strictEqual(isStarterBootstrap({ NODE_ENV: "development", RENDER: "true", RENDER_STARTER_BOOTSTRAP: "true" }), false);
+assert.strictEqual(isStarterBootstrap({ NODE_ENV: "production", RENDER: "false", RENDER_STARTER_BOOTSTRAP: "true" }), false);
+assert.strictEqual(isStarterBootstrap({ NODE_ENV: "production", RENDER: "true", RENDER_STARTER_BOOTSTRAP: "false" }), false);
+assert.strictEqual(isStarterBootstrap({ NODE_ENV: "production", RENDER: "true" }), false);
+console.log("PASS | chave exige NODE_ENV=production + RENDER=true + RENDER_STARTER_BOOTSTRAP=true");
 
 const cleanup = spawnSync(process.execPath, ["limpar-dados-teste.js", "--apply"], {
     cwd: __dirname,

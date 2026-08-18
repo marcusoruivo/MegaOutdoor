@@ -191,7 +191,7 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
         <button id="tabTransacoes" onclick="aba('transacoes')">💰 TRANSAÇÕES</button>
         <button id="tabUsuarios" onclick="aba('usuarios')">👥 USUÁRIOS</button>
         <button id="tabStories" onclick="aba('stories')">📱 STORIES</button>
-        <button id="tabUltimasCompras" onclick="aba('ultimascompras')">🛒 ÚLTIMAS COMPRAS</button>
+        <button id="tabUltimasCompras" onclick="aba('ultimasCompras')">🛒 ÚLTIMAS COMPRAS</button>
         <button id="tabPrecoStories" onclick="aba('precoStories')">💰 PREÇOS STORIES</button>
         <button id="tabLogs" onclick="aba('logs')">📜 LOGS</button>
         <button id="tabCupons" onclick="aba('cupons')">🎟️ CUPONS</button>
@@ -224,6 +224,10 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
                         <option value="published">published</option>
                     </select>
                     <button onclick="carregarEspacos()">BUSCAR</button>
+                    <a class="btn-csv" href="/api/admin/export/espacos" target="_blank"
+                        style="background:#1a1a1a;color:#ffd400;border:1px solid #333;padding:8px 12px;border-radius:8px;text-decoration:none;font-weight:700;">
+                        📄 CSV ESPAÇOS
+                    </a>
                     <button class="danger" id="btnApagarSel"
                         onclick="apagarSelecionados()" disabled>
                         🗑 APAGAR SELECIONADOS
@@ -882,7 +886,7 @@ function renderPaginacao(paginaAtual, totalPaginas, funcaoCarregar){
 
 function aba(nome){
     abaAtual = nome;
-    for(const n of ["resumo","espacos","transacoes","usuarios","stories","ultimascompras","precoStories","logs","cupons","sorteio","referencia","colecionaveis","combos","bugs"]){
+    for(const n of ["resumo","espacos","transacoes","usuarios","stories","ultimasCompras","precoStories","logs","cupons","sorteio","referencia","colecionaveis","combos","bugs"]){
         const bt = document.getElementById("tab" + n.charAt(0).toUpperCase() + n.slice(1));
         const vw = document.getElementById("view" + n.charAt(0).toUpperCase() + n.slice(1));
         if(bt) bt.className = n === nome ? "ativa" : "";
@@ -893,7 +897,7 @@ function aba(nome){
     if(nome === "transacoes") carregarTransacoes();
     if(nome === "usuarios") carregarUsuarios();
     if(nome === "stories") carregarStories();
-    if(nome === "ultimascompras") carregarUltimasCompras();
+    if(nome === "ultimasCompras") carregarUltimasCompras();
     if(nome === "precoStories") carregarPrecoStories();
     if(nome === "logs") carregarLogs();
     if(nome === "cupons") carregarCupons();

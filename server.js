@@ -790,6 +790,20 @@ async function initBanco() {
         await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_destaques_usuario ON destaques(usuario_id, status)`);
         await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_destaques_mp ON destaques(mp_order_id)`);
 
+        const colsDestaques = await pgPool.query(
+            `SELECT column_name FROM information_schema.columns WHERE table_name = 'destaques'`
+        ).then(r => new Set(r.rows.map(x => x.column_name))).catch(() => new Set());
+
+        if (!colsDestaques.has("imagem")) {
+            await pgPool.query(`ALTER TABLE destaques ADD COLUMN imagem VARCHAR(500)`);
+        }
+        if (!colsDestaques.has("link")) {
+            await pgPool.query(`ALTER TABLE destaques ADD COLUMN link VARCHAR(500)`);
+        }
+        if (!colsDestaques.has("espaco_id")) {
+            await pgPool.query(`ALTER TABLE destaques ADD COLUMN espaco_id INTEGER`);
+        }
+
         await pgPool.query(`
             CREATE TABLE IF NOT EXISTS marketplace_accounts (
                 id               SERIAL PRIMARY KEY,
@@ -1210,7 +1224,7 @@ function pgPagamentoPago({ paymentId, mpOrderId } = {}) {
                 purchased_at = COALESCE(purchased_at, NOW()),
                 expires_at = CASE
                     WHEN license_duration_months IS NOT NULL
-                    THEN NOW() + (license_duration_months || ' months')::INTERVAL
+                    THEN NOW() + (INTERVAL '1 month' * license_duration_months)
                     ELSE NULL
                 END
           WHERE ${whereClause}
@@ -1624,11 +1638,17 @@ function gerarTokenJwt(payload) {
 function extrairBearer(req) {
     const auth = req.headers.authorization || "";
 
-    if (!auth.startsWith("Bearer ")) {
-        return null;
+    if (auth.startsWith("Bearer ")) {
+        return auth.slice(7).trim();
     }
 
-    return auth.slice(7).trim();
+    /* EventSource não envia headers customizados; o frontend pode enviar o token via query string. */
+    const queryToken = req.query && req.query.token ? String(req.query.token).trim() : "";
+    if (queryToken) {
+        return queryToken;
+    }
+
+    return null;
 }
 
 function hashToken(token) {
@@ -1763,7 +1783,11 @@ function usuarioSemSenha(u) {
         nome: u.nome,
         email: u.email,
         criadoEm: u.criado_em,
-        ultimoLogin: u.ultimo_login
+        ultimoLogin: u.ultimo_login,
+        apelido: u.apelido || null,
+        bio: u.bio || null,
+        fotoUrl: u.foto_url || null,
+        albumPublico: u.album_publico ?? true
     };
 }
 
@@ -2929,7 +2953,8 @@ app.post("/api/auth/login", async (req, res) => {
 
         const result = await pgPool.query(
             `SELECT id, nome, email, senha_hash,
-                    criado_em, ultimo_login
+                    criado_em, ultimo_login, apelido, bio,
+                    foto_url, album_publico
                FROM usuarios
               WHERE email = $1`,
             [email.trim().toLowerCase()]
@@ -3177,7 +3202,8 @@ app.get("/api/auth/me", authUsuario, async (req, res) => {
     try {
 
         const result = await pgPool.query(
-            `SELECT id, nome, email, criado_em, ultimo_login
+            `SELECT id, nome, email, criado_em, ultimo_login,
+                    apelido, bio, foto_url, album_publico
                FROM usuarios WHERE id = $1`,
             [req.usuario.id]
         );
@@ -3463,10 +3489,13 @@ app.get("/api/stories", async (req, res) => {
     try {
         await pgPool.query("DELETE FROM story_events WHERE expires_at <= NOW()");
         const result = await pgPool.query(
-            `SELECT id, kind, title, subtitle, action_type, action_id, metadata, created_at
-               FROM story_events
-              WHERE expires_at > NOW()
-              ORDER BY created_at DESC
+            `SELECT se.id, se.kind, se.title, se.subtitle, se.action_type, se.action_id,
+                    se.metadata, se.created_at, se.usuario_id,
+                    u.apelido, u.foto_url, u.nome
+               FROM story_events se
+               LEFT JOIN usuarios u ON u.id = se.usuario_id
+              WHERE se.expires_at > NOW()
+              ORDER BY se.created_at DESC
               LIMIT 30`
         );
         res.json({
@@ -3479,7 +3508,11 @@ app.get("/api/stories", async (req, res) => {
                 actionType: row.action_type,
                 actionId: row.action_id,
                 metadata: row.metadata || {},
-                createdAt: row.created_at
+                createdAt: row.created_at,
+                apelido: row.apelido || null,
+                nome: row.nome || null,
+                fotoUrl: row.foto_url || null,
+                usuarioId: row.usuario_id || null
             }))
         });
     } catch (error) {
@@ -3517,9 +3550,9 @@ async function processarPagamentoDestaque({ mpOrderId, totalCents }) {
         const horas = Number(String(destaque.duracao || "24h").replace(/\D/g, "")) || 24;
         await pgPool.query(
             `UPDATE destaques
-                SET status = 'ativo', pago_em = NOW(), expira_em = NOW() + ($2 || ' hours')::interval
+                SET status = 'ativo', pago_em = NOW(), expira_em = NOW() + (INTERVAL '1 hour' * $2)
               WHERE id = $1`,
-            [destaque.id, String(horas)]
+            [destaque.id, horas]
         );
 
         /* Se o conteúdo já veio na compra, publica automaticamente. */
@@ -3549,13 +3582,24 @@ async function publicarDestaque(destaqueId) {
         const titulo = String(destaque.titulo || "").trim();
         if (!titulo) return false;
 
+        const metadata = {};
+        if (destaque.imagem) metadata.imagem = destaque.imagem;
+        if (destaque.link) metadata.link = destaque.link;
+
+        const temEspaco = destaque.espaco_id &&
+            Number(destaque.espaco_id) >= 1 &&
+            Number(destaque.espaco_id) <= 1000000;
+
         await registrarStoryEvento({
             eventKey: `destaque:${destaque.id}`,
             kind: destaque.tipo === "destaque" ? "destaque" : "story",
             title: titulo.slice(0, 180),
             subtitle: String(destaque.subtitulo || "").slice(0, 240) || null,
             usuarioId: destaque.usuario_id,
-            expiresAt: destaque.expira_em
+            expiresAt: destaque.expira_em,
+            actionType: temEspaco ? "space" : null,
+            actionId: temEspaco ? Number(destaque.espaco_id) : null,
+            metadata
         });
 
         await pgPool.query(
@@ -3685,6 +3729,39 @@ app.post("/api/stories/destaques", authUsuario, async (req, res) => {
         const titulo = String(req.body.titulo || "").slice(0, 180).trim();
         if (!titulo) return res.status(400).json({ error: "Informe o título do seu destaque." });
 
+        const subtitulo = String(req.body.subtitulo || "").slice(0, 240).trim();
+
+        /* Link do anúncio — validado no backend */
+        const link = normalizarLink(req.body.link || "");
+        if (req.body.link && !link) {
+            return res.status(400).json({ error: "Link do anúncio inválido. Use http(s):// ou um domínio válido." });
+        }
+
+        /* Imagem do destaque — apenas URL pública /uploads já validada no upload */
+        const imagem = String(req.body.imagem || "").trim();
+        if (imagem && !/^\/uploads\/[\w.-]+\.(png|jpe?g|webp|gif)$/i.test(imagem)) {
+            return res.status(400).json({ error: "Imagem do destaque inválida. Envie a foto pelo botão de upload." });
+        }
+
+        /* Espaço associado — validação server-side da propriedade */
+        let espacoId = null;
+        const pedidoEspaco = req.body.espacoId;
+        if (pedidoEspaco !== undefined && pedidoEspaco !== null && String(pedidoEspaco) !== "") {
+            const nid = Math.floor(Number(pedidoEspaco));
+            if (!(nid >= 1 && nid <= 1000000)) {
+                return res.status(400).json({ error: "Espaço associado inválido." });
+            }
+            const dbEspacos = readDB();
+            const esp = dbEspacos[String(nid)];
+            if (esp) {
+                const dono = await usuarioEhDonoEspaco(req, esp);
+                if (!dono) {
+                    return res.status(403).json({ error: "Você só pode associar o destaque a um espaço seu." });
+                }
+            }
+            espacoId = nid;
+        }
+
         const orderId = "MEGA-STORY-" + crypto.randomUUID().slice(0, 8).toUpperCase();
 
         const mp = await criarOrderMercadoPago({
@@ -3705,12 +3782,13 @@ app.post("/api/stories/destaques", authUsuario, async (req, res) => {
 
         const q = await pgPool.query(
             `INSERT INTO destaques
-                (usuario_id, tipo, duracao, preco_cents, status, order_id, mp_order_id, payment_id, metodo_pagamento, titulo, subtitulo)
-             VALUES ($1,$2,$3,$4,'pendente',$5,$6,$7,$8,$9,$10)
+                (usuario_id, tipo, duracao, preco_cents, status, order_id, mp_order_id, payment_id, metodo_pagamento, titulo, subtitulo, imagem, link, espaco_id)
+             VALUES ($1,$2,$3,$4,'pendente',$5,$6,$7,$8,$9,$10,$11,$12,$13)
              RETURNING *`,
             [req.usuario.id, String(req.body.tipo || "story").slice(0, 20),
              duracao, precoCents, orderId, String(mp.orderId), String(mp.paymentId || ""),
-             String(req.body.paymentMethod || "pix"), titulo, String(req.body.subtitulo || "").slice(0, 240).trim()]
+             String(req.body.paymentMethod || "pix"), titulo, subtitulo,
+             imagem || null, link, espacoId]
         );
         const destaque = q.rows[0];
 
@@ -3749,7 +3827,7 @@ app.get("/api/stories/destaques/meus", authUsuario, async (req, res) => {
         await expirarDestaquesVencidos();
         const q = await pgPool.query(
             `SELECT id, tipo, duracao, preco_cents, status, publicado, titulo, subtitulo,
-                    criado_em, pago_em, expira_em
+                    imagem, link, espaco_id, criado_em, pago_em, expira_em
                FROM destaques WHERE usuario_id = $1
               ORDER BY criado_em DESC LIMIT 50`,
             [req.usuario.id]
@@ -3763,6 +3841,9 @@ app.get("/api/stories/destaques/meus", authUsuario, async (req, res) => {
                 duracao: d.duracao,
                 preco: Number((d.preco_cents / 100).toFixed(2)),
                 precoCents: Number(d.preco_cents),
+                imagem: d.imagem || null,
+                link: d.link || null,
+                espacoId: d.espaco_id || null,
                 status: d.status,
                 publicado: d.publicado,
                 titulo: d.titulo,
@@ -3804,7 +3885,7 @@ app.get("/api/stories/destaques/:id", authUsuario, async (req, res) => {
 
         const atualizado = await pgPool.query(
             `SELECT id, tipo, duracao, preco_cents, status, publicado, titulo, subtitulo,
-                    criado_em, pago_em, expira_em
+                    imagem, link, espaco_id, criado_em, pago_em, expira_em
                FROM destaques WHERE id = $1`,
             [destaque.id]
         );
@@ -3820,6 +3901,9 @@ app.get("/api/stories/destaques/:id", authUsuario, async (req, res) => {
                 publicado: d.publicado,
                 titulo: d.titulo,
                 subtitulo: d.subtitulo,
+                imagem: d.imagem || null,
+                link: d.link || null,
+                espacoId: d.espaco_id || null,
                 criadoEm: d.criado_em,
                 pagoEm: d.pago_em,
                 expiraEm: d.expira_em,
@@ -3846,13 +3930,53 @@ app.post("/api/stories/destaques/:id/publicar", authUsuario, async (req, res) =>
         const subtitulo = String(req.body.subtitulo ?? destaque.subtitulo ?? "").slice(0, 240).trim();
         if (!titulo) return res.status(400).json({ error: "Informe o título do seu destaque." });
 
+        /* Link editável na publicação */
+        let link = destaque.link;
+        if (req.body.link !== undefined) {
+            const normLink = normalizarLink(req.body.link || "");
+            if (req.body.link && !normLink) {
+                return res.status(400).json({ error: "Link do anúncio inválido." });
+            }
+            link = normLink;
+        }
+
+        /* Imagem editável na publicação */
+        let imagem = destaque.imagem;
+        if (req.body.imagem !== undefined) {
+            const img = String(req.body.imagem || "").trim();
+            if (img && !/^\/uploads\/[\w.-]+\.(png|jpe?g|webp|gif)$/i.test(img)) {
+                return res.status(400).json({ error: "Imagem do destaque inválida." });
+            }
+            imagem = img || null;
+        }
+
+        /* Espaço associado editável na publicação */
+        let espacoId = destaque.espaco_id;
+        if (req.body.espacoId !== undefined && req.body.espacoId !== null && String(req.body.espacoId) !== "") {
+            const nid = Math.floor(Number(req.body.espacoId));
+            if (!(nid >= 1 && nid <= 1000000)) {
+                return res.status(400).json({ error: "Espaço associado inválido." });
+            }
+            const dbEspacos = readDB();
+            const esp = dbEspacos[String(nid)];
+            if (esp) {
+                const dono = await usuarioEhDonoEspaco(req, esp);
+                if (!dono) {
+                    return res.status(403).json({ error: "Você só pode associar o destaque a um espaço seu." });
+                }
+            }
+            espacoId = nid;
+        } else if (req.body.espacoId === null) {
+            espacoId = null;
+        }
+
         if (destaque.status !== "ativo") {
             return res.status(403).json({ error: destaque.status === "expirado" ? "Este destaque expirou. Adquira novamente para publicar." : "Aguardando a confirmação do pagamento para publicar." });
         }
 
         await pgPool.query(
-            `UPDATE destaques SET titulo = $2, subtitulo = $3 WHERE id = $1`,
-            [destaque.id, titulo, subtitulo]
+            `UPDATE destaques SET titulo = $2, subtitulo = $3, link = $4, imagem = $5, espaco_id = $6 WHERE id = $1`,
+            [destaque.id, titulo, subtitulo, link, imagem, espacoId]
         );
         const ok = await publicarDestaque(destaque.id);
         if (!ok) return res.status(400).json({ error: "Não foi possível publicar o destaque agora. Tente novamente." });
@@ -4068,7 +4192,7 @@ async function obterContaMarketplace(usuarioId) {
                 const data = await response.json();
                 if (response.ok && data.access_token) {
                     await pgPool.query(
-                        `UPDATE marketplace_accounts SET access_token_enc = $2, refresh_token_enc = COALESCE($3, refresh_token_enc), expires_at = NOW() + ($4 || ' seconds')::interval, updated_at = NOW() WHERE usuario_id = $1`,
+                        `UPDATE marketplace_accounts SET access_token_enc = $2, refresh_token_enc = COALESCE($3, refresh_token_enc), expires_at = NOW() + (INTERVAL '1 second' * $4), updated_at = NOW() WHERE usuario_id = $1`,
                         [usuarioId, criptografarMarketplace(data.access_token), data.refresh_token ? criptografarMarketplace(data.refresh_token) : null, Number(data.expires_in || 15552000)]
                     );
                     account.expires_at = new Date(Date.now() + Number(data.expires_in || 15552000) * 1000);
@@ -4210,7 +4334,7 @@ app.get("/api/marketplace/oauth/callback", async (req, res) => {
         await pgPool.query(
             `INSERT INTO marketplace_accounts
                 (usuario_id, seller_user_id, access_token_enc, refresh_token_enc, public_key, expires_at)
-             VALUES ($1,$2,$3,$4,$5,NOW() + ($6 || ' seconds')::interval)
+             VALUES ($1,$2,$3,$4,$5,NOW() + (INTERVAL '1 second' * $6))
              ON CONFLICT (usuario_id) DO UPDATE SET
                 seller_user_id = EXCLUDED.seller_user_id,
                 access_token_enc = EXCLUDED.access_token_enc,
@@ -6240,6 +6364,8 @@ function gerarExtratoPdf(res, { transacoes, resumo, nomeArquivo }) {
 
 function confirmarPagamentoOferta(paymentIdOrOrderId) {
 
+    const paymentId = paymentIdOrOrderId;
+
     const ofertas = readOffers();
 
     const oferta = Object.values(ofertas).find(o =>
@@ -6774,6 +6900,115 @@ app.post("/api/offers", (req, res) => {
             error: "Erro interno do servidor."
         });
     }
+});
+
+/* Ofertas do usuário logado (como comprador OU como proprietário).
+   Formato: { ofertas: [...] } com comprador_nome/vendedor_nome para o painel da dashboard. */
+app.get("/api/offers", authUsuario, (req, res) => {
+
+    const db = readDB();
+    const ofertas = readOffers();
+
+    const emailUsuario = (req.usuario.email || "").trim().toLowerCase();
+    const tokensUsuario =
+        Object.values(db)
+            .filter(s => s.email && (s.email || "").trim().toLowerCase() === emailUsuario)
+            .map(s => s.orderToken)
+            .filter(Boolean);
+
+    const ativos = new Set(["pending", "countered", "accepted", "paid"]);
+
+    const lista =
+        Object.values(ofertas)
+            .filter(o => {
+                const alvos =
+                    (Array.isArray(o.spaceIds) && o.spaceIds.length)
+                    ? o.spaceIds
+                    : [o.spaceId];
+                const souComprador =
+                    (o.email || "").trim().toLowerCase() === emailUsuario;
+                const souDono =
+                    tokensUsuario.length &&
+                    alvos.some(s => {
+                        const esp = db[s];
+                        return esp && tokensUsuario.includes(esp.orderToken);
+                    });
+                return (souComprador || souDono) && ativos.has(o.status);
+            })
+            .map(o => {
+                const alvos =
+                    (Array.isArray(o.spaceIds) && o.spaceIds.length)
+                    ? o.spaceIds
+                    : [o.spaceId];
+                const souComprador =
+                    (o.email || "").trim().toLowerCase() === emailUsuario;
+                return {
+                    id: o.id,
+                    espacos: alvos.length,
+                    valor: o.value,
+                    originalValue: o.originalValue || o.value,
+                    status: o.status,
+                    message: o.message || "",
+                    comprador_nome: o.name || "—",
+                    vendedor_nome: souComprador ? "Compra" : "Venda",
+                    createdAt: o.createdAt,
+                    spaceId: o.spaceId,
+                    spaceIds: alvos
+                };
+            })
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+    res.json({ ok: true, ofertas: lista });
+});
+
+/* Cancela uma oferta enviada pelo próprio comprador (ou pelo dono). */
+app.post("/api/offers/:id/cancel", authUsuario, (req, res) => {
+
+    const ofertas = readOffers();
+    const oferta = ofertas[req.params.id];
+
+    if (!oferta) {
+        return res.status(404).json({ error: "Oferta não encontrada." });
+    }
+
+    if (oferta.status !== "pending" && oferta.status !== "countered") {
+        return res.status(400).json({
+            error: "Só é possível cancelar ofertas ainda pendentes."
+        });
+    }
+
+    const emailUsuario = (req.usuario.email || "").trim().toLowerCase();
+    const souComprador = (oferta.email || "").trim().toLowerCase() === emailUsuario;
+
+    let souDono = false;
+    if (!souComprador) {
+        const db = readDB();
+        const alvos =
+            (Array.isArray(oferta.spaceIds) && oferta.spaceIds.length)
+            ? oferta.spaceIds
+            : [oferta.spaceId];
+        const tokensUsuario =
+            Object.values(db)
+                .filter(s => s.email && (s.email || "").trim().toLowerCase() === emailUsuario)
+                .map(s => s.orderToken)
+                .filter(Boolean);
+        souDono =
+            tokensUsuario.length &&
+            alvos.some(s => {
+                const esp = db[s];
+                return esp && tokensUsuario.includes(esp.orderToken);
+            });
+    }
+
+    if (!souComprador && !souDono) {
+        return res.status(403).json({ error: "Você não pode cancelar esta oferta." });
+    }
+
+    oferta.status = "cancelled";
+    oferta.cancelledAt = new Date().toISOString();
+    writeOffers(ofertas);
+
+    res.json({ ok: true, offerId: oferta.id, status: "cancelled" });
 });
 
 app.get("/api/offers/owner", (req, res) => {
@@ -7918,7 +8153,24 @@ app.get("/api/notificacoes/stream", authUsuario, (req, res) => {
 });
 
 /* =========================
-   BISBILHOTAR — Perfis Públicos
+   CONTAGEM P�BLICA DE USU�RIOS
+========================= */
+
+app.get("/api/usuarios/contagem", async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.json({ ok: true, total: 0 });
+    try {
+        const result = await pgPool.query(
+            `SELECT COUNT(*)::int AS total FROM usuarios WHERE bloqueado = FALSE`
+        );
+        res.json({ ok: true, total: result.rows[0].total || 0 });
+    } catch (error) {
+        console.error("ERRO ao contar usu�rios:", error.message);
+        res.status(500).json({ error: "N�o foi poss�vel contar os usu�rios." });
+    }
+});
+
+/* =========================
+   BISBILHOTAR - Perfis P�blicos
 ========================= */
 
 app.get("/api/perfis/publicos", async (req, res) => {
@@ -8051,8 +8303,11 @@ app.post("/api/perfil/foto", authUsuario, upload.single("foto"), async (req, res
         // Remove foto anterior se existir
         const oldResult = await pgPool.query(`SELECT foto_url FROM usuarios WHERE id = $1`, [usuarioId]);
         if (oldResult.rows[0] && oldResult.rows[0].foto_url) {
-            const oldPath = path.join(__dirname, "public", oldResult.rows[0].foto_url);
-            fs.unlink(oldPath, () => {});
+            const oldRel = String(oldResult.rows[0].foto_url).replace(/^\/uploads\//, "");
+            if (oldRel && oldRel !== req.file.filename) {
+                const oldPath = path.join(UPLOAD_DIR, oldRel);
+                fs.unlink(oldPath, () => {});
+            }
         }
 
         // Atualiza URL da foto
@@ -8061,6 +8316,33 @@ app.post("/api/perfil/foto", authUsuario, upload.single("foto"), async (req, res
         res.json({ ok: true, foto_url: fotoUrl });
     } catch (error) {
         console.error("ERRO ao enviar foto:", error.message);
+        if (req.file) fs.unlink(req.file.path, () => {});
+        res.status(500).json({ error: "Não foi possível enviar a foto." });
+    }
+});
+
+/* Upload de foto do Destaque no Story.
+   Arquivo fica em /uploads e o endereço é salvo na tabela destaques. */
+app.post("/api/stories/destaques/foto", authUsuario, limiterUpload, upload.single("foto"), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: "Nenhuma foto enviada." });
+        }
+
+        const tiposPermitidos = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+        if (!tiposPermitidos.includes(req.file.mimetype)) {
+            fs.unlink(req.file.path, () => {});
+            return res.status(400).json({ error: "Formato de imagem inválido. Use JPEG, PNG, WebP ou GIF." });
+        }
+
+        if (req.file.size > 5 * 1024 * 1024) {
+            fs.unlink(req.file.path, () => {});
+            return res.status(400).json({ error: "Imagem muito grande. Máximo 5MB." });
+        }
+
+        res.json({ ok: true, foto_url: `/uploads/${req.file.filename}` });
+    } catch (error) {
+        console.error("ERRO ao enviar foto do destaque:", error.message);
         if (req.file) fs.unlink(req.file.path, () => {});
         res.status(500).json({ error: "Não foi possível enviar a foto." });
     }

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+?<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -515,6 +515,10 @@ html,body{
 .story-close{position:absolute;top:20px;right:18px;border:0;background:none;color:#fff;font-size:24px;cursor:pointer}
 .story-kicker{font-size:11px;letter-spacing:2px;color:var(--accent);font-weight:900;margin-bottom:12px}
 .story-icon{font-size:62px;line-height:1;margin-bottom:18px;filter:drop-shadow(0 0 16px rgba(255,212,0,.35))}
+.story-image{display:none;width:100%;max-width:300px;margin-bottom:16px}
+.story-image img{width:100%;border-radius:16px;border:1px solid rgba(255,212,0,.35);box-shadow:0 0 30px rgba(255,212,0,.15);object-fit:cover;max-height:280px}
+.story-links{display:none;flex-direction:column;gap:8px;width:100%;max-width:280px;margin-top:18px}
+.story-link-btn{width:100%;min-width:0}
 .story-title{font-size:24px;font-weight:900;line-height:1.15;color:#fff}
 .story-subtitle{font-size:15px;color:#bbb;margin-top:10px;line-height:1.5}
 .story-action{margin-top:24px;min-width:190px}
@@ -529,8 +533,11 @@ html,body{
 .ticker-pause-btn{background:transparent;border:1px solid var(--border-color);color:var(--text-secondary);width:26px;height:26px;border-radius:8px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;transition:var(--transition)}
 .ticker-pause-btn:hover{color:var(--accent);border-color:var(--accent)}
 .ticker-pause-btn.pausado{color:var(--accent);border-color:var(--accent);background:rgba(255,199,0,.1)}
-.ultimas-compras-ticker{display:flex;gap:20px;overflow-x:auto;padding:8px 2px;scrollbar-width:thin;scroll-behavior:smooth}
-.ultimas-compras-ticker.pausado{animation-play-state:paused;scroll-behavior:auto}
+.ultimas-compras-ticker{overflow:hidden;padding:8px 2px}
+.ultimas-compras-track{display:flex;gap:20px;width:max-content;will-change:transform;animation:ledMarquee 40s linear infinite}
+.ultimas-compras-track:hover{animation-play-state:paused}
+.ultimas-compras-ticker.pausado .ultimas-compras-track{animation-play-state:paused}
+@keyframes ledMarquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media(max-width:640px){.ultimas-compras-shell{margin:8px 8px 0;padding:8px 10px;width:calc(100% - 16px)}}
 .compra-item{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(69,223,110,.08);border:1px solid rgba(69,223,110,.2);border-radius:12px;white-space:nowrap}
 .compra-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--success),#2dd36f);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#000;flex-shrink:0;overflow:hidden}
@@ -1682,7 +1689,7 @@ body.has-benefits{
     bottom:0;
     z-index:1;
     display:grid;
-    grid-template-columns:minmax(240px,20%) minmax(0,60%) minmax(260px,20%);
+    grid-template-columns:minmax(150px,12%) minmax(0,76%) minmax(180px,12%);
     gap:14px;
     padding:14px;
     background:var(--bg-primary);
@@ -1849,8 +1856,9 @@ body.has-benefits{
 .block-inputs{
     display:flex;
     align-items:center;
-    gap:8px;
-    margin-top:8px
+    gap:6px;
+    margin-top:8px;
+    flex-wrap:wrap
 }
 
 .block-inputs input{
@@ -1925,7 +1933,8 @@ body.has-benefits{
     display:grid;
     grid-template-columns:1fr 1fr;
     gap:6px;
-    margin-top:10px
+    margin-top:10px;
+    min-width:0
 }
 
 .mini-stats div{
@@ -1935,14 +1944,19 @@ body.has-benefits{
     padding:8px;
     font-size:10px;
     color:var(--text-secondary);
-    text-align:center
+    text-align:center;
+    min-width:0;
+    overflow:hidden
 }
 
 .mini-stats div b{
     display:block;
     font-size:13px;
     color:var(--text-primary);
-    margin-top:2px
+    margin-top:2px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis
 }
 
 /* --- SIDEBAR DIREITA --- */
@@ -2453,6 +2467,14 @@ body.has-benefits{
     justify-content:center;
     font-size:14px;
     font-weight:900;
+    flex-shrink:0;
+}
+.conta-dropdown .conta-dropdown-head img.conta-photo{
+    width:36px;
+    height:36px;
+    border-radius:50%;
+    object-fit:cover;
+    border:2px solid var(--accent);
     flex-shrink:0;
 }
 .conta-dropdown .conta-dropdown-head b{
@@ -3066,7 +3088,7 @@ body.footer-visible #area{
 
 /* --- GRID PRINCIPAL --- */
 .main-layout{
-    grid-template-columns:minmax(240px,20%) minmax(0,60%) minmax(260px,20%);
+    grid-template-columns:minmax(150px,12%) minmax(0,76%) minmax(180px,12%);
     max-width:1680px;
     margin:0 auto;
     width:100%;
@@ -3940,6 +3962,7 @@ body.footer-visible #area{
             </div>
             <a href="#" onclick="event.preventDefault();abrirPainelComando();fecharContaDropdown()">⚙️ Painel de Comando</a>
             <a href="/colecionaveis.html">🃏 Meus Colecionáveis</a>
+            <a href="#" onclick="event.preventDefault();abrirEditarPerfil();fecharContaDropdown()">✏️ Editar Perfil</a>
             <a href="#" onclick="event.preventDefault();abrirMeusDestaques();fecharContaDropdown()">✨ Meus Destaques</a>
             <a href="#" onclick="event.preventDefault();abrirSistemaIndicacao();fecharContaDropdown()">🎁 Indique e Ganhe</a>
             <a href="#" id="contaDropSair" onclick="event.preventDefault();sairConta();fecharContaDropdown()">🚪 Sair</a>
@@ -5357,9 +5380,11 @@ style="font-size:13px;color:#ccc;">
         <div class="story-progress"><span id="storyProgress"></span></div>
         <button class="story-close" onclick="fecharStory()" title="Fechar">×</button>
         <div class="story-kicker" id="storyKicker"></div>
+        <div class="story-image" id="storyImage"></div>
         <div class="story-icon" id="storyIcon"></div>
         <div class="story-title" id="storyTitle"></div>
         <div class="story-subtitle" id="storySubtitle"></div>
+        <div class="story-links" id="storyLinks"></div>
         <button class="btn story-action" id="storyAction" onclick="executarAcaoStory()"></button>
     </div>
 </div>
@@ -5841,19 +5866,93 @@ function abrirDestaqueStory(){
             '<span style="color:var(--accent);font-weight:800">' +
             (preco == null ? "Preço a configurar" : fmtMoeda(preco)) + '</span></label>';
     }).join("");
+
+    const meusIds = Object.keys(orderTokens || {}).filter(function(id){
+        return Number(id) >= 1 && Number(id) <= 1000000;
+    }).slice(0, 50);
+    const opcoesEspaco = meusIds.length
+        ? '<select id="dstEspaco" class="copia" style="margin-top:4px;">' +
+            '<option value="">Selecione um espaço seu (opcional)</option>' +
+            meusIds.map(function(id){ return '<option value="' + id + '">Espaço #' + Number(id).toLocaleString("pt-BR") + '</option>'; }).join("") +
+          '</select>'
+        : '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Você ainda não possui espaços. O destaque será exibido sem o botão "Ver meu espaço".</div>';
+
     abrirInfoModal("✨ DESTAQUE NO STORY",
-        '<p>Escolha a duração do destaque e escreva o anúncio. A cobrança é <b>real</b> (Pix via Mercado Pago) e o evento só fica público após a confirmação do pagamento.</p>' +
+        '<p>Escolha a duração, adicione foto (opcional), escreva o anúncio e associe um espaço seu. A cobrança é <b>real</b> (Pix via Mercado Pago) e o evento só fica público após a confirmação do pagamento.</p>' +
         '<div style="margin:10px 0;">' + radio + '</div>' +
-        '<label style="font-size:12px;color:var(--text-muted)">Título do destaque</label>' +
+
+        '<label style="font-size:12px;color:var(--text-muted);display:block;margin-top:10px;">📷 FOTO DO DESTAQUE (opcional)</label>' +
+        '<div id="dstFotoBox" style="margin-top:6px;">' +
+            '<input type="file" id="dstFotoInput" accept="image/jpeg,image/png,image/webp,image/gif" style="font-size:12px;">' +
+            '<div id="dstFotoPreview" style="display:none;margin-top:8px;">' +
+                '<img id="dstFotoImg" alt="Preview da foto" style="max-width:100%;max-height:180px;border-radius:12px;border:1px solid var(--border-color);display:block;margin-bottom:6px;">' +
+                '<button class="btn sec" style="width:100%;" onclick="limparFotoDestaque()">🗑 REMOVER FOTO</button>' +
+            '</div>' +
+        '</div>' +
+
+        '<label style="font-size:12px;color:var(--text-muted);display:block;margin-top:10px">Título do destaque</label>' +
         '<input class="copia" id="dstTitulo" maxlength="180" placeholder="Ex.: Vendas de hoje — aproveite 20% OFF" style="margin-top:4px;">' +
         '<label style="font-size:12px;color:var(--text-muted);margin-top:10px;display:block">Subtítulo (opcional)</label>' +
         '<input class="copia" id="dstSubtitulo" maxlength="240" placeholder="Ex.: Válido até meia-noite" style="margin-top:4px;">' +
+        '<label style="font-size:12px;color:var(--text-muted);margin-top:10px;display:block">🔗 LINK DO ANÚNCIO (opcional)</label>' +
+        '<input class="copia" id="dstLink" maxlength="300" placeholder="https://..." style="margin-top:4px;">' +
+        '<label style="font-size:12px;color:var(--text-muted);margin-top:10px;display:block">📍 VER MEU ESPAÇO</label>' + opcoesEspaco +
         '<label style="font-size:12px;color:var(--text-muted);margin-top:10px;display:block">CPF ou CNPJ do comprador</label>' +
         '<input class="copia" id="dstCpf" maxlength="18" placeholder="000.000.000-00" style="margin-top:4px;">' +
         '<div id="dstMsg" style="font-size:12px;color:#aaa;min-height:16px;margin-top:8px;"></div>' +
         '<button class="btn" style="width:100%;margin-top:10px;" onclick="confirmarCompraDestaque()">💳 PAGAR COM PIX</button>' +
         '<button class="btn sec" style="width:100%;margin-top:8px;" onclick="abrirMeusDestaques()">📅 MEUS DESTAQUES</button>' +
         '<p style="font-size:11px;color:var(--text-muted);margin-top:12px">Preços: 3h = ' + fmtMoeda(storyPricing["3h"]) + ' · 6h = ' + fmtMoeda(storyPricing["6h"]) + ' · 12h = ' + fmtMoeda(storyPricing["12h"]) + ' · 24h = ' + fmtMoeda(storyPricing["24h"]) + '.</p>');
+    const input = document.getElementById("dstFotoInput");
+    if(input) input.addEventListener("change", selecionarFotoDestaque);
+}
+
+let destaqueFotoUrl = null;
+
+function selecionarFotoDestaque(ev){
+    const input = ev.target;
+    const file = input && input.files && input.files[0];
+    const msg = document.getElementById("dstMsg");
+    if(!file) return;
+    if(!/^image\/(jpeg|png|webp|gif)$/i.test(file.type)){
+        if(msg) msg.textContent = "Formato de imagem inválido. Use JPEG, PNG, WebP ou GIF.";
+        input.value = "";
+        return;
+    }
+    if(file.size > 5 * 1024 * 1024){
+        if(msg) msg.textContent = "Imagem muito grande. Máximo 5MB.";
+        input.value = "";
+        return;
+    }
+    const form = new FormData();
+    form.append("foto", file);
+    if(msg) msg.textContent = "Enviando foto...";
+    fetch("/api/stories/destaques/foto", {
+        method: "POST",
+        headers: authHeaders({}),
+        body: form
+    }).then(reqJSON).then(function(data){
+        if(!data || !data.ok || !data.foto_url){
+            if(msg) msg.textContent = (data && data.error) || "Não foi possível enviar a foto.";
+            return;
+        }
+        destaqueFotoUrl = data.foto_url;
+        const img = document.getElementById("dstFotoImg");
+        if(img) img.src = destaqueFotoUrl;
+        const prev = document.getElementById("dstFotoPreview");
+        if(prev) prev.style.display = "block";
+        if(msg) msg.textContent = "Foto enviada com sucesso.";
+    }).catch(function(){
+        if(msg) msg.textContent = "Erro de conexão ao enviar a foto.";
+    });
+}
+
+function limparFotoDestaque(){
+    destaqueFotoUrl = null;
+    const input = document.getElementById("dstFotoInput");
+    const prev = document.getElementById("dstFotoPreview");
+    if(input) input.value = "";
+    if(prev) prev.style.display = "none";
 }
 
 async function confirmarCompraDestaque(){
@@ -5862,6 +5961,9 @@ async function confirmarCompraDestaque(){
     const titulo = document.getElementById("dstTitulo").value.trim();
     const subtitulo = document.getElementById("dstSubtitulo").value.trim();
     const cpfCnpj = document.getElementById("dstCpf").value.trim();
+    const link = (document.getElementById("dstLink") ? document.getElementById("dstLink").value.trim() : "") || null;
+    const espacoSel = document.getElementById("dstEspaco");
+    const espacoId = espacoSel && espacoSel.value ? Number(espacoSel.value) : null;
     if(!titulo){ msg.textContent = "Informe o título do seu destaque."; return; }
     if(!cpfCnpj){ msg.textContent = "Informe o CPF ou CNPJ do comprador."; return; }
     msg.textContent = "Gerando cobrança Pix...";
@@ -5869,7 +5971,7 @@ async function confirmarCompraDestaque(){
         const resp = await fetch("/api/stories/destaques", {
             method: "POST",
             headers: authHeaders({ "Content-Type": "application/json" }),
-            body: JSON.stringify({ duracao, titulo, subtitulo, cpfCnpj, paymentMethod: "pix" })
+            body: JSON.stringify({ duracao, titulo, subtitulo, cpfCnpj, paymentMethod: "pix", link: link || undefined, imagem: destaqueFotoUrl || undefined, espacoId: espacoId || undefined })
         });
         const data = await reqJSON(resp);
         if(!resp.ok){ msg.textContent = data.error || "Não foi possível iniciar a compra."; return; }
@@ -5962,13 +6064,19 @@ async function abrirMeusDestaques(){
                         ? '<button class="btn sec" style="margin:0;padding:8px 10px;font-size:11px;" onclick="abrirDestaqueStory()">↻ Comprar novamente</button>'
                         : '');
                 return '<div style="border:1px solid var(--border-color);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--box-bg,#161616);">' +
+                    '<div style="display:flex;gap:12px;align-items:flex-start;">' +
+                    (d.imagem ? '<img src="' + escHtml(d.imagem) + '" alt="Foto do destaque" style="width:54px;height:54px;border-radius:10px;object-fit:cover;flex:0 0 auto;border:1px solid var(--border-color);">' : '') +
+                    '<div style="flex:1;min-width:0;">' +
                     '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">' +
                         '<b style="color:#fff;">' + escHtml(d.titulo || ("Destaque " + d.duracao)) + '</b>' +
                         '<span style="font-size:11px;font-weight:700;color:var(--accent);">' + (rotulos[d.status] || d.status) + ' ' + restante + '</span>' +
                     '</div>' +
                     '<div style="color:#aaa;margin-top:6px;font-size:12px;">' + d.duracao + ' · ' + fmtMoeda(d.preco) + ' · ' + (d.publicado ? "publicado no Story" : "não publicado") + '</div>' +
                     (d.subtitulo ? '<div style="color:#aaa;font-size:12px;margin-top:4px;">' + escHtml(d.subtitulo) + '</div>' : '') +
+                    (d.link ? '<div style="color:#0091FF;font-size:12px;margin-top:4px;word-break:break-all;">🔗 ' + escHtml(d.link) + '</div>' : '') +
+                    (d.espacoId ? '<div style="color:#8A2BE2;font-size:12px;margin-top:2px;">📍 Espaço #' + Number(d.espacoId).toLocaleString("pt-BR") + '</div>' : '') +
                     (botao ? '<div style="margin-top:10px;">' + botao + '</div>' : '') +
+                    '</div></div>' +
                 '</div>';
             }).join("");
         }
@@ -5979,26 +6087,111 @@ async function abrirMeusDestaques(){
 }
 
 function editarPublicarDestaque(id){
-    abrirInfoModal("🚀 PUBLICAR DESTAQUE",
-        '<p>Escreva o título e o subtítulo que ficarão públicos no Story.</p>' +
-        '<label style="font-size:12px;color:var(--text-muted)">Título do destaque</label>' +
-        '<input class="copia" id="pubTitulo" maxlength="180" placeholder="Ex.: Vendas de hoje — 20% OFF" style="margin-top:4px;">' +
-        '<label style="font-size:12px;color:var(--text-muted);margin-top:10px;display:block">Subtítulo (opcional)</label>' +
-        '<input class="copia" id="pubSubtitulo" maxlength="240" placeholder="Ex.: Válido até meia-noite" style="margin-top:4px;">' +
-        '<div id="pubMsg" style="font-size:12px;color:#aaa;min-height:16px;margin-top:8px;"></div>' +
-        '<button class="btn" style="width:100%;margin-top:10px;" onclick="confirmarPublicarDestaque(' + id + ')">🚀 PUBLICAR AGORA</button>');
+    carregarDestaqueParaEdicao(id).then(function(d){
+        const meusIds = Object.keys(orderTokens || {}).filter(function(x){ return Number(x) >= 1 && Number(x) <= 1000000; }).slice(0, 50);
+        const opcoesEspaco = meusIds.length
+            ? '<select id="pubEspaco" class="copia" style="margin-top:4px;">' +
+                '<option value="">Sem espaço associado</option>' +
+                meusIds.map(function(x){
+                    return '<option value="' + x + '"' + (d && d.espacoId === Number(x) ? " selected" : "") + '>Espaço #' + Number(x).toLocaleString("pt-BR") + '</option>';
+                }).join("") +
+              '</select>'
+            : '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Você ainda não possui espaços.</div>';
+        abrirInfoModal("🚀 PUBLICAR DESTAQUE",
+            '<p>Escreva o título e o subtítulo que ficarão públicos no Story, adicione foto/link e associe um espaço seu (opcional).</p>' +
+            '<label style="font-size:12px;color:var(--text-muted);display:block;margin-top:10px;">📷 FOTO (opcional)</label>' +
+            '<div style="margin-top:6px;">' +
+                '<input type="file" id="pubFotoInput" accept="image/jpeg,image/png,image/webp,image/gif" style="font-size:12px;">' +
+                '<div id="pubFotoPreview" style="display:' + (d && d.imagem ? "block" : "none") + ';margin-top:8px;">' +
+                    '<img id="pubFotoImg" alt="Preview da foto" src="' + (d && d.imagem ? escHtml(d.imagem) : "") + '" style="max-width:100%;max-height:160px;border-radius:12px;border:1px solid var(--border-color);display:block;margin-bottom:6px;">' +
+                    '<button class="btn sec" style="width:100%;" onclick="limparFotoDestaquePub()">🗑 REMOVER FOTO</button>' +
+                '</div>' +
+            '</div>' +
+            '<label style="font-size:12px;color:var(--text-muted);display:block;margin-top:10px">Título do destaque</label>' +
+            '<input class="copia" id="pubTitulo" maxlength="180" value="' + (d && d.titulo ? escHtml(d.titulo) : "") + '" placeholder="Ex.: Vendas de hoje — 20% OFF" style="margin-top:4px;">' +
+            '<label style="font-size:12px;color:var(--text-muted);margin-top:10px;display:block">Subtítulo (opcional)</label>' +
+            '<input class="copia" id="pubSubtitulo" maxlength="240" value="' + (d && d.subtitulo ? escHtml(d.subtitulo) : "") + '" placeholder="Ex.: Válido até meia-noite" style="margin-top:4px;">' +
+            '<label style="font-size:12px;color:var(--text-muted);margin-top:10px;display:block">🔗 LINK (opcional)</label>' +
+            '<input class="copia" id="pubLink" maxlength="300" value="' + (d && d.link ? escHtml(d.link) : "") + '" placeholder="https://..." style="margin-top:4px;">' +
+            '<label style="font-size:12px;color:var(--text-muted);margin-top:10px;display:block">📍 VER MEU ESPAÇO</label>' + opcoesEspaco +
+            '<div id="pubMsg" style="font-size:12px;color:#aaa;min-height:16px;margin-top:8px;"></div>' +
+            '<button class="btn" style="width:100%;margin-top:10px;" onclick="confirmarPublicarDestaque(' + id + ')">🚀 PUBLICAR AGORA</button>');
+        const input = document.getElementById("pubFotoInput");
+        if(input) input.addEventListener("change", selecionarFotoDestaquePub);
+    }).catch(function(e){
+        toastMsg(e.message || "Erro ao carregar o destaque.");
+    });
+}
+
+let pubFotoUrl = null;
+
+async function carregarDestaqueParaEdicao(id){
+    const resp = await fetch("/api/stories/destaques/" + id, { headers: authHeaders() });
+    const data = await reqJSON(resp);
+    if(!resp.ok) throw new Error(data.error || "Erro ao carregar o destaque.");
+    pubFotoUrl = data.destaque && data.destaque.imagem ? data.destaque.imagem : null;
+    return data.destaque || {};
+}
+
+function selecionarFotoDestaquePub(ev){
+    const input = ev.target;
+    const file = input && input.files && input.files[0];
+    const msg = document.getElementById("pubMsg");
+    if(!file) return;
+    if(!/^image\/(jpeg|png|webp|gif)$/i.test(file.type)){
+        if(msg) msg.textContent = "Formato de imagem inválido. Use JPEG, PNG, WebP ou GIF.";
+        input.value = "";
+        return;
+    }
+    if(file.size > 5 * 1024 * 1024){
+        if(msg) msg.textContent = "Imagem muito grande. Máximo 5MB.";
+        input.value = "";
+        return;
+    }
+    const form = new FormData();
+    form.append("foto", file);
+    if(msg) msg.textContent = "Enviando foto...";
+    fetch("/api/stories/destaques/foto", {
+        method: "POST",
+        headers: authHeaders({}),
+        body: form
+    }).then(reqJSON).then(function(data){
+        if(!data || !data.ok || !data.foto_url){
+            if(msg) msg.textContent = (data && data.error) || "Não foi possível enviar a foto.";
+            return;
+        }
+        pubFotoUrl = data.foto_url;
+        const img = document.getElementById("pubFotoImg");
+        if(img) img.src = pubFotoUrl;
+        const prev = document.getElementById("pubFotoPreview");
+        if(prev) prev.style.display = "block";
+        if(msg) msg.textContent = "Foto enviada com sucesso.";
+    }).catch(function(){
+        if(msg) msg.textContent = "Erro de conexão ao enviar a foto.";
+    });
+}
+
+function limparFotoDestaquePub(){
+    pubFotoUrl = null;
+    const input = document.getElementById("pubFotoInput");
+    const prev = document.getElementById("pubFotoPreview");
+    if(input) input.value = "";
+    if(prev) prev.style.display = "none";
 }
 
 async function confirmarPublicarDestaque(id){
     const msg = document.getElementById("pubMsg");
     const titulo = document.getElementById("pubTitulo").value.trim();
     const subtitulo = document.getElementById("pubSubtitulo").value.trim();
+    const link = (document.getElementById("pubLink") ? document.getElementById("pubLink").value.trim() : "") || null;
+    const espacoSel = document.getElementById("pubEspaco");
+    const espacoId = espacoSel && espacoSel.value ? Number(espacoSel.value) : null;
     if(!titulo){ msg.textContent = "Informe o título do destaque."; return; }
     try {
         const resp = await fetch("/api/stories/destaques/" + id + "/publicar", {
             method: "POST",
             headers: authHeaders({ "Content-Type": "application/json" }),
-            body: JSON.stringify({ titulo, subtitulo })
+            body: JSON.stringify({ titulo, subtitulo, link: link || undefined, imagem: pubFotoUrl || undefined, espacoId: espacoId || null })
         });
         const data = await reqJSON(resp);
         if(!resp.ok) throw new Error(data.error || "Não foi possível publicar.");
@@ -6087,7 +6280,7 @@ function renderizarUltimasCompras(){
         if(comprasTickerTimer) clearInterval(comprasTickerTimer);
         return;
     }
-    ticker.innerHTML = ultimasComprasState.map(compra => {
+    const itemHtml = ultimasComprasState.map(compra => {
         const avatarHtml = compra.fotoUrl 
             ? '<img src="' + escHtml(compra.fotoUrl) + '" alt="' + escHtml(compra.apelido) + '">'
             : (compra.apelido || "U").charAt(0).toUpperCase();
@@ -6099,6 +6292,8 @@ function renderizarUltimasCompras(){
             '</div>' +
         '</div>';
     }).join("");
+    const vezes = Math.max(2, Math.ceil(4 / Math.max(1, ultimasComprasState.length)));
+    ticker.innerHTML = '<div class="ultimas-compras-track">' + itemHtml.repeat(vezes) + '</div>';
     if(comprasTickerTimer) clearInterval(comprasTickerTimer);
     comprasTickerTimer = setInterval(carregarUltimasCompras, 5000);
 }
@@ -6138,14 +6333,42 @@ function abrirStory(index){
     if(!story) return;
     storyAtual = story;
     marcarStoryLido(story.id);
-    document.getElementById("storyKicker").textContent = story.kind === "card" ? "CONQUISTA" : "MILHÃO DOOR";
+    document.getElementById("storyKicker").textContent = story.kind === "card" ? "CONQUISTA" : (story.apelido || story.nome) ? (story.apelido || story.nome).toUpperCase() : "MILHÃO DOOR";
     document.getElementById("storyIcon").textContent = storyIcon(story.kind);
+
+    const meta = story.metadata || {};
+    const imgEl = document.getElementById("storyImage");
+    if(meta.imagem){
+        imgEl.style.display = "block";
+        imgEl.innerHTML = '<img src="' + escHtml(meta.imagem) + '" alt="Foto do destaque">';
+    }else{
+        imgEl.style.display = "none";
+        imgEl.innerHTML = "";
+    }
+
     document.getElementById("storyTitle").textContent = story.title || "Story";
     document.getElementById("storySubtitle").textContent = story.subtitle || "Um novo evento acaba de acontecer.";
     const action = document.getElementById("storyAction");
     const hasAction = story.actionType === "space" || story.actionType === "block" || story.actionType === "card";
     action.style.display = hasAction ? "inline-block" : "none";
     action.textContent = story.actionType === "card" ? "VER FIGURINHA →" : "VER NO MAPA →";
+
+    const linksEl = document.getElementById("storyLinks");
+    if(linksEl){
+        if(meta.link){
+            linksEl.style.display = "flex";
+            linksEl.innerHTML =
+                '<a class="btn story-link-btn" href="' + escHtml(meta.link) + '" target="_blank" rel="noopener nofollow" onclick="fecharStory()">🔗 ACESSAR LINK</a>' +
+                (Number(story.actionId) ? '<button class="btn sec story-link-btn" onclick="executarAcaoStory();return false;">📍 VER MEU ESPAÇO</button>' : "");
+        }else if(Number(story.actionId)){
+            linksEl.style.display = "flex";
+            linksEl.innerHTML = '<button class="btn sec story-link-btn" onclick="executarAcaoStory()">📍 VER MEU ESPAÇO</button>';
+        }else{
+            linksEl.style.display = "none";
+            linksEl.innerHTML = "";
+        }
+    }
+
     document.getElementById("storyProgress").style.animation = "none";
     void document.getElementById("storyProgress").offsetWidth;
     document.getElementById("storyProgress").style.animation = "storyProgress 6s linear forwards";
@@ -12766,6 +12989,8 @@ function abrirContaDropdown(ev){
 
     const elAv = document.getElementById("avatarInitials");
 
+    const dropHeadImg = document.querySelector("#contaDropdown .conta-dropdown-head img.conta-photo");
+
     if(elNome) elNome.textContent = nome;
 
     if(elEmail) elEmail.textContent = email;
@@ -12773,6 +12998,29 @@ function abrirContaDropdown(ev){
     if(elIni) elIni.textContent = ini;
 
     if(elAv) elAv.textContent = ini;
+
+    if(minhaConta){
+        const u = minhaConta.usuario || minhaConta;
+        const fotoUrl = u.fotoUrl || u.foto_url || u.foto;
+        if(fotoUrl){
+            if(elIni) elIni.style.display = "none";
+            if(!dropHeadImg){
+                const headEl = document.querySelector("#contaDropdown .conta-dropdown-head .avatar-initials");
+                if(headEl){
+                    const img = document.createElement("img");
+                    img.className = "conta-photo";
+                    img.alt = nome;
+                    img.src = fotoUrl;
+                    headEl.parentNode.insertBefore(img, headEl);
+                }
+            } else {
+                dropHeadImg.src = fotoUrl;
+            }
+        } else {
+            if(elIni) elIni.style.display = "flex";
+            if(dropHeadImg) dropHeadImg.remove();
+        }
+    }
 
     dd.classList.add("open");
 
@@ -14706,12 +14954,34 @@ function cancelarOfertaEnviada(offerId){
 
     if(!confirm("Deseja cancelar esta oferta enviada?"))return;
 
-    try{
-        myOffers = myOffers.filter(id => id !== offerId);
-        localStorage.setItem("mega_myOffers", JSON.stringify(myOffers));
-    }catch(e){}
+    const token = (minhaConta && minhaConta.token) || "";
 
-    carregarOfertasPainel();
+    const concluir = function(){
+        try{
+            myOffers = myOffers.filter(id => id !== offerId);
+            localStorage.setItem("mega_myOffers", JSON.stringify(myOffers));
+        }catch(e){}
+        carregarOfertasPainel();
+        carregarOfertasAtivasDash();
+    };
+
+    if(!token){
+        concluir();
+        return;
+    }
+
+    fetch("/api/offers/" + offerId + "/cancel", {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json" })
+    }).then(function(r){
+        return r.json().then(function(data){
+            if(!r.ok) throw new Error(data.error || "Não foi possível cancelar.");
+            toastMsg("Oferta cancelada.");
+            concluir();
+        });
+    }).catch(function(e){
+        toastMsg(e.message || "Erro ao cancelar a oferta.");
+    });
 }
 
 async function recusarContraproposta(offerId){
@@ -17151,14 +17421,12 @@ async function carregarResumoGeral(){
         if(elDisponiveis) elDisponiveis.textContent = disponiveis.toLocaleString("pt-BR");
         if(elDisponiveisPct) elDisponiveisPct.textContent = pctDisponiveis + "%";
 
-        /* Usuários via endpoint se disponível */
+        /* Usuários via endpoint público de contagem */
         try {
-            const respU = await fetch("/api/admin/usuarios", {
-                headers: { "Authorization": "Bearer " + ((minhaConta && minhaConta.token) || "") }
-            });
+            const respU = await fetch("/api/usuarios/contagem");
             if(respU.ok){
                 const dataU = await respU.json();
-                const usuarios = (dataU.usuarios || dataU || []).length;
+                const usuarios = dataU.total || 0;
                 if(elUsuarios) elUsuarios.textContent = usuarios.toLocaleString("pt-BR");
                 if(elUsuariosHoje) elUsuariosHoje.textContent = "+" + Math.min(usuarios, 3) + " hoje";
             }
@@ -17182,11 +17450,34 @@ function atualizarAvatarHeader(){
         const iniciais = nome.split(" ").map(function(p){ return p.charAt(0); }).join("").substring(0, 2).toUpperCase();
         btnEntrar.classList.add("oculto");
         avatar.classList.add("logado");
-        if(initials) initials.textContent = iniciais;
+        const fotoUrl = u.fotoUrl || u.foto_url || u.foto;
+        const imgExistente = avatar.querySelector("img.avatar-photo");
+        if(fotoUrl){
+            if(initials) initials.style.display = "none";
+            if(!imgExistente){
+                const img = document.createElement("img");
+                img.className = "avatar-photo";
+                img.alt = nome;
+                img.src = fotoUrl;
+                avatar.insertBefore(img, initials);
+            } else {
+                imgExistente.src = fotoUrl;
+                imgExistente.style.display = "block";
+            }
+        } else {
+            if(initials){
+                initials.style.display = "flex";
+                initials.textContent = iniciais;
+            }
+            if(imgExistente) imgExistente.style.display = "none";
+        }
         if(name) name.textContent = nome.split(" ")[0];
     } else {
         btnEntrar.classList.remove("oculto");
         avatar.classList.remove("logado");
+        const imgExistente = avatar.querySelector("img.avatar-photo");
+        if(imgExistente) imgExistente.remove();
+        if(initials) initials.style.display = "flex";
     }
 }
 
@@ -17262,3 +17553,4 @@ if(typeof salvarTokens === "function"){
 
 </body>
 </html>
+

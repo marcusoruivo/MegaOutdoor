@@ -2082,3 +2082,202 @@ button, input, select, textarea{
 @media (max-width: 1023px){
     body{overflow-x: hidden}
 }
+
+/* =========================================================
+   BUSCA DE ANUNCIANTES (OUTDOOR PESQUISÁVEL)
+   Estilos escopados ao widget da busca — não alteram
+   componentes existentes nem estilos globais.
+========================================================= */
+.busca-outdoor{
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 60;
+    width: min(560px, calc(100% - 24px));
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: auto;
+}
+.busca-outdoor-bar{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    box-shadow: 0 8px 24px rgba(0,0,0,.35);
+}
+.busca-outdoor-bar:focus-within{
+    border-color: var(--gold-40);
+}
+.busca-outdoor-bar svg{
+    width: 16px;
+    height: 16px;
+    color: var(--muted-foreground);
+    flex-shrink: 0;
+}
+.busca-outdoor-bar input{
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--foreground);
+    font-size: 13px;
+}
+.busca-outdoor-bar input::placeholder{
+    color: var(--muted-foreground);
+}
+.busca-outdoor-clear{
+    background: none;
+    border: none;
+    color: var(--muted-foreground);
+    font-size: 16px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 4px;
+    flex-shrink: 0;
+}
+.busca-outdoor-chips{
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.busca-chip{
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted-foreground);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .5px;
+    cursor: pointer;
+    transition: all .12s;
+    pointer-events: auto;
+}
+.busca-chip:hover{
+    color: var(--foreground);
+    border-color: var(--gold-40);
+}
+.busca-chip.ativa{
+    background: var(--gold);
+    color: #141414;
+    border-color: transparent;
+}
+.busca-outdoor-resultados{
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    max-height: min(460px, 70vh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.45);
+}
+.busca-outdoor.aberta .busca-outdoor-resultados{
+    display: flex;
+}
+.busca-resultado{
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    background: color-mix(in oklab, var(--surface) 60%, transparent);
+}
+.busca-resultado-topo{
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+.busca-resultado-titulo{
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--foreground);
+}
+.busca-resultado-meta{
+    font-size: 11px;
+    color: var(--muted-foreground);
+    margin-top: 3px;
+}
+.busca-resultado-desc{
+    font-size: 12px;
+    color: var(--muted-foreground);
+    margin-top: 6px;
+    line-height: 1.45;
+}
+.busca-resultado-blocos{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+.busca-bloco-chip{
+    border: 1px solid var(--gold-40);
+    color: var(--gold);
+    background: transparent;
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    pointer-events: auto;
+}
+.busca-bloco-chip:hover{
+    background: var(--gold);
+    color: #141414;
+}
+.busca-bloco-chip.busca-destaque-btn{
+    border-color: var(--gold);
+}
+.busca-resultado-links{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+.busca-link-btn{
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--accent);
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    pointer-events: auto;
+}
+.busca-link-btn:hover{
+    border-color: var(--accent);
+}
+.busca-resultado-acoes{
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+.busca-vazio{
+    text-align: center;
+    padding: 24px 12px;
+    color: var(--muted-foreground);
+    font-size: 13px;
+}
+
+@media (max-width: 640px){
+    .busca-outdoor{
+        top: 8px;
+        width: calc(100% - 16px);
+    }
+    .busca-outdoor-resultados{
+        max-height: 50vh;
+    }
+}

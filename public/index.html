@@ -4372,6 +4372,24 @@ LIMPAR
                         <button onclick="zoom(.83)" title="Afastar">−</button>
                         <button onclick="toggleMapaFullscreen()" title="Tela cheia">⛶</button>
                     </div>
+                    <div class="busca-outdoor" id="buscaOutdoor">
+                        <div class="busca-outdoor-bar">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input id="buscaOutdoorInput" type="text" placeholder="🔎 Pesquise empresa, serviço, pessoa ou bloco..." autocomplete="off"
+                                oninput="buscaOutdoorDebounce()" onfocus="buscaOutdoorAbrirPainel()"
+                                onkeydown="if(event.key==='Enter'){event.preventDefault();buscaOutdoorExecutar(true);}">
+                            <button type="button" class="busca-outdoor-clear" onclick="buscaOutdoorLimpar()" title="Limpar">×</button>
+                        </div>
+                        <div class="busca-outdoor-chips" id="buscaOutdoorChips">
+                            <button type="button" class="busca-chip ativa" data-cat="" onclick="buscaOutdoorFiltroCategoria(this,'')">Todos</button>
+                            <button type="button" class="busca-chip" data-cat="EMPRESAS" onclick="buscaOutdoorFiltroCategoria(this,'EMPRESAS')">🏢 Empresas</button>
+                            <button type="button" class="busca-chip" data-cat="SERVIÇOS" onclick="buscaOutdoorFiltroCategoria(this,'SERVIÇOS')">🛠️ Serviços</button>
+                            <button type="button" class="busca-chip" data-cat="PESSOAS" onclick="buscaOutdoorFiltroCategoria(this,'PESSOAS')">👤 Pessoas</button>
+                            <button type="button" class="busca-chip" data-cat="REDES_SOCIAIS" onclick="buscaOutdoorFiltroCategoria(this,'REDES_SOCIAIS')">📱 Redes Sociais</button>
+                            <button type="button" class="busca-chip" data-cat="OUTROS" onclick="buscaOutdoorFiltroCategoria(this,'OUTROS')">🔗 Outros</button>
+                        </div>
+                        <div class="busca-outdoor-resultados" id="buscaOutdoorResultados"></div>
+                    </div>
                     <div class="map-legend" style="display:none;"></div>
                 </div>
             </div>
@@ -5174,6 +5192,86 @@ style="margin-top:10px;">
 
 <p
 id="linkMsg"
+style="color:#aaa; font-size:12px;">
+</p>
+
+</div>
+
+</div>
+
+
+<!-- MODAL DADOS DA PESQUISA (ANÚNCIO) -->
+
+<div class="modal" id="anuncioDadosModal" style="display:none;">
+
+<div class="box" style="max-width:540px;max-height:90vh;overflow-y:auto;">
+
+<button
+class="close"
+onclick="fecharAnuncioDados()">
+×
+</button>
+
+<h2 style="color:#ffd400;">📋 Dados da pesquisa</h2>
+
+<p
+id="anuncioDadosInfo"
+style="color:#aaa;font-size:13px;margin:0 0 12px;">
+</p>
+
+<label style="font-size:12px;color:#aaa;display:block;margin-bottom:4px;">CATEGORIA</label>
+<select id="anuncioDadosCategoria" style="width:100%;padding:10px;margin-bottom:10px;box-sizing:border-box;background:#111;color:#fff;border:1px solid #333;border-radius:8px;">
+  <option value="">🔗 Outros</option>
+  <option value="EMPRESAS">🏢 Empresas</option>
+  <option value="SERVIÇOS">🛠️ Serviços</option>
+  <option value="PESSOAS">👤 Pessoas</option>
+  <option value="REDES_SOCIAIS">📱 Redes Sociais</option>
+  <option value="OUTROS">🔗 Outros</option>
+</select>
+
+<label style="font-size:12px;color:#aaa;display:block;margin-bottom:4px;">SEGMENTO (ex: Construção civil, Odontologia...)</label>
+<input id="anuncioDadosSegmento" type="text" maxlength="120" placeholder="Ex: Manutenção de equipamentos fitness" style="width:100%;padding:10px;margin-bottom:10px;box-sizing:border-box;background:#111;color:#fff;border:1px solid #333;border-radius:8px;">
+
+<label style="font-size:12px;color:#aaa;display:block;margin-bottom:4px;">DESCRIÇÃO CURTA</label>
+<input id="anuncioDadosDescricao" type="text" maxlength="400" placeholder="O que você oferece? (opcional)" style="width:100%;padding:10px;margin-bottom:10px;box-sizing:border-box;background:#111;color:#fff;border:1px solid #333;border-radius:8px;">
+
+<label style="font-size:12px;color:#aaa;display:block;margin-bottom:4px;">PALAVRAS-CHAVE (separadas por vírgula)</label>
+<input id="anuncioDadosPalavras" type="text" placeholder="academia, esteira, manutenção, fitness" style="width:100%;padding:10px;margin-bottom:10px;box-sizing:border-box;background:#111;color:#fff;border:1px solid #333;border-radius:8px;">
+
+<label style="font-size:12px;color:#aaa;display:block;margin-bottom:4px;">LINKS (um por linha: rótulo | tipo | URL)</label>
+<textarea id="anuncioDadosLinks" rows="4" placeholder="Instagram | instagram | https://instagram.com/seu" style="width:100%;padding:10px;margin-bottom:6px;box-sizing:border-box;background:#111;color:#fff;border:1px solid #333;border-radius:8px;font-size:12px;"></textarea>
+<div style="font-size:12px;color:#888;margin-bottom:10px;">
+  Tipos sugeridos: instagram, facebook, tiktok, youtube, whatsapp, site, outro. Esses links aparecem no anúncio público e na pesquisa.
+</div>
+
+<div id="anuncioDadosEscopo" style="font-size:13px;color:#ccc;margin-bottom:10px;">
+  <label style="display:block;margin:6px 0;cursor:pointer;">
+    <input type="radio" name="anuncioDadosEscopo" value="solo" checked>
+    Aplicar somente a este espaço
+  </label>
+  <label id="anuncioDadosEscopoBloco" style="display:none;margin:6px 0;cursor:pointer;">
+    <input type="radio" name="anuncioDadosEscopo" value="bloco">
+    Aplicar a todo o bloco (<span id="anuncioDadosBlocoCount"></span> espaços)
+  </label>
+</div>
+
+<div style="display:flex;gap:8px;">
+<button
+class="btn sec"
+onclick="fecharAnuncioDados()"
+style="margin:0;">
+CANCELAR
+</button>
+<button
+class="btn"
+onclick="salvarAnuncioDados()"
+style="margin:0;">
+💾 SALVAR
+</button>
+</div>
+
+<p
+id="anuncioDadosMsg"
 style="color:#aaa; font-size:12px;">
 </p>
 
@@ -6712,6 +6810,7 @@ let mpSdk = null;
 let mpCardNumberField = null;
 let mpCardBin = "";
 let mpPaymentMethodId = "";
+let mpIssuerId = "";
 let appConfig = { sandbox: false, allowTestMode: false };
 
 async function carregarConfigMercadoPago(){
@@ -6750,6 +6849,7 @@ function limparCamposCartao(){
     mpCardNumberField = null;
     mpCardBin = "";
     mpPaymentMethodId = "";
+    mpIssuerId = "";
 }
 
 async function atualizarBandeiraCartao(bin){
@@ -6757,7 +6857,18 @@ async function atualizarBandeiraCartao(bin){
     try{
         const methods = await mpSdk.getPaymentMethods({ bin });
         if(methods && methods.results && methods.results.length){
-            mpPaymentMethodId = methods.results[0].id || "";
+            const pm = methods.results[0];
+            mpPaymentMethodId = pm.id || "";
+            mpIssuerId = "";
+            if(pm.issuer && pm.issuer.id){
+                mpIssuerId = String(pm.issuer.id);
+            } else if(pm.additional_info_needed && pm.additional_info_needed.indexOf("issuer_id") >= 0){
+                const issuers = await mpSdk.getIssuers({ paymentMethodId: pm.id, bin });
+                if(issuers && issuers.results && issuers.results.length){
+                    const def = issuers.results.find(i => i.default) || issuers.results[0];
+                    mpIssuerId = String(def.id || "");
+                }
+            }
         }
     }catch(e){
         console.error("Erro ao consultar bandeira do cartão:", e);
@@ -7768,6 +7879,9 @@ function mostrarDonoEspaco(numero){
         '<button class="btn sec" style="width:100%;margin-top:8px;" ' +
           'onclick="fecharDonoModal(); editarLink(' + numero + ')">' +
           '🌐 EDITAR LINK</button>' +
+        '<button class="btn sec" style="width:100%;margin-top:8px;" ' +
+          'onclick="abrirAnuncioDados(' + numero + ')">' +
+          '📋 DADOS DA PESQUISA</button>' +
         (temVizinhos
           ? '<button class="btn sec" style="width:100%;margin-top:8px;" ' +
             'onclick="fecharDonoModal(); editarExtensao(' + numero + ')">' +
@@ -8621,6 +8735,10 @@ area.addEventListener(
 "wheel",
 e=>{
 
+if(e.target && e.target.closest && e.target.closest(".busca-outdoor")){
+return;
+}
+
 e.preventDefault();
 
 const f =
@@ -9405,6 +9523,10 @@ if(pinchActive){
 return;
 }
 
+if(e.target && e.target.closest && e.target.closest(".busca-outdoor")){
+return;
+}
+
 if(offerMode || selectAreaMode){
 
 rectDrag=true;
@@ -9449,6 +9571,10 @@ area.onpointermove =
 e=>{
 
 if(pinchActive){
+return;
+}
+
+if(e.target && e.target.closest && e.target.closest(".busca-outdoor")){
 return;
 }
 
@@ -9582,6 +9708,10 @@ draw();
 area.addEventListener(
 "touchstart",
 e=>{
+
+if(e.target && e.target.closest && e.target.closest(".busca-outdoor")){
+return;
+}
 
 if(e.touches.length === 2){
 
@@ -10453,6 +10583,12 @@ if(method === "credit_card"){
     try{
         cardToken = await tokenizarCartao();
         installments = parseInt(document.getElementById("installments").value, 10) || 1;
+        if(!mpPaymentMethodId && mpCardBin){
+            await atualizarBandeiraCartao(mpCardBin);
+        }
+        if(!mpPaymentMethodId){
+            throw new Error("Não foi possível identificar a bandeira do cartão. Digite novamente o número do cartão.");
+        }
     }catch(e){
         msg.textContent = e.message;
         restaurarBotaoPagar();
@@ -10490,6 +10626,8 @@ coupon,
 paymentMethod: method,
 
 paymentMethodId: mpPaymentMethodId,
+
+issuerId: mpIssuerId,
 
 licensePlan,
 
@@ -17820,6 +17958,227 @@ function verPerfilPublico(usuarioId){
 
 function verAlbumPublico(usuarioId){
     window.open(`/perfil.html?id=${usuarioId}&aba=album`, '_blank');
+}
+
+/* =========================================================
+   BUSCA DE ANUNCIANTES — OUTDOOR DIGITAL PESQUISÁVEL
+   Mesma fonte (/api/busca) alimenta a busca geral e a busca
+   no mapa expandido. Só mostra anúncios públicos.
+========================================================= */
+
+let buscaOutdoorCategoria = "";
+let buscaOutdoorTimeout = null;
+
+function buscaOutdoorAbrirPainel(){
+    const widget = document.getElementById("buscaOutdoor");
+    if(widget) widget.classList.add("aberta");
+    if(document.getElementById("buscaOutdoorInput").value.trim() || buscaOutdoorCategoria){
+        buscaOutdoorExecutar(true);
+    }
+}
+
+function buscaOutdoorDebounce(){
+    clearTimeout(buscaOutdoorTimeout);
+    buscaOutdoorTimeout = setTimeout(function(){ buscaOutdoorExecutar(true); }, 300);
+}
+
+function buscaOutdoorFiltroCategoria(btn, cat){
+    buscaOutdoorCategoria = cat;
+    const chips = document.querySelectorAll("#buscaOutdoorChips .busca-chip");
+    chips.forEach(function(c){ c.classList.toggle("ativa", c === btn); });
+    buscaOutdoorExecutar(true);
+}
+
+function buscaOutdoorLimpar(){
+    const input = document.getElementById("buscaOutdoorInput");
+    if(input) input.value = "";
+    buscaOutdoorCategoria = "";
+    const chips = document.querySelectorAll("#buscaOutdoorChips .busca-chip");
+    chips.forEach(function(c){ c.classList.toggle("ativa", c === chips[0]); });
+    buscaOutdoorFechar();
+}
+
+function buscaOutdoorFechar(){
+    const widget = document.getElementById("buscaOutdoor");
+    if(widget) widget.classList.remove("aberta");
+    const res = document.getElementById("buscaOutdoorResultados");
+    if(res) res.innerHTML = "";
+}
+
+async function buscaOutdoorExecutar(force){
+    const widget = document.getElementById("buscaOutdoor");
+    const input = document.getElementById("buscaOutdoorInput");
+    const res = document.getElementById("buscaOutdoorResultados");
+    if(!widget || !input || !res) return;
+    const q = input.value.trim();
+    if(!q && !buscaOutdoorCategoria){
+        buscaOutdoorFechar();
+        return;
+    }
+    widget.classList.add("aberta");
+    res.innerHTML = '<div class="busca-vazio">⏳ Buscando...</div>';
+    try{
+        const params = new URLSearchParams();
+        if(q) params.set("q", q);
+        if(buscaOutdoorCategoria) params.set("categoria", buscaOutdoorCategoria);
+        params.set("limite", "20");
+        const resp = await fetch("/api/busca?" + params.toString());
+        const data = await resp.json();
+        if(!resp.ok) throw new Error(data.error || "Erro na busca");
+        buscaOutdoorRender(data, res, q);
+    }catch(err){
+        res.innerHTML = '<div class="busca-vazio">⚠️ ' + escHtml(err.message) + '</div>';
+    }
+}
+
+function buscaOutdoorRender(data, res, q){
+    const resultados = data.resultados || [];
+    if(!resultados.length){
+        res.innerHTML = '<div class="busca-vazio">😕 Nenhum anúncio público encontrado' +
+            (q ? ' para "' + escHtml(q) + '"' : "") + '.</div>';
+        return;
+    }
+    res.innerHTML = resultados.map(function(r){ return buscaOutdoorCard(r); }).join("");
+}
+
+function buscaOutdoorCard(r){
+    const cat = r.categoria || "OUTROS";
+    const emoji = { EMPRESAS: "🏢", "SERVIÇOS": "🛠️", PESSOAS: "👤", REDES_SOCIAIS: "📱", OUTROS: "🔗" }[cat] || "🔗";
+    const catLabel = { EMPRESAS: "Empresa", "SERVIÇOS": "Serviço", PESSOAS: "Pessoa", REDES_SOCIAIS: "Rede social", OUTROS: "Outros" }[cat] || "Anúncio";
+    const blocos = (r.blocos || []).map(function(b, i){
+        const id = b[0];
+        return '<button type="button" class="busca-bloco-chip" title="Destacar no mapa" ' +
+            'onclick="buscaOutdoorDestacarBloco(' + id + ',' + escAttr(JSON.stringify(b)) + ')">' +
+            '#' + Number(id).toLocaleString("pt-BR") + (b.length > 1 ? ' (' + b.length + ')' : '') +
+            '</button>';
+    }).join("");
+    const links = (r.links || []).filter(function(l){ return l && l.url; }).map(function(l){
+        const rot = l.rotulo || (l.tipo === "site" ? "🌐 Site" : (l.tipo ? "🔗 " + l.tipo : "🔗 Link"));
+        return '<a class="busca-link-btn" href="' + escAttr(l.url) + '" target="_blank" rel="noopener noreferrer">' + escHtml(rot) + '</a>';
+    }).join("");
+    const seg = r.segmento ? '<div class="busca-resultado-meta">' + escHtml(r.segmento) + '</div>' : "";
+    const dono = (r.nomeDono && r.nomeDono !== r.titulo) ? '<div class="busca-resultado-meta">Anunciante: ' + escHtml(r.nomeDono) + '</div>' : "";
+    const desc = r.descricao ? '<div class="busca-resultado-desc">' + escHtml(r.descricao.slice(0, 140)) + '</div>' : "";
+    const espacos = r.espacos || [];
+    return '<div class="busca-resultado">' +
+        '<div class="busca-resultado-topo">' +
+            '<div style="min-width:0;">' +
+                '<div class="busca-resultado-titulo">' + emoji + ' ' + escHtml(r.titulo || r.anunciante || "Anunciante") + '</div>' +
+                seg +
+                dono +
+            '</div>' +
+            '<span class="busca-chip ativa" style="flex-shrink:0;cursor:default;">' + escHtml(catLabel) + '</span>' +
+        '</div>' +
+        desc +
+        '<div class="busca-resultado-blocos">' + blocos + '</div>' +
+        (links ? '<div class="busca-resultado-links">' + links + '</div>' : "") +
+        '<div class="busca-resultado-acoes">' +
+            (espacos.length ? '<button type="button" class="busca-bloco-chip busca-destaque-btn" ' +
+                'onclick="buscaOutdoorDestacarAnunciante(' + escAttr(JSON.stringify(espacos)) + ')">📍 ABRIR NO MAPA</button>' : "") +
+            (espacos.length ? '<button type="button" class="busca-link-btn" ' +
+                'onclick="buscaOutdoorVerEspaco(' + espacos[0] + ')">👁️ VER ESPAÇO</button>' : "") +
+        '</div>' +
+    '</div>';
+}
+
+function buscaOutdoorDestacarBloco(espacoId, blocoIds){
+    if(!blocoIds || !blocoIds.length) blocoIds = [espacoId];
+    focusMapOnBlock(blocoIds);
+    buscaOutdoorFechar();
+}
+
+function buscaOutdoorDestacarAnunciante(espacos){
+    if(!espacos || !espacos.length) return;
+    focusMapOnBlock(espacos);
+    buscaOutdoorFechar();
+}
+
+function buscaOutdoorVerEspaco(numero){
+    const id = Number(numero);
+    if(!id || !db[id]) return;
+    buscaOutdoorFechar();
+    mostrarDonoEspaco(id);
+}
+
+/* ===== DADOS DA PESQUISA (anúncio) ===== */
+
+let anuncioDadosNumero = null;
+
+function abrirAnuncioDados(numero){
+    const s = db[numero];
+    if(!s) return;
+    anuncioDadosNumero = numero;
+    document.getElementById("anuncioDadosInfo").textContent =
+        "Preencha os dados públicos do anúncio do espaço #" + Number(numero).toLocaleString("pt-BR") +
+        ". Eles aparecem na pesquisa do MilhãoDoor.";
+    document.getElementById("anuncioDadosCategoria").value = s.categoria || "";
+    document.getElementById("anuncioDadosSegmento").value = s.segmento || "";
+    document.getElementById("anuncioDadosDescricao").value = s.descricao || "";
+    document.getElementById("anuncioDadosPalavras").value = (s.palavras_chave || []).join(", ");
+    const linhas = (s.links || []).filter(function(l){ return l && l.url; }).map(function(l){
+        return [l.rotulo || "", l.tipo || "", l.url].join(" | ");
+    }).join("\n");
+    document.getElementById("anuncioDadosLinks").value = linhas;
+    const bloco = blocoPorDono(numero, ["published", "paid"]);
+    const escopoEl = document.getElementById("anuncioDadosEscopo");
+    if(escopoEl){
+        if(bloco.length > 1){
+            document.getElementById("anuncioDadosEscopoBloco").style.display = "block";
+            document.getElementById("anuncioDadosBlocoCount").textContent = bloco.length;
+        }else{
+            document.getElementById("anuncioDadosEscopoBloco").style.display = "none";
+        }
+    }
+    document.getElementById("anuncioDadosMsg").textContent = "";
+    fecharDonoModal();
+    abrirModalComPrioridade("anuncioDadosModal", 10050);
+}
+
+function fecharAnuncioDados(){
+    document.getElementById("anuncioDadosModal").style.display = "none";
+}
+
+async function salvarAnuncioDados(){
+    const numero = anuncioDadosNumero;
+    if(!numero) return;
+    const escopo = (document.querySelector('input[name="anuncioDadosEscopo"]:checked') || {}).value || "solo";
+    const links = [];
+    const linhas = document.getElementById("anuncioDadosLinks").value.split("\n").map(function(l){ return l.trim(); }).filter(Boolean);
+    for(const linha of linhas){
+        const partes = linha.split("|").map(function(p){ return p.trim(); });
+        let url = "";
+        let rotulo = "";
+        let tipo = "";
+        if(partes.length >= 3){ rotulo = partes[0]; tipo = partes[1]; url = partes[2]; }
+        else if(partes.length === 2){ rotulo = partes[0]; url = partes[1]; }
+        else { url = partes[0]; }
+        if(!url) continue;
+        links.push({ url, tipo, rotulo, categoria: "", segmento: "", publico: true });
+    }
+    const body = {
+        categoria: document.getElementById("anuncioDadosCategoria").value,
+        segmento: document.getElementById("anuncioDadosSegmento").value,
+        descricao: document.getElementById("anuncioDadosDescricao").value,
+        palavras_chave: document.getElementById("anuncioDadosPalavras").value,
+        links: links,
+        escopo: escopo
+    };
+    const msg = document.getElementById("anuncioDadosMsg");
+    if(!msg) return;
+    msg.textContent = "⏳ Salvando...";
+    try{
+        const resp = await fetch("/api/anuncio/dados/" + numero, {
+            method: "POST",
+            headers: authHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify(body)
+        });
+        const data = await resp.json();
+        if(!resp.ok) throw new Error(data.error || "Erro ao salvar");
+        msg.textContent = "✅ Dados salvos! Já aparecem na pesquisa.";
+        setTimeout(function(){ fecharAnuncioDados(); }, 900);
+    }catch(err){
+        msg.textContent = "⚠️ " + err.message;
+    }
 }
 
 /* =========================================================

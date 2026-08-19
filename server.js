@@ -1424,6 +1424,7 @@ function readDB() {
 }
 
 function writeDB(data) {
+    invalidarDBBuscaCache && invalidarDBBuscaCache();
     fs.writeFileSync(
         DB_FILE,
         JSON.stringify(data, null, 2),
@@ -2316,7 +2317,18 @@ function formatarErroPagamento(erro) {
         { re: /NetworkError|fetch|ECONNREFUSED/i, msg: "Erro de conexão com a operadora de pagamento. Tente novamente." }
     ];
     const mapeada = tecnicas.find(t => t.re.test(msg));
-    return mapeada ? mapeada.msg : msg;
+    if (mapeada) return mapeada.msg;
+    /* A mensagem genérica do MP (ex.: "Missing properties, Invalid value for property")
+       esconde a propriedade real rejeitada, que vem no array cause. Não devolvemos
+       só a mensagem crua: anexamos a descrição específica para o usuário entender
+       o que está errado (ex.: "payment_method.id"). */
+    const causas = (erro && Array.isArray(erro.cause))
+        ? erro.cause.map(c => c && c.description).filter(Boolean)
+        : [];
+    if (causas.length) {
+        return msg + (msg ? " — " : "") + causas.join("; ");
+    }
+    return msg;
 }
 
 /* Remove dados sensíveis (CPF/CNPJ, e-mail, tokens) de qualquer texto
@@ -2530,7 +2542,8 @@ async function criarOrderMercadoPago({
     paymentMethod,
     paymentMethodId,
     cardToken,
-    installments = 1
+    installments = 1,
+    issuerId
 }) {
 
     const id = externalReference || crypto.randomUUID();
@@ -2556,13 +2569,19 @@ async function criarOrderMercadoPago({
 
     if (isPix) {
         paymentBody.payment_method.id = "pix";
-    } else {
-        paymentBody.payment_method.id = paymentMethodId || "credit_card";
+    } else if (paymentMethodId) {
+        /* A API Orders exige o id da bandeira (ex.: "visa", "master", "elo").
+           "credit_card" é apenas o tipo, NÃO um id válido — enviá-lo como
+           fallback faz o MP rejeitar com "Invalid value for property". */
+        paymentBody.payment_method.id = paymentMethodId;
     }
 
     if (!isPix && cardToken) {
         paymentBody.payment_method.token = cardToken;
         paymentBody.payment_method.installments = Number(installments) || 1;
+        if (issuerId) {
+            paymentBody.payment_method.issuer_id = String(issuerId);
+        }
     }
 
     /* O Orders API do Mercado Pago aceita apenas email e identification
@@ -4748,6 +4767,7 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
                 },
                 paymentMethod: metodoPagamento,
                 paymentMethodId: req.body.paymentMethodId,
+                issuerId: req.body.issuerId,
                 cardToken: metodo === "credit_card" ? cardToken : undefined,
                 installments: metodo === "credit_card" ? installments : undefined
             });
@@ -5112,6 +5132,7 @@ app.post("/api/renew", authUsuario, async (req, res) => {
             },
             paymentMethod: metodo,
             paymentMethodId: req.body.paymentMethodId,
+            issuerId: req.body.issuerId,
             cardToken: metodo === "credit_card" ? cardToken : undefined,
             installments: metodo === "credit_card" ? installments : undefined
         });
@@ -8188,8 +8209,342 @@ app.get("/api/usuarios/contagem", async (req, res) => {
     }
 });
 
+/* =========================================================
+   BUSCA DE ANUNCIANTES — OUTDOOR DIGITAL PESQUISÁVEL
+   Uma única fonte alimenta a busca geral e a busca no mapa
+   expandido. Expõe SOMENTE espaços públicos (status published):
+   nunca dados privados, administrativos ou de pagamento.
+========================================================= */
+
+const CATEGORIAS_ANUNCIANTE = [
+    "EMPRESAS",
+    "SERVIÇOS",
+    "PESSOAS",
+    "REDES_SOCIAIS",
+    "OUTROS"
+];
+
+function normalizarTextoBusca(str) {
+    return String(str || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+}
+
+let _dbBuscaCache = null;
+function readDBCached() {
+    if (_dbBuscaCache === null) _dbBuscaCache = readDB();
+    return _dbBuscaCache;
+}
+function invalidarDBBuscaCache() {
+    _dbBuscaCache = null;
+}
+
+function agruparBlocosContiguos(ids) {
+    const conjunto = new Set(ids);
+    const blocos = [];
+    const visitados = new Set();
+    for (const id of ids) {
+        if (visitados.has(id)) continue;
+        const grupo = [id];
+        visitados.add(id);
+        const fila = [id];
+        while (fila.length) {
+            const atual = fila.shift();
+            const indice = atual - 1;
+            const linha = Math.floor(indice / 1000);
+            const coluna = indice % 1000;
+            const vizinhos = [];
+            if (coluna > 0) vizinhos.push(atual - 1);
+            if (coluna < 999) vizinhos.push(atual + 1);
+            if (linha > 0) vizinhos.push(atual - 1000);
+            if (linha < 999) vizinhos.push(atual + 1000);
+            for (const v of vizinhos) {
+                if (!conjunto.has(v) || visitados.has(v)) continue;
+                visitados.add(v);
+                grupo.push(v);
+                fila.push(v);
+            }
+        }
+        grupo.sort((a, b) => a - b);
+        blocos.push(grupo);
+    }
+    return blocos;
+}
+
+function construirIndiceAnunciantes() {
+    const db = readDBCached();
+    const grupos = new Map();
+    for (const sid in db) {
+        const s = db[sid];
+        if (!s || s.status !== "published") continue;
+        const chave = s.orderToken || ("esp:" + sid);
+        let g = grupos.get(chave);
+        if (!g) {
+            g = {
+                chave,
+                espacos: [],
+                titulo: "",
+                categoria: "",
+                segmento: "",
+                descricao: "",
+                palavrasChave: [],
+                links: [],
+                nomeDono: "",
+                usuarioId: null,
+                image: ""
+            };
+            grupos.set(chave, g);
+        }
+        g.espacos.push(Number(sid));
+        if (!g.titulo && s.title) g.titulo = String(s.title).trim();
+        if (!g.categoria && s.categoria) g.categoria = String(s.categoria);
+        if (!g.segmento && s.segmento) g.segmento = String(s.segmento).trim();
+        if (!g.descricao && s.descricao) g.descricao = String(s.descricao).trim();
+        if (!g.nomeDono && s.name) g.nomeDono = String(s.name).trim();
+        if (!g.usuarioId && s.usuarioId) g.usuarioId = Number(s.usuarioId) || null;
+        if (!g.image && s.image) g.image = String(s.image);
+        const pc = Array.isArray(s.palavras_chave) ? s.palavras_chave : [];
+        for (const p of pc) {
+            const t = String(p || "").trim();
+            if (t && !g.palavrasChave.includes(t)) g.palavrasChave.push(t);
+        }
+        const links = Array.isArray(s.links) ? s.links : [];
+        for (const l of links) {
+            if (!l || !l.url) continue;
+            if (l.publico === false) continue;
+            g.links.push({
+                url: String(l.url),
+                tipo: String(l.tipo || ""),
+                rotulo: String(l.rotulo || ""),
+                categoria: String(l.categoria || ""),
+                segmento: String(l.segmento || "")
+            });
+        }
+        if (s.link) {
+            const jaTem = g.links.some(l => l.url === String(s.link));
+            if (!jaTem) {
+                g.links.push({
+                    url: String(s.link),
+                    tipo: "site",
+                    rotulo: "Site",
+                    categoria: g.categoria || "EMPRESAS",
+                    segmento: g.segmento || ""
+                });
+            }
+        }
+    }
+    const resultado = [];
+    for (const g of grupos.values()) {
+        const espacos = g.espacos.sort((a, b) => a - b);
+        resultado.push(Object.assign({}, g, { espacos, blocos: agruparBlocosContiguos(espacos) }));
+    }
+    return resultado;
+}
+
+function pontuarAnunciante(g, termos, numeros) {
+    let score = 0;
+    const tituloNorm = normalizarTextoBusca(g.titulo);
+    const segmentoNorm = normalizarTextoBusca(g.segmento);
+    const descNorm = normalizarTextoBusca(g.descricao);
+    const nomeNorm = normalizarTextoBusca(g.nomeDono);
+    const catNorm = normalizarTextoBusca(g.categoria);
+    const kwNorm = normalizarTextoBusca((g.palavrasChave || []).join(" "));
+    const linksNorm = normalizarTextoBusca(
+        (g.links || []).map(l => (l.url || "") + " " + (l.rotulo || "") + " " + (l.tipo || "")).join(" ")
+    );
+    const tudoNorm = tituloNorm + " " + segmentoNorm + " " + nomeNorm + " " + kwNorm + " " + descNorm;
+
+    for (const termo of termos) {
+        if (tituloNorm === termo) score += 100;
+        else if (tituloNorm.startsWith(termo)) score += 85;
+        else if (tituloNorm.includes(termo)) score += 70;
+        if (segmentoNorm === termo) score += 60;
+        else if (segmentoNorm.includes(termo)) score += 55;
+        if (nomeNorm.includes(termo)) score += 60;
+        if (kwNorm.includes(termo)) score += 50;
+        if (descNorm.includes(termo)) score += 40;
+        if (catNorm.includes(termo)) score += 45;
+        if (linksNorm.includes(termo)) score += 30;
+        if (tudoNorm.includes(termo)) score += 20;
+    }
+    for (const n of numeros) {
+        if (g.espacos.indexOf(n) >= 0) score += 90;
+    }
+    return score;
+}
+
+app.get("/api/busca", async (req, res) => {
+    try {
+        const q = String(req.query.q || "").trim();
+        const cat = String(req.query.categoria || "").trim();
+        const seg = String(req.query.segmento || "").trim();
+        const limite = Math.min(50, Math.max(1, parseInt(req.query.limite, 10) || 20));
+        const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
+
+        const indices = construirIndiceAnunciantes();
+        const catNormReq = cat ? normalizarTextoBusca(cat) : "";
+        let alvo = indices;
+
+        if (catNormReq && catNormReq !== "todos") {
+            alvo = alvo.filter(g => normalizarTextoBusca(g.categoria) === catNormReq);
+        }
+        if (seg) {
+            const segNorm = normalizarTextoBusca(seg);
+            alvo = alvo.filter(g => normalizarTextoBusca(g.segmento).indexOf(segNorm) >= 0);
+        }
+
+        let total = alvo.length;
+        let resultados;
+        if (q) {
+            const termos = q.split(/\s+/).map(normalizarTextoBusca).filter(Boolean);
+            const numeros = [];
+            const nums = q.match(/\d+/g);
+            if (nums) {
+                for (const n of nums) {
+                    const ni = Number(n);
+                    if (ni >= 1 && ni <= 1000000) numeros.push(ni);
+                }
+            }
+            const comScore = [];
+            for (const g of alvo) {
+                const score = pontuarAnunciante(g, termos, numeros);
+                if (score > 0) comScore.push({ g, score });
+            }
+            comScore.sort((a, b) => (b.score - a.score) || (b.g.espacos.length - a.g.espacos.length) || a.g.titulo.localeCompare(b.g.titulo));
+            total = comScore.length;
+            resultados = comScore.slice(offset, offset + limite).map(x => x.g);
+        } else {
+            alvo.sort((a, b) => (b.espacos.length - a.espacos.length) || a.titulo.localeCompare(b.titulo));
+            resultados = alvo.slice(offset, offset + limite);
+        }
+
+        const resposta = resultados.map(g => ({
+            anunciante: g.titulo || g.nomeDono || "Anunciante",
+            titulo: g.titulo,
+            categoria: g.categoria || "OUTROS",
+            segmento: g.segmento,
+            descricao: g.descricao,
+            palavrasChave: g.palavrasChave,
+            links: g.links,
+            nomeDono: g.nomeDono,
+            usuarioId: g.usuarioId,
+            image: g.image,
+            espacos: g.espacos,
+            blocos: g.blocos,
+            qtdEspacos: g.espacos.length
+        }));
+
+        res.json({ ok: true, total, limite, offset, resultados: resposta });
+    } catch (error) {
+        console.error("ERRO na busca de anunciantes:", error.message);
+        res.status(500).json({ error: "Não foi possível realizar a busca." });
+    }
+});
+
+/* Salva os dados públicos de pesquisa do anúncio de um espaço
+   (categoria, segmento, descrição, palavras-chave e links).
+   Escopo "solo" aplica ao espaço; "bloco" aplica a todo o bloco. */
+app.post("/api/anuncio/dados/:id", authOpcional, async (req, res) => {
+    try {
+        const id = Number(String(req.params.id || ""));
+        if (!Number.isInteger(id) || id < 1 || id > 1000000) {
+            return res.status(400).json({ error: "Espaço inválido." });
+        }
+        const db = readDB();
+        if (!db[id]) {
+            return res.status(404).json({ error: "Espaço não encontrado." });
+        }
+        if (db[id].status !== "paid" && db[id].status !== "published") {
+            return res.status(403).json({ error: "O espaço ainda não está publicado." });
+        }
+        if (!(await usuarioEhDonoEspaco(req, db[id]))) {
+            return res.status(403).json({ error: "Você não é o proprietário do espaço." });
+        }
+
+        const cat = String(req.body.categoria || "").trim().toUpperCase();
+        if (cat && CATEGORIAS_ANUNCIANTE.indexOf(cat) < 0) {
+            return res.status(400).json({ error: "Categoria inválida." });
+        }
+        const segmento = String(req.body.segmento || "").trim().slice(0, 120);
+        const descricao = String(req.body.descricao || "").trim().slice(0, 400);
+
+        let palavras = req.body.palavras_chave;
+        if (typeof palavras === "string") {
+            palavras = palavras.split(/[,;]/).map(s => s.trim()).filter(Boolean);
+        }
+        if (!Array.isArray(palavras)) palavras = [];
+        palavras = palavras.map(p => String(p).trim().slice(0, 40)).filter(Boolean).slice(0, 30);
+
+        const linksInput = Array.isArray(req.body.links) ? req.body.links : [];
+        const links = [];
+        for (const l of linksInput.slice(0, 10)) {
+            if (!l || typeof l !== "object") continue;
+            const url = normalizarLink(l.url);
+            if (!url) continue;
+            const lCat = String(l.categoria || "").trim().toUpperCase();
+            if (lCat && CATEGORIAS_ANUNCIANTE.indexOf(lCat) < 0) continue;
+            links.push({
+                url,
+                tipo: String(l.tipo || "").trim().slice(0, 30),
+                rotulo: String(l.rotulo || "").trim().slice(0, 60),
+                categoria: lCat,
+                segmento: String(l.segmento || "").trim().slice(0, 120),
+                publico: l.publico !== false
+            });
+        }
+
+        const escopo = req.body.escopo === "bloco" ? "bloco" : "solo";
+        const setAplicar = new Set([id]);
+        if (escopo === "bloco") {
+            const token = db[id].orderToken;
+            const fila = [id];
+            while (fila.length) {
+                const atual = fila.shift();
+                const indice = atual - 1;
+                const linha = Math.floor(indice / 1000);
+                const coluna = indice % 1000;
+                const vizinhos = [];
+                if (coluna > 0) vizinhos.push(atual - 1);
+                if (coluna < 999) vizinhos.push(atual + 1);
+                if (linha > 0) vizinhos.push(atual - 1000);
+                if (linha < 999) vizinhos.push(atual + 1000);
+                for (const v of vizinhos) {
+                    const sv = db[v];
+                    if (setAplicar.has(v) || !sv) continue;
+                    if (sv.orderToken === token && (sv.status === "paid" || sv.status === "published")) {
+                        setAplicar.add(v);
+                        fila.push(v);
+                    }
+                }
+            }
+        }
+        const idsAplicar = [...setAplicar].sort((a, b) => a - b);
+
+        const dados = {};
+        if (cat) dados.categoria = cat;
+        dados.segmento = segmento;
+        dados.descricao = descricao;
+        dados.palavras_chave = palavras;
+        dados.links = links;
+        for (const sid of idsAplicar) {
+            db[sid] = Object.assign({}, db[sid], dados);
+        }
+        writeDB(db);
+
+        res.json({
+            ok: true,
+            spaces: idsAplicar,
+            dados: { categoria: cat, segmento, descricao, palavras_chave: palavras, links }
+        });
+    } catch (error) {
+        console.error("ERRO ao salvar dados do anúncio:", error.message);
+        res.status(500).json({ error: "Não foi possível salvar os dados do anúncio." });
+    }
+});
+
 /* =========================
-   BISBILHOTAR - Perfis P�blicos
+   BISBILHOTAR - Perfis Públicos
 ========================= */
 
 app.get("/api/perfis/publicos", async (req, res) => {

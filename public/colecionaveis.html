@@ -51,6 +51,114 @@ input::placeholder,select::placeholder,textarea::placeholder{color:#b0b0bd;opaci
 .hidden{display:none!important}
 
 /* ===== HEADER ===== */
+.l-header{
+    position:sticky;top:0;z-index:100;border-bottom:1px solid color-mix(in oklab, var(--borda) 70%, transparent);background:color-mix(in oklab, var(--fundo) 85%, transparent);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);height:var(--header-height);
+}
+.l-header-inner{
+    max-width:var(--max-content);margin:0 auto;height:100%;display:grid;grid-template-columns:minmax(150px,auto)minmax(0,1fr)minmax(max-content,auto);align-items:center;gap:12px;padding:0 16px;
+}
+@media (min-width:640px){
+    .l-header-inner{padding:0 24px}
+}
+@media (min-width:1024px){
+    .l-header-inner{gap:32px}
+}
+.l-header-logo{
+    height:58px;width:auto;object-fit:contain;display:none;
+}
+.l-header-logo-mobile{
+    height:48px;width:auto;object-fit:contain;display:block;
+}
+@media (min-width:1024px){
+    .l-header-logo{display:block}.l-header-logo-mobile{display:none}
+}
+.l-header-nav{
+    display:none;justify-content:center;gap:24px;
+}
+@media (min-width:1024px){
+    .l-header-nav{display:flex}
+}
+@media (min-width:1280px){
+    .l-header-nav{gap:32px}
+}
+@media (min-width:1024px)and(max-width:1399px){
+    .l-header-inner{gap:16px}.l-header-nav{gap:14px}.l-header-nav a{font-size:10px;letter-spacing:.07em}.l-header-account-info{max-width:86px}
+}
+.l-header-nav a{
+    position:relative;display:flex;align-items:center;gap:8px;padding:8px 0;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted-foreground);text-decoration:none;transition:color 0.2s ease;
+}
+.l-header-nav a:hover,.l-header-nav a.active{
+    color:var(--gold);
+}
+.l-header-nav a::after{
+    content:'';position:absolute;left:0;right:0;bottom:-2px;height:1px;background:var(--gold);transform:scaleX(0);transition:transform 0.3s ease;
+}
+.l-header-nav a.active::after,.l-header-nav a:hover::after{
+    transform:scaleX(1);
+}
+.l-header-nav-dot{
+    width:6px;height:6px;border-radius:50%;background:var(--gold);
+}
+.l-header-actions{
+    display:flex;align-items:center;gap:8px;
+}
+@media (min-width:640px){
+    .l-header-actions{gap:12px}
+}
+.l-menu-toggle{display:grid}
+@media (min-width:1024px){.l-header-btn.l-menu-toggle{display:none}}
+.l-header-btn{
+    position:relative;display:grid;place-items:center;width:40px;height:40px;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--surface);color:var(--muted-foreground);cursor:pointer;transition:all 0.2s ease;
+}
+.l-header-btn:hover{
+    border-color:var(--gold-40);color:var(--gold);
+}
+.l-header-btn svg{
+    width:18px;height:18px;
+}
+.l-notif-badge{
+    position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:var(--radius-full);background:var(--danger);color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center;
+}
+.l-header-account{
+    display:flex;align-items:center;gap:10px;padding:2px 2px 2px 2px;border-radius:var(--radius-xl);border:1px solid transparent;background:transparent;color:inherit;cursor:pointer;transition:all 0.2s ease;
+}
+@media (min-width:640px){
+    .l-header-account{border-color:var(--border);padding:4px 10px 4px 4px;}
+}
+.l-header-account:hover{
+    border-color:var(--gold-40);
+}
+.l-header-avatar-wrap{
+    position:relative;flex-shrink:0;
+}
+.l-header-avatar{
+    width:36px;height:36px;border-radius:var(--radius-full);display:grid;place-items:center;overflow:hidden;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:#000;font-size:13px;font-weight:900;border:2px solid var(--gold-40);
+}
+.l-header-avatar img{
+    width:100%;height:100%;object-fit:cover;
+}
+.l-header-avatar-status{
+    position:absolute;right:-2px;bottom:-2px;width:12px;height:12px;border-radius:50%;background:var(--success);border:2px solid var(--background);
+}
+.l-header-account-info{
+    display:none;text-align:left;line-height:1.2;
+}
+@media (min-width:1024px){
+    .l-header-account-info{display:block}
+}
+.l-header-account-name{
+    display:block;font-size:13px;font-weight:700;color:var(--foreground);
+}
+.l-header-account-label{
+    display:block;font-size:11px;color:var(--muted-foreground);
+}
+.l-header-account svg{
+    display:none;width:16px;height:16px;color:var(--muted-foreground);
+}
+@media (min-width:1024px){
+    .l-header-account svg{display:block}
+}
+/* ===== FIM HEADER ===== */
 .topo{
     position:sticky;top:0;z-index:60;
     display:flex;align-items:center;justify-content:space-between;

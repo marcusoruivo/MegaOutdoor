@@ -1532,24 +1532,73 @@ function toggleModalFlip(){
     }
 }
 
+/* ===== ATUALIZAR HEADER (COLECIONÁVEIS) ===== */
 function atualizarHeader(){
-    const bt = document.getElementById("btnConta");
-    if (minhaConta && minhaConta.token) {
-        const u = (minhaConta.usuario && minhaConta.usuario.nome) || minhaConta.nome || "";
-        bt.innerHTML = '🔐 <span class="conta-nome">' + esc(u || "Minha conta") + '</span>';
-        bt.title = "Sessão iniciada — clique para ver sua conta";
+    const btnEntrar = document.getElementById("btnEntrarHeader");
+    const avatarBtn = document.getElementById("userAvatarHeader");
+    const initials = document.getElementById("avatarInitials");
+    const name = document.getElementById("avatarName");
+    const avatarRing = avatarBtn ? avatarBtn.querySelector(".l-header-avatar") : null;
+    if(!btnEntrar || !avatarBtn) return;
+
+    if(minhaConta && minhaConta.token){
+        const u = minhaConta.usuario || minhaConta;
+        const nome = u.apelido || u.nome || u.email || "Usuário";
+        const primeiroNome = nome.split(" ")[0];
+        const iniciais = nome.split(" ").map(function(p){ return p.charAt(0); }).join("").substring(0, 2).toUpperCase();
+        btnEntrar.style.display = "none";
+        avatarBtn.style.display = "flex";
+        const fotoUrl = u.fotoUrl || u.foto_url || u.foto || minhaConta.fotoUrl || minhaConta.foto_url || minhaConta.foto;
+        let imgExistente = avatarRing ? avatarRing.querySelector("img") : null;
+        if(fotoUrl){
+            if(initials) initials.style.display = "none";
+            if(!imgExistente){
+                const img = document.createElement("img");
+                img.alt = nome;
+                img.src = fotoUrl;
+                img.onerror = function(){
+                    this.style.display = "none";
+                    if(initials){
+                        initials.style.display = "flex";
+                        initials.textContent = iniciais;
+                    }
+                };
+                if(avatarRing){
+                    avatarRing.innerHTML = "";
+                    avatarRing.appendChild(img);
+                }
+            } else {
+                imgExistente.src = fotoUrl;
+                imgExistente.onerror = function(){
+                    this.style.display = "none";
+                    if(initials){
+                        initials.style.display = "flex";
+                        initials.textContent = iniciais;
+                    }
+                };
+            }
+        } else {
+            if(avatarRing){
+                avatarRing.innerHTML = '<span id="avatarInitials"></span>';
+                const newInitials = avatarRing.querySelector("#avatarInitials");
+                if(newInitials){
+                    newInitials.style.display = "flex";
+                    newInitials.textContent = iniciais;
+                }
+            }
+        }
+        if(name) name.textContent = primeiroNome;
     } else {
-        bt.innerHTML = "👤 ENTRAR";
+        btnEntrar.style.display = "flex";
+        avatarBtn.style.display = "none";
     }
     carregarContaRecebimento();
 }
 
-/* ===== ATUALIZAR AVATAR NO HEADER (COLECIONÁVEIS) ===== */
+/* ===== ATUALIZAR AVATAR NO HEADER (COLECIONÁVEIS) — compat ===== */
 function atualizarAvatarHeaderColecionaveis(){
-    const avatarRing = document.getElementById("avatarRingColecionaveis");
-    const initialsEl = document.getElementById("avatarInitialsColecionaveis");
-    const nameEl = document.getElementById("avatarNameColecionaveis");
-    if(!avatarRing) return;
+    atualizarHeader();
+}
 
     if(minhaConta && minhaConta.token){
         const u = minhaConta.usuario || minhaConta;
@@ -4188,7 +4237,9 @@ window.addEventListener("load", () => {
         const match = window.location.hash.match(/^#figurinha-(\d+)$/);
         if (match) setTimeout(() => abrirModalFigurinha(Number(match[1])), 250);
     });
-    iniciarPollingColecionaveis();
+    if(typeof iniciarPollingColecionaveis === "function"){
+        iniciarPollingColecionaveis();
+    }
 });
 
 /* ===== HEADER UTILITIES ===== */
@@ -4290,43 +4341,6 @@ function abrirContaDropdown(ev){
     }
 
     dd.classList.add("open");
-    const contaAtual = (minhaConta && (minhaConta.usuario || minhaConta)) || {};
-    const fotoUrl = u.fotoUrl || u.foto_url || u.foto || minhaConta.fotoUrl || minhaConta.foto_url || minhaConta.foto;
-    const nome = u.apelido || u.nome || u.email || "Usuário";
-    const email = contaAtual.email || "minha conta";
-    const ini = (nome.trim()[0] || "M").toUpperCase();
-
-    const elNome = document.getElementById("contaDropNome");
-    const elEmail = document.getElementById("contaDropEmail");
-    const elIni = document.getElementById("contaDropInitials");
-    const elAv = document.getElementById("avatarInitials");
-    const dropHeadImg = document.querySelector("#contaDropdown .conta-dropdown-head img.conta-photo");
-
-    if(elNome) elNome.textContent = nome;
-    if(elEmail) elEmail.textContent = email;
-    if(elIni) elIni.textContent = ini;
-    if(elAv) elAv.textContent = ini;
-
-    if(fotoUrl){
-        if(elIni) elIni.style.display = "none";
-        if(!dropHeadImg){
-            const headEl = document.querySelector("#contaDropdown .conta-dropdown-head .avatar-initials");
-            if(headEl){
-                const img = document.createElement("img");
-                img.className = "conta-photo";
-                img.alt = nome;
-                img.src = fotoUrl;
-                headEl.parentNode.insertBefore(img, headEl);
-            }
-        } else {
-            dropHeadImg.src = fotoUrl;
-        }
-    } else {
-        if(elIni) elIni.style.display = "flex";
-        if(dropHeadImg) dropHeadImg.remove();
-    }
-
-    dd.classList.add("open");
 }
 
 function fecharContaDropdown(){
@@ -4334,44 +4348,8 @@ function fecharContaDropdown(){
     if(dd) dd.classList.remove("open");
 }
 
-function toggleTema(){
-    const body = document.body;
-    const isLight = body.classList.toggle("light-theme");
-    const btn = document.getElementById("btnTema");
-    if(btn) btn.textContent = isLight ? "☀️" : "🌙";
-    try{
-        localStorage.setItem("mega_tema", isLight ? "light" : "dark");
-    }catch(e){}
-}
-
-function aplicarTema(){
-    try{
-        const tema = localStorage.getItem("mega_tema");
-        const btn = document.getElementById("btnTema");
-        if(tema === "light"){
-            document.body.classList.add("light-theme");
-            if(btn) btn.textContent = "☀️";
-        }else{
-            if(btn) btn.textContent = "🌙";
-        }
-    }catch(e){}
-}
-
-function toggleMenuMobile(){
-    const m = document.getElementById("mobileMenu");
-    const o = document.getElementById("mobileMenuOverlay");
-    if(m) m.classList.toggle("open");
-    if(o) o.classList.toggle("open");
-}
-
-function fecharMenuMobile(event){
-    const m = document.getElementById("mobileMenu");
-    const o = document.getElementById("mobileMenuOverlay");
-    if(m) m.classList.remove("open");
-    if(o) o.classList.remove("open");
-}
-
 /* ===== INICIALIZAÇÃO DO TEMA ===== */
 aplicarTema();
+</script>
 </body>
 </html>

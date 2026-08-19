@@ -956,10 +956,6 @@ body{overflow-x:hidden}
 <!-- ===== HEADER ===== -->
 <header class="l-header" id="mainHeader">
     <div class="l-header-inner">
-        <button class="l-header-btn l-menu-toggle" id="btnMenuMobile" onclick="toggleMenuMobile()" aria-label="Menu">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-        </button>
-
         <a href="/" class="l-header-logo-link" style="display:flex;align-items:center;text-decoration:none;">
             <img src="/logo-milhao-door.png" alt="Milhão Door" class="l-header-logo">
             <img src="/logo-milhao-door.png" alt="Milhão Door" class="l-header-logo-mobile">
@@ -970,7 +966,13 @@ body{overflow-x:hidden}
         </a>
 
         <nav class="l-header-nav">
-            <a href="/" onclick="event.preventDefault(); window.location.href='/'">🟡 MEUS ESPAÇOS</a>
+            <a href="/" onclick="event.preventDefault(); window.location.href='/'">INÍCIO</a>
+            <a href="#como-funciona" onclick="abrirComoFunciona(event)">COMO FUNCIONA</a>
+            <a href="#precos" onclick="abrirPrecos(event)">PREÇOS</a>
+            <a href="#combos" onclick="verTodosKits(event)">COMBOS & KITS</a>
+            <a href="#faq" onclick="abrirFaq(event)">FAQ</a>
+            <a href="/colecionaveis.html" class="active"><span class="l-header-nav-dot"></span>COLECIONÁVEIS</a>
+            <a href="#contato" onclick="scrollToFooter(event)">CONTATO</a>
         </nav>
 
         <div class="l-header-actions">
@@ -1006,10 +1008,6 @@ body{overflow-x:hidden}
                 </span>
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </button>
-
-            <a class="l-header-btn l-grid-sm" href="/" style="text-decoration:none" title="Voltar">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-            </a>
         </div>
     </div>
 </header>

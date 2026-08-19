@@ -956,6 +956,10 @@ body{overflow-x:hidden}
 <!-- ===== HEADER ===== -->
 <header class="l-header" id="mainHeader">
     <div class="l-header-inner">
+        <button class="l-header-btn l-menu-toggle" id="btnMenuMobile" onclick="toggleMenuMobile()" aria-label="Menu">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+
         <a href="/" class="l-header-logo-link" style="display:flex;align-items:center;text-decoration:none;">
             <img src="/logo-milhao-door.png" alt="Milhão Door" class="l-header-logo">
             <img src="/logo-milhao-door.png" alt="Milhão Door" class="l-header-logo-mobile">
@@ -965,24 +969,42 @@ body{overflow-x:hidden}
             </div>
         </a>
 
-        <div class="l-header-actions">
-            <a class="l-header-btn l-header-account" href="/" style="text-decoration:none;display:flex;align-items:center;gap:8px;padding:8px 12px;background:linear-gradient(90deg,var(--amarelo),var(--laranja));color:#141414;font-weight:700;border-radius:10px;font-size:13px;">🟡 MEUS ESPAÇOS</a>
+        <nav class="l-header-nav">
+            <a href="/" onclick="event.preventDefault(); window.location.href='/'">🟡 MEUS ESPAÇOS</a>
+        </nav>
 
+        <div class="l-header-actions">
             <button class="l-header-btn" id="btnNotificacoes" onclick="abrirPainelNotificacoes()" title="Notificações" style="position:relative;padding:8px 12px">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
-                <span id="notificacoesBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ff4d4d;color:#fff;font-size:10px;font-weight:900;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px">0</span>
+                <span class="l-notif-badge" id="notificacoesBadge" style="display:none;">0</span>
             </button>
 
-            <button class="l-header-account" id="btnConta" onclick="abrirConta()" title="Minha conta">
+            <button class="l-header-btn l-grid-sm" id="btnTema" onclick="toggleTema()" title="Alternar tema">
+                <span id="btnTemaIcon">🌙</span>
+            </button>
+
+            <button class="l-header-account" id="btnEntrarHeader" onclick="abrirLogin()" style="display:none;">
                 <span class="l-header-avatar-wrap">
-                    <span class="l-header-avatar" id="avatarRingColecionaveis">
-                        <span id="avatarInitialsColecionaveis" style="display:flex;"></span>
-                    </span>
+                    <span class="l-header-avatar">👤</span>
                 </span>
-                <span class="l-header-account-info" style="display:none;">
-                    <span class="l-header-account-name" id="avatarNameColecionaveis"></span>
+                <span class="l-header-account-info">
+                    <span class="l-header-account-name">Entrar</span>
                     <span class="l-header-account-label">Minha conta</span>
                 </span>
+            </button>
+
+            <button class="l-header-account" id="userAvatarHeader" onclick="abrirContaDropdown(event)" style="display:none;">
+                <span class="l-header-avatar-wrap">
+                    <span class="l-header-avatar">
+                        <span id="avatarInitials">M</span>
+                    </span>
+                    <span class="l-header-avatar-status"></span>
+                </span>
+                <span class="l-header-account-info">
+                    <span class="l-header-account-name" id="avatarName">Usuário</span>
+                    <span class="l-header-account-label">Minha conta</span>
+                </span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </button>
 
             <a class="l-header-btn l-grid-sm" href="/" style="text-decoration:none" title="Voltar">
@@ -991,6 +1013,24 @@ body{overflow-x:hidden}
         </div>
     </div>
 </header>
+
+<!-- ===== DROPDOWN CONTA ===== -->
+<div class="conta-dropdown" id="contaDropdown" style="display:none;">
+    <div class="conta-dropdown-head">
+        <div class="avatar-initials" id="contaDropInitials">M</div>
+        <div>
+            <b id="contaDropNome">Usuário</b>
+            <span id="contaDropEmail">minha conta</span>
+        </div>
+    </div>
+    <a href="#" onclick="event.preventDefault();abrirPainelComando();fecharContaDropdown()">⚙️ Painel de Comando</a>
+    <a href="#" onclick="event.preventDefault();abrirChatGeral();fecharContaDropdown()">💬 Chat ao vivo</a>
+    <a href="/colecionaveis.html">🃏 Meus Colecionáveis</a>
+    <a href="#" onclick="event.preventDefault();abrirEditarPerfil();fecharContaDropdown()">✏️ Editar Perfil</a>
+    <a href="#" onclick="event.preventDefault();abrirMeusDestaques();fecharContaDropdown()">✨ Meus Destaques</a>
+    <a href="#" onclick="event.preventDefault();abrirSistemaIndicacao();fecharContaDropdown()">🎁 Indique e Ganhe</a>
+    <a href="#" id="contaDropSair" onclick="event.preventDefault();sairConta();fecharContaDropdown()">🚪 Sair</a>
+</div>
 
 <section class="mp-recebimentos-banner" id="mpRecebimentosBanner" aria-label="Mercado Pago">
     <div><div class="titulo">💳 MERCADO PAGO</div><div class="texto" id="mpRecebimentosTexto">Conecte seu Mercado Pago para vender suas figurinhas.</div></div>
@@ -4045,27 +4085,187 @@ window.addEventListener("load", () => {
     iniciarPollingColecionaveis();
 });
 
-/* ===== POLLING INTELIGENTE =====
-   Atualiza a aba visível a cada 15s; pausa quando a aba do
-   navegador está oculta e retoma ao voltar (visibilidade). */
-let _pollColTimer = null;
-function iniciarPollingColecionaveis(){
-    if (_pollColTimer) clearInterval(_pollColTimer);
-    _pollColTimer = setInterval(() => {
-        if (document.visibilityState !== "visible") return;
-        const aba = estado.aba || "album";
-        try {
-            if (aba === "mercado") carregarMercado(estado.mercado.pagina || 1);
-            else if (aba === "ofertas") carregarOfertas();
-            else if (aba === "leiloes") carregarLeiloes();
-            else if (aba === "trocas") carregarTrocas();
-            else if (aba === "acervo") carregarAcervo();
-        } catch(e){ /* ignora falha pontual de polling */ }
-    }, 15000);
-    document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible" && estado.aba === "ofertas") carregarOfertas();
-    });
+/* ===== HEADER UTILITIES ===== */
+function toggleTema(){
+    const body = document.body;
+    const isLight = body.classList.toggle("light-theme");
+    const btn = document.getElementById("btnTema");
+    if(btn) btn.textContent = isLight ? "☀️" : "🌙";
+    try{
+        localStorage.setItem("mega_tema", isLight ? "light" : "dark");
+    }catch(e){}
 }
-</script>
+
+function aplicarTema(){
+    try{
+        const tema = localStorage.getItem("mega_tema");
+        const btn = document.getElementById("btnTema");
+        if(tema === "light"){
+            document.body.classList.add("light-theme");
+            if(btn) btn.textContent = "☀️";
+        }else{
+            if(btn) btn.textContent = "🌙";
+        }
+    }catch(e){}
+}
+
+function toggleMenuMobile(){
+    const m = document.getElementById("mobileMenu");
+    const o = document.getElementById("mobileMenuOverlay");
+    if(m) m.classList.toggle("open");
+    if(o) o.classList.toggle("open");
+}
+
+function fecharMenuMobile(event){
+    const m = document.getElementById("mobileMenu");
+    const o = document.getElementById("mobileMenuOverlay");
+    if(m) m.classList.remove("open");
+    if(o) o.classList.remove("open");
+}
+
+function abrirContaDropdown(ev){
+    if(ev){ ev.stopPropagation(); }
+
+    const dd = document.getElementById("contaDropdown");
+
+    if(!dd) return;
+
+    if(dd.classList.contains("open")){
+        fecharContaDropdown();
+        return;
+    }
+
+    const contaAtual = (minhaConta && (minhaConta.usuario || minhaConta)) || {};
+    const nome = contaAtual.apelido || contaAtual.nome || contaAtual.email || "Usuário";
+
+    const email = contaAtual.email || "minha conta";
+
+    const ini = (nome.trim()[0] || "M").toUpperCase();
+
+    const elNome = document.getElementById("contaDropNome");
+
+    const elEmail = document.getElementById("contaDropEmail");
+
+    const elIni = document.getElementById("contaDropInitials");
+
+    const elAv = document.getElementById("avatarInitials");
+
+    const dropHeadImg = document.querySelector("#contaDropdown .conta-dropdown-head img.conta-photo");
+
+    if(elNome) elNome.textContent = nome;
+
+    if(elEmail) elEmail.textContent = email;
+
+    if(elIni) elIni.textContent = ini;
+
+    if(elAv) elAv.textContent = ini;
+
+    if(minhaConta){
+        const u = minhaConta.usuario || minhaConta;
+        const fotoUrl = u.fotoUrl || u.foto_url || u.foto || minhaConta.fotoUrl || minhaConta.foto_url || minhaConta.foto;
+        if(fotoUrl){
+            if(elIni) elIni.style.display = "none";
+            if(!dropHeadImg){
+                const headEl = document.querySelector("#contaDropdown .conta-dropdown-head .avatar-initials");
+                if(headEl){
+                    const img = document.createElement("img");
+                    img.className = "conta-photo";
+                    img.alt = nome;
+                    img.src = fotoUrl;
+                    headEl.parentNode.insertBefore(img, headEl);
+                }
+            } else {
+                dropHeadImg.src = fotoUrl;
+            }
+        } else {
+            if(elIni) elIni.style.display = "flex";
+            if(dropHeadImg) dropHeadImg.remove();
+        }
+    }
+
+    dd.classList.add("open");
+    const contaAtual = (minhaConta && (minhaConta.usuario || minhaConta)) || {};
+    const fotoUrl = u.fotoUrl || u.foto_url || u.foto || minhaConta.fotoUrl || minhaConta.foto_url || minhaConta.foto;
+    const nome = u.apelido || u.nome || u.email || "Usuário";
+    const email = contaAtual.email || "minha conta";
+    const ini = (nome.trim()[0] || "M").toUpperCase();
+
+    const elNome = document.getElementById("contaDropNome");
+    const elEmail = document.getElementById("contaDropEmail");
+    const elIni = document.getElementById("contaDropInitials");
+    const elAv = document.getElementById("avatarInitials");
+    const dropHeadImg = document.querySelector("#contaDropdown .conta-dropdown-head img.conta-photo");
+
+    if(elNome) elNome.textContent = nome;
+    if(elEmail) elEmail.textContent = email;
+    if(elIni) elIni.textContent = ini;
+    if(elAv) elAv.textContent = ini;
+
+    if(fotoUrl){
+        if(elIni) elIni.style.display = "none";
+        if(!dropHeadImg){
+            const headEl = document.querySelector("#contaDropdown .conta-dropdown-head .avatar-initials");
+            if(headEl){
+                const img = document.createElement("img");
+                img.className = "conta-photo";
+                img.alt = nome;
+                img.src = fotoUrl;
+                headEl.parentNode.insertBefore(img, headEl);
+            }
+        } else {
+            dropHeadImg.src = fotoUrl;
+        }
+    } else {
+        if(elIni) elIni.style.display = "flex";
+        if(dropHeadImg) dropHeadImg.remove();
+    }
+
+    dd.classList.add("open");
+}
+
+function fecharContaDropdown(){
+    const dd = document.getElementById("contaDropdown");
+    if(dd) dd.classList.remove("open");
+}
+
+function toggleTema(){
+    const body = document.body;
+    const isLight = body.classList.toggle("light-theme");
+    const btn = document.getElementById("btnTema");
+    if(btn) btn.textContent = isLight ? "☀️" : "🌙";
+    try{
+        localStorage.setItem("mega_tema", isLight ? "light" : "dark");
+    }catch(e){}
+}
+
+function aplicarTema(){
+    try{
+        const tema = localStorage.getItem("mega_tema");
+        const btn = document.getElementById("btnTema");
+        if(tema === "light"){
+            document.body.classList.add("light-theme");
+            if(btn) btn.textContent = "☀️";
+        }else{
+            if(btn) btn.textContent = "🌙";
+        }
+    }catch(e){}
+}
+
+function toggleMenuMobile(){
+    const m = document.getElementById("mobileMenu");
+    const o = document.getElementById("mobileMenuOverlay");
+    if(m) m.classList.toggle("open");
+    if(o) o.classList.toggle("open");
+}
+
+function fecharMenuMobile(event){
+    const m = document.getElementById("mobileMenu");
+    const o = document.getElementById("mobileMenuOverlay");
+    if(m) m.classList.remove("open");
+    if(o) o.classList.remove("open");
+}
+
+/* ===== INICIALIZAÇÃO DO TEMA ===== */
+aplicarTema();
 </body>
 </html>

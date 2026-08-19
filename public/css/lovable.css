@@ -2090,7 +2090,7 @@ button, input, select, textarea{
 ========================================================= */
 .busca-outdoor{
     position: absolute;
-    top: 12px;
+    bottom: 12px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 60;
@@ -2170,6 +2170,11 @@ button, input, select, textarea{
     border-color: transparent;
 }
 .busca-outdoor-resultados{
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    margin-bottom: 8px;
     display: none;
     flex-direction: column;
     gap: 10px;
@@ -2274,7 +2279,7 @@ button, input, select, textarea{
 
 @media (max-width: 640px){
     .busca-outdoor{
-        top: 8px;
+        bottom: 8px;
         width: calc(100% - 16px);
     }
     .busca-outdoor-resultados{

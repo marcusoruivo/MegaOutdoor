@@ -932,22 +932,40 @@ body{overflow-x:hidden}
 <body>
 
 <!-- ===== HEADER ===== -->
-<header class="topo">
-    <div class="logo">
-        <img src="/logo-milhao-door.png" alt="Milhão Door">
-        <div>
-            <div class="marca">MILHÃO DOOR</div>
-            <div class="sub">ANIMAIS DO MUNDO · COLECIONÁVEIS</div>
+<header class="l-header" id="mainHeader">
+    <div class="l-header-inner">
+        <a href="/" class="l-header-logo-link" style="display:flex;align-items:center;text-decoration:none;">
+            <img src="/logo-milhao-door.png" alt="Milhão Door" class="l-header-logo">
+            <div style="display:flex;flex-direction:column;line-height:1.1;margin-left:8px;">
+                <span style="font-family:'Orbitron',sans-serif;font-size:15px;font-weight:800;background:linear-gradient(90deg,var(--amarelo),var(--laranja));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">MILHÃO DOOR</span>
+                <span style="font-size:10px;color:var(--muted);font-weight:500;">ANIMAIS DO MUNDO · COLECIONÁVEIS</span>
+            </div>
+        </a>
+
+        <div class="l-header-actions">
+            <a class="l-header-btn l-header-account" href="/" style="text-decoration:none;display:flex;align-items:center;gap:8px;padding:8px 12px;background:linear-gradient(90deg,var(--amarelo),var(--laranja));color:#141414;font-weight:700;border-radius:10px;font-size:13px;">🟡 MEUS ESPAÇOS</a>
+
+            <button class="l-header-btn" id="btnNotificacoes" onclick="abrirPainelNotificacoes()" title="Notificações" style="position:relative;padding:8px 12px">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
+                <span id="notificacoesBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ff4d4d;color:#fff;font-size:10px;font-weight:900;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px">0</span>
+            </button>
+
+            <button class="l-header-account" id="btnConta" onclick="abrirConta()" title="Minha conta">
+                <span class="l-header-avatar-wrap">
+                    <span class="l-header-avatar" id="avatarRingColecionaveis">
+                        <span id="avatarInitialsColecionaveis" style="display:flex;"></span>
+                    </span>
+                </span>
+                <span class="l-header-account-info" style="display:none;">
+                    <span class="l-header-account-name" id="avatarNameColecionaveis"></span>
+                    <span class="l-header-account-label">Minha conta</span>
+                </span>
+            </button>
+
+            <a class="l-header-btn l-grid-sm" href="/" style="text-decoration:none" title="Voltar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </a>
         </div>
-    </div>
-    <div class="topo-actions">
-        <a class="btn btn-amarelo topo-espacos" href="/" style="text-decoration:none">🟡 MEUS ESPAÇOS</a>
-        <button class="btn btn-ghost" id="btnNotificacoes" onclick="abrirPainelNotificacoes()" style="position:relative;padding:8px 12px" title="Notificações">
-            🔔
-            <span id="notificacoesBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ff4d4d;color:#fff;font-size:10px;font-weight:900;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px">0</span>
-        </button>
-        <button class="btn btn-amarelo" id="btnConta" onclick="abrirConta()">👤 ENTRAR</button>
-        <a class="btn btn-ghost" href="/" style="text-decoration:none">← Voltar</a>
     </div>
 </header>
 
@@ -1286,6 +1304,7 @@ async function api(url, opts = {}) {
             minhaConta = null;
             localStorage.removeItem("mega_conta");
             atualizarHeader();
+            atualizarAvatarHeaderColecionaveis();
         }
         const err = new Error((data && data.error) || "Erro na requisição");
         err.status = res.status;
@@ -1354,6 +1373,52 @@ function atualizarHeader(){
         bt.innerHTML = "👤 ENTRAR";
     }
     carregarContaRecebimento();
+}
+
+/* ===== ATUALIZAR AVATAR NO HEADER (COLECIONÁVEIS) ===== */
+function atualizarAvatarHeaderColecionaveis(){
+    const avatarRing = document.getElementById("avatarRingColecionaveis");
+    const initialsEl = document.getElementById("avatarInitialsColecionaveis");
+    const nameEl = document.getElementById("avatarNameColecionaveis");
+    if(!avatarRing) return;
+
+    if(minhaConta && minhaConta.token){
+        const u = minhaConta.usuario || minhaConta;
+        const nome = u.apelido || u.nome || u.email || "Usuário";
+        const primeiroNome = nome.split(" ")[0];
+        const iniciais = nome.split(" ").map(function(p){ return p.charAt(0); }).join("").substring(0, 2).toUpperCase();
+        const fotoUrl = u.fotoUrl || u.foto_url || u.foto || minhaConta.fotoUrl || minhaConta.foto_url || minhaConta.foto;
+        let imgExistente = avatarRing.querySelector("img");
+        if(fotoUrl){
+            initialsEl.style.display = "none";
+            if(!imgExistente){
+                const img = document.createElement("img");
+                img.alt = nome;
+                img.src = fotoUrl;
+                img.onerror = function(){
+                    this.style.display = "none";
+                    initialsEl.style.display = "flex";
+                    initialsEl.textContent = iniciais;
+                };
+                avatarRing.innerHTML = "";
+                avatarRing.appendChild(img);
+            } else {
+                imgExistente.src = fotoUrl;
+                imgExistente.onerror = function(){
+                    this.style.display = "none";
+                    initialsEl.style.display = "flex";
+                    initialsEl.textContent = iniciais;
+                };
+            }
+        } else {
+            avatarRing.innerHTML = '<span id="avatarInitialsColecionaveis" style="display:flex;"></span>';
+            const newInitials = avatarRing.querySelector("#avatarInitialsColecionaveis");
+            if(newInitials){
+                newInitials.style.display = "flex";
+                newInitials.textContent = iniciais;
+            }
+        }
+    }
 }
 
 /* ===== VALIDAÇÃO DE CPF/CNPJ (espelho do backend) ===== */
@@ -3715,6 +3780,7 @@ async function salvarPerfilColecao(){
         const d = await apiPut("/api/perfil", { apelido, bio });
         if(d && d.perfil){
             if(minhaConta) minhaConta.usuario = { ...(minhaConta.usuario || minhaConta), ...d.perfil };
+            atualizarAvatarHeaderColecionaveis();
         }
         msgEl.style.color = "var(--verde)";
         msgEl.textContent = "Perfil atualizado com sucesso!";
@@ -3885,6 +3951,7 @@ function salvarSessao(d){
     minhaConta = { token: d.token, usuario: d.usuario };
     localStorage.setItem("mega_conta", JSON.stringify(minhaConta));
     atualizarHeader();
+    atualizarAvatarHeaderColecionaveis();
     iniciarPollingNotificacoes();
 }
 
@@ -3893,6 +3960,7 @@ async function sairConta(){
     minhaConta = null;
     localStorage.removeItem("mega_conta");
     atualizarHeader();
+    atualizarAvatarHeaderColecionaveis();
     pararSSENotificacoes();
     const badge = document.getElementById("notificacoesBadge");
     if (badge) badge.style.display = "none";
@@ -3931,6 +3999,7 @@ window.addEventListener("load", () => {
         window.history.replaceState({}, "", url.toString());
     }
     atualizarHeader();
+    atualizarAvatarHeaderColecionaveis();
     carregarInfo().then(() => {
         const params = new URLSearchParams(window.location.search);
         const sellerId = params.get("sellerId");

@@ -18631,12 +18631,26 @@ function atualizarAvatarHeader(){
                 const img = document.createElement("img");
                 img.alt = nome;
                 img.src = fotoUrl;
+                img.onerror = function(){
+                    this.style.display = "none";
+                    if(initials){
+                        initials.style.display = "flex";
+                        initials.textContent = iniciais;
+                    }
+                };
                 if(avatarRing){
                     avatarRing.innerHTML = "";
                     avatarRing.appendChild(img);
                 }
             } else {
                 imgExistente.src = fotoUrl;
+                imgExistente.onerror = function(){
+                    this.style.display = "none";
+                    if(initials){
+                        initials.style.display = "flex";
+                        initials.textContent = iniciais;
+                    }
+                };
             }
         } else {
             if(avatarRing){

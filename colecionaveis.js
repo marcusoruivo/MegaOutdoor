@@ -92,6 +92,11 @@ const MARKETPLACE_FEE_PERCENT = 10;
 const TRADE_TTL_HORAS = 24;
 const EXPIRA_BLOQUEIO_HORAS = 24;
 
+/* Prazo para pagar uma venda/oferta de ÁLBUM COMPLETO aceita.
+   Vencido, a negociação expira e o álbum volta a ficar disponível. */
+const ALBUM_PAGAMENTO_TTL_HORAS =
+    Math.max(1, Number(process.env.ALBUM_PAGAMENTO_TTL_HORAS) || 24);
+
 /* Conquistas (sistema extensível: basta adicionar no array) */
 const CONQUISTAS = [
     { slug: "primeira_figurinha",      nome: "PRIMEIRA FIGURINHA",      descricao: "Adquira sua primeira figurinha.",                     icone: "🃏" },
@@ -846,6 +851,106 @@ module.exports = function criarModuloColecionaveis(deps) {
             );
         } catch (e) { /* ignora se o PostgreSQL não permitir direto */ }
 
+        /* =========================================================
+           CICLO DE VIDA DO ÁLBUM (duração, tema, recompensa)
+           Estados: ATIVO / ENCERRADO. Um álbum vigente por vez;
+           álbuns anteriores ficam no histórico sem perder nada.
+        ========================================================= */
+        await pool.query(`ALTER TABLE sticker_collections ADD COLUMN IF NOT EXISTS theme VARCHAR(120)`);
+        await pool.query(`ALTER TABLE sticker_collections ADD COLUMN IF NOT EXISTS starts_at TIMESTAMPTZ`);
+        await pool.query(`ALTER TABLE sticker_collections ADD COLUMN IF NOT EXISTS ends_at TIMESTAMPTZ`);
+        await pool.query(`ALTER TABLE sticker_collections ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'ATIVO'`);
+        await pool.query(`ALTER TABLE sticker_collections ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ`);
+        await pool.query(`ALTER TABLE sticker_collections ADD COLUMN IF NOT EXISTS reward_enabled BOOLEAN NOT NULL DEFAULT FALSE`);
+        await pool.query(`ALTER TABLE sticker_collections ADD COLUMN IF NOT EXISTS reward_title VARCHAR(200)`);
+        await pool.query(`ALTER TABLE sticker_collections ADD COLUMN IF NOT EXISTS reward_description TEXT`);
+        await pool.query(`ALTER TABLE sticker_collections ADD COLUMN IF NOT EXISTS reward_type VARCHAR(30) NOT NULL DEFAULT 'badge'`);
+        await pool.query(`ALTER TABLE sticker_collections ADD COLUMN IF NOT EXISTS reward_value NUMERIC(10,2) NOT NULL DEFAULT 0`);
+        await pool.query(`ALTER TABLE sticker_collections ADD COLUMN IF NOT EXISTS reward_rules TEXT`);
+
+        /* Conclusão de álbum por usuário (recompensa única). */
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS sticker_completions (
+                id               SERIAL PRIMARY KEY,
+                usuario_id       INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                collection_id    INTEGER NOT NULL REFERENCES sticker_collections(id) ON DELETE CASCADE,
+                completed_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                reward_status    VARCHAR(20) NOT NULL DEFAULT 'PENDENTE',
+                reward_granted_at TIMESTAMPTZ,
+                UNIQUE (usuario_id, collection_id)
+            )
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_sticker_completions_col
+                ON sticker_completions(collection_id)
+        `);
+
+        /* Venda de ÁLBUM COMPLETO (marketplace de álbuns). */
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS album_listings (
+                id             SERIAL PRIMARY KEY,
+                seller_id      INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                collection_id  INTEGER NOT NULL REFERENCES sticker_collections(id) ON DELETE CASCADE,
+                price          NUMERIC(10,2) NOT NULL,
+                accepts_offers BOOLEAN NOT NULL DEFAULT TRUE,
+                status         VARCHAR(20) NOT NULL DEFAULT 'active',
+                buyer_id       INTEGER,
+                created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                sold_at        TIMESTAMPTZ
+            )
+        `);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_album_listings_status ON album_listings(status)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_album_listings_seller ON album_listings(seller_id, status)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_album_listings_col ON album_listings(collection_id, status)`);
+
+        /* Pedidos de venda de álbum (direta ou via oferta aceita). */
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS album_orders (
+                id            SERIAL PRIMARY KEY,
+                listing_id    INTEGER NOT NULL REFERENCES album_listings(id) ON DELETE CASCADE,
+                offer_id      INTEGER,
+                buyer_id      INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                seller_id     INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                collection_id INTEGER NOT NULL,
+                total         NUMERIC(10,2) NOT NULL,
+                fee           NUMERIC(10,2) NOT NULL DEFAULT 0,
+                net_seller    NUMERIC(10,2) NOT NULL DEFAULT 0,
+                order_id      VARCHAR(60) UNIQUE NOT NULL,
+                mp_order_id   VARCHAR(60),
+                payment_id    VARCHAR(60),
+                payment_type  VARCHAR(30) NOT NULL DEFAULT 'ALBUM_SALE',
+                status        VARCHAR(20) NOT NULL DEFAULT 'pending',
+                test          BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                paid_at       TIMESTAMPTZ,
+                expires_at    TIMESTAMPTZ
+            )
+        `);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_album_orders_order ON album_orders(order_id)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_album_orders_listing ON album_orders(listing_id, status)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_album_orders_offer ON album_orders(offer_id)`);
+
+        /* Ofertas em álbuns completos. */
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS album_offers (
+                id           SERIAL PRIMARY KEY,
+                listing_id   INTEGER NOT NULL REFERENCES album_listings(id) ON DELETE CASCADE,
+                offeror_id   INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                offeree_id   INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                amount       NUMERIC(10,2) NOT NULL,
+                message      TEXT,
+                status       VARCHAR(20) NOT NULL DEFAULT 'PENDENTE',
+                created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                responded_at TIMESTAMPTZ,
+                expires_at   TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '7 days'
+            )
+        `);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_album_offers_listing ON album_offers(listing_id, status)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_album_offers_offeror ON album_offers(offeror_id, status)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_album_offers_offeree ON album_offers(offeree_id, status)`);
+
         await semearBanco(pool);
     }
 
@@ -911,6 +1016,17 @@ module.exports = function criarModuloColecionaveis(deps) {
             );
         }
 
+        /* Ciclo de vida padrão do álbum vigente (apenas quando ainda
+           não configurado — nunca sobrescreve datas definidas pelo admin). */
+        await pool.query(
+            `UPDATE sticker_collections
+                SET theme     = COALESCE(theme, 'Animais do Mundo'),
+                    starts_at = COALESCE(starts_at, NOW() - INTERVAL '10 days'),
+                    ends_at   = COALESCE(ends_at, NOW() + INTERVAL '60 days')
+              WHERE id = $1`,
+            [colecaoId]
+        );
+
         /* Conquistas */
         for (const c of CONQUISTAS) {
             await pool.query(
@@ -926,13 +1042,70 @@ module.exports = function criarModuloColecionaveis(deps) {
        HELPERS DE NEGÓCIO
     ========================================================= */
 
+    /* Fecha (marca ENCERRADO) uma coleção cujo prazo já venceu.
+       Preserva todo o conteúdo (figurinhas, conquistas, recompensas,
+       vendas e ofertas) — apenas impede novas compras de pacotes. */
+    async function fecharColecaoVencida(colecao) {
+        if (!colecao) return colecao;
+        if (String(colecao.status || "") === "ENCERRADO") return colecao;
+        if (!colecao.ends_at) return colecao;
+        if (new Date(colecao.ends_at).getTime() > Date.now()) return colecao;
+        try {
+            await pg().query(
+                `UPDATE sticker_collections
+                    SET status = 'ENCERRADO',
+                        is_active = FALSE,
+                        closed_at = COALESCE(closed_at, NOW())
+                  WHERE id = $1`,
+                [colecao.id]
+            );
+            registrarLog("colecionavel_album_encerrado", {
+                colecaoId: colecao.id,
+                ends_at: colecao.ends_at
+            });
+            return Object.assign({}, colecao, {
+                status: "ENCERRADO",
+                is_active: false,
+                closed_at: new Date().toISOString()
+            });
+        } catch (e) {
+            console.error("ERRO ao encerrar coleção:", e.message);
+            return colecao;
+        }
+    }
+
+    /* Percorre TODAS as coleções ATIVAS vencidas e as encerra. */
+    async function atualizarStatusColecoes() {
+        if (!pgOk()) return;
+        try {
+            const q = await pg().query(
+                `SELECT * FROM sticker_collections
+                  WHERE status = 'ATIVO' AND ends_at IS NOT NULL AND ends_at < NOW()`
+            );
+            for (const c of q.rows) {
+                await fecharColecaoVencida(c);
+            }
+        } catch (e) {
+            console.error("ERRO ao atualizar status das coleções:", e.message);
+        }
+    }
+
+    async function colecaoPorId(id) {
+        const q = await pg().query(
+            `SELECT * FROM sticker_collections WHERE id = $1`,
+            [id]
+        );
+        return fecharColecaoVencida(q.rows[0] || null);
+    }
+
     async function colecaoAtiva() {
         const q = await pg().query(
             `SELECT * FROM sticker_collections
-              WHERE is_active = TRUE
-              ORDER BY id LIMIT 1`
+              ORDER BY (status = 'ATIVO') DESC, id DESC
+              LIMIT 1`
         );
-        return q.rows[0] || null;
+        const c = q.rows[0] || null;
+        return fecharColecaoVencida(c);
     }
 
     async function cardPorId(cardId) {
@@ -1286,9 +1459,333 @@ module.exports = function criarModuloColecionaveis(deps) {
                            AND o.expires_at < NOW()
                     )`
             );
+
+            await expirarAlbumNegociacoes();
         } catch (e) {
             console.error("ERRO ao expirar negociações:", e.message);
         }
+    }
+
+    /* Expira negociações de ÁLBUM COMPLETO:
+       - pedidos (album_orders) pending vencidos: cancela e devolve o
+         anúncio ao status 'active' (a oferta aceita volta a EXPIRADA);
+       - ofertas ACEITAS vencidas sem pedido: EXPIRADA + álbum reaberto.
+       Protegido por transação/row lock para não concorrer com pagamentos. */
+    async function expirarAlbumNegociacoes() {
+        if (!pgOk()) return;
+        const client = await pg().connect();
+        try {
+            await client.query("BEGIN");
+
+            const vencidos = await client.query(
+                `SELECT * FROM album_orders
+                  WHERE status = 'pending' AND expires_at IS NOT NULL AND expires_at < NOW()
+                  FOR UPDATE`
+            );
+            for (const o of vencidos.rows) {
+                await client.query(
+                    `UPDATE album_orders SET status = 'expired' WHERE id = $1`,
+                    [o.id]
+                );
+                if (o.offer_id) {
+                    await client.query(
+                        `UPDATE album_offers
+                            SET status = 'EXPIRADA',
+                                updated_at = NOW(),
+                                responded_at = COALESCE(responded_at, NOW())
+                          WHERE id = $1`,
+                        [o.offer_id]
+                    );
+                }
+                await client.query(
+                    `UPDATE album_listings
+                        SET status = 'active', updated_at = NOW()
+                      WHERE id = $1 AND status = 'negotiation'`,
+                    [o.listing_id]
+                );
+                registrarLog("colecionavel_album_pedido_expirado", {
+                    orderId: o.order_id,
+                    listingId: o.listing_id,
+                    offerId: o.offer_id || null
+                });
+            }
+
+            const ofertasVencidas = await client.query(
+                `SELECT * FROM album_offers
+                  WHERE status = 'ACEITA' AND expires_at < NOW()
+                  FOR UPDATE`
+            );
+            for (const of of ofertasVencidas.rows) {
+                const temPedido = await client.query(
+                    `SELECT id FROM album_orders
+                      WHERE offer_id = $1 AND status IN ('pending','paid')`,
+                    [of.id]
+                );
+                if (temPedido.rows[0]) continue;
+                await client.query(
+                    `UPDATE album_offers
+                        SET status = 'EXPIRADA',
+                            updated_at = NOW(),
+                            responded_at = COALESCE(responded_at, NOW())
+                      WHERE id = $1`,
+                    [of.id]
+                );
+                await client.query(
+                    `UPDATE album_listings
+                        SET status = 'active', updated_at = NOW()
+                      WHERE id = $1 AND status = 'negotiation'`,
+                    [of.listing_id]
+                );
+                registrarLog("colecionavel_album_oferta_expirada", {
+                    ofertaId: of.id,
+                    listingId: of.listing_id
+                });
+            }
+
+            await client.query("COMMIT");
+        } catch (e) {
+            try { await client.query("ROLLBACK"); } catch (_) {}
+            console.error("ERRO ao expirar negociações de álbum:", e.message);
+        } finally {
+            client.release();
+        }
+    }
+
+    /* =========================================================
+       ÁLBUM COMPLETO — DETECÇÃO, RECOMPENSA E VENDA
+    ========================================================= */
+
+    async function usuarioCompletouColecao(usuarioId, colecaoId, total) {
+        const q = await pg().query(
+            `SELECT COUNT(DISTINCT us.card_id)::int AS diferentes
+               FROM user_stickers us
+               JOIN sticker_cards c ON c.id = us.card_id
+              WHERE us.usuario_id = $1 AND c.collection_id = $2 AND us.quantity > 0`,
+            [usuarioId, colecaoId]
+        );
+        return Number(q.rows[0] && q.rows[0].diferentes || 0) >= Number(total || 0);
+    }
+
+    /* Detecta a conclusão do álbum e registra a recompensa UMA vez
+       (idempotente via UNIQUE). Nunca entrega duas vezes. */
+    async function registrarCompletacaoSeDevido(usuarioId, colecaoId) {
+        if (!pgOk()) return null;
+        const colecao = await colecaoPorId(colecaoId);
+        if (!colecao) return null;
+        const total = Number(colecao.total) || 0;
+        const completou = await usuarioCompletouColecao(usuarioId, colecaoId, total);
+        if (!completou) return null;
+
+        /* Concede a recompensa apenas quando a conclusão ainda NÃO existia.
+           O SELECT prévio também torna a concessão idempotente em
+           ambientes (ex.: pg-mem) que retornam linha no ON CONFLICT. */
+        const jaExistia = await pg().query(
+            `SELECT 1 FROM sticker_completions
+              WHERE usuario_id = $1 AND collection_id = $2`,
+            [usuarioId, colecaoId]
+        );
+
+        if (!jaExistia.rows[0]) {
+            const ins = await pg().query(
+                `INSERT INTO sticker_completions (usuario_id, collection_id)
+                 VALUES ($1,$2)
+                 ON CONFLICT (usuario_id, collection_id) DO NOTHING
+                 RETURNING id`,
+                [usuarioId, colecaoId]
+            );
+            if (ins.rows.length) {
+            await pg().query(
+                `UPDATE sticker_completions
+                    SET reward_status = $3,
+                        reward_granted_at = NOW()
+                  WHERE usuario_id = $1 AND collection_id = $2`,
+                [usuarioId, colecaoId, colecao.reward_enabled ? "CONCEDIDA" : "NAO_POSSIVEL"]
+            );
+            await registrarTransacaoCol(
+                usuarioId,
+                "ALBUM_COMPLETO",
+                `Completou o álbum ${colecao.name}.`,
+                0,
+                "col-" + colecaoId
+            );
+            await desbloquearConquista(usuarioId, "album_completo");
+            if (colecao.reward_enabled) {
+                await registrarTransacaoCol(
+                    usuarioId,
+                    "RECOMPENSA_ALBUM",
+                    `Recompensa: ${colecao.reward_title || "Álbum completo"}` +
+                        (colecao.reward_type === "credito"
+                            ? ` — R$ ${Number(colecao.reward_value).toFixed(2)}`
+                            : "") + ".",
+                    colecao.reward_type === "credito" ? Number(colecao.reward_value) : 0,
+                    "col-" + colecaoId
+                );
+                if (typeof criarNotificacao === "function") {
+                    try {
+                        await criarNotificacao(
+                            usuarioId,
+                            "album_completo",
+                            "🏆 Álbum completo!",
+                            `Você completou o álbum ${colecao.name} e recebeu a recompensa!`,
+                            { collectionId: colecaoId }
+                        );
+                    } catch (e) { /* notificação não bloqueia */ }
+                }
+            }
+            registrarLog("colecionavel_album_completo", { usuarioId, colecaoId });
+            }
+        }
+
+        const det = await pg().query(
+            `SELECT completed_at, reward_status, reward_granted_at
+               FROM sticker_completions
+              WHERE usuario_id = $1 AND collection_id = $2`,
+            [usuarioId, colecaoId]
+        );
+        return det.rows[0] || null;
+    }
+
+    /* Confirmação REAL de pagamento de venda de álbum (direta ou oferta
+       aceita). Transfere TODAS as figurinhas da coleção do vendedor para
+       o comprador dentro de uma transação com row lock no anúncio —
+       nunca duas vendas/transferências para o mesmo álbum. */
+    async function confirmarCompraAlbum(order, mpOrderId) {
+        const pool = pg();
+        const client = await pool.connect();
+        try {
+            await client.query("BEGIN");
+
+            const lq = await client.query(
+                `SELECT * FROM album_listings WHERE id = $1 FOR UPDATE`,
+                [order.listing_id]
+            );
+            const listing = lq.rows[0];
+            if (!listing) throw new Error("Anúncio não encontrado.");
+            if (listing.status !== "negotiation" && listing.status !== "active") {
+                throw new Error("Anúncio não está mais disponível.");
+            }
+
+            if (order.offer_id) {
+                const oq = await client.query(
+                    `SELECT * FROM album_offers WHERE id = $1 FOR UPDATE`,
+                    [order.offer_id]
+                );
+                const offer = oq.rows[0];
+                if (!offer || (offer.status !== "ACEITA" && offer.status !== "AGUARDANDO_PAGAMENTO")) {
+                    throw new Error("Oferta não está mais aceita.");
+                }
+                if (Math.round(Number(offer.amount) * 100) !== Math.round(Number(order.total) * 100)) {
+                    throw new Error("Valor da oferta divergente.");
+                }
+                await client.query(
+                    `UPDATE album_offers
+                        SET status = 'CONCLUIDA', updated_at = NOW(),
+                            responded_at = COALESCE(responded_at, NOW())
+                      WHERE id = $1`,
+                    [offer.id]
+                );
+            }
+
+            /* Transfere o álbum inteiro: 1 cópia de cada figurinha. */
+            const cards = await client.query(
+                `SELECT id FROM sticker_cards
+                  WHERE collection_id = $1 AND is_active = TRUE`,
+                [order.collection_id]
+            );
+            for (const c of cards.rows) {
+                await client.query(
+                    `UPDATE user_stickers
+                        SET quantity = quantity - 1
+                      WHERE usuario_id = $1 AND card_id = $2 AND quantity >= 1`,
+                    [order.seller_id, c.id]
+                );
+                await client.query(
+                    `INSERT INTO user_stickers (usuario_id, card_id, quantity)
+                     VALUES ($1,$2,1)
+                     ON CONFLICT (usuario_id, card_id)
+                     DO UPDATE SET quantity = user_stickers.quantity + 1`,
+                    [order.buyer_id, c.id]
+                );
+            }
+
+            /* Fecha as demais ofertas pendentes (negociação encerrada). */
+            await client.query(
+                `UPDATE album_offers
+                    SET status = 'EXPIRADA', updated_at = NOW(),
+                        responded_at = COALESCE(responded_at, NOW())
+                  WHERE listing_id = $1 AND status = 'PENDENTE'`,
+                [order.listing_id]
+            );
+
+            await client.query(
+                `UPDATE album_listings
+                    SET status = 'sold', sold_at = NOW(), buyer_id = $2, updated_at = NOW()
+                  WHERE id = $1`,
+                [order.listing_id, order.buyer_id]
+            );
+
+            await client.query(
+                `UPDATE album_orders
+                    SET status = 'paid', paid_at = NOW(),
+                        mp_order_id = COALESCE(mp_order_id, $2)
+                  WHERE id = $1`,
+                [order.id, mpOrderId]
+            );
+
+            await client.query("COMMIT");
+        } catch (e) {
+            await client.query("ROLLBACK");
+            throw e;
+        } finally {
+            client.release();
+        }
+
+        const colecao = await colecaoPorId(order.collection_id);
+        const nome = colecao ? colecao.name : "Álbum";
+
+        await registrarTransacaoCol(
+            order.buyer_id,
+            "COMPRA_ALBUM",
+            `Comprou o álbum completo ${nome} por R$ ${Number(order.total).toFixed(2)}.`,
+            Number(order.total),
+            order.order_id
+        );
+        await registrarTransacaoCol(
+            order.seller_id,
+            "VENDA_ALBUM",
+            `Vendeu o álbum completo ${nome} por R$ ${Number(order.total).toFixed(2)} (líquido R$ ${Number(order.net_seller).toFixed(2)}).`,
+            Number(order.net_seller),
+            order.order_id
+        );
+
+        if (typeof criarNotificacao === "function") {
+            try {
+                await criarNotificacao(
+                    order.buyer_id,
+                    "album_adquirido",
+                    "🎉 Álbum adquirido!",
+                    `O álbum ${nome} foi adicionado à sua coleção.`,
+                    { collectionId: order.collection_id, valor: Number(order.total) }
+                );
+                await criarNotificacao(
+                    order.seller_id,
+                    "venda_album",
+                    "💰 Álbum vendido!",
+                    `Você vendeu o álbum ${nome} por R$ ${Number(order.net_seller).toFixed(2)}.`,
+                    { collectionId: order.collection_id, valor: Number(order.net_seller) }
+                );
+            } catch (e) { /* notificações não bloqueiam */ }
+        }
+
+        /* O comprador agora possui o álbum inteiro → completa automaticamente. */
+        await registrarCompletacaoSeDevido(order.buyer_id, order.collection_id);
+
+        registrarLog("colecionavel_album_venda_paga", {
+            orderId: order.order_id,
+            listingId: order.listing_id,
+            comprador: order.buyer_id,
+            vendedor: order.seller_id
+        });
     }
 
     /* =========================================================
@@ -1376,6 +1873,33 @@ module.exports = function criarModuloColecionaveis(deps) {
             return { tipo: "purchase" };
         }
 
+        /* 2.5) Venda de ÁLBUM COMPLETO (venda direta ou oferta aceita) */
+        const albumQ = await pool.query(
+            `SELECT * FROM album_orders
+              WHERE (mp_order_id = $1 OR order_id = $1)
+                AND status = 'pending'
+              LIMIT 1`,
+            [mpOrderId]
+        );
+        if (albumQ.rows[0]) {
+            if (!cobradoIgual(albumQ.rows[0].total)) {
+                registrarLog("colecionavel_pagamento_valor_divergente", {
+                    mpOrderId,
+                    tipo: "album",
+                    pedidoId: albumQ.rows[0].id,
+                    cobradoCents: paraCentavos(albumQ.rows[0].total),
+                    pagoCents: totalCents
+                });
+                console.error(
+                    "[COLECIONAVEL] VALOR DIVERGENTE (álbum). NÃO entregue.",
+                    { mpOrderId, cobradoCents: paraCentavos(albumQ.rows[0].total), pagoCents: totalCents }
+                );
+                return null;
+            }
+            await confirmarCompraAlbum(albumQ.rows[0], mpOrderId);
+            return { tipo: "album" };
+        }
+
         /* 3) Troca com diferença (pagamento da diferença) */
         const tradeQ = await pool.query(
             `SELECT * FROM sticker_trades
@@ -1427,6 +1951,26 @@ module.exports = function criarModuloColecionaveis(deps) {
             }
             await confirmarCompraMercado(order, paymentId);
             return { status, approved: true, orderId: order.order_id };
+
+        /* 2.5) Venda de álbum completo via split (seller account). */
+        const albumOrders = await pg().query(
+            `SELECT * FROM album_orders
+              WHERE status = 'pending' AND payment_type = 'ALBUM_MARKETPLACE_SPLIT'
+              ORDER BY created_at ASC LIMIT 100`
+        );
+        for (const order of albumOrders.rows) {
+            const account = await marketplaceConta(order.seller_id);
+            if (!account || !account.accessToken) continue;
+            let payment;
+            try { payment = await consultarMercadoPagoPayment(account.accessToken, paymentId); } catch (e) { continue; }
+            if (String(payment.external_reference || "") !== String(order.order_id)) continue;
+            const status = String(payment.status || "").toLowerCase();
+            const paidAmount = Number(payment.transaction_amount ?? payment.transaction_details?.total_paid_amount ?? 0);
+            if (!["approved", "accredited", "processed"].includes(status)) return { status, approved: false };
+            if (Math.round(paidAmount * 100) !== Math.round(Number(order.total) * 100)) return { status, approved: false, amountMismatch: true };
+            await confirmarCompraAlbum(order, paymentId);
+            return { status, approved: true, orderId: order.order_id, tipo: "album" };
+        }
         }
         const auctionOrders = await pg().query(
             `SELECT * FROM sticker_auction_orders WHERE status = 'pending' ORDER BY created_at ASC LIMIT 100`
@@ -2132,12 +2676,13 @@ module.exports = function criarModuloColecionaveis(deps) {
             return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
         }
         try {
+            await atualizarStatusColecoes();
             const colecao = await colecaoAtiva();
             const packsQ = await pg().query(
                 `SELECT * FROM sticker_packs
                   WHERE collection_id = $1 AND is_active = TRUE
                   ORDER BY price`,
-                [colecao.id]
+                [colecao ? colecao.id : -1]
             );
             const cardsQ = await pg().query(
                 `SELECT id, number, name, description, rarity, image_url,
@@ -2145,23 +2690,36 @@ module.exports = function criarModuloColecionaveis(deps) {
                    FROM sticker_cards
                   WHERE collection_id = $1 AND is_active = TRUE
                   ORDER BY number`,
-                [colecao.id]
+                [colecao ? colecao.id : -1]
             );
             const cards = cardsQ.rows.map(c => ({
                 ...c,
                 number: Number(c.number)
             }));
 
+            const encerrado = !colecao || colecao.status === "ENCERRADO";
             res.json({
                 ok: true,
-                colecao: {
+                serverTime: new Date().toISOString(),
+                encerrado,
+                colecao: colecao ? {
                     id: colecao.id,
                     slug: colecao.slug,
                     name: colecao.name,
                     edition: colecao.edition,
+                    theme: colecao.theme,
                     total: Number(colecao.total),
-                    description: colecao.description
-                },
+                    description: colecao.description,
+                    status: colecao.status,
+                    starts_at: colecao.starts_at,
+                    ends_at: colecao.ends_at,
+                    closed_at: colecao.closed_at,
+                    reward_enabled: !!colecao.reward_enabled,
+                    reward_title: colecao.reward_title,
+                    reward_description: colecao.reward_description,
+                    reward_type: colecao.reward_type,
+                    reward_value: Number(colecao.reward_value)
+                } : null,
                 packs: packsQ.rows.map(p => ({
                     id: p.id,
                     slug: p.slug,
@@ -2216,6 +2774,7 @@ module.exports = function criarModuloColecionaveis(deps) {
         }
         try {
             await expirarNegociacoesVencidas();
+            await atualizarStatusColecoes();
             const colecao = await colecaoAtiva();
             const q = await pg().query(
                 `SELECT c.id, c.number, c.name, c.rarity, c.image_url,
@@ -2227,26 +2786,73 @@ module.exports = function criarModuloColecionaveis(deps) {
                          AND us.usuario_id = $1
                   WHERE c.collection_id = $2 AND c.is_active = TRUE
                   ORDER BY c.number`,
-                [req.usuario.id, colecao.id]
+                [req.usuario.id, colecao ? colecao.id : -1]
             );
+            const cards = q.rows.map(c => ({
+                id: c.id,
+                number: Number(c.number),
+                name: c.name,
+                rarity: c.rarity,
+                image_url: c.image_url,
+                scientific_name: c.scientific_name,
+                habitat: c.habitat,
+                peso: c.peso,
+                quantidade: Number(c.quantidade)
+            }));
+
+            const total = colecao ? Number(colecao.total) : 0;
+            const diferentes = cards.filter(c => c.quantidade > 0).length;
+            const completo = total > 0 && diferentes >= total;
+
+            let completion = null;
+            let minhaVenda = null;
+            if (colecao) {
+                const compQ = await pg().query(
+                    `SELECT completed_at, reward_status, reward_granted_at
+                       FROM sticker_completions
+                      WHERE usuario_id = $1 AND collection_id = $2`,
+                    [req.usuario.id, colecao.id]
+                );
+                completion = compQ.rows[0] || null;
+
+                const vendaQ = await pg().query(
+                    `SELECT * FROM album_listings
+                      WHERE seller_id = $1 AND collection_id = $2
+                        AND status IN ('active','negotiation')
+                      ORDER BY id DESC LIMIT 1`,
+                    [req.usuario.id, colecao.id]
+                );
+                minhaVenda = vendaQ.rows[0] || null;
+
+                if (completo) {
+                    completion = await registrarCompletacaoSeDevido(req.usuario.id, colecao.id) || completion;
+                }
+            }
+
             res.json({
                 ok: true,
-                colecao: {
+                encerrado: !colecao || colecao.status === "ENCERRADO",
+                completo,
+                completion,
+                minhaVenda,
+                recompensa: colecao ? {
+                    habilitada: !!colecao.reward_enabled,
+                    titulo: colecao.reward_title,
+                    descricao: colecao.reward_description,
+                    tipo: colecao.reward_type,
+                    valor: Number(colecao.reward_value)
+                } : null,
+                colecao: colecao ? {
+                    id: colecao.id,
                     name: colecao.name,
                     edition: colecao.edition,
-                    total: Number(colecao.total)
-                },
-                cards: q.rows.map(c => ({
-                    id: c.id,
-                    number: Number(c.number),
-                    name: c.name,
-                    rarity: c.rarity,
-                    image_url: c.image_url,
-                    scientific_name: c.scientific_name,
-                    habitat: c.habitat,
-                    peso: c.peso,
-                    quantidade: Number(c.quantidade)
-                }))
+                    theme: colecao.theme,
+                    status: colecao.status,
+                    starts_at: colecao.starts_at,
+                    ends_at: colecao.ends_at,
+                    total: total
+                } : null,
+                cards
             });
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -2437,6 +3043,14 @@ module.exports = function criarModuloColecionaveis(deps) {
                 return res.status(404).json({ error: "Pacote não encontrado." });
             }
 
+            const colecao = await colecaoPorId(pack.collection_id);
+            if (!colecao || colecao.status === "ENCERRADO") {
+                return res.status(409).json({
+                    error: "Este álbum está encerrado e não recebe mais pacotes. "
+                         + "O novo álbum já está disponível!"
+                });
+            }
+
             const usuario = await usuarioPorId(req.usuario.id);
             if (!usuario) {
                 return res.status(401).json({ error: "Conta não encontrada." });
@@ -2585,12 +3199,33 @@ module.exports = function criarModuloColecionaveis(deps) {
                  UNION ALL
                  SELECT buyer_id, mp_order_id, order_id, status, 'auction' AS tipo
                    FROM sticker_auction_orders
+                  WHERE (mp_order_id = $1 OR order_id = $1) AND buyer_id = $2
+                 UNION ALL
+                 SELECT buyer_id, mp_order_id, order_id, status, 'album' AS tipo
+                   FROM album_orders
                   WHERE (mp_order_id = $1 OR order_id = $1) AND buyer_id = $2`,
                 [orderId, req.usuario.id]
             );
 
             if (!dono.rows.length) {
                 return res.status(403).json({ error: "Acesso negado a este pedido." });
+            }
+
+            const splitAlbumOrder = await pg().query(
+                `SELECT status FROM album_orders
+                  WHERE (mp_order_id = $1 OR order_id = $1)
+                    AND buyer_id = $2 AND payment_type = 'ALBUM_MARKETPLACE_SPLIT'
+                  LIMIT 1`,
+                [orderId, req.usuario.id]
+            );
+            if (splitAlbumOrder.rows[0]) {
+                return res.json({
+                    ok: true,
+                    status: splitAlbumOrder.rows[0].status === "paid" ? "RECEIVED" : "pending",
+                    orderId,
+                    marketplace: true,
+                    tipo: "album"
+                });
             }
 
             const splitOrder = await pg().query(
@@ -5045,7 +5680,9 @@ module.exports = function criarModuloColecionaveis(deps) {
                  UNION ALL
                  SELECT buyer_id AS usuario_id FROM sticker_orders WHERE order_id = $1
                  UNION ALL
-                 SELECT proposer_id AS usuario_id FROM sticker_trades WHERE (order_id = $1 OR mp_order_id = $1) AND status = 'WAITING_PAYMENT'`,
+                 SELECT proposer_id AS usuario_id FROM sticker_trades WHERE (order_id = $1 OR mp_order_id = $1) AND status = 'WAITING_PAYMENT'
+                 UNION ALL
+                 SELECT buyer_id AS usuario_id FROM album_orders WHERE (order_id = $1 OR mp_order_id = $1)`,
                 [orderId]
             );
             if (!dono.rows.length) {
@@ -5552,6 +6189,873 @@ module.exports = function criarModuloColecionaveis(deps) {
         }
     });
 
+    /* =========================================================
+       ÁLBUM COMPLETO — MARKETPLACE (VENDAS E OFERTAS)
+    ========================================================= */
+
+    /* Lista os anúncios ativos de álbuns completos (todos os álbuns —
+       inclusive os anteriores já encerrados), com dados do vendedor e
+       contagem de ofertas recebidas. */
+    router.get("/albuns", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            await atualizarStatusColecoes();
+            await expirarAlbumNegociacoes();
+            const colecao = await colecaoAtiva();
+            const q = await pg().query(
+                `SELECT al.*, u.nome AS vendedor_nome, sc.name AS colecao_nome, sc.status AS colecao_status,
+                        COALESCE(offcnt.total, 0) AS ofertas_pendentes
+                   FROM album_listings al
+                   JOIN usuarios u ON u.id = al.seller_id
+                   JOIN sticker_collections sc ON sc.id = al.collection_id
+                   LEFT JOIN (
+                        SELECT listing_id, COUNT(*) AS total
+                          FROM album_offers
+                         WHERE status = 'PENDENTE'
+                         GROUP BY listing_id
+                   ) offcnt ON offcnt.listing_id = al.id
+                  WHERE al.status = 'active'
+                  ORDER BY al.price ASC, al.id ASC`
+            );
+            const minhasRecebidas = await pg().query(
+                `SELECT COUNT(*)::int AS total
+                   FROM album_offers ao
+                   JOIN album_listings al ON al.id = ao.listing_id
+                  WHERE ao.offeree_id = $1 AND ao.status = 'PENDENTE'`,
+                [req.usuario.id]
+            );
+            res.json({
+                ok: true,
+                encerrado: !colecao || colecao.status === "ENCERRADO",
+                colecao: colecao ? {
+                    id: colecao.id,
+                    name: colecao.name,
+                    theme: colecao.theme,
+                    status: colecao.status,
+                    starts_at: colecao.starts_at,
+                    ends_at: colecao.ends_at,
+                    total: Number(colecao.total)
+                } : null,
+                minhasOfertasRecebidas: Number(minhasRecebidas.rows[0].total),
+                anuncios: q.rows.map(a => ({
+                    id: a.id,
+                    vendedorId: a.seller_id,
+                    vendedorNome: a.vendedor_nome,
+                    colecaoId: a.collection_id,
+                    colecaoNome: a.colecao_nome,
+                    colecaoEncerrado: a.colecao_status === "ENCERRADO",
+                    preco: Number(a.price),
+                    aceitaOfertas: !!a.accepts_offers,
+                    ofertasPendentes: Number(a.ofertas_pendentes),
+                    criadoEm: a.created_at,
+                    meu: a.seller_id === req.usuario.id
+                }))
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /* Vender meu álbum completo. */
+    router.post("/albuns/:id/vender", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            const collectionId = Number(req.params.id);
+            if (!Number.isInteger(collectionId)) {
+                return res.status(400).json({ error: "ID de álbum inválido." });
+            }
+            const colecao = await colecaoPorId(collectionId);
+            if (!colecao) {
+                return res.status(404).json({ error: "Álbum não encontrado." });
+            }
+
+            const preco = Number(req.body.price);
+            if (!isFinite(preco) || preco <= 0) {
+                return res.status(400).json({ error: "Informe um preço válido maior que zero." });
+            }
+            const aceitaOfertas = req.body.accepts_offers !== undefined
+                ? !!req.body.accepts_offers : true;
+
+            const completa = await usuarioCompletouColecao(req.usuario.id, collectionId, Number(colecao.total));
+            if (!completa) {
+                return res.status(403).json({ error: "Você só pode vender um álbum completo (100% das figurinhas)." });
+            }
+
+            const existente = await pg().query(
+                `SELECT id FROM album_listings
+                  WHERE seller_id = $1 AND collection_id = $2 AND status IN ('active','negotiation')
+                  LIMIT 1`,
+                [req.usuario.id, collectionId]
+            );
+            if (existente.rows[0]) {
+                return res.status(409).json({ error: "Você já tem este álbum anunciado." });
+            }
+
+            const ins = await pg().query(
+                `INSERT INTO album_listings
+                    (seller_id, collection_id, price, accepts_offers)
+                 VALUES ($1,$2,$3,$4)
+                 RETURNING id`,
+                [req.usuario.id, collectionId, Math.round(preco * 100) / 100, aceitaOfertas]
+            );
+            await registrarTransacaoCol(
+                req.usuario.id,
+                "ANUNCIO_ALBUM",
+                `Anunciou o álbum completo ${colecao.name} por R$ ${preco.toFixed(2)}.`,
+                0,
+                "col-" + collectionId
+            );
+            registrarLog("colecionavel_album_anunciado", {
+                listingId: ins.rows[0].id,
+                usuarioId: req.usuario.id,
+                colecaoId: collectionId,
+                preco
+            });
+            res.status(201).json({
+                ok: true,
+                listingId: ins.rows[0].id,
+                preco: Math.round(preco * 100) / 100,
+                aceitaOfertas
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /* Minhas vendas de álbuns. */
+    router.get("/albuns/vendas", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            await expirarAlbumNegociacoes();
+            const q = await pg().query(
+                `SELECT al.*, sc.name AS colecao_nome,
+                        COALESCE(offcnt.total, 0) AS ofertas_pendentes
+                   FROM album_listings al
+                   JOIN sticker_collections sc ON sc.id = al.collection_id
+                   LEFT JOIN (
+                        SELECT listing_id, COUNT(*) AS total
+                          FROM album_offers
+                         WHERE status = 'PENDENTE'
+                         GROUP BY listing_id
+                   ) offcnt ON offcnt.listing_id = al.id
+                  WHERE al.seller_id = $1
+                  ORDER BY al.created_at DESC`,
+                [req.usuario.id]
+            );
+            res.json({
+                ok: true,
+                vendas: q.rows.map(v => ({
+                    id: v.id,
+                    colecaoId: v.collection_id,
+                    colecaoNome: v.colecao_nome,
+                    preco: Number(v.price),
+                    aceitaOfertas: !!v.accepts_offers,
+                    status: v.status,
+                    buyerId: v.buyer_id,
+                    ofertasPendentes: Number(v.ofertas_pendentes),
+                    criadoEm: v.created_at,
+                    vendidoEm: v.sold_at
+                }))
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /* Detalhe de um anúncio (para vendedor ou comprador). */
+    router.get("/albuns/vendas/:id", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            const listingId = Number(req.params.id);
+            const q = await pg().query(
+                `SELECT al.*, u.nome AS vendedor_nome,
+                        sc.name AS colecao_nome, sc.theme, sc.total
+                   FROM album_listings al
+                   JOIN usuarios u ON u.id = al.seller_id
+                   JOIN sticker_collections sc ON sc.id = al.collection_id
+                  WHERE al.id = $1`,
+                [listingId]
+            );
+            const listing = q.rows[0];
+            if (!listing) return res.status(404).json({ error: "Anúncio não encontrado." });
+            if (listing.seller_id !== req.usuario.id && listing.buyer_id !== req.usuario.id) {
+                /* Comprador de um pedido pendente também pode acompanhar. */
+                const pedido = await pg().query(
+                    `SELECT id FROM album_orders
+                      WHERE listing_id = $1 AND buyer_id = $2 AND status = 'pending'
+                      LIMIT 1`,
+                    [listingId, req.usuario.id]
+                );
+                if (!pedido.rows[0]) {
+                    return res.status(403).json({ error: "Você não tem acesso a este anúncio." });
+                }
+            }
+            res.json({
+                ok: true,
+                anuncio: {
+                    id: listing.id,
+                    vendedorId: listing.seller_id,
+                    vendedorNome: listing.vendedor_nome,
+                    colecaoId: listing.collection_id,
+                    colecaoNome: listing.colecao_nome,
+                    tema: listing.theme,
+                    total: Number(listing.total),
+                    preco: Number(listing.price),
+                    aceitaOfertas: !!listing.accepts_offers,
+                    status: listing.status,
+                    buyerId: listing.buyer_id,
+                    criadoEm: listing.created_at,
+                    vendidoEm: listing.sold_at
+                }
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /* Remover meu anúncio (só enquanto não vendido / sem pagamento). */
+    router.delete("/albuns/vendas/:id", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            const listingId = Number(req.params.id);
+            const q = await pg().query(
+                `SELECT * FROM album_listings WHERE id = $1`,
+                [listingId]
+            );
+            const listing = q.rows[0];
+            if (!listing) return res.status(404).json({ error: "Anúncio não encontrado." });
+            if (listing.seller_id !== req.usuario.id) {
+                return res.status(403).json({ error: "Somente o vendedor pode remover o anúncio." });
+            }
+            const pedidos = await pg().query(
+                `SELECT id FROM album_orders WHERE listing_id = $1 AND status = 'paid'`,
+                [listingId]
+            );
+            if (pedidos.rows[0]) {
+                return res.status(409).json({ error: "Este álbum já foi vendido e pago." });
+            }
+            if (listing.status === "sold") {
+                return res.status(409).json({ error: "Este anúncio já foi concluído." });
+            }
+            await pg().query(
+                `UPDATE album_listings
+                    SET status = 'cancelled', updated_at = NOW()
+                  WHERE id = $1`,
+                [listingId]
+            );
+            await pg().query(
+                `UPDATE album_offers
+                    SET status = 'CANCELADA', updated_at = NOW(),
+                        responded_at = COALESCE(responded_at, NOW())
+                  WHERE listing_id = $1 AND status = 'PENDENTE'`,
+                [listingId]
+            );
+            res.json({ ok: true });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /* Compra direta de um álbum completo. */
+    router.post("/albuns/vendas/:id/comprar", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        const validacao = validarComprador(req);
+        if (!validacao.ok) return res.status(400).json({ error: validacao.error });
+        const comprador = validacao.comprador;
+
+        try {
+            const listingId = Number(req.params.id);
+            const client = await pg().connect();
+            let listing;
+            try {
+                await client.query("BEGIN");
+                const lq = await client.query(
+                    `SELECT * FROM album_listings WHERE id = $1 FOR UPDATE`,
+                    [listingId]
+                );
+                listing = lq.rows[0];
+                if (!listing) {
+                    await client.query("ROLLBACK");
+                    client.release();
+                    return res.status(404).json({ error: "Anúncio não encontrado." });
+                }
+                if (listing.status !== "active") {
+                    await client.query("ROLLBACK");
+                    client.release();
+                    return res.status(409).json({ error: "Este álbum não está mais disponível." });
+                }
+                if (listing.seller_id === req.usuario.id) {
+                    await client.query("ROLLBACK");
+                    client.release();
+                    return res.status(400).json({ error: "Você não pode comprar o próprio álbum." });
+                }
+                await client.query(
+                    `UPDATE album_listings SET status = 'negotiation', updated_at = NOW() WHERE id = $1`,
+                    [listingId]
+                );
+                await client.query("COMMIT");
+            } catch (e) {
+                try { await client.query("ROLLBACK"); } catch (_) {}
+                client.release();
+                throw e;
+            }
+            client.release();
+
+            const usuario = await usuarioPorId(req.usuario.id);
+            if (!usuario) return res.status(401).json({ error: "Conta não encontrada." });
+
+            const total = Math.round(Number(listing.price) * 100) / 100;
+            const { feeCents, netSellerCents } = calcularComissao(paraCentavos(total), mercadopagoMarketplaceFeePercent);
+            const fee = centavosParaReais(feeCents);
+            const netSeller = centavosParaReais(netSellerCents);
+            const orderId = gerarOrderId("COL-ALBUM");
+            const paymentId = crypto.randomUUID();
+            const expiresAt = new Date(Date.now() + ALBUM_PAGAMENTO_TTL_HORAS * 3600 * 1000);
+
+            const mp = await criarOrderMercadoPago({
+                idempotencyKey: orderId,
+                externalReference: orderId,
+                value: total,
+                description: "MegaOutdoor Colecionáveis — Álbum completo",
+                customer: {
+                    name: comprador.nome || usuario.nome,
+                    taxID: comprador.documento,
+                    email: comprador.email || usuario.email
+                },
+                paymentMethod: req.body.paymentMethod || "pix",
+                paymentMethodId: req.body.paymentMethodId,
+                cardToken: req.body.cardToken,
+                installments: req.body.installments
+            });
+
+            await pg().query(
+                `INSERT INTO album_orders
+                    (listing_id, buyer_id, seller_id, collection_id,
+                     total, fee, net_seller, order_id, mp_order_id, payment_id,
+                     payment_type, status, test, expires_at)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+                         'ALBUM_SALE','pending',$11,$12)`,
+                [listing.id, req.usuario.id, listing.seller_id, listing.collection_id,
+                 total, fee, netSeller, orderId, String(mp.orderId), paymentId,
+                 !!process.env.ALLOW_TEST_MODE, expiresAt]
+            );
+
+            await registrarTransacaoCol(
+                req.usuario.id,
+                "PEDIDO_ALBUM",
+                `Compra do álbum completo criada (R$ ${total.toFixed(2)}).`,
+                total,
+                orderId
+            );
+            registrarLog("colecionavel_album_compra_direta", {
+                listingId: listing.id,
+                orderId,
+                comprador: req.usuario.id
+            });
+
+            res.json({
+                ok: true,
+                orderId: String(mp.orderId),
+                externalReference: orderId,
+                qrCodeBase64: mp.qrCodeBase64,
+                payload: mp.payload,
+                ticketUrl: mp.ticketUrl,
+                expiresDate: mp.expirationDate,
+                paymentId: mp.paymentId,
+                total,
+                valor: total,
+                fee,
+                netSeller,
+                tipo: "album"
+            });
+        } catch (error) {
+            registrarLog("colecionavel_album_compra_erro", {
+                erro: error.message,
+                listingId: req.params.id,
+                usuarioId: req.usuario && req.usuario.id
+            });
+            /* Falha ao gerar pagamento → devolve o anúncio ao estado
+               'active' para outros compradores não ficarem bloqueados. */
+            try {
+                const lid = Number(req.params.id);
+                await pg().query(
+                    `UPDATE album_listings
+                        SET status = 'active', updated_at = NOW()
+                      WHERE id = $1 AND status = 'negotiation'
+                        AND NOT EXISTS (
+                            SELECT 1 FROM album_orders
+                             WHERE listing_id = $1 AND status IN ('pending','paid')
+                        )`,
+                    [lid]
+                );
+            } catch (e) { /* restauração é best-effort */ }
+            res.status(500).json({ error: formatarErroPagamento(error) });
+        }
+    });
+
+    /* Fazer uma oferta em um álbum completo. */
+    router.post("/albuns/vendas/:id/ofertas", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            const listingId = Number(req.params.id);
+            const q = await pg().query(
+                `SELECT * FROM album_listings WHERE id = $1`,
+                [listingId]
+            );
+            const listing = q.rows[0];
+            if (!listing) return res.status(404).json({ error: "Anúncio não encontrado." });
+            if (listing.status !== "active") {
+                return res.status(409).json({ error: "Este álbum não está mais aceitando ofertas." });
+            }
+            if (!listing.accepts_offers) {
+                return res.status(403).json({ error: "Este vendedor não está aceitando ofertas." });
+            }
+            if (listing.seller_id === req.usuario.id) {
+                return res.status(400).json({ error: "Você não pode ofertar no próprio álbum." });
+            }
+
+            const amount = Number(req.body.amount);
+            if (!isFinite(amount) || amount <= 0) {
+                return res.status(400).json({ error: "Informe um valor de oferta válido." });
+            }
+
+            const pendente = await pg().query(
+                `SELECT id FROM album_offers
+                  WHERE listing_id = $1 AND offeror_id = $2 AND status = 'PENDENTE'
+                  LIMIT 1`,
+                [listingId, req.usuario.id]
+            );
+            if (pendente.rows[0]) {
+                return res.status(409).json({ error: "Você já tem uma oferta pendente neste álbum." });
+            }
+
+            const ins = await pg().query(
+                `INSERT INTO album_offers
+                    (listing_id, offeror_id, offeree_id, amount, message)
+                 VALUES ($1,$2,$3,$4,$5)
+                 RETURNING id, expires_at`,
+                [listingId, req.usuario.id, listing.seller_id,
+                 Math.round(amount * 100) / 100, String(req.body.message || "").slice(0, 500)]
+            );
+            if (typeof criarNotificacao === "function") {
+                try {
+                    await criarNotificacao(
+                        listing.seller_id,
+                        "oferta_album",
+                        "💬 Nova oferta no seu álbum!",
+                        `Você recebeu uma oferta de R$ ${amount.toFixed(2)} pelo seu álbum completo.`,
+                        { listingId, ofertaId: ins.rows[0].id }
+                    );
+                } catch (e) { /* não bloqueia */ }
+            }
+            registrarLog("colecionavel_album_oferta_criada", {
+                listingId,
+                ofertaId: ins.rows[0].id,
+                usuarioId: req.usuario.id
+            });
+            res.status(201).json({
+                ok: true,
+                ofertaId: ins.rows[0].id,
+                amount: Math.round(amount * 100) / 100,
+                expiresAt: ins.rows[0].expires_at
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /* Listar ofertas de um anúncio (somente o vendedor). */
+    router.get("/albuns/vendas/:id/ofertas", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            const listingId = Number(req.params.id);
+            const q = await pg().query(
+                `SELECT * FROM album_listings WHERE id = $1`,
+                [listingId]
+            );
+            const listing = q.rows[0];
+            if (!listing) return res.status(404).json({ error: "Anúncio não encontrado." });
+            if (listing.seller_id !== req.usuario.id) {
+                return res.status(403).json({ error: "Somente o vendedor pode ver as ofertas." });
+            }
+            const ofertasQ = await pg().query(
+                `SELECT ao.*, u.nome AS ofertante_nome
+                   FROM album_offers ao
+                   JOIN usuarios u ON u.id = ao.offeror_id
+                  WHERE ao.listing_id = $1
+                  ORDER BY ao.created_at DESC`,
+                [listingId]
+            );
+            res.json({
+                ok: true,
+                ofertas: ofertasQ.rows.map(o => ({
+                    id: o.id,
+                    ofertanteId: o.offeror_id,
+                    ofertanteNome: o.ofertante_nome,
+                    amount: Number(o.amount),
+                    message: o.message,
+                    status: o.status,
+                    criadoEm: o.created_at,
+                    respondeuEm: o.responded_at,
+                    expiraEm: o.expires_at
+                }))
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /* Aceitar oferta: cria o pedido e reserva a negociação. */
+    router.post("/albuns/ofertas/:id/aceitar", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        const client = await pg().connect();
+        try {
+            await client.query("BEGIN");
+            const ofertaQ = await client.query(
+                `SELECT * FROM album_offers WHERE id = $1 FOR UPDATE`,
+                [Number(req.params.id)]
+            );
+            const offer = ofertaQ.rows[0];
+            if (!offer) {
+                await client.query("ROLLBACK"); client.release();
+                return res.status(404).json({ error: "Oferta não encontrada." });
+            }
+            if (offer.offeree_id !== req.usuario.id) {
+                await client.query("ROLLBACK"); client.release();
+                return res.status(403).json({ error: "Somente o dono do álbum pode aceitar a oferta." });
+            }
+            if (offer.status !== "PENDENTE") {
+                await client.query("ROLLBACK"); client.release();
+                return res.status(409).json({ error: "Esta oferta não está mais pendente." });
+            }
+
+            const lq = await client.query(
+                `SELECT * FROM album_listings WHERE id = $1 FOR UPDATE`,
+                [offer.listing_id]
+            );
+            const listing = lq.rows[0];
+            if (!listing || listing.status !== "active") {
+                await client.query("ROLLBACK"); client.release();
+                return res.status(409).json({ error: "Este álbum não está mais disponível para venda." });
+            }
+
+            const total = Math.round(Number(offer.amount) * 100) / 100;
+            const { feeCents, netSellerCents } = calcularComissao(paraCentavos(total), mercadopagoMarketplaceFeePercent);
+            const fee = centavosParaReais(feeCents);
+            const netSeller = centavosParaReais(netSellerCents);
+            const orderId = gerarOrderId("COL-AOF");
+            const expiresAt = new Date(Date.now() + ALBUM_PAGAMENTO_TTL_HORAS * 3600 * 1000);
+
+            await client.query(
+                `UPDATE album_offers
+                    SET status = 'ACEITA', updated_at = NOW(),
+                        responded_at = COALESCE(responded_at, NOW())
+                  WHERE id = $1`,
+                [offer.id]
+            );
+            await client.query(
+                `UPDATE album_listings
+                    SET status = 'negotiation', updated_at = NOW()
+                  WHERE id = $1`,
+                [listing.id]
+            );
+            await client.query(
+                `INSERT INTO album_orders
+                    (listing_id, offer_id, buyer_id, seller_id, collection_id,
+                     total, fee, net_seller, order_id, payment_type, status, test, expires_at)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,
+                         'ALBUM_MARKETPLACE_SPLIT','pending',$10,$11)`,
+                [listing.id, offer.id, offer.offeror_id, offer.offeree_id,
+                 listing.collection_id, total, fee, netSeller, orderId,
+                 !!process.env.ALLOW_TEST_MODE, expiresAt]
+            );
+            await client.query("COMMIT");
+
+            /* Avisa os demais ofertantes pendentes. */
+            const demais = await pg().query(
+                `SELECT offeror_id FROM album_offers
+                  WHERE listing_id = $1 AND status = 'PENDENTE'`,
+                [listing.id]
+            );
+            if (typeof criarNotificacao === "function") {
+                try {
+                    for (const d of demais.rows) {
+                        await criarNotificacao(
+                            d.offeror_id,
+                            "oferta_album_recusada",
+                            "ℹ️ Oferta encerrada",
+                            "Uma oferta foi aceita para este álbum; sua oferta foi encerrada."
+                        );
+                    }
+                    await criarNotificacao(
+                        offer.offeror_id,
+                        "oferta_album_aceita",
+                        "🎉 Sua oferta foi aceita!",
+                        `Pague agora para concluir a compra (R$ ${total.toFixed(2)}).`,
+                        { listingId: listing.id, ofertaId: offer.id }
+                    );
+                } catch (e) { /* não bloqueia */ }
+            }
+            registrarLog("colecionavel_album_oferta_aceita", {
+                ofertaId: offer.id,
+                listingId: listing.id,
+                orderId
+            });
+            res.json({
+                ok: true,
+                orderId,
+                ofertaId: offer.id,
+                total,
+                fee,
+                netSeller,
+                expiraEm: expiresAt.toISOString()
+            });
+        } catch (error) {
+            try { await client.query("ROLLBACK"); } catch (_) {}
+            client.release();
+            registrarLog("colecionavel_album_oferta_aceitar_erro", { erro: error.message });
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /* Recusar oferta. */
+    router.post("/albuns/ofertas/:id/recusar", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            const oq = await pg().query(`SELECT * FROM album_offers WHERE id = $1`, [Number(req.params.id)]);
+            const offer = oq.rows[0];
+            if (!offer) return res.status(404).json({ error: "Oferta não encontrada." });
+            if (offer.offeree_id !== req.usuario.id) {
+                return res.status(403).json({ error: "Somente o dono do álbum pode recusar a oferta." });
+            }
+            if (offer.status !== "PENDENTE") {
+                return res.status(409).json({ error: "Esta oferta não está mais pendente." });
+            }
+            await pg().query(
+                `UPDATE album_offers
+                    SET status = 'RECUSADA', updated_at = NOW(),
+                        responded_at = COALESCE(responded_at, NOW())
+                  WHERE id = $1`,
+                [offer.id]
+            );
+            if (typeof criarNotificacao === "function") {
+                try {
+                    await criarNotificacao(
+                        offer.offeror_id,
+                        "oferta_album_recusada",
+                        "ℹ️ Oferta recusada",
+                        "Sua oferta pelo álbum completo foi recusada."
+                    );
+                } catch (e) { /* não bloqueia */ }
+            }
+            res.json({ ok: true });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /* Cancelar minha oferta pendente. */
+    router.post("/albuns/ofertas/:id/cancelar", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            const oq = await pg().query(`SELECT * FROM album_offers WHERE id = $1`, [Number(req.params.id)]);
+            const offer = oq.rows[0];
+            if (!offer) return res.status(404).json({ error: "Oferta não encontrada." });
+            if (offer.offeror_id !== req.usuario.id) {
+                return res.status(403).json({ error: "Somente quem ofertou pode cancelar." });
+            }
+            if (offer.status !== "PENDENTE") {
+                return res.status(409).json({ error: "Esta oferta não está mais pendente." });
+            }
+            await pg().query(
+                `UPDATE album_offers
+                    SET status = 'CANCELADA', updated_at = NOW(),
+                        responded_at = COALESCE(responded_at, NOW())
+                  WHERE id = $1`,
+                [offer.id]
+            );
+            res.json({ ok: true });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /* Pagar oferta aceita (quem ofertou). Cria a Order no Mercado Pago
+       ligada ao pedido já registrado na aceitação. */
+    router.post("/albuns/ofertas/:id/pagar", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        const validacao = validarComprador(req);
+        if (!validacao.ok) return res.status(400).json({ error: validacao.error });
+        const comprador = validacao.comprador;
+
+        try {
+            const oq = await pg().query(`SELECT * FROM album_offers WHERE id = $1`, [Number(req.params.id)]);
+            const offer = oq.rows[0];
+            if (!offer) return res.status(404).json({ error: "Oferta não encontrada." });
+            if (offer.offeror_id !== req.usuario.id) {
+                return res.status(403).json({ error: "Somente quem ofertou pode pagar esta oferta." });
+            }
+            if (offer.status !== "ACEITA" && offer.status !== "AGUARDANDO_PAGAMENTO") {
+                return res.status(400).json({ error: "Esta oferta não está aceita para pagamento." });
+            }
+
+            const orderQ = await pg().query(
+                `SELECT * FROM album_orders
+                  WHERE offer_id = $1 AND status IN ('pending','paid')
+                  ORDER BY id DESC LIMIT 1`,
+                [offer.id]
+            );
+            const order = orderQ.rows[0];
+            if (!order) {
+                return res.status(400).json({ error: "Pedido não encontrado para esta oferta. Peça ao vendedor para reaceitar." });
+            }
+            if (order.status === "paid") {
+                return res.status(409).json({ error: "Este pagamento já foi concluído." });
+            }
+
+            const usuario = await usuarioPorId(req.usuario.id);
+            if (!usuario) return res.status(401).json({ error: "Conta não encontrada." });
+
+            const total = Math.round(Number(order.total) * 100) / 100;
+            const contaVendedor = await marketplaceConta(order.seller_id);
+            const splitUsado = mercadopagoMarketplaceSplitEnabled
+                && typeof criarOrderMercadoPagoSplit === "function"
+                && !!contaVendedor;
+
+            if (!splitUsado) {
+                await pg().query(
+                    `UPDATE album_orders
+                        SET payment_type = 'ALBUM_SALE', expires_at = $2
+                      WHERE id = $1`,
+                    [order.id, new Date(Date.now() + ALBUM_PAGAMENTO_TTL_HORAS * 3600 * 1000)]
+                );
+            }
+
+            const criarOrder = splitUsado ? criarOrderMercadoPagoSplit : criarOrderMercadoPago;
+            const mp = await criarOrder({
+                idempotencyKey: order.order_id,
+                externalReference: order.order_id,
+                value: total,
+                sellerAccount: contaVendedor,
+                platformFee: splitUsado ? Number(order.fee) : undefined,
+                description: "MegaOutdoor Colecionáveis — Oferta de álbum aceita",
+                customer: {
+                    name: comprador.nome || usuario.nome,
+                    taxID: comprador.documento,
+                    email: comprador.email || usuario.email
+                },
+                paymentMethod: req.body.paymentMethod || "pix",
+                paymentMethodId: req.body.paymentMethodId,
+                cardToken: req.body.cardToken,
+                installments: req.body.installments
+            });
+
+            await pg().query(
+                `UPDATE album_orders
+                    SET mp_order_id = $2, payment_id = $3,
+                        expires_at = $4
+                  WHERE id = $1`,
+                [order.id, String(mp.orderId), crypto.randomUUID(),
+                 new Date(Date.now() + ALBUM_PAGAMENTO_TTL_HORAS * 3600 * 1000)]
+            );
+            await pg().query(
+                `UPDATE album_offers
+                    SET status = 'AGUARDANDO_PAGAMENTO', updated_at = NOW()
+                  WHERE id = $1`,
+                [offer.id]
+            );
+            await registrarTransacaoCol(
+                req.usuario.id,
+                "PEDIDO_ALBUM_OFERTA",
+                `Pagamento da oferta aceita pelo álbum (R$ ${total.toFixed(2)}) criado.`,
+                total,
+                order.order_id
+            );
+            registrarLog("colecionavel_album_oferta_pagamento", {
+                ofertaId: offer.id,
+                orderId: order.order_id,
+                mpOrderId: String(mp.orderId),
+                splitUsado
+            });
+
+            res.json({
+                ok: true,
+                orderId: String(mp.orderId),
+                externalReference: order.order_id,
+                qrCodeBase64: mp.qrCodeBase64,
+                payload: mp.payload,
+                ticketUrl: mp.ticketUrl,
+                expiresDate: mp.expirationDate,
+                paymentId: mp.paymentId,
+                total,
+                valor: total,
+                fee: Number(order.fee),
+                netSeller: Number(order.net_seller),
+                tipo: "albumOferta"
+            });
+        } catch (error) {
+            registrarLog("colecionavel_album_oferta_pay_erro", {
+                erro: error.message,
+                ofertaId: req.params.id,
+                usuarioId: req.usuario && req.usuario.id
+            });
+            res.status(500).json({ error: formatarErroPagamento(error) });
+        }
+    });
+
+    /* Ofertas que recebi e que fiz (todos os álbuns). */
+    router.get("/albuns/ofertas/minhas", obterAuthUsuario(), async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            await expirarAlbumNegociacoes();
+            const recebidas = await pg().query(
+                `SELECT ao.*, u.nome AS ofertante_nome, sc.name AS colecao_nome,
+                        al.status AS anuncio_status, al.price AS anuncio_preco
+                   FROM album_offers ao
+                   JOIN usuarios u ON u.id = ao.offeror_id
+                   JOIN album_listings al ON al.id = ao.listing_id
+                   JOIN sticker_collections sc ON sc.id = al.collection_id
+                  WHERE ao.offeree_id = $1
+                  ORDER BY ao.created_at DESC`,
+                [req.usuario.id]
+            );
+            const feitas = await pg().query(
+                `SELECT ao.*, u.nome AS vendedor_nome, sc.name AS colecao_nome,
+                        al.status AS anuncio_status, al.price AS anuncio_preco
+                   FROM album_offers ao
+                   JOIN usuarios u ON u.id = ao.offeree_id
+                   JOIN album_listings al ON al.id = ao.listing_id
+                   JOIN sticker_collections sc ON sc.id = al.collection_id
+                  WHERE ao.offeror_id = $1
+                  ORDER BY ao.created_at DESC`,
+                [req.usuario.id]
+            );
+            const fmt = o => ({
+                id: o.id,
+                listingId: o.listing_id,
+                ofertanteId: o.offeror_id,
+                ofertanteNome: o.ofertante_nome,
+                vendedorNome: o.vendedor_nome,
+                colecaoNome: o.colecao_nome,
+                anuncioStatus: o.anuncio_status,
+                anuncioPreco: Number(o.anuncio_preco),
+                amount: Number(o.amount),
+                message: o.message,
+                status: o.status,
+                criadoEm: o.created_at,
+                respondeuEm: o.responded_at,
+                expiraEm: o.expires_at
+            });
+            res.json({
+                ok: true,
+                recebidas: recebidas.rows.map(fmt),
+                feitas: feitas.rows.map(fmt)
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
     /* Listar coleções (admin). */
     router.get("/admin/colecoes", authAdmin, async (req, res) => {
         if (!pgOk()) {
@@ -5560,12 +7064,232 @@ module.exports = function criarModuloColecionaveis(deps) {
         try {
             const q = await pg().query(
                 `SELECT c.*,
-                        (SELECT COUNT(*) FROM sticker_cards WHERE collection_id = c.id) AS cards,
-                        (SELECT COUNT(*) FROM sticker_packs WHERE collection_id = c.id) AS packs
+                        COALESCE(cardscnt.total, 0) AS cards,
+                        COALESCE(packscnt.total, 0) AS packs
                    FROM sticker_collections c
+                   LEFT JOIN (
+                        SELECT collection_id, COUNT(*) AS total
+                          FROM sticker_cards GROUP BY collection_id
+                   ) cardscnt ON cardscnt.collection_id = c.id
+                   LEFT JOIN (
+                        SELECT collection_id, COUNT(*) AS total
+                          FROM sticker_packs GROUP BY collection_id
+                   ) packscnt ON packscnt.collection_id = c.id
                   ORDER BY c.id`
             );
             res.json({ ok: true, colecoes: q.rows });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /* Listar vendas de álbuns (admin). */
+    router.get("/admin/albuns/vendas", authAdmin, async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            const q = await pg().query(
+                `SELECT al.*, sc.name AS colecao_nome,
+                        sv.nome AS vendedor_nome, cb.nome AS comprador_nome
+                   FROM album_listings al
+                   JOIN sticker_collections sc ON sc.id = al.collection_id
+                   JOIN usuarios sv ON sv.id = al.seller_id
+                   LEFT JOIN usuarios cb ON cb.id = al.buyer_id
+                  ORDER BY al.created_at DESC
+                  LIMIT 300`
+            );
+            res.json({ ok: true, vendas: q.rows });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /* Listar vendas de álbuns de uma coleção (admin). */
+    router.get("/admin/albuns/:id/vendas", authAdmin, async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            const q = await pg().query(
+                `SELECT al.*, sv.nome AS vendedor_nome, cb.nome AS comprador_nome
+                   FROM album_listings al
+                   JOIN usuarios sv ON sv.id = al.seller_id
+                   LEFT JOIN usuarios cb ON cb.id = al.buyer_id
+                  WHERE al.collection_id = $1
+                  ORDER BY al.created_at DESC`,
+                [Number(req.params.id)]
+            );
+            res.json({ ok: true, vendas: q.rows });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /* Listar ofertas de álbuns de uma coleção (admin). */
+    router.get("/admin/albuns/:id/ofertas", authAdmin, async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            const q = await pg().query(
+                `SELECT ao.*, uo.nome AS ofertante_nome, uf.nome AS dono_nome
+                   FROM album_offers ao
+                   JOIN album_listings al ON al.id = ao.listing_id
+                   JOIN usuarios uo ON uo.id = ao.offeror_id
+                   JOIN usuarios uf ON uf.id = ao.offeree_id
+                  WHERE al.collection_id = $1
+                  ORDER BY ao.created_at DESC`,
+                [Number(req.params.id)]
+            );
+            res.json({ ok: true, ofertas: q.rows });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /* Criar um novo álbum (admin): abre o novo ciclo e encerra o vigente. */
+    router.post("/admin/albuns", authAdmin, async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            const name = String(req.body.name || "").trim();
+            const theme = String(req.body.theme || "").trim();
+            const slug = String(req.body.slug || "").trim() || "album-" + Date.now();
+            const edition = String(req.body.edition || "").trim() || "1";
+            const total = Number(req.body.total);
+            if (!name) return res.status(400).json({ error: "Informe o nome do álbum." });
+            if (!Number.isInteger(total) || total <= 0) {
+                return res.status(400).json({ error: "Informe o total de figurinhas (número inteiro positivo)." });
+            }
+
+            const startsAt = req.body.starts_at
+                ? new Date(req.body.starts_at) : new Date();
+            const endsAt = req.body.ends_at
+                ? new Date(req.body.ends_at)
+                : new Date(Date.now() + 60 * 24 * 3600 * 1000);
+            if (isNaN(startsAt.getTime()) || isNaN(endsAt.getTime()) || endsAt <= startsAt) {
+                return res.status(400).json({ error: "Datas de início/fim inválidas." });
+            }
+
+            const rewardType = req.body.reward_type === "credito" ? "credito" : "badge";
+            const rewardValue = rewardType === "credito"
+                ? Math.max(0, Number(req.body.reward_value) || 0) : 0;
+
+            const client = await pg().connect();
+            try {
+                await client.query("BEGIN");
+                await client.query(
+                    `UPDATE sticker_collections
+                        SET status = 'ENCERRADO', is_active = FALSE,
+                            closed_at = COALESCE(closed_at, NOW())
+                      WHERE status = 'ATIVO'`
+                );
+                const ins = await client.query(
+                    `INSERT INTO sticker_collections
+                        (slug, name, edition, total, description, is_active,
+                         theme, starts_at, ends_at, status,
+                         reward_enabled, reward_title, reward_description,
+                         reward_type, reward_value, reward_rules)
+                     VALUES ($1,$2,$3,$4,$5,TRUE,$6,$7,$8,'ATIVO',$9,$10,$11,$12,$13,$14)
+                     RETURNING id`,
+                    [slug, name, edition, total, String(req.body.description || ""),
+                     theme || null, startsAt, endsAt,
+                     !!req.body.reward_enabled,
+                     String(req.body.reward_title || "").trim() || null,
+                     String(req.body.reward_description || "").trim() || null,
+                     rewardType, rewardValue,
+                     String(req.body.reward_rules || "").trim() || null]
+                );
+                await client.query("COMMIT");
+                registrarLog("admin_album_criado", {
+                    colecaoId: ins.rows[0].id,
+                    nome: name,
+                    adminId: req.admin.usuario
+                });
+                res.status(201).json({ ok: true, colecaoId: ins.rows[0].id });
+            } catch (e) {
+                try { await client.query("ROLLBACK"); } catch (_) {}
+                throw e;
+            } finally {
+                client.release();
+            }
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /* Atualizar álbum (admin): tema, datas, status e recompensa. */
+    router.post("/admin/albuns/:id", authAdmin, async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            const id = Number(req.params.id);
+            if (!Number.isInteger(id)) return res.status(400).json({ error: "ID inválido." });
+            const q = await pg().query(`SELECT * FROM sticker_collections WHERE id = $1`, [id]);
+            const colecao = q.rows[0];
+            if (!colecao) return res.status(404).json({ error: "Álbum não encontrado." });
+
+            const sets = [];
+            const params = [id];
+
+            if (req.body.theme !== undefined) {
+                params.push(String(req.body.theme).trim() || null);
+                sets.push(`theme = $${params.length}`);
+            }
+            if (req.body.description !== undefined) {
+                params.push(String(req.body.description).trim() || null);
+                sets.push(`description = $${params.length}`);
+            }
+            if (req.body.starts_at !== undefined) {
+                const d = new Date(req.body.starts_at);
+                if (isNaN(d.getTime())) return res.status(400).json({ error: "Data de início inválida." });
+                params.push(d);
+                sets.push(`starts_at = $${params.length}`);
+            }
+            if (req.body.ends_at !== undefined) {
+                const d = new Date(req.body.ends_at);
+                if (isNaN(d.getTime())) return res.status(400).json({ error: "Data de fim inválida." });
+                params.push(d);
+                sets.push(`ends_at = $${params.length}`);
+            }
+            if (req.body.status !== undefined) {
+                const status = String(req.body.status).toUpperCase();
+                if (!["ATIVO", "ENCERRADO"].includes(status)) {
+                    return res.status(400).json({ error: "Status inválido." });
+                }
+                params.push(status);
+                sets.push(`status = $${params.length}`);
+                sets.push(`closed_at = ${status === "ENCERRADO" ? "COALESCE(closed_at, NOW())" : "NULL"}`);
+                params.push(status === "ATIVO");
+                sets.push(`is_active = $${params.length}`);
+            }
+            if (req.body.reward_enabled !== undefined) {
+                params.push(!!req.body.reward_enabled);
+                sets.push(`reward_enabled = $${params.length}`);
+            }
+            if (req.body.reward_title !== undefined) {
+                params.push(String(req.body.reward_title).trim() || null);
+                sets.push(`reward_title = $${params.length}`);
+            }
+            if (req.body.reward_description !== undefined) {
+                params.push(String(req.body.reward_description).trim() || null);
+                sets.push(`reward_description = $${params.length}`);
+            }
+            if (req.body.reward_type !== undefined) {
+                const t = req.body.reward_type === "credito" ? "credito" : "badge";
+                params.push(t);
+                sets.push(`reward_type = $${params.length}`);
+            }
+            if (req.body.reward_value !== undefined) {
+                params.push(Math.max(0, Number(req.body.reward_value) || 0));
+                sets.push(`reward_value = $${params.length}`);
+            }
+            if (req.body.reward_rules !== undefined) {
+                params.push(String(req.body.reward_rules).trim() || null);
+                sets.push(`reward_rules = $${params.length}`);
+            }
+
+            if (!sets.length) return res.status(400).json({ error: "Nada para atualizar." });
+
+            await pg().query(
+                `UPDATE sticker_collections SET ${sets.join(", ")} WHERE id = $1`,
+                params
+            );
+            registrarLog("admin_album_atualizado", { colecaoId: id, adminId: req.admin.usuario });
+            res.json({ ok: true });
         } catch (error) {
             res.status(500).json({ error: error.message });
         }

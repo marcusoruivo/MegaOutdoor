@@ -510,7 +510,8 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
                 <button id="colTabEstoque" onclick="colAba('estoque')">📦 ESTOQUE</button>
                 <button id="colTabTransacoes" onclick="colAba('transacoes')">💸 TRANSAÇÕES</button>
                 <button id="colTabConquistas" onclick="colAba('conquistas')">🏆 CONQUISTAS</button>
-                <button id="colTabConcessoes" onclick="colAba('concessoes')">🎁 CONCESSÕES</button>
+<button id="colTabConcessoes" onclick="colAba('concessoes')">🎁 CONCESSÕES</button>
+                <button id="colTabAlbuns" onclick="colAba('albuns')">🏆 ÁLBUNS</button>
             </div>
 
             <div id="colViewResumo" style="padding-top:16px;">
@@ -723,6 +724,55 @@ img.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px s
                             <thead>
                                 <tr>
                                     <th>Ícone</th><th>Nome</th><th>Descrição</th><th>Desbloqueios</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        <div id="colViewAlbuns" style="display:none;padding-top:16px;">
+                <div class="card">
+                    <h3 style="color:#ffd400;margin-bottom:6px;">🏆 Ciclo de vida dos álbuns</h3>
+                    <p class="fade" style="margin-bottom:14px;">Crie um novo álbum (encerra o vigente), edite tema, datas e recompensas, ou encerre manualmente.</p>
+                    <div class="toolbar">
+                        <button onclick="colNovoAlbum()">➕ NOVO ÁLBUM</button>
+                        <button onclick="carregarColAlbuns()">⟳ ATUALIZAR</button>
+                    </div>
+                    <div style="overflow:auto;max-height:70vh;">
+                        <table id="colAlbumTabela">
+                            <thead>
+                                <tr>
+                                    <th>ID</th><th>Nome</th><th>Tema</th><th>Status</th>
+                                    <th>Início</th><th>Fim</th><th>Total</th><th>Recompensa</th><th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card" style="margin-top:16px;">
+                    <h3 style="color:#ffd400;margin-bottom:6px;">🏆 Vendas de álbuns completos</h3>
+                    <div style="overflow:auto;max-height:70vh;">
+                        <table id="colAlbumVendaTabela">
+                            <thead>
+                                <tr>
+                                    <th>#</th><th>Álbum</th><th>Vendedor</th><th>Comprador</th>
+                                    <th>Preço</th><th>Status</th><th>Criado</th><th>Vendido</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card" style="margin-top:16px;">
+                    <h3 style="color:#ffd400;margin-bottom:6px;">🏆 Ofertas de álbuns</h3>
+                    <div style="overflow:auto;max-height:70vh;">
+                        <table id="colAlbumOfertaTabela">
+                            <thead>
+                                <tr>
+                                    <th>#</th><th>Ofertante</th><th>Dono</th>
+                                    <th>Valor</th><th>Status</th><th>Criado</th><th>Resposta</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -1762,7 +1812,7 @@ async function removerAviso(){
 ========================================================= */
 
 function colAba(nome){
-    for(const n of ["resumo","cards","packs","usuarios","compras","vendas","trocas","estoque","transacoes","conquistas","concessoes"]){
+    for(const n of ["resumo","cards","packs","usuarios","compras","vendas","trocas","estoque","transacoes","conquistas","concessoes","albuns"]){
         const bt = document.getElementById("colTab" + n.charAt(0).toUpperCase() + n.slice(1));
         const vw = document.getElementById("colView" + n.charAt(0).toUpperCase() + n.slice(1));
         if(bt) bt.className = n === nome ? "ativa" : "";
@@ -1779,9 +1829,190 @@ function colAba(nome){
     if(nome === "transacoes") carregarColTransacoes();
     if(nome === "conquistas") carregarColConquistas();
     if(nome === "concessoes") carregarConcessoes();
+    if(nome === "albuns") carregarColAlbuns();
 }
 
 const fmtColDin = (n) => "R$ " + Number(n || 0).toLocaleString("pt-BR", {minimumFractionDigits: 2});
+
+/* =========================================================
+   ÁLBUNS (admin) — ciclo de vida, vendas e ofertas
+========================================================= */
+let colAlbunsCache = [];
+
+async function carregarColAlbuns(){
+    try {
+        const [dc, dv] = await Promise.all([
+            api("/api/colecionaveis/admin/colecoes"),
+            api("/api/colecionaveis/admin/albuns/vendas")
+        ]);
+        colAlbunsCache = dc.colecoes || [];
+
+        const tbody = document.querySelector("#colAlbumTabela tbody");
+        tbody.innerHTML = colAlbunsCache.map(c =>
+            "<tr>" +
+            "<td>" + c.id + "</td>" +
+            "<td><b>" + esc(c.name || c.slug) + "</b></td>" +
+            "<td>" + esc(c.theme || "—") + "</td>" +
+            "<td>" + (c.status === "ENCERRADO"
+                ? "<span class='pill available'>ENCERRADO</span>"
+                : "<span class='pill paid'>ATIVO</span>") + "</td>" +
+            "<td>" + fmtData(c.starts_at) + "</td>" +
+            "<td>" + fmtData(c.ends_at) + "</td>" +
+            "<td>" + fmtNum(c.total) + "</td>" +
+            "<td>" + (c.reward_enabled
+                ? (c.reward_type === "credito" ? "💰 R$ " + Number(c.reward_value).toFixed(2) : "🎖️ " + esc(c.reward_title || "badge"))
+                : "<span class='fade'>—</span>") + "</td>" +
+            "<td>" +
+              "<button class='sec' onclick='colEditarAlbum(" + c.id + ")' style='margin-right:4px;'>✏️</button>" +
+              "<button class='sec' onclick='colVerAlbumOfertas(" + c.id + ")' title='Ver ofertas' style='margin-right:4px;'>💬</button>" +
+              (c.status === "ENCERRADO"
+                  ? "<button class='sec' onclick='colReabrirAlbum(" + c.id + ")' title='Reabrir'>✅</button>"
+                  : "<button class='sec' onclick='colEncerrarAlbum(" + c.id + ")' title='Encerrar'>🔚</button>") +
+            "</td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='9' class='fade'>Nenhum álbum.</td></tr>";
+
+        const vendas = dv.vendas || [];
+        const vt = document.querySelector("#colAlbumVendaTabela tbody");
+        vt.innerHTML = vendas.map(v =>
+            "<tr>" +
+            "<td>" + v.id + "</td>" +
+            "<td>" + esc(v.colecao_nome || "—") + "</td>" +
+            "<td>" + esc(v.vendedor_nome || "ID " + v.seller_id) + "</td>" +
+            "<td>" + esc(v.comprador_nome || "—") + "</td>" +
+            "<td>" + fmtColDin(v.price) + "</td>" +
+            "<td>" + esc(v.status) + "</td>" +
+            "<td>" + fmtData(v.created_at) + "</td>" +
+            "<td>" + (v.sold_at ? fmtData(v.sold_at) : "—") + "</td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='8' class='fade'>Nenhuma venda de álbum.</td></tr>";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+function colNovoAlbum(){
+    const name = prompt("Nome do novo álbum:");
+    if(!name) return;
+    const theme = prompt("Tema (ex.: Animais do Mundo):");
+    const total = prompt("Total de figurinhas:");
+    const totalNum = Number(total);
+    if(!Number.isInteger(totalNum) || totalNum <= 0){ alert("Total inválido."); return; }
+    const dias = prompt("Duração em dias (padrão 60):", "60");
+    const diasNum = Number(dias);
+    if(!isFinite(diasNum) || diasNum <= 0){ alert("Duração inválida."); return; }
+    const reward = prompt("Tem recompensa? (digite VALOR em R$ para crédito, BADGE para medalha, ou Enter para nenhuma):", "");
+    const body = {
+        name: name.trim(),
+        theme: theme ? theme.trim() : "",
+        total: totalNum,
+        starts_at: new Date().toISOString(),
+        ends_at: new Date(Date.now() + diasNum * 24 * 3600 * 1000).toISOString()
+    };
+    const rw = String(reward || "").trim().toUpperCase();
+    if(rw === "BADGE"){
+        body.reward_enabled = true;
+        body.reward_type = "badge";
+        body.reward_title = "Conquistou o álbum completo";
+        body.reward_description = "Medalha exclusiva por completar o álbum.";
+    } else if(rw){
+        const val = Number(rw.replace(",", "."));
+        if(isFinite(val) && val > 0){
+            body.reward_enabled = true;
+            body.reward_type = "credito";
+            body.reward_value = val;
+            body.reward_title = "Bônus por completar o álbum";
+            body.reward_description = "Crédito de R$ " + val.toFixed(2) + " por completar o álbum.";
+        }
+    }
+    api("/api/colecionaveis/admin/albuns", {
+        method: "POST",
+        body: JSON.stringify(body)
+    }).then(() => {
+        alert("✅ Álbum criado! O álbum anterior foi encerrado.");
+        carregarColAlbuns();
+    }).catch(err => alert("Erro: " + err.message));
+}
+
+async function colEditarAlbum(id){
+    const c = colAlbunsCache.find(x => x.id === id);
+    if(!c) return;
+    const tema = prompt("Tema:", c.theme || "");
+    if(tema === null) return;
+    const fim = prompt("Data de fim (dd/mm/aaaa):", c.ends_at ? new Date(c.ends_at).toLocaleDateString("pt-BR") : "");
+    if(fim === null) return;
+    const rewardTipo = prompt("Tipo de recompensa (badge/credito — Enter mantém):", c.reward_type || "badge");
+    if(rewardTipo === null) return;
+    const rewardValor = prompt("Valor da recompensa em R$ (0 = sem valor):", c.reward_value || "0");
+    if(rewardValor === null) return;
+    const rewardTitulo = prompt("Título da recompensa (Enter mantém):", c.reward_title || "");
+    if(rewardTitulo === null) return;
+    const body = { theme: tema.trim() };
+    const partes = String(fim).split("/");
+    if(partes.length === 3){
+        const d = new Date(Number(partes[2]), Number(partes[1]) - 1, Number(partes[0]));
+        if(!isNaN(d.getTime())) body.ends_at = d.toISOString();
+    }
+    const rt = String(rewardTipo).toLowerCase();
+    if(rt === "badge" || rt === "credito"){
+        body.reward_type = rt;
+        body.reward_enabled = true;
+        body.reward_value = Math.max(0, Number(String(rewardValor).replace(",", ".")) || 0);
+        body.reward_title = rewardTitulo.trim() || null;
+    } else {
+        body.reward_enabled = false;
+    }
+    try {
+        await api("/api/colecionaveis/admin/albuns/" + id, {
+            method: "POST",
+            body: JSON.stringify(body)
+        });
+        carregarColAlbuns();
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
+
+function colEncerrarAlbum(id){
+    const c = colAlbunsCache.find(x => x.id === id);
+    if(!c) return;
+    if(!confirm("Encerrar o álbum '" + (c.name || c.slug) + "' agora?\n\nNovas compras de pacotes serão bloqueadas.")) return;
+    api("/api/colecionaveis/admin/albuns/" + id, {
+        method: "POST",
+        body: JSON.stringify({ status: "ENCERRADO" })
+    }).then(() => { carregarColAlbuns(); }).catch(err => alert("Erro: " + err.message));
+}
+
+function colReabrirAlbum(id){
+    const c = colAlbunsCache.find(x => x.id === id);
+    if(!c) return;
+    if(!confirm("Reabrir o álbum '" + (c.name || c.slug) + "'?")) return;
+    api("/api/colecionaveis/admin/albuns/" + id, {
+        method: "POST",
+        body: JSON.stringify({ status: "ATIVO" })
+    }).then(() => { carregarColAlbuns(); }).catch(err => alert("Erro: " + err.message));
+}
+
+async function colVerAlbumOfertas(collectionId){
+    try {
+        const d = await api("/api/colecionaveis/admin/albuns/" + collectionId + "/ofertas");
+        const ofertas = d.ofertas || [];
+        const tbody = document.querySelector("#colAlbumOfertaTabela tbody");
+        tbody.innerHTML = ofertas.map(o =>
+            "<tr>" +
+            "<td>" + o.id + "</td>" +
+            "<td>" + esc(o.ofertante_nome || "ID " + o.offeror_id) + "</td>" +
+            "<td>" + esc(o.dono_nome || "ID " + o.offeree_id) + "</td>" +
+            "<td>" + fmtColDin(o.amount) + "</td>" +
+            "<td>" + esc(o.status) + "</td>" +
+            "<td>" + fmtData(o.created_at) + "</td>" +
+            "<td>" + (o.responded_at ? fmtData(o.responded_at) : "—") + "</td>" +
+            "</tr>"
+        ).join("") || "<tr><td colspan='7' class='fade'>Nenhuma oferta para este álbum.</td></tr>";
+    } catch(err){
+        alert("Erro: " + err.message);
+    }
+}
 
 let concessaoUsuario = null;
 let concessaoCards = [];

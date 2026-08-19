@@ -491,6 +491,7 @@ body{overflow-x:hidden}
     height:230px;display:flex;align-items:center;justify-content:center;
     font-size:90px;position:relative;
 }
+.modal-arte:empty{display:none}
 .modal-arte::after{
     content:"";position:absolute;inset:0;
     background:radial-gradient(circle at 30% 20%, rgba(255,255,255,.3), transparent 55%);
@@ -880,6 +881,52 @@ body{overflow-x:hidden}
     .slot-carta{width:min(200px,66vw)}
     .cc-arte-grande .cc-emoji{font-size:74px}
 }
+
+/* ===== ÁLBUM COMPLETO — CICLO DE VIDA, VENDAS E OFERTAS ===== */
+.album-countdown{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+    background:linear-gradient(90deg,rgba(255,152,0,.14),rgba(255,60,60,.12));
+    border:1px solid var(--borda);border-radius:12px;padding:10px 14px;margin-top:12px;font-size:12px}
+.album-countdown.encerrado{background:rgba(255,80,80,.10);border-color:rgba(255,80,80,.4)}
+.album-countdown .ac-info{display:flex;flex-direction:column;gap:2px}
+.album-countdown .ac-titulo{font-family:'Orbitron',sans-serif;font-weight:900;letter-spacing:1px;font-size:13px}
+.album-countdown .ac-fim{color:var(--muted)}
+.album-countdown .ac-relogio{font-family:'Orbitron',sans-serif;font-weight:900;font-size:16px;color:var(--amarelo);white-space:nowrap}
+.album-countdown.encerrado .ac-relogio{color:#ff5f6d}
+.album-completo-banner{background:linear-gradient(90deg,rgba(255,215,0,.16),rgba(125,255,155,.12));
+    border:1px solid var(--borda);border-radius:12px;padding:12px 14px;margin-top:12px;display:flex;
+    flex-direction:column;gap:8px;align-items:flex-start}
+.album-completo-banner .acb-titulo{font-family:'Orbitron',sans-serif;font-weight:900;letter-spacing:1px;
+    font-size:15px;color:var(--amarelo)}
+.album-completo-banner .acb-acoes{display:flex;gap:8px;flex-wrap:wrap}
+.album-listing-card{background:var(--painel);border:1px solid var(--borda);border-radius:14px;padding:14px;
+    display:flex;flex-direction:column;gap:10px;position:relative}
+.album-listing-card .alc-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.album-listing-card .alc-nome{font-family:'Orbitron',sans-serif;font-weight:900;font-size:14px}
+.album-listing-card .alc-vendedor{font-size:12px;color:var(--muted)}
+.album-listing-card .alc-preco{font-family:'Orbitron',sans-serif;font-weight:900;font-size:22px;color:var(--amarelo)}
+.album-listing-card .alc-acoes{display:flex;gap:8px;flex-wrap:wrap}
+.album-listing-card .alc-oferta{width:100%}
+.album-listing-card .alc-badge{position:absolute;top:10px;right:10px;font-size:10px;font-weight:900;letter-spacing:1px;
+    background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:var(--amarelo);
+    padding:3px 8px;border-radius:999px}
+.album-offer-item{background:var(--painel);border:1px solid var(--borda);border-radius:12px;padding:12px 14px;
+    display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.album-offer-item .ao-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.album-offer-item .ao-valor{font-family:'Orbitron',sans-serif;font-weight:900;font-size:17px;color:var(--amarelo)}
+.album-offer-item .ao-acoes{display:flex;gap:8px;flex-wrap:wrap}
+.album-offer-item .ao-status{font-size:11px;font-weight:900;letter-spacing:1px;padding:3px 8px;border-radius:999px}
+.ao-status.PENDENTE,.ao-status.AGUARDANDO_PAGAMENTO{background:rgba(255,152,0,.15);color:#ffb74d}
+.ao-status.ACEITA{background:rgba(125,255,155,.15);color:#7dff9b}
+.ao-status.RECUSADA,.ao-status.CANCELADA,.ao-status.EXPIRADA{background:rgba(255,95,109,.12);color:#ff5f6d}
+.ao-status.CONCLUIDA{background:rgba(125,255,155,.15);color:#7dff9b}
+.album-ofertas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.album-vendas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.album-minha-venda{background:rgba(255,152,0,.10);border:1px dashed rgba(255,152,0,.5);border-radius:12px;
+    padding:10px 12px;font-size:12px;margin-top:10px;color:var(--muted)}
+.album-minha-venda b{color:var(--amarelo);font-family:'Orbitron',sans-serif}
+@media (max-width:640px){
+    .album-ofertas-grid,.album-vendas-grid{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
@@ -939,6 +986,7 @@ body{overflow-x:hidden}
             <span>✨ Especiais: <b id="legendaEspeciais">0</b></span>
         </div>
         <div id="albumStatus" class="hidden" style="margin-top:12px;"></div>
+        <div id="albumCountdown" class="album-countdown hidden"></div>
     </div>
 </section>
 
@@ -1078,6 +1126,12 @@ body{overflow-x:hidden}
         </div>
         <div class="grid-listing" id="mkGrid"></div>
         <div class="paginacao" id="mkPag"></div>
+        <div class="album-mercado" id="albumMercadoWrap" style="display:none;margin-top:26px;">
+            <div class="secao-titulo" style="border-top:2px solid var(--linha);padding-top:22px;margin-top:6px;">🏆 ÁLBUNS COMPLETOS À VENDA</div>
+            <div class="secao-sub">Adquira um álbum 100% completo de outro colecionador com pagamento seguro e transferência automática.</div>
+            <div id="albumMercadoStatus"></div>
+            <div class="grid-listing" id="albunsGrid"></div>
+        </div>
     </section>
 
     <!-- LEILÕES: não inicia checkout; vencedor aguarda pagamento -->
@@ -1104,6 +1158,11 @@ body{overflow-x:hidden}
         <div class="secao-sub">Faça ofertas por figurinhas de outros colecionadores, negocie valores e finalize a compra de forma segura.</div>
         <div id="ofertasPendentes" style="font-size:12px;color:var(--amarelo);font-weight:700;margin-bottom:10px"></div>
         <div class="grid-trades" id="ofertasGrid"></div>
+        <div class="album-ofertas" id="albumOfertasWrap" style="display:none;margin-top:26px;">
+            <div class="secao-titulo" style="border-top:2px solid var(--linha);padding-top:22px;margin-top:6px;">🏆 OFERTAS DE ÁLBUNS COMPLETOS</div>
+            <div class="secao-sub">Ofertas que você recebeu e que você fez por álbuns completos.</div>
+            <div id="albumOfertasGrid"></div>
+        </div>
     </section>
 
     <!-- PERFIL -->
@@ -1360,6 +1419,9 @@ async function carregarInfo(){
     try {
         INFO = await apiGet("/api/colecionaveis/info");
         document.getElementById("colecaoNome").textContent = INFO.colecao ? INFO.colecao.name : "Minha coleção";
+        if (INFO.serverTime) {
+            SERVER_OFFSET_MS = new Date(INFO.serverTime).getTime() - Date.now();
+        }
     } catch(e){
         document.getElementById("colecaoNome").textContent = "Coleção indisponível";
     }
@@ -1386,21 +1448,7 @@ async function carregarAlbum(){
             document.getElementById("legendaPacotes").textContent = (pf.perfil && pf.perfil.pacotes_abertos) || 0;
         } catch(e){}
 
-        const statusEl = document.getElementById("albumStatus");
-        if (res.completo) {
-            statusEl.classList.remove("hidden");
-            statusEl.innerHTML = '<div style="background:linear-gradient(90deg,rgba(46,204,113,.18),rgba(255,212,0,.12));' +
-                'border:1px solid rgba(46,204,113,.5);border-radius:12px;padding:12px 16px;text-align:center;">' +
-                '<b style="color:var(--verde);font-size:15px;">🏆 ÁLBUM COMPLETO!</b>' +
-                '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' +
-                'Você completou todas as ' + total + ' figurinhas. Parabéns, colecionador! 🎉</div></div>';
-        } else {
-            statusEl.classList.remove("hidden");
-            statusEl.innerHTML = '<div style="background:rgba(255,122,0,.08);border:1px solid rgba(255,122,0,.35);' +
-                'border-radius:12px;padding:10px 16px;text-align:center;font-size:12px;color:var(--muted);">' +
-                '🎯 Faltam <b style="color:var(--laranja);">' + (total - res.diferentes) + '</b> figurinha(s) para completar o álbum. ' +
-                'Abra pacotinhos, compre no mercado ou troque para acelerar!</div>';
-        }
+        renderAlbumCiclo(d, res, total);
 
         /* filtros + pesquisa do álbum */
         const busca = document.getElementById("albumBusca").value;
@@ -1418,6 +1466,156 @@ function setAlbumFiltro(f, btn){
     albumFiltro = f;
     document.querySelectorAll("#albumFiltroChips .filtro-chip").forEach(b => b.classList.toggle("ativa", b === btn));
     carregarAlbum();
+}
+
+/* =========================================================
+   CICLO DE VIDA DO ÁLBUM — COUNTDOWN + COMPLETUDE + VENDA
+========================================================= */
+let SERVER_OFFSET_MS = 0;
+let albumTimer = null;
+let albumCiclo = null;
+
+function renderAlbumCiclo(d, res, total){
+    albumCiclo = d;
+    const colecao = d.colecao || null;
+
+    /* Offset do servidor (relógio confiável p/ contagem). */
+    if (d.serverTime) {
+        SERVER_OFFSET_MS = new Date(d.serverTime).getTime() - Date.now();
+    }
+
+    const cdEl = document.getElementById("albumCountdown");
+    if (!colecao) {
+        cdEl.classList.add("hidden");
+        cdEl.innerHTML = "";
+    } else if (colecao.status === "ENCERRADO" || d.encerrado) {
+        cdEl.classList.remove("hidden");
+        cdEl.classList.add("encerrado");
+        cdEl.innerHTML =
+            '<div class="ac-info"><span class="ac-titulo">🔚 ÁLBUM ENCERRADO</span>' +
+            '<span class="ac-fim">Este álbum (' + esc(colecao.name) + ') terminou. ' +
+            'Um novo ciclo começa em breve!</span></div>' +
+            '<span class="ac-relogio">FINALIZADO</span>';
+        pararContagem();
+    } else if (colecao.ends_at) {
+        const fimMs = new Date(colecao.ends_at).getTime();
+        const inicioMs = new Date(colecao.starts_at).getTime();
+        cdEl.classList.remove("hidden", "encerrado");
+        cdEl.innerHTML =
+            '<div class="ac-info"><span class="ac-titulo">📖 ' + esc(colecao.name) + '</span>' +
+            '<span class="ac-fim">Início ' + fmtData(inicioMs) + ' · Fim ' + fmtData(fimMs) + '</span></div>' +
+            '<span class="ac-relogio" id="albumCountdownRelogio">--:--:--</span>';
+        iniciarContagem(fimMs);
+    } else {
+        pararContagem();
+        cdEl.classList.add("hidden");
+        cdEl.innerHTML = "";
+    }
+
+    /* Completude + botões de venda do álbum completo. */
+    const statusEl = document.getElementById("albumStatus");
+    if (res.completo) {
+        statusEl.classList.remove("hidden");
+        let minhaVendaHtml = "";
+        if (d.minhaVenda) {
+            const mv = d.minhaVenda;
+            minhaVendaHtml =
+                '<div class="album-minha-venda">📢 Seu álbum está <b>' +
+                (mv.status === "negotiation" ? "EM NEGOCIAÇÃO" : "À VENDA") +
+                '</b> por <b>R$ ' + Number(mv.price).toFixed(2) + '</b>.' +
+                (mv.status === "negotiation"
+                    ? ' <span style="color:var(--muted)">Aguarde o pagamento do comprador.</span>'
+                    : ' <a href="javascript:void(0)" onclick="cancelarVendaAlbum(' + mv.id + ')">' +
+                      '<span style="color:var(--laranja);text-decoration:underline">Cancelar anúncio</span></a>') +
+                '</div>';
+        }
+        let recompensaHtml = "";
+        if (d.recompensa && d.recompensa.habilitada) {
+            recompensaHtml =
+                '<div style="font-size:12px;color:var(--amarelo);margin-top:4px;">🎁 ' +
+                esc(d.recompensa.titulo || "Recompensa") + (d.recompensa.tipo === "credito" ? ' — R$ ' + Number(d.recompensa.valor).toFixed(2) : '') +
+                '</div>';
+        }
+        statusEl.innerHTML =
+            '<div class="album-completo-banner">' +
+            '<div class="acb-titulo">🏆 ÁLBUM COMPLETO — ' + total + '/' + total + ' (100%)</div>' +
+            (recompensaHtml || '<div style="font-size:12px;color:var(--muted)">Você completou todas as figurinhas. Parabéns, colecionador! 🎉</div>') +
+            minhaVendaHtml +
+            (!d.minhaVenda && !d.encerrado ? '<div class="acb-acoes">' +
+                '<button class="btn btn-laranja" onclick="venderAlbumCompleto()">💰 VENDER ÁLBUM COMPLETO</button>' +
+                '</div>' : '') +
+            '</div>';
+    } else {
+        statusEl.classList.remove("hidden");
+        statusEl.innerHTML = '<div style="background:rgba(255,122,0,.08);border:1px solid rgba(255,122,0,.35);' +
+            'border-radius:12px;padding:10px 16px;text-align:center;font-size:12px;color:var(--muted);">' +
+            '🎯 Faltam <b style="color:var(--laranja);">' + (total - res.diferentes) + '</b> figurinha(s) para completar o álbum. ' +
+            'Abra pacotinhos, compre no mercado ou troque para acelerar!</div>';
+    }
+}
+
+function pararContagem(){
+    if (albumTimer) { clearInterval(albumTimer); albumTimer = null; }
+}
+function iniciarContagem(fimMs){
+    pararContagem();
+    atualizarRelogio(fimMs);
+    albumTimer = setInterval(function(){ atualizarRelogio(fimMs); }, 1000);
+}
+function atualizarRelogio(fimMs){
+    const el = document.getElementById("albumCountdownRelogio");
+    if (!el) return;
+    const agora = Date.now() + SERVER_OFFSET_MS;
+    const restante = fimMs - agora;
+    if (restante <= 0) {
+        el.textContent = "00:00:00";
+        pararContagem();
+        carregarAlbum();
+        carregarInfo();
+        return;
+    }
+    const s = Math.floor(restante / 1000);
+    const hh = String(Math.floor(s / 3600)).padStart(2, "0");
+    const mm = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+    const ss = String(s % 60).padStart(2, "0");
+    el.textContent = hh + ":" + mm + ":" + ss;
+}
+
+/* Vender meu álbum completo (anunciar no mercado de álbuns). */
+async function venderAlbumCompleto(){
+    if (!exigirLogin() || !albumCiclo || !albumCiclo.colecao) return;
+    if (albumCiclo.encerrado) { toast("Este álbum está encerrado.", "info"); return; }
+    const colecao = albumCiclo.colecao;
+    const preco = prompt("💬 Por quanto você quer vender seu álbum completo (" + colecao.name + ")?\nR$ (ex: 150.00)", "100.00");
+    if (preco === null) return;
+    const valor = Number(String(preco).replace(",", "."));
+    if (!isFinite(valor) || valor <= 0) { toast("Preço inválido.", "erro"); return; }
+    const aceitaOfertas = confirm("Você também quer receber ofertas por este álbum?\n\nSim = recebe ofertas e pode vendê-lo pelo preço de ofertas aceitas.\nNão = venda apenas pelo preço informado.");
+    try {
+        const r = await apiPost("/api/colecionaveis/albuns/" + colecao.id + "/vender", {
+            price: valor,
+            accepts_offers: aceitaOfertas
+        });
+        if (r && r.ok) {
+            toast("📢 Álbum anunciado por R$ " + Number(r.preco).toFixed(2) + "!", "ok");
+            carregarAlbum();
+            carregarAlbunsMercado();
+        }
+    } catch(e){
+        toast(e.message || "Erro ao anunciar.", "erro");
+    }
+}
+
+async function cancelarVendaAlbum(listingId){
+    if (!confirm("Cancelar seu anúncio do álbum? As ofertas pendentes também serão encerradas.")) return;
+    try {
+        await apiDelete("/api/colecionaveis/albuns/vendas/" + listingId);
+        toast("Anúncio removido.", "ok");
+        carregarAlbum();
+        carregarAlbunsMercado();
+    } catch(e){
+        toast(e.message || "Erro.", "erro");
+    }
 }
 
 function mostrarBloqueada(){
@@ -1705,6 +1903,87 @@ async function carregarMercado(pag){
     } catch(e){
         document.getElementById("mkGrid").innerHTML = '<div style="color:var(--muted);padding:16px">' + esc(e.message) + '</div>';
     }
+    carregarAlbunsMercado();
+}
+
+/* =========================================================
+   MARKETPLACE DE ÁLBUNS COMPLETOS
+========================================================= */
+async function carregarAlbunsMercado(){
+    if (!minhaConta || !minhaConta.token) return;
+    const wrap = document.getElementById("albumMercadoWrap");
+    if (!wrap) return;
+    try {
+        const d = await apiGet("/api/colecionaveis/albuns");
+        wrap.style.display = "block";
+        albumMercadoNome = (d.colecao && d.colecao.name) || "Álbum completo";        const statusEl = document.getElementById("albumMercadoStatus");
+        if (d.encerrado) {
+            statusEl.innerHTML = '<div style="background:rgba(255,95,109,.10);border:1px solid rgba(255,95,109,.4);' +
+                'border-radius:12px;padding:12px 14px;font-size:12px;color:var(--muted);margin-bottom:12px">' +
+                '🔚 Este álbum está encerrado. Novas vendas só para o próximo álbum.</div>';
+        } else {
+            statusEl.innerHTML = "";
+        }
+        const anuncios = d.anuncios || [];
+        document.getElementById("albunsGrid").innerHTML = anuncios.length
+            ? anuncios.map(a => albumListingHtml(a)).join("")
+            : '<div style="color:var(--muted);padding:16px">Nenhum álbum completo à venda no momento.</div>';
+
+        const contador = document.getElementById("abaOfertasContador");
+        if (contador && d.minhasOfertasRecebidas > 0) {
+            contador.textContent = d.minhasOfertasRecebidas;
+        }
+    } catch(e){
+        wrap.style.display = "none";
+    }
+}
+
+let albumMercadoNome = "Álbum completo";
+
+function albumListingHtml(a){
+    const nomeCol = a.colecaoNome || albumMercadoNome;
+    return '<article class="album-listing-card">' +
+        '<span class="alc-badge">🏆 ÁLBUM</span>' +
+        '<div class="alc-top"><span class="alc-nome">' + esc(nomeCol) + '</span>' +
+        '<span class="alc-vendedor">por ' + esc(a.vendedorNome || "?") + '</span></div>' +
+        '<div class="alc-preco">R$ ' + Number(a.preco).toFixed(2) + '</div>' +
+        (a.aceitaOfertas
+            ? '<div style="font-size:11px;color:var(--muted)">💬 Aceita ofertas · ' + a.ofertasPendentes + ' pendente(s)</div>'
+            : '<div style="font-size:11px;color:var(--muted)">💳 Venda pelo preço fixo</div>') +
+        '<div class="alc-acoes">' +
+        (!a.meu
+            ? '<button class="btn btn-laranja" style="flex:1" onclick="comprarAlbum(' + a.id + ', ' + a.preco + ')">🛒 COMPRAR</button>' +
+              (a.aceitaOfertas
+                ? '<button class="btn btn-ghost" style="flex:1" onclick="fazerOfertaAlbum(' + a.id + ', ' + a.preco + ')">💬 OFERTAR</button>'
+                : '')
+            : '<div style="color:var(--amarelo);font-size:12px;width:100%">✓ Seu anúncio</div>') +
+        '</div></article>';
+}
+
+async function comprarAlbum(listingId, preco){
+    if (!exigirLogin()) return;
+    if (!confirm("Comprar este álbum completo por R$ " + Number(preco).toFixed(2) + "?\n\nO pagamento é processado pelo Mercado Pago e todas as figurinhas são transferidas automaticamente.")) return;
+    abrirModalPagamento("album", {
+        listingId: listingId,
+        nome: "Álbum completo",
+        preco: Number(preco)
+    });
+}
+
+async function fazerOfertaAlbum(listingId, preco){
+    if (!exigirLogin()) return;
+    const valor = prompt("💬 Qual valor você quer ofertar por este álbum completo?\n\nPreço anunciado: R$ " + Number(preco).toFixed(2) + "\nValor mínimo: R$ 1,00", "");
+    if (valor === null) return;
+    const amount = Number(String(valor).replace(",", "."));
+    if (!isFinite(amount) || amount <= 0) { toast("Valor inválido.", "erro"); return; }
+    try {
+        const r = await apiPost("/api/colecionaveis/albuns/vendas/" + listingId + "/ofertas", { amount: amount, message: "" });
+        if (r && r.ok) {
+            toast("💬 Oferta de R$ " + Number(r.amount).toFixed(2) + " enviada! Aguarde o vendedor.", "ok");
+        }
+    } catch(e){
+        toast(e.message || "Erro ao ofertar.", "erro");
+    }
 }
 
 function abrirModalNovaOfertaParaUsuario(userId){
@@ -1860,7 +2139,124 @@ async function carregarOfertas(){
             (recebidas.length ? recebidas.map(o => renderOfertaHtml(o, true)).join("") : '<div class="vazio" style="text-align:center;padding:20px;color:var(--muted)">Nenhuma oferta recebida ainda.</div>') +
             '<div class="secao-titulo" style="font-size:16px;font-weight:800;color:#fff;margin:20px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--borda)">📤 OFERTAS ENVIADAS</div>' +
             (enviadas.length ? enviadas.map(o => renderOfertaHtml(o, false)).join("") : '<div class="vazio" style="text-align:center;padding:20px;color:var(--muted)">Nenhuma oferta enviada ainda.</div>');
+        carregarAlbunsOfertas();
     } catch(e){ grid.innerHTML = '<div class="vazio">' + msgErro(e) + '</div>'; }
+}
+
+/* =========================================================
+   OFERTAS DE ÁLBUNS COMPLETOS
+========================================================= */
+async function carregarAlbunsOfertas(){
+    if (!minhaConta || !minhaConta.token) return;
+    const wrap = document.getElementById("albumOfertasWrap");
+    if (!wrap) return;
+    try {
+        const d = await apiGet("/api/colecionaveis/albuns/ofertas/minhas");
+        wrap.style.display = "block";
+        const recebidas = d.recebidas || [];
+        const feitas = d.feitas || [];
+        const pendRecebidas = recebidas.filter(o => o.status === "PENDENTE").length;
+        const ctr = document.getElementById("abaOfertasContador");
+        if (ctr && pendRecebidas > 0) {
+            const atual = Number(String(ctr.textContent).replace(/\D/g, "") || 0);
+            if (atual < pendRecebidas) ctr.textContent = " " + pendRecebidas;
+        }
+        document.getElementById("albumOfertasGrid").innerHTML =
+            '<div class="album-ofertas-grid">' +
+            '<div style="background:var(--painel);border:2px solid var(--borda);border-radius:10px;padding:12px;text-align:center">' +
+                '<div style="font-size:24px;font-weight:900;color:var(--amarelo)">' + recebidas.length + '</div>' +
+                '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">🏆 Recebidas</div>' +
+            '</div>' +
+            '<div style="background:var(--painel);border:2px solid var(--borda);border-radius:10px;padding:12px;text-align:center">' +
+                '<div style="font-size:24px;font-weight:900;color:var(--amarelo)">' + feitas.length + '</div>' +
+                '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">🏆 Enviadas</div>' +
+            '</div>' +
+            '</div>' +
+            '<div class="secao-titulo" style="font-size:15px;font-weight:800;color:#fff;margin:16px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--borda)">📥 OFERTAS RECEBIDAS (ÁLBUNS)</div>' +
+            (recebidas.length ? recebidas.map(o => albumOfertaHtml(o, true)).join("") : '<div class="vazio" style="text-align:center;padding:16px;color:var(--muted)">Nenhuma oferta de álbum recebida.</div>') +
+            '<div class="secao-titulo" style="font-size:15px;font-weight:800;color:#fff;margin:20px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--borda)">📤 OFERTAS ENVIADAS (ÁLBUNS)</div>' +
+            (feitas.length ? feitas.map(o => albumOfertaHtml(o, false)).join("") : '<div class="vazio" style="text-align:center;padding:16px;color:var(--muted)">Nenhuma oferta de álbum enviada.</div>');
+    } catch(e){
+        wrap.style.display = "none";
+    }
+}
+
+function albumOfertaHtml(o, recebida){
+    const parceiro = recebida ? esc(o.ofertanteNome || "—") : esc(o.vendedorNome || "—");
+    const rotuloStatus = {
+        PENDENTE:"🕐 Pendente", ACEITA:"✅ Aceita — pague para concluir",
+        RECUSADA:"❌ Recusada", CANCELADA:"🚫 Cancelada", EXPIRADA:"⏳ Expirada",
+        CONCLUIDA:"🎉 Concluída", AGUARDANDO_PAGAMENTO:"💳 Aguardando pagamento"
+    };
+    const status = rotuloStatus[o.status] || o.status;
+    const podePagar = !recebida && (o.status === "ACEITA" || o.status === "AGUARDANDO_PAGAMENTO")
+        && o.anuncioStatus === "negotiation";
+    let acoes = "";
+    if (recebida && o.status === "PENDENTE") {
+        acoes = '<div class="ao-acoes">' +
+            '<button class="btn btn-amarelo" style="flex:1" onclick="aceitarOfertaAlbum(' + o.id + ',' + Number(o.amount).toFixed(2) + ')">✓ ACEITAR</button>' +
+            '<button class="btn btn-ghost" style="flex:1" onclick="recusarOfertaAlbum(' + o.id + ')">RECUSAR</button>' +
+            '</div>';
+    } else if (!recebida && o.status === "PENDENTE" && o.anuncioStatus === "active") {
+        acoes = '<div class="ao-acoes">' +
+            '<button class="btn btn-ghost" style="flex:1" onclick="cancelarOfertaAlbum(' + o.id + ')">CANCELAR OFERTA</button>' +
+            '</div>';
+    } else if (podePagar) {
+        acoes = '<div class="ao-acoes">' +
+            '<button class="btn btn-amarelo" style="flex:1" onclick="pagarOfertaAlbum(' + o.id + ',' + Number(o.amount).toFixed(2) + ')">💳 PAGAR AGORA</button>' +
+            '</div>';
+    }
+    return '<div class="album-offer-item">' +
+        '<div class="ao-top">' +
+        '<span><b>' + esc(o.colecaoNome || "Álbum") + '</b> · ' + (recebida ? "de " : "para ") + parceiro + '</span>' +
+        '<span class="ao-status ' + esc(o.status) + '">' + status + '</span>' +
+        '</div>' +
+        '<div class="ao-valor">R$ ' + Number(o.amount).toFixed(2) + '</div>' +
+        (o.message ? '<div style="font-size:12px;color:var(--muted)">" ' + esc(o.message) + '"</div>' : '') +
+        '<div style="font-size:11px;color:var(--muted)">' +
+        'Anúncio: R$ ' + Number(o.anuncioPreco || 0).toFixed(2) +
+        ' · Status: ' + esc((o.anuncioStatus || "").toUpperCase()) +
+        ' · Expira: ' + fmtData(new Date(o.expiraEm).getTime()) + '</div>' +
+        acoes +
+        '</div>';
+}
+
+async function aceitarOfertaAlbum(ofertaId, valor){
+    if (!confirm("Aceitar esta oferta de R$ " + Number(valor).toFixed(2) + " pelo seu álbum completo?\n\nO comprador terá " +
+        "um prazo para pagar. Outras ofertas pendentes serão encerradas.")) return;
+    try {
+        const r = await apiPost("/api/colecionaveis/albuns/ofertas/" + ofertaId + "/aceitar", {});
+        if (r && r.ok) {
+            toast("✅ Oferta aceita! O comprador foi notificado para pagar.", "ok");
+            carregarAlbunsOfertas();
+            carregarAlbum();
+            carregarAlbunsMercado();
+        }
+    } catch(e){ toast(e.message || "Erro.", "erro"); }
+}
+
+async function recusarOfertaAlbum(ofertaId){
+    try {
+        await apiPost("/api/colecionaveis/albuns/ofertas/" + ofertaId + "/recusar", {});
+        toast("Oferta recusada.", "ok");
+        carregarAlbunsOfertas();
+    } catch(e){ toast(e.message || "Erro.", "erro"); }
+}
+
+async function cancelarOfertaAlbum(ofertaId){
+    try {
+        await apiPost("/api/colecionaveis/albuns/ofertas/" + ofertaId + "/cancelar", {});
+        toast("Oferta cancelada.", "ok");
+        carregarAlbunsOfertas();
+    } catch(e){ toast(e.message || "Erro.", "erro"); }
+}
+
+async function pagarOfertaAlbum(ofertaId, valor){
+    abrirModalPagamento("albumOferta", {
+        ofertaId: ofertaId,
+        nome: "Álbum completo",
+        preco: Number(valor)
+    });
 }
 
 function renderOfertaHtml(o, recebida){
@@ -2638,7 +3034,7 @@ function resolvePackageVisual(categoria) {
 async function abrirModalPagamento(tipo, dados){
     document.getElementById("modalOverlay").classList.remove("hidden");
     const corpo = document.getElementById("modalBody");
-    const titulo = tipo === "pack" ? "Abrir Pacote" : tipo === "mercado" ? "Comprar no Mercado" : tipo === "auction" ? "Pagar Lance Vencedor" : tipo === "oferta" ? "Pagar Oferta Aceita" : "Diferença de Troca";
+    const titulo = tipo === "pack" ? "Abrir Pacote" : tipo === "mercado" ? "Comprar no Mercado" : tipo === "auction" ? "Pagar Lance Vencedor" : tipo === "oferta" ? "Pagar Oferta Aceita" : tipo === "album" ? "Comprar Álbum Completo" : tipo === "albumOferta" ? "Pagar Oferta de Álbum" : "Diferença de Troca";
     let html = '<div class="num">💳 CONFIRMAR PAGAMENTO</div>';
     html += '<h2>' + esc(titulo) + '</h2>';
 
@@ -2677,6 +3073,13 @@ async function abrirModalPagamento(tipo, dados){
             '<div class="produto-preco">' + fmtR$(dados.preco) + '</div>' +
             '<div class="produto-detalhe">Oferta aceita • Quantidade: ' + (dados.quantidade || 1) + '</div>' +
         '</div>';
+    } else if (tipo === "album" || tipo === "albumOferta") {
+        html += '<div class="produto-resumo">' +
+            '<div class="produto-nome">🏆 ' + esc(dados.nome || "Álbum completo") + '</div>' +
+            '<div class="produto-preco">' + fmtR$(dados.preco) + '</div>' +
+            '<div class="produto-detalhe">' + (tipo === "albumOferta" ? "Oferta aceita" : "Compra direta") +
+            ' • Transferência automática das 100% das figurinhas após o pagamento</div>' +
+        '</div>';
     }
 
     html += '<div class="desc">Escolha como deseja pagar. O pagamento é processado com segurança pelo Mercado Pago.</div>';
@@ -2711,6 +3114,12 @@ async function iniciarPagamento(tipo, dados){
     } else if (tipo === "oferta") {
         url = "/api/colecionaveis/offers/" + dados.offerId + "/pay";
         body = { paymentMethod: metodo, cpfCnpj: cpf };
+    } else if (tipo === "album") {
+        url = "/api/colecionaveis/albuns/vendas/" + dados.listingId + "/comprar";
+        body = { paymentMethod: metodo, cpfCnpj: cpf };
+    } else if (tipo === "albumOferta") {
+        url = "/api/colecionaveis/albuns/ofertas/" + dados.ofertaId + "/pagar";
+        body = { paymentMethod: metodo, cpfCnpj: cpf };
     }
     try {
         const d = await apiPost(url, body);
@@ -2721,7 +3130,7 @@ async function iniciarPagamento(tipo, dados){
 function mostrarQr(d, tipo){
     const corpo = document.getElementById("modalBody");
     let html = '<div class="num">✅ PEDIDO CRIADO</div>';
-    html += '<h2>' + (tipo === "pack" ? "Pacote reservado" : tipo === "mercado" ? "Compra reservada" : tipo === "auction" ? "Lance reservado" : tipo === "oferta" ? "Oferta reservada" : "Diferença de troca") + '</h2>';
+    html += '<h2>' + (tipo === "pack" ? "Pacote reservado" : tipo === "mercado" ? "Compra reservada" : tipo === "auction" ? "Lance reservado" : tipo === "oferta" ? "Oferta reservada" : tipo === "album" ? "Álbum reservado" : tipo === "albumOferta" ? "Oferta de álbum reservada" : "Diferença de troca") + '</h2>';
     html += '<div class="desc" style="text-align:center;margin-bottom:10px;">' +
         '⏳ Aguardando confirmação do pagamento. Não entregamos o produto antes do pagamento ser confirmado.' +
     '</div>';
@@ -2737,10 +3146,13 @@ function mostrarQr(d, tipo){
         esc(d.payload || (d.ticketUrl || d.paymentId || "—")) + '</div>';
     html += '<div class="desc">Valor: <b style="color:var(--amarelo)">' + fmtR$(d.valor) + '</b> • Pedido: ' + esc(d.externalReference || d.orderId) + '</div>';
     html += '<div style="display:flex;gap:8px;margin-top:14px">' +
-        '<button class="btn btn-amarelo" onclick="iniciarPolling(\'' + esc(d.orderId) + '\',\'' + esc(tipo || "") + '\')">JÁ PAGUEI</button>' +
+        '<button class="btn btn-amarelo" onclick="iniciarPolling(\'' + esc(d.orderId) + '\',\'' + esc(tipo || "") + '\')">JÁ PAGUEI (Verificar agora)</button>' +
         '<button class="btn btn-ghost" onclick="fecharModal()">Fechar</button>' +
     '</div>';
     corpo.innerHTML = html;
+
+    /* Inicia polling automaticamente */
+    if (d.orderId) iniciarPollingAutomatico(d.orderId, tipo);
 }
 
 let pollTimer = null;
@@ -2756,6 +3168,35 @@ async function iniciarPolling(orderId, tipo){
             if (d.status === "RECEIVED") {
                 /* CORREÇÃO 7: pacote pago → revela o sorteio JÁ persistido
                    (a mesma abertura a cada refresh). */
+                if (tipo === "pack" && d.pacote && d.pacote.figurinhas && d.pacote.figurinhas.length) {
+                    toast("Pagamento confirmado! Pacote aberto. 🎉", "ok");
+                    fecharModal();
+                    revelarPacote(d.pacote);
+                } else {
+                    toast("Pagamento confirmado! Suas figurinhas chegaram. 🎉", "ok");
+                    fecharModal();
+                    carregarAlbum();
+                    carregarAcervo();
+                    carregarTrocas();
+                    carregarMercado(1);
+                    carregarLeiloes();
+                    carregarOfertas();
+                }
+                return;
+            }
+        } catch(e){}
+        pollTimer = setTimeout(checar, 4000);
+    };
+    checar();
+}
+
+/* Inicia polling automaticamente quando QR code é exibido */
+function iniciarPollingAutomatico(orderId, tipo){
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+    const checar = async () => {
+        try {
+            const d = await apiGet("/api/colecionaveis/pagamento/" + orderId);
+            if (d.status === "RECEIVED") {
                 if (tipo === "pack" && d.pacote && d.pacote.figurinhas && d.pacote.figurinhas.length) {
                     toast("Pagamento confirmado! Pacote aberto. 🎉", "ok");
                     fecharModal();
@@ -2891,7 +3332,8 @@ function renderPackLuz(){
     const stage = document.getElementById("packStage");
     stage.innerHTML = '<div class="pack-luz"></div>';
     pacoteEstado.etapa = "luz";
-    pacoteRoda(revelarSlot, 900);
+    /* vai para a carta virada; revelarSlot exige etapa === "slotBack" */
+    pacoteRoda(renderSlotBack, 900);
 }
 
 function renderSlotBack(){
@@ -2909,6 +3351,39 @@ function renderSlotBack(){
 function revelarSlot(){
     if (!pacoteEstado || (pacoteEstado.etapa !== "slotBack" && pacoteEstado.etapa !== "slotReveal")) return;
     const item = pacoteEstado.figs[pacoteEstado.idx];
+    const stage = document.getElementById("packStage");
+    pacoteEstado.virado = false;
+
+    /* Mostra estado de carregamento primeiro */
+    stage.innerHTML = '<div class="pack-titulo">🎁 ' + esc(pacoteEstado.nome) + '</div>' +
+        '<div class="pack-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;color:var(--muted)">' +
+            '<div style="font-size:40px;margin-bottom:12px">⏳</div>' +
+            '<div>Carregando figurinha ' + (pacoteEstado.idx + 1) + ' de ' + pacoteEstado.figs.length + '...</div>' +
+        '</div>' +
+        '<div class="pack-contagem">Figurinha ' + (pacoteEstado.idx + 1) + ' de ' + pacoteEstado.figs.length + '</div>';
+
+    /* Pré-carrega a imagem antes de mostrar o flip */
+    const imgUrl = imagemAnimal(item.card);
+    if (imgUrl) {
+        const img = new Image();
+        img.onload = () => {
+            if (!pacoteEstado || pacoteEstado.etapa !== "slotBack") return; // Estado mudou
+            renderFlipCard(item);
+        };
+        img.onerror = () => {
+            if (!pacoteEstado || pacoteEstado.etapa !== "slotBack") return;
+            /* Se a imagem falhar, mostra o card mesmo assim (com fallback) */
+            renderFlipCard(item);
+        };
+        img.src = imgUrl;
+    } else {
+        /* Sem imagem, renderiza direto */
+        renderFlipCard(item);
+    }
+}
+
+function renderFlipCard(item){
+    if (!pacoteEstado) return;
     const stage = document.getElementById("packStage");
     pacoteEstado.virado = false;
     stage.innerHTML = '<div class="pack-titulo">🎁 ' + esc(pacoteEstado.nome) + '</div>' +
@@ -2932,6 +3407,12 @@ function virarSlot(){
     if (pacoteEstado.modo !== "manual") pacoteRoda(avancarPacote, 1400);
 }
 
+/* Vídeos das figurinhas ESPECIAIS e OURO (reutilizáveis). */
+const VIDEOS_FIGURINHA = {
+    "especial": "/videos/video%20especial.mp4",
+    "ouro": "/videos/videoouro.mp4"
+};
+
 function avancarPacote(){
     if (!pacoteEstado) return;
     pacoteEstado.idx++;
@@ -2939,10 +3420,50 @@ function avancarPacote(){
         const m = pacoteEstado.melhor;
         const fin = m ? ColecaoUI.finishDeCard(m) : "normal";
         const especial = m && (fin !== "normal" || ["RARA","EPICA","LENDARIA","MITICA"].includes(m.rarity));
-        if (especial) { renderPackGrande(); } else { renderPackResumo(); }
+        if (especial) { renderPackVideo(); } else { renderPackResumo(); }
         return;
     }
     revelarSlot();
+}
+
+/* Reproduz o vídeo da figurinha especial/ouro ANTES da revelação
+   grande. Nunca bloqueia: erros, fim do vídeo ou timeout (12s)
+   sempre seguem para renderPackGrande — sem tela preta. */
+function renderPackVideo(){
+    if (!pacoteEstado) { renderPackGrande(); return; }
+    const m = pacoteEstado.melhor;
+    const fin = m ? ColecaoUI.finishDeCard(m) : "normal";
+    const especial = m && (fin !== "normal" || ["RARA","EPICA","LENDARIA","MITICA"].includes(m.rarity));
+    const chave = fin === "ouro" ? "ouro" : (especial ? "especial" : null);
+    const url = chave ? (VIDEOS_FIGURINHA[chave] || null) : null;
+    if (!url) { renderPackGrande(); return; }
+
+    pacoteEstado.etapa = "video";
+    const overlay = document.getElementById("packOverlay");
+    overlay.classList.add("escuro");
+    const stage = document.getElementById("packStage");
+    stage.innerHTML =
+        '<div class="pack-grande" style="display:flex;flex-direction:column;align-items:center;gap:12px">' +
+        '<div style="position:relative;width:min(480px,86vw);aspect-ratio:4/3;overflow:hidden;' +
+        'border-radius:16px;border:2px solid var(--borda);background:#04040a">' +
+        '<video id="packVideo" autoplay muted playsinline preload="auto" ' +
+        'style="width:100%;height:100%;object-fit:contain;display:block" src="' + esc(url) + '"></video>' +
+        '</div>' +
+        '<div class="grande-msg grande-msg-lendaria">' + (chave === "ouro" ? "✨ FIGURINHA OURO!" : "🔥 FIGURINHA ESPECIAL!") + '</div>' +
+        '</div>';
+
+    let concluido = false;
+    const finalizar = function(){
+        if (concluido) return;
+        concluido = true;
+        renderPackGrande();
+    };
+    pacoteRoda(finalizar, 12000);
+    const v = document.getElementById("packVideo");
+    if (v) {
+        v.addEventListener("ended", finalizar);
+        v.addEventListener("error", finalizar);
+    }
 }
 
 function renderPackGrande(){
@@ -3389,6 +3910,8 @@ async function sairConta(){
 
 function fecharModal(){
     document.getElementById("modalOverlay").classList.add("hidden");
+    const arte = document.getElementById("modalArte");
+    if (arte) arte.innerHTML = "";
     if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
 }
 

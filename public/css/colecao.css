@@ -155,8 +155,8 @@
 
 /* ===== EXPERIÊNCIA DE ABERTURA DO PACOTE ===== */
 .pack-overlay{position:fixed;inset:0;z-index:300;background:#07070b;
-    display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:manipulation}
-.pack-stage{position:relative;z-index:2;width:min(480px,94vw);text-align:center;color:var(--texto);max-height:92vh;overflow-y:auto}
+    display:flex;align-items:flex-start;justify-content:center;overflow:hidden;touch-action:manipulation;padding-top:env(safe-area-inset-top, 20px)}
+.pack-stage{position:relative;z-index:2;width:min(480px,94vw);text-align:center;color:var(--texto);max-height:calc(100vh - 40px);overflow-y:auto}
 .pack-burst{position:fixed;inset:0;pointer-events:none;z-index:1;opacity:0;
     background:radial-gradient(circle at 50% 42%,rgba(255,212,0,.5),rgba(255,122,0,.16) 40%,transparent 65%)}
 .pack-overlay.abrindo .pack-burst{animation:packBurst .8s ease both}
@@ -236,6 +236,7 @@
     .pack-fechado{width:min(220px,74vw)}
     .slot-carta{width:min(200px,66vw)}
     .cc-arte-grande .cc-emoji{font-size:74px}
+    .pack-flip-container{width:min(280px,90vw);height:min(460px,calc(100vh - 140px))}
 }
 
 /* ===== ACERVO ===== */
@@ -249,6 +250,8 @@
 .cc-flipper.virado{transform:rotateY(180deg)}
 .cc-frente,.cc-verso{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
 .cc-verso{transform:rotateY(180deg)}
+.pack-flip-container .cc-arte .cc-img,.pack-flip-container .rev-card .cc-img,
+.pack-grande .cc-arte .cc-img{width:min(90vw,420px);max-width:100%;height:auto;max-height:70vh;object-fit:contain}
 .cc-verso-card{position:relative}
 .cc-verso-card::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.10;z-index:0;
     background-image:radial-gradient(circle,#3b82f6 1.2px,transparent 1.5px);

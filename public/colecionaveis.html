@@ -931,6 +931,24 @@ body{overflow-x:hidden}
 @media (max-width:640px){
     .album-ofertas-grid,.album-vendas-grid{grid-template-columns:1fr}
 }
+
+/* ===== HEADER LOGO RESPONSIVO (igual ao Dashboard) ===== */
+.l-header-logo{
+    height: 58px;
+    width: auto;
+    object-fit: contain;
+    display: none;
+}
+.l-header-logo-mobile{
+    height: 48px;
+    width: auto;
+    object-fit: contain;
+    display: block;
+}
+@media (min-width: 1024px){
+    .l-header-logo{display: block}
+    .l-header-logo-mobile{display: none}
+}
 </style>
 </head>
 <body>

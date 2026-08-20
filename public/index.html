@@ -462,6 +462,8 @@ input::placeholder,textarea::placeholder{color:#b0b0b0;opacity:1}
 @media(max-width:640px){#ownerModal>.box{padding:22px 14px 18px;border-radius:16px}#ownerModal>.box>h2{font-size:21px}#painelTabs{grid-template-columns:repeat(2,minmax(0,1fr))!important;padding:8px}#painelTabs button{font-size:10px!important}}
 .l-map-area-btn{height:36px;padding:0 11px;border:1px solid rgba(255,212,0,.45);border-radius:10px;background:rgba(255,212,0,.08);color:#ffd400;font-size:10px;font-weight:900;letter-spacing:.4px;cursor:pointer;white-space:nowrap;transition:.2s}
 .l-map-area-btn:hover,.l-map-area-btn.active{background:linear-gradient(135deg,#ffd400,#ff9d00);border-color:#ffd400;color:#111;box-shadow:0 5px 16px rgba(255,212,0,.2)}
+.segmento-chip{padding:6px 9px;border:1px solid #383b44;border-radius:999px;background:#17191f;color:#c7cad2;font-size:10px;font-weight:700;cursor:pointer}
+.segmento-chip:hover,.segmento-chip.selecionado{border-color:#ffd400;background:rgba(255,212,0,.14);color:#ffd400}
 @media(max-width:640px){.l-map-area-btn{font-size:9px;padding:0 8px}.l-map-controls{gap:4px}}
 
 .box h2{
@@ -1027,7 +1029,7 @@ input::placeholder,textarea::placeholder{color:#b0b0b0;opacity:1}
 
 #dragCount{
     position:fixed;
-    z-index:60;
+    z-index:100;
     pointer-events:none;
     display:none;
     background:rgba(255,212,0,.95);
@@ -4444,7 +4446,7 @@ LIMPAR
                 <label style="font-size:11px; color:var(--muted-foreground); display:block; margin-bottom:6px;">Localizar espaço</label>
                 <div class="l-map-search">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    <input id="spaceSearch" type="number" min="1" max="1000000" placeholder="Número do espaço" onkeydown="if(event.key==='Enter') localizarEspaco()">
+                    <input id="spaceSearch" name="spaceSearch" autocomplete="off" type="number" min="1" max="1000000" placeholder="Número do espaço" onkeydown="if(event.key==='Enter') localizarEspaco()">
                 </div>
                 <div style="display:flex; gap:8px; margin-top:8px;">
                     <button type="button" class="l-buy-action-btn" style="flex:1;" id="btnOferta" onclick="toggleOfferMode()">💰 Oferta</button>
@@ -4524,7 +4526,7 @@ LIMPAR
                 </div>
                 <label class="l-map-search">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    <input type="text" placeholder="Buscar espaço por número" onkeydown="if(event.key==='Enter') localizarEspacoPorInput(this.value)">
+                    <input name="mapSpaceSearch" autocomplete="off" type="text" placeholder="Buscar espaço por número" onkeydown="if(event.key==='Enter') localizarEspacoPorInput(this.value)">
                 </label>
             </div>
         </section>
@@ -5373,6 +5375,10 @@ style="color:#aaa;font-size:13px;margin:0 0 12px;">
 
 <label style="font-size:12px;color:#aaa;display:block;margin-bottom:4px;">SEGMENTO (ex: Construção civil, Odontologia...)</label>
 <input id="anuncioDadosSegmento" type="text" maxlength="120" placeholder="Ex: Manutenção de equipamentos fitness" style="width:100%;padding:10px;margin-bottom:10px;box-sizing:border-box;background:#111;color:#fff;border:1px solid #333;border-radius:8px;">
+<div id="segmentosPredefinidos" style="display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 10px;"></div>
+
+<label style="font-size:12px;color:#aaa;display:block;margin-bottom:4px;">CIDADE</label>
+<input id="anuncioDadosCidade" type="text" maxlength="100" placeholder="Ex: São Paulo - SP" style="width:100%;padding:10px;margin-bottom:10px;box-sizing:border-box;background:#111;color:#fff;border:1px solid #333;border-radius:8px;">
 
 <label style="font-size:12px;color:#aaa;display:block;margin-bottom:4px;">DESCRIÇÃO CURTA</label>
 <input id="anuncioDadosDescricao" type="text" maxlength="400" placeholder="O que você oferece? (opcional)" style="width:100%;padding:10px;margin-bottom:10px;box-sizing:border-box;background:#111;color:#fff;border:1px solid #333;border-radius:8px;">
@@ -6894,6 +6900,9 @@ function abrirTutorialColecionaveis(event){
 }
 
 document.addEventListener("DOMContentLoaded", async function(){
+    const buscaNumero = document.getElementById("spaceSearch");
+    if(buscaNumero) buscaNumero.value = "";
+    document.querySelectorAll('input[name="mapSpaceSearch"]').forEach(input => input.value = "");
     const acaoInicial = new URLSearchParams(window.location.search).get("acao");
     aplicarTema();
     document.body.classList.add("has-benefits");
@@ -8979,6 +8988,8 @@ btn.style.color =
 
 area.style.cursor =
 "grab";
+const dragBadgeOff = document.getElementById("dragCount");
+if(dragBadgeOff) dragBadgeOff.style.display = "none";
 
 return;
 
@@ -9004,6 +9015,14 @@ btn.style.color =
 
 area.style.cursor =
 "crosshair";
+const dragBadgeOn = document.getElementById("dragCount");
+if(dragBadgeOn){
+    dragBadgeOn.textContent = "0 espaços selecionáveis";
+    dragBadgeOn.style.display = "block";
+    dragBadgeOn.style.left = "50%";
+    dragBadgeOn.style.top = "90px";
+    dragBadgeOn.style.transform = "translateX(-50%)";
+}
 
 }
 
@@ -9247,14 +9266,9 @@ ids.every(
 id=>conjunto.has(id)
 );
 
-badge.textContent =
-ids.length
-? (
-    (todosMarcados ? "− " : "+ ") +
-    ids.length.toLocaleString("pt-BR") +
-    " espaço(s)"
-  )
-: "0 espaços";
+    badge.textContent = ids.length
+    ? ((todosMarcados ? "− " : "+ ") + ids.length.toLocaleString("pt-BR") + " espaços selecionáveis")
+    : "0 espaços";
 
 badge.style.display = "block";
 
@@ -9263,6 +9277,7 @@ badge.style.left =
 
 badge.style.top =
 (cy + 14) + "px";
+badge.style.transform = "none";
 
 }
 
@@ -18273,6 +18288,7 @@ function buscaOutdoorCard(r){
         return '<a class="busca-link-btn" href="' + escAttr(l.url) + '" target="_blank" rel="noopener noreferrer">' + escHtml(rot) + '</a>';
     }).join("");
     const seg = r.segmento ? '<div class="busca-resultado-meta">' + escHtml(r.segmento) + '</div>' : "";
+    const cidade = r.cidade ? '<div class="busca-resultado-meta">📍 ' + escHtml(r.cidade) + '</div>' : "";
     const dono = (r.nomeDono && r.nomeDono !== r.titulo) ? '<div class="busca-resultado-meta">Anunciante: ' + escHtml(r.nomeDono) + '</div>' : "";
     const desc = r.descricao ? '<div class="busca-resultado-desc">' + escHtml(r.descricao.slice(0, 140)) + '</div>' : "";
     const espacos = r.espacos || [];
@@ -18280,7 +18296,7 @@ function buscaOutdoorCard(r){
         '<div class="busca-resultado-topo">' +
             '<div style="min-width:0;">' +
                 '<div class="busca-resultado-titulo">' + emoji + ' ' + escHtml(r.titulo || r.anunciante || "Anunciante") + '</div>' +
-                seg +
+                 seg + cidade +
                 dono +
             '</div>' +
             '<span class="busca-chip ativa" style="flex-shrink:0;cursor:default;">' + escHtml(catLabel) + '</span>' +
@@ -18337,6 +18353,23 @@ function abrirInfoEspaco(numero){
 /* ===== DADOS DA PESQUISA (anúncio) ===== */
 
 let anuncioDadosNumero = null;
+const SEGMENTOS_PREDEFINIDOS = ["Alimentação", "Moda", "Tecnologia", "Serviços", "Saúde", "Educação", "Imóveis", "Construção", "Beleza", "Automotivo", "Eventos", "Games", "Finanças", "Turismo", "Influenciador"];
+function renderSegmentosPredefinidos(){
+    const box = document.getElementById("segmentosPredefinidos");
+    if(!box) return;
+    box.innerHTML = SEGMENTOS_PREDEFINIDOS.map(s => '<button type="button" class="segmento-chip" data-segmento="' + escHtml(s) + '" onclick="alternarSegmentoPredefinido(this)">' + escHtml(s) + '</button>').join("");
+}
+function alternarSegmentoPredefinido(btn){
+    const input = document.getElementById("anuncioDadosSegmento");
+    if(!input) return;
+    let atual = input.value.split(",").map(s => s.trim()).filter(Boolean);
+    const valor = btn.dataset.segmento;
+    if(atual.includes(valor)) atual = atual.filter(s => s !== valor);
+    else if(atual.length >= 2){ document.getElementById("anuncioDadosMsg").textContent = "Escolha no máximo 2 segmentos por bloco."; return; }
+    else atual.push(valor);
+    input.value = atual.join(", ");
+    document.querySelectorAll("#segmentosPredefinidos .segmento-chip").forEach(b => b.classList.toggle("selecionado", atual.includes(b.dataset.segmento)));
+}
 
 function abrirAnuncioDados(numero){
     const s = db[numero];
@@ -18347,6 +18380,10 @@ function abrirAnuncioDados(numero){
         ". Eles aparecem na pesquisa do MilhãoDoor.";
     document.getElementById("anuncioDadosCategoria").value = s.categoria || "";
     document.getElementById("anuncioDadosSegmento").value = s.segmento || "";
+    renderSegmentosPredefinidos();
+    const segmentosAtuais = (s.segmento || "").split(",").map(x => x.trim()).filter(Boolean);
+    document.querySelectorAll("#segmentosPredefinidos .segmento-chip").forEach(b => b.classList.toggle("selecionado", segmentosAtuais.includes(b.dataset.segmento)));
+    document.getElementById("anuncioDadosCidade").value = s.cidade || "";
     document.getElementById("anuncioDadosDescricao").value = s.descricao || "";
     document.getElementById("anuncioDadosPalavras").value = (s.palavras_chave || []).join(", ");
     const linhas = (s.links || []).filter(function(l){ return l && l.url; }).map(function(l){
@@ -18389,9 +18426,15 @@ async function salvarAnuncioDados(){
         if(!url) continue;
         links.push({ url, tipo, rotulo, categoria: "", segmento: "", publico: true });
     }
+    const segmentoTexto = document.getElementById("anuncioDadosSegmento").value.split(",").map(s => s.trim()).filter(Boolean);
+    if(segmentoTexto.length > 2){
+        document.getElementById("anuncioDadosMsg").textContent = "Escolha no máximo 2 segmentos por bloco.";
+        return;
+    }
     const body = {
         categoria: document.getElementById("anuncioDadosCategoria").value,
-        segmento: document.getElementById("anuncioDadosSegmento").value,
+        segmento: segmentoTexto.join(", "),
+        cidade: document.getElementById("anuncioDadosCidade").value,
         descricao: document.getElementById("anuncioDadosDescricao").value,
         palavras_chave: document.getElementById("anuncioDadosPalavras").value,
         links: links,

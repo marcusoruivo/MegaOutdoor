@@ -8428,6 +8428,7 @@ function construirIndiceAnunciantes() {
                 titulo: "",
                 categoria: "",
                 segmento: "",
+                cidade: "",
                 descricao: "",
                 palavrasChave: [],
                 links: [],
@@ -8441,6 +8442,7 @@ function construirIndiceAnunciantes() {
         if (!g.titulo && s.title) g.titulo = String(s.title).trim();
         if (!g.categoria && s.categoria) g.categoria = String(s.categoria);
         if (!g.segmento && s.segmento) g.segmento = String(s.segmento).trim();
+        if (!g.cidade && s.cidade) g.cidade = String(s.cidade).trim();
         if (!g.descricao && s.descricao) g.descricao = String(s.descricao).trim();
         if (!g.nomeDono && s.name) g.nomeDono = String(s.name).trim();
         if (!g.usuarioId && s.usuarioId) g.usuarioId = Number(s.usuarioId) || null;
@@ -8487,6 +8489,7 @@ function pontuarAnunciante(g, termos, numeros) {
     let score = 0;
     const tituloNorm = normalizarTextoBusca(g.titulo);
     const segmentoNorm = normalizarTextoBusca(g.segmento);
+    const cidadeNorm = normalizarTextoBusca(g.cidade);
     const descNorm = normalizarTextoBusca(g.descricao);
     const nomeNorm = normalizarTextoBusca(g.nomeDono);
     const catNorm = normalizarTextoBusca(g.categoria);
@@ -8494,7 +8497,7 @@ function pontuarAnunciante(g, termos, numeros) {
     const linksNorm = normalizarTextoBusca(
         (g.links || []).map(l => (l.url || "") + " " + (l.rotulo || "") + " " + (l.tipo || "")).join(" ")
     );
-    const tudoNorm = tituloNorm + " " + segmentoNorm + " " + nomeNorm + " " + kwNorm + " " + descNorm;
+    const tudoNorm = tituloNorm + " " + segmentoNorm + " " + cidadeNorm + " " + nomeNorm + " " + kwNorm + " " + descNorm;
 
     for (const termo of termos) {
         if (tituloNorm === termo) score += 100;
@@ -8565,6 +8568,7 @@ app.get("/api/busca", async (req, res) => {
             titulo: g.titulo,
             categoria: g.categoria || "OUTROS",
             segmento: g.segmento,
+            cidade: g.cidade,
             descricao: g.descricao,
             palavrasChave: g.palavrasChave,
             links: g.links,
@@ -8609,6 +8613,7 @@ app.post("/api/anuncio/dados/:id", authOpcional, async (req, res) => {
         }
         const segmento = String(req.body.segmento || "").trim().slice(0, 120);
         const descricao = String(req.body.descricao || "").trim().slice(0, 400);
+        const cidade = String(req.body.cidade || "").trim().slice(0, 100);
 
         let palavras = req.body.palavras_chave;
         if (typeof palavras === "string") {
@@ -8665,6 +8670,7 @@ app.post("/api/anuncio/dados/:id", authOpcional, async (req, res) => {
         const dados = {};
         if (cat) dados.categoria = cat;
         dados.segmento = segmento;
+        dados.cidade = cidade;
         dados.descricao = descricao;
         dados.palavras_chave = palavras;
         dados.links = links;
@@ -8676,7 +8682,7 @@ app.post("/api/anuncio/dados/:id", authOpcional, async (req, res) => {
         res.json({
             ok: true,
             spaces: idsAplicar,
-            dados: { categoria: cat, segmento, descricao, palavras_chave: palavras, links }
+            dados: { categoria: cat, segmento, cidade, descricao, palavras_chave: palavras, links }
         });
     } catch (error) {
         console.error("ERRO ao salvar dados do anúncio:", error.message);
@@ -8696,28 +8702,32 @@ app.get("/api/perfis/publicos", async (req, res) => {
         const offset = Math.max(0, parseInt(req.query.offset) || 0);
 
         let query = `
-            SELECT u.id, u.nome, u.apelido, u.bio, u.foto_url, u.album_publico,
-                   v.status AS verificacao_status,
-                   (v.status = 'aprovado') AS verificado
+            SELECT u.id, u.nome, u.apelido, u.bio, u.foto_url, u.album_publico
               FROM usuarios u
-              LEFT JOIN LATERAL (
-                  SELECT status FROM verificacoes_perfil
-                   WHERE usuario_id = u.id ORDER BY criado_em DESC LIMIT 1
-              ) v ON TRUE
              WHERE u.album_publico = TRUE
         `;
         const params = [];
 
         if (busca) {
-            query += ` AND (LOWER(nome) LIKE LOWER($1) OR LOWER(apelido) LIKE LOWER($1))`;
+            query += ` AND (LOWER(u.nome) LIKE LOWER($1) OR LOWER(u.apelido) LIKE LOWER($1))`;
             params.push(`%${busca}%`);
         }
 
-        query += ` ORDER BY criado_em DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+        query += ` ORDER BY u.criado_em DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
         params.push(limite, offset);
 
         const result = await pgPool.query(query, params);
-        res.json({ perfis: result.rows });
+        const ids = result.rows.map(row => Number(row.id)).filter(Number.isInteger);
+        const verificacoes = ids.length
+            ? await pgPool.query(`SELECT usuario_id, status, criado_em FROM verificacoes_perfil WHERE usuario_id IN (${ids.join(",")}) ORDER BY criado_em DESC`)
+            : { rows: [] };
+        const ultima = new Map();
+        for (const v of verificacoes.rows) if (!ultima.has(Number(v.usuario_id))) ultima.set(Number(v.usuario_id), v.status);
+        res.json({ perfis: result.rows.map(row => ({
+            ...row,
+            verificacao_status: ultima.get(Number(row.id)) || null,
+            verificado: ultima.get(Number(row.id)) === "aprovado"
+        })) });
     } catch (error) {
         console.error("ERRO ao listar perfis públicos:", error.message);
         res.status(500).json({ error: "Não foi possível listar perfis." });
@@ -11689,17 +11699,26 @@ app.post("/api/admin/usuarios", authAdmin, async (req, res) => {
         const nome = String(req.body.nome || "").trim();
         const email = String(req.body.email || "").trim().toLowerCase();
         const senha = String(req.body.senha || "");
+        const idSolicitado = req.body.id === undefined || req.body.id === "" ? null : Number(req.body.id);
+        if (idSolicitado !== null && (!Number.isInteger(idSolicitado) || idSolicitado < 1)) return res.status(400).json({ error: "ID inválido." });
         if (nome.length < 2) return res.status(400).json({ error: "Informe um nome válido." });
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: "Informe um e-mail válido." });
         if (senha.length < 6) return res.status(400).json({ error: "A senha deve ter pelo menos 6 caracteres." });
         const existente = await pgPool.query("SELECT id FROM usuarios WHERE LOWER(email) = $1", [email]);
         if (existente.rowCount) return res.status(409).json({ error: "Já existe um usuário com este e-mail." });
+        if (idSolicitado !== null) {
+            const idExistente = await pgPool.query("SELECT id FROM usuarios WHERE id = $1", [idSolicitado]);
+            if (idExistente.rowCount) return res.status(409).json({ error: "Este ID já está ativo/existente e não pode ser utilizado." });
+        }
+        const insert = idSolicitado === null
+            ? `INSERT INTO usuarios (nome, email, senha_hash) VALUES ($1,$2,$3) RETURNING id, nome, email, criado_em, bloqueado`
+            : `INSERT INTO usuarios (id, nome, email, senha_hash) VALUES ($1,$2,$3,$4) RETURNING id, nome, email, criado_em, bloqueado`;
         const criado = await pgPool.query(
-            `INSERT INTO usuarios (nome, email, senha_hash) VALUES ($1,$2,$3)
-             RETURNING id, nome, email, criado_em, bloqueado`,
-            [nome, email, hashSenha(senha)]
+            insert,
+            idSolicitado === null ? [nome, email, hashSenha(senha)] : [idSolicitado, nome, email, hashSenha(senha)]
         );
         const usuario = criado.rows[0];
+        if (idSolicitado !== null) await pgPool.query("SELECT setval(pg_get_serial_sequence('usuarios','id'), GREATEST((SELECT COALESCE(MAX(id),1) FROM usuarios), nextval(pg_get_serial_sequence('usuarios','id'))))");
         registrarLog("admin_usuario_criado", { admin: req.admin.usuario, usuarioId: usuario.id });
         res.status(201).json({ ok: true, usuario });
     } catch (error) {

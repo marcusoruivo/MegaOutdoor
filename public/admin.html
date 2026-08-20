@@ -1255,6 +1255,8 @@ async function carregarUsuarios(pag){
 async function criarUsuarioAdmin(){
     const nome = prompt("Nome do novo usuário:");
     if(nome === null) return;
+    const idTexto = prompt("ID desejado (opcional; deixe vazio para automático):", "");
+    if(idTexto === null) return;
     const email = prompt("E-mail do novo usuário:");
     if(email === null) return;
     const senha = prompt("Senha inicial (mínimo 6 caracteres):");
@@ -1262,7 +1264,7 @@ async function criarUsuarioAdmin(){
     try{
         const data = await api("/api/admin/usuarios", {
             method: "POST",
-            body: JSON.stringify({ nome: nome.trim(), email: email.trim(), senha })
+            body: JSON.stringify({ id: idTexto.trim() || undefined, nome: nome.trim(), email: email.trim(), senha })
         });
         alert("Usuário criado com sucesso! ID: " + data.usuario.id);
         carregarUsuarios();

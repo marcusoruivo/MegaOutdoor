@@ -637,6 +637,9 @@ input::placeholder,textarea::placeholder{color:#b0b0b0;opacity:1}
 #authModal #authEntrar input:-webkit-autofill,#authModal #authCadastrar input:-webkit-autofill{-webkit-text-fill-color:#fff;caret-color:#fff;box-shadow:0 0 0 1000px #0b0b0b inset;border:1px solid #ffd400}
 #authModal #authEntrar button,#authModal #authCadastrar button{background:linear-gradient(135deg,#ffd400,#ff9d00);box-shadow:0 6px 18px rgba(255,212,0,.28);color:#111}
 #authModal #authEntrar a{color:#ffd400!important}
+.l-header-nav a.l-header-nav-collection{padding:8px 12px;border:1px solid rgba(255,212,0,.55);border-radius:9px;background:linear-gradient(135deg,rgba(255,212,0,.18),rgba(255,122,0,.14));color:#ffd400;box-shadow:0 0 16px rgba(255,212,0,.1)}
+.l-header-nav a.l-header-nav-collection::after{display:none}
+.l-header-nav a.l-header-nav-collection:hover{background:linear-gradient(135deg,#ffd400,#ff9d00);color:#111;transform:translateY(-1px)}
 
 .pix{
     display:none;
@@ -4075,7 +4078,7 @@ body.footer-visible #area{
             <a href="#precos" onclick="abrirPrecos(event)">Preços</a>
             <a href="#combos" onclick="verTodosKits(event)">Combos & Kits</a>
             <a href="#faq" onclick="abrirFaq(event)">FAQ</a>
-            <a href="/colecionaveis.html"><span class="l-header-nav-dot"></span>Colecionáveis</a>
+            <a href="/colecionaveis.html" class="l-header-nav-collection">🃏 ÁLBUNS & FIGURINHAS</a>
             <a href="#contato" onclick="scrollToFooter(event)">Contato</a>
         </nav>
 
@@ -4148,7 +4151,7 @@ body.footer-visible #area{
         <a href="#precos" onclick="abrirPrecos(event);fecharMenuMobile()">Preços</a>
         <a href="#combos" onclick="verTodosKits(event);fecharMenuMobile()">Combos & Kits</a>
         <a href="#faq" onclick="abrirFaq(event);fecharMenuMobile()">FAQ</a>
-        <a href="/colecionaveis.html" onclick="fecharMenuMobile()">Colecionáveis</a>
+        <a href="/colecionaveis.html" onclick="fecharMenuMobile()">🃏 Álbuns & Figurinhas</a>
         <a href="#contato" onclick="scrollToFooter(event);fecharMenuMobile()">Contato</a>
     </nav>
     <a href="#comprar" class="l-mobile-menu-cta" onclick="fecharMenuMobile()">Comprar espaço</a>

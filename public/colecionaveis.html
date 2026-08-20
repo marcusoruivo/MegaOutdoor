@@ -122,9 +122,12 @@ input::placeholder,select::placeholder,textarea::placeholder{color:#b0b0bd;opaci
 .l-header-nav a.active::after,.l-header-nav a:hover::after{
     transform:scaleX(1);
 }
-.l-header-nav a.l-header-nav-return{padding:8px 10px;border:1px solid rgba(255,212,0,.55);border-radius:9px;background:linear-gradient(135deg,#ffd400,#ff9d00);color:#111;box-shadow:0 5px 16px rgba(255,212,0,.18);white-space:nowrap;font-size:10px;letter-spacing:.08em}
+.l-header-nav a.l-header-nav-return{height:34px;padding:0 10px;display:flex;align-items:center;border:1px solid rgba(255,212,0,.55);border-radius:9px;background:linear-gradient(135deg,#ffd400,#ff9d00);color:#111;box-shadow:0 5px 16px rgba(255,212,0,.18);white-space:nowrap;font-size:9px;letter-spacing:.07em}
 .l-header-nav a.l-header-nav-return::after{display:none}
 .l-header-nav a.l-header-nav-return:hover{color:#111;filter:brightness(1.08);transform:translateY(-1px)}
+.l-header-nav a.l-header-nav-collection{height:34px;padding:0 11px;display:flex;align-items:center;border:1px solid rgba(255,212,0,.55);border-radius:9px;background:linear-gradient(135deg,rgba(255,212,0,.18),rgba(255,122,0,.14));color:#ffd400;box-shadow:0 0 16px rgba(255,212,0,.1);white-space:nowrap;font-size:9px;letter-spacing:.07em}
+.l-header-nav a.l-header-nav-collection::after{display:none}
+.l-header-nav a.l-header-nav-collection:hover,.l-header-nav a.l-header-nav-collection.active{background:linear-gradient(135deg,#ffd400,#ff9d00);color:#111!important;transform:translateY(-1px);border-color:#ffd400;box-shadow:0 6px 18px rgba(255,212,0,.22)}
 .l-header-nav-dot{
     width:6px;height:6px;border-radius:50%;background:var(--gold);
 }
@@ -743,6 +746,25 @@ body{overflow-x:hidden}
 @media(max-width:640px){.figurinha-modal .cc-verso-card .cc-verso-lista{grid-template-columns:1fr}.figurinha-modal .cc-verso-card .cc-info{padding:12px 14px 16px}}
 .cc-flip-container{perspective:1200px;width:100%;height:100%;min-height:0;overflow:visible}
 .pack-flip-container.cc-flip-container{height:min(520px,calc(100vh - 170px));min-height:280px}
+.pack-flip-container{width:min(360px,88vw);height:min(500px,calc(100vh - 150px));margin:0 auto}
+.pack-flip-container .cc-frente .rev-card{height:100%;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--amarelo) rgba(255,255,255,.08)}
+.pack-flip-container .cc-frente .cc-arte{flex:0 0 auto;aspect-ratio:4/3;max-height:250px}
+.pack-flip-container .cc-frente .rev-info{flex:0 0 auto}
+.pack-flip-container .cc-verso{overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--amarelo) rgba(255,255,255,.08)}
+.pack-flip-container .cc-verso-card{height:auto;min-height:100%;background:linear-gradient(150deg,#171827,#0c0d15);border-color:rgba(255,212,0,.42)}
+.pack-flip-container .cc-verso-card .cc-topo{padding:10px 14px 6px;background:rgba(255,212,0,.05)}
+.pack-flip-container .cc-verso-card .cc-info{display:flex;flex-direction:column;gap:6px;padding:12px 14px 14px;background:transparent}
+.pack-flip-container .cc-verso-card .cc-nome{font-family:'Orbitron',sans-serif;font-size:16px;line-height:1.2;color:#fff;overflow-wrap:anywhere;text-align:center}
+.pack-flip-container .cc-verso-card .cc-sn{font-size:10px;color:#aeb4c7;text-align:center}
+.pack-flip-container .cc-verso-card .cc-verso-lista{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:5px;font-size:10px;line-height:1.25;color:#c0c4d0}
+.pack-flip-container .cc-verso-card .cc-verso-lista div{padding:6px 7px;border:1px solid rgba(255,255,255,.07);border-radius:7px;background:rgba(255,255,255,.035);overflow-wrap:anywhere}
+.pack-flip-container .cc-verso-card .cc-verso-lista b{display:block;margin-bottom:2px;color:var(--amarelo);font-size:8px;letter-spacing:.7px;text-transform:uppercase}
+.pack-flip-container .cc-verso-card .cc-curiosidade{margin-top:5px;padding:8px 9px;border-left:3px solid var(--amarelo);border-radius:0 8px 8px 0;background:rgba(255,212,0,.08);font-size:10px;line-height:1.35;color:#d5d8e2;font-style:normal;overflow-wrap:anywhere}
+.pack-flip-container .cc-verso-card .cc-curiosidade b{display:block;color:var(--amarelo);font-size:8px;letter-spacing:.8px;text-transform:uppercase}
+.pack-flip-container .cc-verso-card .cc-fonte{margin-top:3px;padding:6px 7px;border-top:1px solid rgba(255,255,255,.08);color:#8d93a7;font-size:8px;line-height:1.25;overflow-wrap:anywhere}
+.pack-flip-container .cc-verso-card .cc-fonte b{color:var(--amarelo);font-size:8px}
+.pack-flip-container .cc-verso-card .cc-rodape{padding:7px;font-size:7px}
+@media(max-width:640px){.pack-flip-container .cc-verso-card .cc-verso-lista{grid-template-columns:1fr}.pack-flip-container .cc-verso-card .cc-info{padding:10px 12px 12px}}
 .cc-flipper{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .6s cubic-bezier(.4,0,.2,1)}
 .cc-flipper.virado{transform:rotateY(180deg)}
 .cc-frente,.cc-verso{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
@@ -1049,6 +1071,8 @@ body{overflow-x:hidden}
     transition:transform .12s}
 .pack-fechado:active{transform:scale(.97)}
 .pack-fechado .pf-icone{font-size:64px;filter:drop-shadow(0 4px 14px rgba(255,212,0,.5))}
+.pack-fechado .pf-icone{width:100%;height:55%;display:flex;align-items:center;justify-content:center;min-height:0}
+.pack-fechado .pf-icone img{display:block;width:100%;height:100%;object-fit:contain}
 .pack-fechado .pf-nome{font-family:'Orbitron',sans-serif;font-size:18px;letter-spacing:2px;
     background:linear-gradient(90deg,#ffd700,#ff7a00);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .pack-fechado .pf-sub{font-size:10px;letter-spacing:2px;color:#d9c58a;font-weight:700}
@@ -1215,7 +1239,6 @@ body{overflow-x:hidden}
             <a href="#precos" onclick="abrirPrecos(event)">PREÇOS</a>
             <a href="#combos" onclick="verTodosKits(event)">COMBOS & KITS</a>
             <a href="#faq" onclick="abrirFaq(event)">FAQ</a>
-            <a href="/colecionaveis.html" class="active"><span class="l-header-nav-dot"></span>COLECIONÁVEIS</a>
             <a href="/" class="l-header-nav-return">↩ VOLTAR AO MAPA</a>
             <a href="#contato" onclick="scrollToFooter(event)">CONTATO</a>
         </nav>
@@ -3366,9 +3389,9 @@ async function abrirModalFigurinha(cardId){
 
         if (minhaConta && minhaConta.token) {
             if (c.disponivel > 0) {
-                html += '<button class="btn btn-laranja" onclick="abrirModalVenda(' + c.id + ',\'' + esc(c.name) + '\',' + c.disponivel + ')">💰 Vender repetida</button>';
-            } else if (c.quantidade > 0) {
-                html += '<div style="font-size:12px;color:var(--muted)">Você tem ' + c.quantidade + 'x desta figurinha, mas nenhuma disponível no momento.</div>';
+                html += '<button class="btn btn-laranja" onclick="abrirModalVenda(' + c.id + ',\'' + esc(c.name) + '\',' + c.disponivel + ')">💰 VENDER NO MERCADO</button>';
+            } else if (Number(c.quantidade || 0) > 0) {
+                html += '<div style="font-size:12px;color:var(--muted)">Sua unidade está reservada ou já anunciada no momento.</div>';
             }
         }
         html += '<div class="modal-acoes">' +
@@ -3383,21 +3406,35 @@ async function abrirModalFigurinha(cardId){
 
 async function abrirModalVenda(cardId, nome, disponivel){
     const corpo = document.getElementById("modalBody");
-    let html = '<div class="num">💰 VENDER REPETIDA</div>';
+    let html = '<div class="num">💰 VENDER NO MERCADO</div>';
     html += '<h2>' + esc(nome) + '</h2>';
-    html += '<div class="desc">Você tem <b>' + disponivel + '</b> disponível(is) para vender.</div>';
+    html += '<div class="desc">Você pode anunciar até <b>' + disponivel + '</b> cópia(s) disponíveis. Confirme os dados antes de publicar.</div>';
     html += '<div class="modal-form">' +
-        '<label>Quantidade</label><input type="number" id="vendaQtd" min="1" max="' + disponivel + '" value="1">' +
-        '<label>Preço por figurinha (R$)</label><input type="number" id="vendaPreco" min="0.5" max="100" step="0.01" value="5.00">' +
+        '<label>Quantidade <small style="color:var(--muted)">(máx. ' + disponivel + ')</small></label><input type="number" id="vendaQtd" min="1" max="' + disponivel + '" value="1" oninput="limitarQtdVenda(this)">' +
+        '<label>Preço por figurinha (R$)</label><input type="text" id="vendaPreco" inputmode="decimal" placeholder="0,00" value="5,00" oninput="formatarMoedaVenda(this)">' +
         '<button class="btn btn-amarelo" onclick="confirmarVenda(' + cardId + ')">Publicar anúncio</button>' +
         '<button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>' +
     '</div>';
     corpo.innerHTML = html;
 }
+function limitarQtdVenda(input){
+    const max = Number(input.max) || 1;
+    const valor = Math.floor(Number(input.value) || 0);
+    if(valor > max) input.value = max;
+    if(valor < 1 && input.value !== "") input.value = 1;
+}
+function formatarMoedaVenda(input){
+    const digitos = String(input.value || "").replace(/\D/g, "");
+    if(!digitos){ input.value = ""; return; }
+    const centavos = Math.min(Number(digitos), 99999999);
+    input.value = (centavos / 100).toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2});
+}
 async function confirmarVenda(cardId){
     const qtd = Number(document.getElementById("vendaQtd").value);
-    const preco = Number(document.getElementById("vendaPreco").value);
+    const precoTexto = document.getElementById("vendaPreco").value.replace(/\./g, "").replace(",", ".");
+    const preco = Number(precoTexto);
     if (!qtd || qtd < 1 || !preco || preco < 0.5) { toast("Informe quantidade e preço válidos.", "erro"); return; }
+    if (!confirm("Confirma anunciar " + qtd + " cópia(s) no mercado?\n\nA figurinha ficará disponível para negociação após a publicação.")) return;
     try {
         await apiPost("/api/colecionaveis/listings", { cardId, quantidade: qtd, preco });
         toast("Anúncio publicado! Suas figurinhas foram reservadas.", "ok");
@@ -3728,6 +3765,19 @@ function mostrarQr(d, tipo){
 }
 
 let pollTimer = null;
+async function abrirPacoteConfirmadoAutomaticamente(d){
+    if(d && d.pacote && d.pacote.figurinhas && d.pacote.figurinhas.length) return d.pacote;
+    try{
+        const lista = await apiGet("/api/colecionaveis/meus-pacotes");
+        const pacote = (lista.pacotes || [])[0];
+        if(!pacote) return null;
+        const rota = pacote.tipo === "kit"
+            ? "/api/colecionaveis/packs/inventory/" + pacote.id + "/open"
+            : "/api/colecionaveis/packs/purchases/" + pacote.id + "/open";
+        const aberto = await apiPost(rota, {});
+        return aberto?.pacote?.figurinhas?.length ? aberto.pacote : null;
+    }catch(e){ return null; }
+}
 async function iniciarPolling(orderId, tipo){
     if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
     const corpo = document.getElementById("modalBody");
@@ -3740,11 +3790,16 @@ async function iniciarPolling(orderId, tipo){
             if (d.status === "RECEIVED") {
                 /* CORREÇÃO 7: pacote pago → revela o sorteio JÁ persistido
                    (a mesma abertura a cada refresh). */
-                if (tipo === "pack" && d.pacote && d.pacote.figurinhas && d.pacote.figurinhas.length) {
-                    toast("Pagamento confirmado! Pacote aberto. 🎉", "ok");
-                    fecharModal();
-                    revelarPacote(d.pacote);
-                } else {
+                if (tipo === "pack") {
+                    const pacote = await abrirPacoteConfirmadoAutomaticamente(d);
+                    if(pacote){
+                        toast("Pagamento confirmado! Pacote aberto. 🎉", "ok");
+                        fecharModal();
+                        revelarPacote(pacote);
+                        return;
+                    }
+                }
+                {
                     toast("Pagamento confirmado! Suas figurinhas chegaram. 🎉", "ok");
                     fecharModal();
                     carregarAlbum();
@@ -3769,11 +3824,16 @@ function iniciarPollingAutomatico(orderId, tipo){
         try {
             const d = await apiGet("/api/colecionaveis/pagamento/" + orderId);
             if (d.status === "RECEIVED") {
-                if (tipo === "pack" && d.pacote && d.pacote.figurinhas && d.pacote.figurinhas.length) {
-                    toast("Pagamento confirmado! Pacote aberto. 🎉", "ok");
-                    fecharModal();
-                    revelarPacote(d.pacote);
-                } else {
+                if (tipo === "pack") {
+                    const pacote = await abrirPacoteConfirmadoAutomaticamente(d);
+                    if(pacote){
+                        toast("Pagamento confirmado! Pacote aberto. 🎉", "ok");
+                        fecharModal();
+                        revelarPacote(pacote);
+                        return;
+                    }
+                }
+                {
                     toast("Pagamento confirmado! Suas figurinhas chegaram. 🎉", "ok");
                     fecharModal();
                     carregarAlbum();
@@ -3911,7 +3971,7 @@ function renderPackLuz(){
 function renderSlotBack(){
     const stage = document.getElementById("packStage");
     stage.innerHTML = '<div class="pack-titulo">🎁 ' + esc(pacoteEstado.nome) + '</div>' +
-        '<div class="slot-carta" onclick="packEtapaClicada()">' +
+        '<div class="slot-carta" onclick="event.stopPropagation();packEtapaClicada()">' +
             '<span class="sc-icone">🐾</span>' +
             '<span class="sc-texto">TOCAR PARA REVELAR</span>' +
         '</div>' +
@@ -3934,24 +3994,9 @@ function revelarSlot(){
         '</div>' +
         '<div class="pack-contagem">Figurinha ' + (pacoteEstado.idx + 1) + ' de ' + pacoteEstado.figs.length + '</div>';
 
-    /* Pré-carrega a imagem antes de mostrar o flip */
-    const imgUrl = imagemAnimal(item.card);
-    if (imgUrl) {
-        const img = new Image();
-        img.onload = () => {
-            if (!pacoteEstado || pacoteEstado.etapa !== "slotBack") return; // Estado mudou
-            renderFlipCard(item);
-        };
-        img.onerror = () => {
-            if (!pacoteEstado || pacoteEstado.etapa !== "slotBack") return;
-            /* Se a imagem falhar, mostra o card mesmo assim (com fallback) */
-            renderFlipCard(item);
-        };
-        img.src = imgUrl;
-    } else {
-        /* Sem imagem, renderiza direto */
-        renderFlipCard(item);
-    }
+    /* Renderiza imediatamente. A imagem carrega dentro da carta e possui
+       fallback próprio, portanto uma fonte externa lenta nunca bloqueia a abertura. */
+    renderFlipCard(item);
 }
 
 function renderFlipCard(item){

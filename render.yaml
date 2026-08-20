@@ -21,7 +21,7 @@ services:
       - key: ALLOW_TEST_MODE
         value: "false"
       - key: MERCADOPAGO_WEBHOOK_URL
-        sync: false
+        value: https://milhaodoor.com.br/webhooks/mercadopago
       - key: MERCADOPAGO_WEBHOOK_SECRET
         sync: false
       - key: MERCADOPAGO_CLIENT_ID

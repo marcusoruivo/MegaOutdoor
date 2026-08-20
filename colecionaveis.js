@@ -3004,6 +3004,8 @@ module.exports = function criarModuloColecionaveis(deps) {
                    FROM user_stickers WHERE card_id = $1`,
                 [card.id]
             );
+            const quantidade = q.rows[0] ? Number(q.rows[0].quantity) : 0;
+            const vendavel = await quantidadeDisponivel(req.usuario.id, card.id);
 
             res.json({
                 ok: true,
@@ -3017,9 +3019,9 @@ module.exports = function criarModuloColecionaveis(deps) {
                     scientific_name: card.scientific_name,
                     habitat: card.habitat,
                     peso: card.peso,
-                    quantidade: q.rows[0] ? Number(q.rows[0].quantity) : 0,
+                    quantidade,
                     acquired_at: q.rows[0]?.acquired_at || null,
-                    disponivel: await quantidadeDisponivel(req.usuario.id, card.id),
+                    disponivel: vendavel,
                     total_em_circulacao: Number(circulQ.rows[0]?.total || 0)
                 }
             });
@@ -5697,13 +5699,13 @@ module.exports = function criarModuloColecionaveis(deps) {
             const orderId = req.params.orderId;
 
             const dono = await pg().query(
-                `SELECT usuario_id FROM sticker_pack_purchases WHERE order_id = $1
-                 UNION ALL
-                 SELECT buyer_id AS usuario_id FROM sticker_orders WHERE order_id = $1
+                 `SELECT usuario_id FROM sticker_pack_purchases WHERE (order_id = $1 OR mp_order_id = $1)
+                  UNION ALL
+                  SELECT buyer_id AS usuario_id FROM sticker_orders WHERE (order_id = $1 OR mp_order_id = $1)
                  UNION ALL
                  SELECT proposer_id AS usuario_id FROM sticker_trades WHERE (order_id = $1 OR mp_order_id = $1) AND status = 'WAITING_PAYMENT'
                  UNION ALL
-                 SELECT buyer_id AS usuario_id FROM album_orders WHERE (order_id = $1 OR mp_order_id = $1)`,
+                  SELECT buyer_id AS usuario_id FROM album_orders WHERE (order_id = $1 OR mp_order_id = $1)`,
                 [orderId]
             );
             if (!dono.rows.length) {

@@ -106,7 +106,7 @@
         "Condor-andino": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/AndeanCondorMale.jpg/960px-AndeanCondorMale.jpg",
         "Rinoceronte-de-sumatra": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Sumatran_Rhinoceros_at_Sumatran_Rhino_Sanctuary_Lampung_Indonesia_2013.JPG/960px-Sumatran_Rhinoceros_at_Sumatran_Rhino_Sanctuary_Lampung_Indonesia_2013.JPG",
         "Baleia-azul": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Anim1754_-_Flickr_-_NOAA_Photo_Library.jpg/960px-Anim1754_-_Flickr_-_NOAA_Photo_Library.jpg",
-        "Lula-colossal": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Colossal_squid_in_Te_Papa.jpg/960px-Colossal_squid_in_Te_Papa.jpg"
+        "Lula-colossal": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/NZ070415_Colossal_Squid_01.jpg/960px-NZ070415_Colossal_Squid_01.jpg"
     };
 
     const REGIOES_ANIMAIS = {

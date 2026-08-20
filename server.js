@@ -10659,7 +10659,7 @@ app.get("/api/admin/usuarios", authAdmin, async (req, res) => {
         const busca = String(req.query.busca || "").trim().toLowerCase();
         const bloqueado = req.query.bloqueado;
 
-        let where = [];
+        let where = ["u.email NOT LIKE '%@deleted.local'"];
         let params = [];
         let paramIdx = 1;
 
@@ -11681,6 +11681,32 @@ app.post("/api/admin/bugs/:id", authAdmin, async (req, res) => {
 /* =========================
    ADMINISTRAÇÃO DE USUÁRIOS
 ========================= */
+
+/* Criação administrativa de usuário, sem conceder espaços ou créditos. */
+app.post("/api/admin/usuarios", authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    try {
+        const nome = String(req.body.nome || "").trim();
+        const email = String(req.body.email || "").trim().toLowerCase();
+        const senha = String(req.body.senha || "");
+        if (nome.length < 2) return res.status(400).json({ error: "Informe um nome válido." });
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: "Informe um e-mail válido." });
+        if (senha.length < 6) return res.status(400).json({ error: "A senha deve ter pelo menos 6 caracteres." });
+        const existente = await pgPool.query("SELECT id FROM usuarios WHERE LOWER(email) = $1", [email]);
+        if (existente.rowCount) return res.status(409).json({ error: "Já existe um usuário com este e-mail." });
+        const criado = await pgPool.query(
+            `INSERT INTO usuarios (nome, email, senha_hash) VALUES ($1,$2,$3)
+             RETURNING id, nome, email, criado_em, bloqueado`,
+            [nome, email, hashSenha(senha)]
+        );
+        const usuario = criado.rows[0];
+        registrarLog("admin_usuario_criado", { admin: req.admin.usuario, usuarioId: usuario.id });
+        res.status(201).json({ ok: true, usuario });
+    } catch (error) {
+        console.error("ERRO ao criar usuário pelo admin:", error.message);
+        res.status(500).json({ error: "Não foi possível criar o usuário." });
+    }
+});
 
 /* Editar usuário (admin) */
 app.put("/api/admin/usuarios/:id", authAdmin, async (req, res) => {

@@ -4388,7 +4388,7 @@ LIMPAR
                     <span class="l-buy-pack-label">1 espaço</span>
                     <span class="l-buy-pack-price" id="packPrice1">R$ 1,00</span>
                 </button>
-                <button type="button" class="l-buy-pack active" id="pack10" onclick="selecionarPackCompra(10)">
+                <button type="button" class="l-buy-pack" id="pack10" onclick="selecionarPackCompra(10)">
                     <span class="l-buy-pack-tag">Popular</span>
                     <span class="l-buy-pack-label">10 espaços</span>
                     <span class="l-buy-pack-price" id="packPrice10">R$ 10,00</span>
@@ -5007,6 +5007,10 @@ id="pix">
 <p id="pixResumo" style="text-align:center;margin-bottom:14px;"></p>
 
 <div id="qrArea">
+
+<div id="qrTotal" style="margin:0 auto 14px;padding:12px 14px;border:1px solid rgba(255,212,0,.38);border-radius:12px;background:rgba(255,212,0,.08);text-align:center;color:#aaa;font-size:12px;">
+  Total a pagar: <strong style="display:block;margin-top:3px;color:#ffd400;font-size:22px;">R$ 0,00</strong>
+</div>
 
 <p>
 Escaneie o QR Code pelo aplicativo do seu banco.
@@ -10287,7 +10291,7 @@ fecharInfoEspaco();
 /* =========================
    BUY PANEL (LOVABLE)
 ======================== */
-let buyPanelQtyDesejada = 10;
+let buyPanelQtyDesejada = 0;
 let areaComMeta = false;
 
 function selecionarPackCompra(qty){
@@ -10325,12 +10329,23 @@ function atualizarBuyPanel(){
     if(qtyEl) qtyEl.textContent = buyPanelQtyDesejada > 0
         ? n.toLocaleString("pt-BR") + " / " + buyPanelQtyDesejada.toLocaleString("pt-BR")
         : n.toLocaleString("pt-BR");
-    if(totalEl) totalEl.textContent = formatarReais(n * 100);
+    const desconto = calcularValorComDesconto(n);
+    if(totalEl) totalEl.innerHTML = formatarReais(desconto.valor * 100) + (desconto.pct ? '<small style="display:block;color:#45df6e;font-size:10px;font-weight:700;margin-top:3px">-' + desconto.pct + '% de desconto</small>' : '');
     if(cta) cta.disabled = buyPanelQtyDesejada > 0 ? sel.size !== buyPanelQtyDesejada : !sel.size;
     const alvo = document.getElementById("btnSelecionarQtdMapa");
     if(alvo) alvo.textContent = buyPanelQtyDesejada > 0
         ? (n >= buyPanelQtyDesejada ? "✓ QUANTIDADE COMPLETA" : "▦ SELECIONAR NO MAPA — " + n + "/" + buyPanelQtyDesejada)
         : "▦ SELECIONAR NO MAPA — " + n + " espaço(s)";
+    atualizarPrecosPacks();
+}
+
+function atualizarPrecosPacks(){
+    [1,10,50,100].forEach(function(qty){
+        const el = document.getElementById("packPrice" + qty);
+        if(!el) return;
+        const d = calcularValorComDesconto(qty);
+        el.innerHTML = formatarReais(d.valor * 100) + (d.pct ? ' <small style="color:#45df6e">(-' + d.pct + '%)</small>' : '');
+    });
 }
 
 function checkoutFromPanel(){
@@ -11001,7 +11016,8 @@ if(pixResumo){
               `<span style="font-size:20px;color:#45df6f;font-weight:900;">R$ ${cobradoValor}</span>`
             : `<span style="font-size:20px;color:#45df6f;font-weight:900;">R$ ${cobradoValor}</span>`);
 }
-
+const qrTotal = document.getElementById("qrTotal");
+if(qrTotal) qrTotal.innerHTML = 'Total a pagar: <strong style="display:block;margin-top:3px;color:#ffd400;font-size:22px;">' + cobradoValor + '</strong>';
 
 document.getElementById(
 "formulario"
@@ -11425,7 +11441,8 @@ document.getElementById(
      'Quando esta compra for confirmada, você ganha 5% na sua próxima.</span>'
     :'');
 
-prepararPublicacaoPosCompra();
+ paidSpaces = [...sel];
+ prepararPublicacaoPosCompra();
 
 if(data.accessCode){
 
@@ -11459,8 +11476,6 @@ if(data.accessCode){
 
 await load();
 
-
-paidSpaces = [...sel];
 
 sel.clear();
 
@@ -17637,7 +17652,6 @@ function alternarMetodoKit(){
     if(cardFields) cardFields.style.display = metodo === "credit_card" ? "block" : "none";
     if(metodo === "credit_card") inicializarCartaoKit();
 }
-
 function inicializarCartaoKit(){
     if(!mpSdk || document.getElementById("kitCardNumberContainer")?.children.length) return;
     try{

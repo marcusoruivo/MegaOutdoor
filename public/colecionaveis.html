@@ -199,6 +199,7 @@ input::placeholder,select::placeholder,textarea::placeholder{color:#b0b0bd;opaci
 .conta-dropdown>a{display:block;padding:10px 12px;border-radius:8px;color:var(--texto);font-size:12px;font-weight:700;text-decoration:none}
 .conta-dropdown>a:hover{background:rgba(255,212,0,.1);color:var(--amarelo)}
 .verified-badge{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;margin-left:4px;border-radius:50%;background:#1d9bf0;color:#fff;font-size:11px;font-weight:900;vertical-align:2px;box-shadow:0 0 0 2px var(--painel),0 0 9px rgba(29,155,240,.35)}
+.publicos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:14px}.publico-card{padding:14px;background:var(--painel2);border:1px solid var(--borda);border-radius:13px}.publico-card h3{display:flex;align-items:center;gap:3px;font-size:14px;color:var(--texto);margin-bottom:5px}.publico-card p{font-size:11px;color:var(--muted);margin-bottom:10px}.publico-card .btn{width:100%;margin:0}.publico-badge{color:#1d9bf0;font-size:14px}
 @media(max-width:640px){.conta-dropdown{top:66px;right:10px;width:min(260px,calc(100vw - 20px))}}
 /* ===== FIM HEADER ===== */
 .topo{
@@ -1499,6 +1500,7 @@ body{overflow-x:hidden}
                 <option value="MITICA">MÍTICA</option>
             </select>
             <div class="spacer"></div>
+            <button class="btn btn-amarelo" onclick="abrirAlbunsPublicos()">🌐 VER ÁLBUNS PÚBLICOS</button>
             <button class="btn btn-ghost" onclick="abrirMeusChats()">💬 MEUS CHATS</button>
             <div class="resultado" id="mkResultado"></div>
         </div>
@@ -3169,6 +3171,20 @@ async function verPerfilColecionador(usuarioId){
             '<button class="btn btn-ghost" onclick="fecharModal()">Fechar</button>';
         document.getElementById("modalOverlay").classList.remove("hidden");
     } catch(e) { toast(e.message, "erro"); }
+}
+async function abrirAlbunsPublicos(){
+    try{
+        const d = await fetch("/api/perfis/publicos?limite=50", { cache:"no-store" }).then(r => r.json());
+        const perfis = d.perfis || [];
+        const html = '<h2>🌐 Álbuns públicos</h2><div class="desc">Conheça os colecionadores, veja o progresso e faça ofertas.</div>' +
+            '<div class="publicos-grid">' + (perfis.length ? perfis.map(p =>
+                '<div class="publico-card"><h3>' + esc(p.nome || p.apelido || "Colecionador") + (p.verificado ? '<span class="publico-badge" title="Verificado">✓</span>' : '') + '</h3>' +
+                '<p>📖 ' + Number(p.diferentes || 0) + '/100 espécies descobertas</p>' +
+                '<button class="btn btn-amarelo" onclick="fecharModal();verPerfilColecionador(' + Number(p.id) + ')">👀 VER ÁLBUM</button></div>'
+            ).join('') : '<div class="publico-card">Nenhum álbum público encontrado.</div>') + '</div>';
+        document.getElementById("modalBody").innerHTML = html;
+        document.getElementById("modalOverlay").classList.remove("hidden");
+    }catch(e){ toast("Não foi possível carregar os álbuns públicos.", "erro"); }
 }
 
 async function enviarChatAnuncio(listingId, buyerId){

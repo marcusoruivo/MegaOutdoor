@@ -9019,6 +9019,12 @@ if(offerMode){
 toggleOfferMode();
 }
 
+if(!areaComMeta){
+    buyPanelQtyDesejada = 0;
+    document.querySelectorAll(".l-buy-pack").forEach(function(el){ el.classList.remove("active"); });
+    atualizarBuyPanel();
+}
+
 selectAreaMode=true;
 
 const btn =
@@ -9579,7 +9585,7 @@ ids.every(
 id=>sel.has(id)
 );
 
-if(!todosSelecionados && sel.size + ids.length > buyPanelQtyDesejada){
+if(buyPanelQtyDesejada > 0 && !todosSelecionados && sel.size + ids.length > buyPanelQtyDesejada){
     alert("Essa seleção ultrapassa a quantidade escolhida (" + buyPanelQtyDesejada + ").");
     draw();
     return;
@@ -10146,7 +10152,7 @@ sel.delete(id);
 
 }else{
 
-if(sel.size >= buyPanelQtyDesejada){
+if(buyPanelQtyDesejada > 0 && sel.size >= buyPanelQtyDesejada){
     toastMsg("Quantidade completa: " + buyPanelQtyDesejada + " espaço(s).", "info");
     return;
 }
@@ -10282,9 +10288,11 @@ fecharInfoEspaco();
    BUY PANEL (LOVABLE)
 ======================== */
 let buyPanelQtyDesejada = 10;
+let areaComMeta = false;
 
 function selecionarPackCompra(qty){
     buyPanelQtyDesejada = qty;
+    areaComMeta = true;
     document.querySelectorAll(".l-buy-pack").forEach(function(el){ el.classList.remove("active"); });
     const btn = document.getElementById("pack" + qty);
     if(btn) btn.classList.add("active");
@@ -10293,12 +10301,14 @@ function selecionarPackCompra(qty){
 
 function ajustarQtyCompra(delta){
     buyPanelQtyDesejada = Math.max(1, buyPanelQtyDesejada + delta);
+    areaComMeta = true;
     document.querySelectorAll(".l-buy-pack").forEach(function(el){ el.classList.remove("active"); });
     atualizarBuyPanel();
 }
 
 function prepararSelecaoQuantidade(){
-    if(sel.size >= buyPanelQtyDesejada){
+    areaComMeta = true;
+    if(buyPanelQtyDesejada > 0 && sel.size >= buyPanelQtyDesejada){
         abrirInfoModal("Quantidade completa", "<p>Você já selecionou <b>" + buyPanelQtyDesejada + " espaços</b>. Ajuste no mapa ou clique em limpar seleção para começar novamente.</p>");
         return;
     }
@@ -10312,15 +10322,19 @@ function atualizarBuyPanel(){
     const totalEl = document.getElementById("buyPanelTotal");
     const cta = document.getElementById("buyPanelCta");
     const n = areaPreviewCount == null ? sel.size : areaPreviewCount;
-    if(qtyEl) qtyEl.textContent = n.toLocaleString("pt-BR") + " / " + buyPanelQtyDesejada.toLocaleString("pt-BR");
+    if(qtyEl) qtyEl.textContent = buyPanelQtyDesejada > 0
+        ? n.toLocaleString("pt-BR") + " / " + buyPanelQtyDesejada.toLocaleString("pt-BR")
+        : n.toLocaleString("pt-BR");
     if(totalEl) totalEl.textContent = formatarReais(n * 100);
-    if(cta) cta.disabled = sel.size !== buyPanelQtyDesejada;
+    if(cta) cta.disabled = buyPanelQtyDesejada > 0 ? sel.size !== buyPanelQtyDesejada : !sel.size;
     const alvo = document.getElementById("btnSelecionarQtdMapa");
-    if(alvo) alvo.textContent = n >= buyPanelQtyDesejada ? "✓ QUANTIDADE COMPLETA" : "▦ SELECIONAR NO MAPA — " + n + "/" + buyPanelQtyDesejada;
+    if(alvo) alvo.textContent = buyPanelQtyDesejada > 0
+        ? (n >= buyPanelQtyDesejada ? "✓ QUANTIDADE COMPLETA" : "▦ SELECIONAR NO MAPA — " + n + "/" + buyPanelQtyDesejada)
+        : "▦ SELECIONAR NO MAPA — " + n + " espaço(s)";
 }
 
 function checkoutFromPanel(){
-    if(sel.size !== buyPanelQtyDesejada){
+    if(buyPanelQtyDesejada > 0 && sel.size !== buyPanelQtyDesejada){
         abrirInfoModal("Complete sua seleção", "<p>Selecione exatamente <b>" + buyPanelQtyDesejada + " espaço(s)</b> no mapa ou use <b>Aleatório</b> para preencher automaticamente.</p>");
         return;
     }

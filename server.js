@@ -11737,6 +11737,8 @@ app.put("/api/admin/usuarios/:id", authAdmin, async (req, res) => {
         }
 
         const { nome, email, bloqueado } = req.body;
+        const novoId = req.body.id === undefined || req.body.id === "" ? null : Number(req.body.id);
+        if (novoId !== null && (!Number.isInteger(novoId) || novoId < 1)) return res.status(400).json({ error: "ID inválido." });
 
         // Validações
         if (nome !== undefined) {
@@ -11756,7 +11758,6 @@ app.put("/api/admin/usuarios/:id", authAdmin, async (req, res) => {
         if (checkUser.rowCount === 0) {
             return res.status(404).json({ error: "Usuário não encontrado." });
         }
-
         // Constrói UPDATE dinâmico
         const updates = [];
         const params = [];
@@ -11775,6 +11776,19 @@ app.put("/api/admin/usuarios/:id", authAdmin, async (req, res) => {
             params.push(Boolean(bloqueado));
         }
 
+        if (novoId !== null && novoId !== userId) {
+            const alvo = await pgPool.query("SELECT id FROM usuarios WHERE id = $1", [novoId]);
+            if (alvo.rowCount) return res.status(409).json({ error: "Este ID já está em uso." });
+            const refs = await pgPool.query(
+                `SELECT (SELECT COUNT(*) FROM usuario_chaves WHERE usuario_id = $1) +
+                        (SELECT COUNT(*) FROM transacoes WHERE usuario_id = $1) AS total`,
+                [userId]
+            );
+            if (Number(refs.rows[0]?.total || 0) > 0) return res.status(409).json({ error: "Não é possível alterar o ID: o usuário já possui dados associados." });
+            updates.push(`id = $${paramIndex++}`);
+            params.push(novoId);
+        }
+
         if (updates.length === 0) {
             return res.status(400).json({ error: "Nenhum campo para atualizar." });
         }
@@ -11782,6 +11796,7 @@ app.put("/api/admin/usuarios/:id", authAdmin, async (req, res) => {
         params.push(userId);
         const query = `UPDATE usuarios SET ${updates.join(", ")} WHERE id = $${paramIndex} RETURNING id, nome, email, bloqueado`;
         const result = await pgPool.query(query, params);
+        if (novoId !== null && novoId !== userId) await pgPool.query("SELECT setval(pg_get_serial_sequence('usuarios','id'), GREATEST((SELECT COALESCE(MAX(id),1) FROM usuarios), nextval(pg_get_serial_sequence('usuarios','id'))))");
 
         registrarLog("admin_user_edit", {
             admin: req.admin.usuario,

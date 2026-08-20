@@ -896,6 +896,8 @@ button{transition:transform .18s,filter .18s,box-shadow .18s}button:hover{transf
 <div id="modalEditarUsuario" class="modal-overlay hidden">
     <div class="modal-box">
         <h3>✏️ Editar Usuário</h3>
+        <label>ID (só altera se estiver livre e sem dados associados)</label>
+        <input id="editUserId" type="number" min="1">
         <label>Nome</label>
         <input id="editUserNome" type="text">
         <label>E-mail</label>
@@ -1278,6 +1280,7 @@ let usuarioEditandoId = null;
 
 function abrirModalEditarUsuario(id, nome, email){
     usuarioEditandoId = id;
+    document.getElementById("editUserId").value = id;
     document.getElementById("editUserNome").value = nome;
     document.getElementById("editUserEmail").value = email;
     document.getElementById("modalEditarUsuario").classList.remove("hidden");
@@ -1292,6 +1295,7 @@ async function salvarEdicaoUsuario(){
     if(!usuarioEditandoId) return;
     const nome = document.getElementById("editUserNome").value.trim();
     const email = document.getElementById("editUserEmail").value.trim();
+    const id = Number(document.getElementById("editUserId").value);
     if(!nome || !email){
         alert("Nome e e-mail são obrigatórios.");
         return;
@@ -1299,7 +1303,7 @@ async function salvarEdicaoUsuario(){
     try {
         await api("/api/admin/usuarios/" + usuarioEditandoId, {
             method: "PUT",
-            body: JSON.stringify({ nome, email })
+            body: JSON.stringify({ id, nome, email })
         });
         alert("Usuário atualizado com sucesso!");
         fecharModalEditarUsuario();

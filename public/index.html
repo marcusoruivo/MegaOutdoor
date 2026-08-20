@@ -9023,6 +9023,14 @@ if(offerMode){
 toggleOfferMode();
 }
 
+function posicionarMapaInicio(){
+    sc = .35;
+    x = 0;
+    y = 0;
+    atualizarZoomVisual();
+    draw();
+}
+
 if(!areaComMeta){
     buyPanelQtyDesejada = 0;
     document.querySelectorAll(".l-buy-pack").forEach(function(el){ el.classList.remove("active"); });
@@ -11841,7 +11849,7 @@ resize
 
 resize();
 
-center();
+posicionarMapaInicio();
 
 load();
 
@@ -18923,7 +18931,7 @@ function toggleModoMapa(){
     btn.querySelector("span:first-child").textContent = ativar ? "↙" : "⛶";
     setTimeout(function(){
         if(typeof draw === "function") draw();
-        if(typeof center === "function") center();
+        if(typeof posicionarMapaInicio === "function") posicionarMapaInicio();
     }, 350);
 }
 

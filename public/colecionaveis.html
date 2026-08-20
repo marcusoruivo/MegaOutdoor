@@ -6,6 +6,9 @@
 <title>MegaOutdoor Colecionáveis — Colha. Complete. Negocie.</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+<script src="https://sdk.mercadopago.com/js/v2"></script>
+<link rel="stylesheet" href="/css/lovable.css">
+<link rel="stylesheet" href="/css/colecao.css">
 <style>
 :root{
     --fundo:#0b0b0f;
@@ -21,6 +24,29 @@
     --azul:#3b82f6;
     --roxo:#a855f7;
     --ouro:#ffbf40;
+    --background:oklch(0.08 0.006 80);
+    --foreground:oklch(0.96 0.003 80);
+    --muted-foreground:oklch(0.62 0.006 80);
+    --surface:oklch(0.12 0.008 80);
+    --surface-2:oklch(0.17 0.01 80);
+    --card:var(--surface);
+    --gold:oklch(0.85 0.18 95);
+    --gold-soft:oklch(0.88 0.14 95);
+    --gold-deep:oklch(0.72 0.16 95);
+    --gold-10:color-mix(in oklab, var(--gold) 10%, transparent);
+    --gold-15:color-mix(in oklab, var(--gold) 15%, transparent);
+    --gold-25:color-mix(in oklab, var(--gold) 25%, transparent);
+    --gold-40:color-mix(in oklab, var(--gold) 40%, transparent);
+    --success:#22c55e;
+    --danger:#ef4444;
+    --radius-sm:8px;
+    --radius-md:12px;
+    --radius-lg:16px;
+    --radius-xl:20px;
+    --radius-full:9999px;
+    --shadow-gold:0 0 26px -6px color-mix(in oklab, var(--gold) 50%, transparent);
+    --header-height:72px;
+    --max-content:1600px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{
@@ -96,6 +122,9 @@ input::placeholder,select::placeholder,textarea::placeholder{color:#b0b0bd;opaci
 .l-header-nav a.active::after,.l-header-nav a:hover::after{
     transform:scaleX(1);
 }
+.l-header-nav a.l-header-nav-return{padding:8px 10px;border:1px solid rgba(255,212,0,.55);border-radius:9px;background:linear-gradient(135deg,#ffd400,#ff9d00);color:#111;box-shadow:0 5px 16px rgba(255,212,0,.18);white-space:nowrap;font-size:10px;letter-spacing:.08em}
+.l-header-nav a.l-header-nav-return::after{display:none}
+.l-header-nav a.l-header-nav-return:hover{color:#111;filter:brightness(1.08);transform:translateY(-1px)}
 .l-header-nav-dot{
     width:6px;height:6px;border-radius:50%;background:var(--gold);
 }
@@ -158,6 +187,16 @@ input::placeholder,select::placeholder,textarea::placeholder{color:#b0b0bd;opaci
 @media (min-width:1024px){
     .l-header-account svg{display:block}
 }
+.conta-dropdown{position:fixed;top:78px;right:16px;z-index:250;width:260px;padding:8px;background:#15151c;border:1px solid rgba(255,212,0,.28);border-radius:14px;box-shadow:0 18px 45px rgba(0,0,0,.58);display:none}
+.conta-dropdown.open{display:block}
+.conta-dropdown-head{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--borda);margin-bottom:5px}
+.conta-dropdown-head .avatar-initials{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:linear-gradient(135deg,var(--amarelo),var(--laranja));color:#111;font-weight:900}
+.conta-dropdown-head b{display:block;color:var(--texto);font-size:13px}
+.conta-dropdown-head span{display:block;color:var(--muted);font-size:10px;margin-top:2px}
+.conta-dropdown>a{display:block;padding:10px 12px;border-radius:8px;color:var(--texto);font-size:12px;font-weight:700;text-decoration:none}
+.conta-dropdown>a:hover{background:rgba(255,212,0,.1);color:var(--amarelo)}
+.verified-badge{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;margin-left:4px;border-radius:50%;background:#1d9bf0;color:#fff;font-size:11px;font-weight:900;vertical-align:2px;box-shadow:0 0 0 2px var(--painel),0 0 9px rgba(29,155,240,.35)}
+@media(max-width:640px){.conta-dropdown{top:66px;right:10px;width:min(260px,calc(100vw - 20px))}}
 /* ===== FIM HEADER ===== */
 .topo{
     position:sticky;top:0;z-index:60;
@@ -217,6 +256,16 @@ input::placeholder,select::placeholder,textarea::placeholder{color:#b0b0bd;opaci
 }
 .hero p{color:var(--muted);font-size:16px;margin-top:14px;max-width:620px;margin-inline:auto;line-height:1.6}
 .hero .chips{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:22px}
+.hero-album-capa{position:relative;width:min(430px,86vw);height:138px;margin:0 auto 24px;border:2px solid #ffd400;border-radius:18px;overflow:hidden;background:linear-gradient(135deg,#1d1600,#09090d 65%);box-shadow:0 16px 38px rgba(0,0,0,.45),0 0 28px rgba(255,212,0,.16);transform:perspective(800px) rotateX(2deg)}
+.hero-album-capa::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,rgba(255,212,0,.18),transparent 35%,rgba(255,255,255,.1) 50%,transparent 65%);pointer-events:none;animation:capaShine 5s ease-in-out infinite}
+.hero-album-fotos{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,1fr);gap:3px;opacity:.82}
+.hero-album-fotos img{width:100%;height:100%;object-fit:cover;filter:saturate(1.12) contrast(1.05)}
+.hero-album-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(90deg,rgba(0,0,0,.64),rgba(0,0,0,.22),rgba(0,0,0,.64));text-shadow:0 3px 10px #000}
+.hero-album-kicker{font-size:9px;font-weight:900;letter-spacing:3px;color:#ffe78a}
+.hero-album-titulo{font-family:'Orbitron',sans-serif;font-size:clamp(20px,5vw,31px);font-weight:900;letter-spacing:2px;color:#ffd400;margin:3px 0}
+.hero-album-selo{padding:3px 9px;border:1px solid #ffd400;border-radius:999px;color:#fff;font-size:9px;font-weight:800;letter-spacing:1px;background:rgba(0,0,0,.42)}
+@keyframes capaShine{0%,35%{transform:translateX(-110%)}65%,100%{transform:translateX(110%)}}
+@media(max-width:640px){.hero-album-capa{height:116px;margin-bottom:20px}.hero-album-titulo{font-size:22px}}
 .chip{
     background:var(--painel);border:1px solid var(--borda);
     border-radius:999px;padding:8px 16px;font-size:13px;font-weight:600;color:var(--texto);
@@ -278,9 +327,10 @@ body{overflow-x:hidden}
 }
 .completa-card{
     background:var(--painel);border:1px solid var(--borda);border-radius:14px;
-    overflow:hidden;position:relative;transition:transform .15s,border-color .15s;
+    overflow:hidden;position:relative;cursor:pointer;transition:transform .2s,border-color .2s,box-shadow .2s;
 }
-.completa-card:hover{transform:translateY(-3px);border-color:var(--amarelo)}
+.completa-card:hover{transform:translateY(-5px);border-color:var(--amarelo);box-shadow:0 12px 28px rgba(0,0,0,.38)}
+.completa-card:focus-visible{outline:2px solid var(--amarelo);outline-offset:3px}
 .completa-arte{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#151515;overflow:hidden}
 .completa-arte img{width:100%;height:100%;object-fit:cover;display:block}
 .completa-info{padding:10px}
@@ -641,6 +691,29 @@ body{overflow-x:hidden}
 .modal-arte-premium .cc-verso-card{height:max-content;min-height:100%;justify-content:flex-start;overflow:visible}
 .modal-arte-premium .cc-verso-card .cc-verso-lista{max-height:none;overflow:visible}
 .modal-arte-premium .cc-verso-card .cc-curiosidade{overflow-wrap:anywhere;word-break:normal}
+.figurinha-modal{animation:figurinhaOverlayIn .22s ease-out both}
+.figurinha-modal .modal{max-width:min(620px,96vw);border-color:rgba(255,212,0,.5);box-shadow:0 20px 70px rgba(0,0,0,.7),0 0 34px rgba(255,212,0,.14);animation:figurinhaModalIn .34s cubic-bezier(.2,.8,.25,1.1) both}
+.figurinha-modal .modal-arte-premium{height:min(430px,55vh);padding:16px 18px 0}
+.figurinha-modal .modal-arte-premium:has(.cc-flipper.virado){height:min(560px,calc(100vh - 34px))}
+.figurinha-modal .modal:has(.cc-flipper.virado) .modal-body{display:block;flex:0 0 auto;padding:8px 18px 14px;overflow:visible}
+.figurinha-modal .modal:has(.cc-flipper.virado) .modal-body > :not(.modal-acoes){display:none}
+.figurinha-modal .modal:has(.cc-flipper.virado) .modal-acoes{display:flex;margin-top:0}
+.figurinha-modal .modal-body{text-align:center}
+.figurinha-modal.animal-animacao .modal-arte-premium .cc-arte{overflow:visible}
+.figurinha-modal.animal-animacao .modal-arte-premium .cc-img{animation:animalSair .85s cubic-bezier(.2,.8,.25,1.2) both;filter:drop-shadow(0 14px 18px rgba(0,0,0,.65));object-fit:contain;background:#0b0b0f}
+.figurinha-modal.animal-leao .modal-arte-premium .cc-img,.figurinha-modal.animal-tigre .modal-arte-premium .cc-img{animation:animalRugir .9s cubic-bezier(.2,.8,.25,1.2) both}
+.figurinha-modal.animal-elefante .modal-arte-premium .cc-img{animation:animalElefante .9s ease-out both}
+.figurinha-modal.animal-aguia .modal-arte-premium .cc-img,.figurinha-modal.animal-falcao .modal-arte-premium .cc-img{animation:animalVoo .95s cubic-bezier(.2,.8,.25,1.2) both}
+.figurinha-modal.animal-cobra .modal-arte-premium .cc-img{animation:animalCobra .9s ease-in-out both}
+.animal-grito{position:absolute;top:12px;left:50%;z-index:8;transform:translateX(-50%) scale(.5) rotate(-8deg);color:#ffd400;font-family:'Orbitron',sans-serif;font-size:clamp(16px,4vw,26px);font-weight:900;letter-spacing:2px;text-shadow:0 3px 12px rgba(0,0,0,.9),0 0 14px rgba(255,212,0,.7);pointer-events:none;animation:gritoAnimal .9s cubic-bezier(.2,.8,.25,1.2) both;white-space:nowrap}
+@keyframes figurinhaOverlayIn{from{opacity:0}to{opacity:1}}
+@keyframes figurinhaModalIn{from{opacity:0;transform:translateY(24px) scale(.88)}to{opacity:1;transform:none}}
+@keyframes animalSair{0%{transform:scale(.82) translateY(28px);opacity:.35}55%{transform:scale(1.12) translateY(-16px);opacity:1}100%{transform:scale(1) translateY(0);opacity:1}}
+@keyframes animalRugir{0%{transform:scale(.8) translateY(24px);opacity:.3}45%{transform:scale(1.18) translateY(-12px);filter:drop-shadow(0 0 22px rgba(255,110,30,.9))}62%{transform:scale(1.06) translateX(-5px)}72%{transform:scale(1.06) translateX(5px)}82%{transform:scale(1.06) translateX(-3px)}100%{transform:scale(1) translateX(0);opacity:1}}
+@keyframes animalElefante{0%{transform:scale(.78) translateY(30px);opacity:.3}60%{transform:scale(1.08) translateY(-5px);filter:drop-shadow(0 12px 18px rgba(170,180,210,.65))}75%{transform:scale(1.04) translateY(0)}100%{transform:scale(1);opacity:1}}
+@keyframes animalVoo{0%{transform:translate(42px,28px) scale(.7);opacity:.2}60%{transform:translate(-12px,-10px) scale(1.1);opacity:1}100%{transform:none}}
+@keyframes animalCobra{0%{transform:translateY(24px) scale(.78);opacity:.2}35%{transform:translateY(-8px) scale(1.08) rotate(-4deg)}65%{transform:translateY(0) scale(1.04) rotate(4deg)}100%{transform:none;opacity:1}}
+@keyframes gritoAnimal{0%{opacity:0;transform:translateX(-50%) scale(.5) rotate(-8deg)}35%{opacity:1;transform:translateX(-50%) scale(1.12) rotate(4deg)}100%{opacity:0;transform:translateX(-50%) translateY(-34px) scale(1) rotate(0)}}
 @media(max-width:640px){
     .modal-arte-premium .colecao-card.cc-grande .cc-topo{font-size:8px}
     .modal-arte-premium .colecao-card.cc-grande .cc-arte{margin:0 8px 8px}
@@ -652,6 +725,22 @@ body{overflow-x:hidden}
    .modal-arte (que tinha font-size:90px) nem de variáveis do mapa. ===== */
 .modal-arte .cc-verso-lista{font-size:11px;line-height:1.7;color:var(--muted);word-break:break-word}
 .modal-arte .cc-verso-lista b{color:var(--texto)}
+.figurinha-modal .cc-verso-card{background:linear-gradient(150deg,#171827,#0c0d15);border-color:rgba(255,212,0,.42)}
+.figurinha-modal .modal-arte-premium .cc-verso{overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--amarelo) rgba(255,255,255,.08)}
+.figurinha-modal .cc-verso-card .cc-topo{padding:14px 20px 8px;color:var(--amarelo);background:rgba(255,212,0,.05)}
+.figurinha-modal .cc-verso-card .cc-info{display:flex;flex-direction:column;gap:7px;padding:14px 18px 18px;background:transparent}
+.figurinha-modal .cc-verso-card .cc-info-row{margin-bottom:0}
+.figurinha-modal .cc-verso-card .cc-nome{font-family:'Orbitron',sans-serif;font-size:clamp(18px,3.2vw,24px);letter-spacing:.5px;color:#fff;overflow-wrap:anywhere}
+.figurinha-modal .cc-verso-card .cc-sn{font-size:12px;margin-top:-4px;color:#aeb4c7}
+.figurinha-modal .cc-verso-card .cc-verso-lista{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:6px;font-size:11px;line-height:1.3;color:#b8bdcb}
+.figurinha-modal .cc-verso-card .cc-verso-lista div{padding:7px 9px;border:1px solid rgba(255,255,255,.07);border-radius:9px;background:rgba(255,255,255,.035);overflow-wrap:anywhere}
+.figurinha-modal .cc-verso-card .cc-verso-lista b{display:block;margin-bottom:2px;color:var(--amarelo);font-size:9px;letter-spacing:1px;text-transform:uppercase}
+.figurinha-modal .cc-verso-card .cc-curiosidade{margin-top:6px;padding:10px 12px;border-left:3px solid var(--amarelo);border-radius:0 10px 10px 0;background:rgba(255,212,0,.08);font-size:11px;line-height:1.4;color:#d5d8e2;font-style:normal;overflow-wrap:anywhere}
+.figurinha-modal .cc-verso-card .cc-curiosidade b{display:block;margin-bottom:3px;color:var(--amarelo);font-size:10px;letter-spacing:1px;text-transform:uppercase}
+.figurinha-modal .cc-verso-card .cc-fonte{margin-top:4px;padding:8px 10px;border-top:1px solid rgba(255,255,255,.08);color:#8d93a7;font-size:9px;line-height:1.35;overflow-wrap:anywhere}
+.figurinha-modal .cc-verso-card .cc-fonte b{color:#ffd400;font-size:9px;letter-spacing:.8px}
+.figurinha-modal .cc-verso-card .cc-rodape{padding:10px;color:#8d93a7;border-top:1px solid rgba(255,255,255,.06)}
+@media(max-width:640px){.figurinha-modal .cc-verso-card .cc-verso-lista{grid-template-columns:1fr}.figurinha-modal .cc-verso-card .cc-info{padding:12px 14px 16px}}
 .cc-flip-container{perspective:1200px;width:100%;height:100%;min-height:0;overflow:visible}
 .pack-flip-container.cc-flip-container{height:min(520px,calc(100vh - 170px));min-height:280px}
 .cc-flipper{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .6s cubic-bezier(.4,0,.2,1)}
@@ -669,6 +758,9 @@ body{overflow-x:hidden}
 .modal-body h2{font-size:clamp(18px,4vw,22px);line-height:1.2;margin:8px 0 4px;overflow-wrap:anywhere}
 .modal-body .num{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:1px}
 .modal-body .desc{font-size:13px;color:var(--muted);line-height:1.6;margin:10px 0}
+.modal-body .login-panel .desc{color:#d2d2dc}
+.modal-body .login-panel .desc b{color:#ffd400}
+.modal-body .login-panel .desc a{color:#ffd400!important}
 .modal-body .qtd-linha{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
 .modal-acoes{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
 .modal-fechar{
@@ -681,6 +773,8 @@ body{overflow-x:hidden}
     .modal-overlay{padding:8px}
     .modal{max-height:calc(100vh - 16px);border-radius:14px}
     .modal-arte-premium{height:clamp(150px,30vh,210px)}
+    .figurinha-modal .modal-arte-premium{height:min(330px,46vh);padding:12px 12px 0}
+    .figurinha-modal .modal-arte-premium:has(.cc-flipper.virado){height:calc(100vh - 24px)}
     .modal-body{padding:14px 16px 16px}
     .modal-acoes{flex-direction:column}
     .modal-acoes .btn{width:100%;margin:0}
@@ -706,18 +800,30 @@ body{overflow-x:hidden}
 .login-panel{text-align:center;padding:24px}
 .login-brand{display:flex;flex-direction:column;align-items:center;gap:2px;margin-bottom:18px}
 .login-brand .icone{font-size:34px;line-height:1;filter:drop-shadow(0 0 8px rgba(255,212,0,.35))}
-.login-brand .marca{font-size:18px;font-weight:900;letter-spacing:1.5px;background:linear-gradient(90deg,#fff,var(--amarelo),var(--laranja));-webkit-background-clip:text;background-clip:text;color:transparent}
-.login-brand .submarca{font-size:9px;font-weight:800;letter-spacing:2px;color:var(--muted)}
-.login-panel h2{font-size:20px;margin-bottom:6px}
-.login-panel .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+.login-album-capa{position:relative;width:min(260px,78vw);height:82px;margin:0 auto 10px;border:1px solid #ffd400;border-radius:11px;overflow:hidden;background:#15110a;box-shadow:0 0 18px rgba(255,212,0,.18)}
+.login-album-capa .fotos{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,1fr);gap:2px;opacity:.82}
+.login-album-capa img{width:100%;height:100%;object-fit:cover}
+.login-album-capa .texto{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.48);font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;letter-spacing:1px;color:#ffd400;text-shadow:0 2px 8px #000}
+.login-album-capa .selo{font-family:'Inter',sans-serif;font-size:8px;letter-spacing:1px;color:#fff;margin-top:3px}
+.login-brand .marca{font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;letter-spacing:1.5px;color:#ffd400;background:none;-webkit-text-fill-color:#ffd400;text-shadow:0 0 12px rgba(255,212,0,.28)}
+.login-brand .submarca{font-family:'Inter',sans-serif;font-size:9px;font-weight:800;letter-spacing:2px;color:#a9a9b5}
+.login-panel h2{font-family:'Orbitron',sans-serif;font-size:20px;color:#ffd400;margin-bottom:6px}
+.login-panel .sub{color:#d2d2dc;font-size:13px;margin-bottom:18px}
 .login-tabs{display:flex;gap:6px;margin-bottom:16px;justify-content:center}
 .login-tabs button{
     background:var(--painel2);border:1px solid var(--borda);
-    color:var(--muted);border-radius:999px;padding:7px 16px;font-size:12px;font-weight:700;
+    color:#ffd400;border-radius:999px;padding:7px 16px;font-size:12px;font-weight:700;
 }
 .login-tabs button.ativa{background:linear-gradient(90deg,var(--amarelo),var(--laranja));color:#141414;border-color:transparent}
 .login-form{display:flex;flex-direction:column;gap:12px;text-align:left}
-.login-form label{font-size:12px;font-weight:700;color:var(--muted)}
+.login-form label{font-size:12px;font-weight:700;color:#ffd400}
+.login-form input{background:#0b0b0f;color:#fff;border:1px solid #4a4a55}
+.login-form input:focus{border-color:#ffd400;box-shadow:0 0 0 2px rgba(255,212,0,.18)}
+.login-form input::placeholder{color:#a9a9b5;opacity:1}
+.login-form input:-webkit-autofill,.login-form input:-webkit-autofill:hover,.login-form input:-webkit-autofill:focus{-webkit-text-fill-color:#fff;caret-color:#fff;box-shadow:0 0 0 1000px #0b0b0f inset;border:1px solid #ffd400;transition:background-color 9999s ease-in-out 0s}
+.login-form .btn-amarelo{background:linear-gradient(90deg,#ffd400,#ff9d00);color:#111;border:0}
+.login-form .btn-ghost{color:#ffd400;border-color:#ffd400}
+.login-form a{color:#ffd400!important}
 .login-erro{color:#ffb3bd;font-size:12px;min-height:16px}
 .sessao-bar{
     display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -735,6 +841,15 @@ body{overflow-x:hidden}
 .stat-box{background:var(--painel2);border:1px solid var(--borda);border-radius:10px;padding:12px;text-align:center}
 .stat-box .v{font-family:'Orbitron',sans-serif;font-size:20px;font-weight:800;color:var(--amarelo)}
 .stat-box .l{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.5px;margin-top:2px}
+.album-publico-card{margin-top:14px;padding:16px;background:linear-gradient(145deg,rgba(255,212,0,.08),var(--painel));border:1px solid rgba(255,212,0,.28);border-radius:14px;box-shadow:0 8px 22px rgba(0,0,0,.16)}
+.album-publico-title{display:flex;align-items:center;gap:8px;margin:0 0 8px!important;font-size:15px!important;color:var(--texto)}
+.album-publico-title::after{content:'VISIBILIDADE';margin-left:auto;padding:3px 7px;border:1px solid rgba(255,212,0,.35);border-radius:999px;color:var(--amarelo);font-size:8px;letter-spacing:1px;font-weight:800}
+.album-publico-status{display:flex;align-items:flex-start;gap:8px;margin-bottom:14px;color:var(--muted);font-size:12px;line-height:1.45}
+.album-publico-status::before{content:'';width:8px;height:8px;flex:0 0 8px;margin-top:4px;border-radius:50%;background:var(--verde);box-shadow:0 0 8px rgba(46,204,113,.7)}
+.album-publico-status.privado::before{background:var(--muted);box-shadow:none}
+.album-publico-actions{display:flex;gap:8px;flex-wrap:wrap}
+.album-publico-actions .btn{margin:0;min-width:110px}
+.album-publico-actions .btn:last-child{flex-basis:100%;width:max-content}
 .conquista{
     display:flex;gap:12px;align-items:center;
     background:var(--painel2);border:1px solid var(--borda);
@@ -974,6 +1089,17 @@ body{overflow-x:hidden}
 @keyframes grandePulso{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
 .pack-grande .grande-tap{font-size:11px;color:var(--muted);margin-top:16px;letter-spacing:1px}
 .pack-overlay.escuro{background:#04040a}
+.pack-rarity-flash{position:fixed;inset:0;z-index:4;pointer-events:none;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle,rgba(255,255,255,.9),rgba(255,212,0,.38) 25%,transparent 68%);animation:packRarityFlash .9s ease-out both}
+.pack-rarity-flash strong{font-family:'Orbitron',sans-serif;font-size:clamp(18px,5vw,34px);letter-spacing:2px;color:#fff;text-shadow:0 0 18px var(--flash-color),0 3px 8px #000;animation:packRarityText .9s ease-out both}
+.pack-overlay.rarity-rara .pack-rarity-flash{--flash-color:#3b82f6;background:radial-gradient(circle,rgba(190,220,255,.9),rgba(59,130,246,.32) 28%,transparent 70%)}
+.pack-overlay.rarity-epica .pack-rarity-flash{--flash-color:#a855f7;background:radial-gradient(circle,rgba(240,210,255,.9),rgba(168,85,247,.38) 28%,transparent 70%)}
+.pack-overlay.rarity-lendaria .pack-rarity-flash{--flash-color:#ffbf40;background:radial-gradient(circle,rgba(255,250,210,.95),rgba(255,191,64,.42) 28%,transparent 70%)}
+.pack-overlay.rarity-mitica .pack-rarity-flash{--flash-color:#ef4444;background:radial-gradient(circle,rgba(255,220,220,.95),rgba(215,38,61,.42) 28%,transparent 70%)}
+.pack-overlay.rarity-ouro .pack-rarity-flash{--flash-color:#ffd700;background:radial-gradient(circle,rgba(255,255,220,.98),rgba(255,215,0,.5) 28%,transparent 70%)}
+.pack-overlay.rarity-cromada .pack-rarity-flash{--flash-color:#cbd5ff;background:radial-gradient(circle,rgba(255,255,255,.98),rgba(160,180,255,.5) 28%,transparent 70%)}
+@keyframes packRarityFlash{0%{opacity:0;transform:scale(.35)}20%{opacity:1}100%{opacity:0;transform:scale(1.35)}}
+@keyframes packRarityText{0%{opacity:0;transform:scale(.55)}35%{opacity:1;transform:scale(1.08)}100%{opacity:0;transform:scale(1.15)}}
+.pack-video-card{width:min(210px,58vw);margin:-88px auto 0;position:relative;z-index:2;transform:scale(.72);transform-origin:bottom center;filter:drop-shadow(0 8px 16px rgba(0,0,0,.65))}
 .gp{position:fixed;pointer-events:none;border-radius:50%;z-index:3;opacity:0;animation:gpFly 1.3s ease-out both}
 .gp-ouro{background:#ffd700;box-shadow:0 0 10px #ffd700}
 .gp-cromada{background:#e4ecff;box-shadow:0 0 10px #bcd0ff}
@@ -995,15 +1121,20 @@ body{overflow-x:hidden}
 }
 
 /* ===== ÁLBUM COMPLETO — CICLO DE VIDA, VENDAS E OFERTAS ===== */
-.album-countdown{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
-    background:linear-gradient(90deg,rgba(255,152,0,.14),rgba(255,60,60,.12));
-    border:1px solid var(--borda);border-radius:12px;padding:10px 14px;margin-top:12px;font-size:12px}
+.album-countdown{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    background:linear-gradient(110deg,rgba(255,212,0,.12),rgba(255,122,0,.08) 55%,rgba(20,20,28,.9));
+    border:1px solid rgba(255,212,0,.32);border-radius:14px;padding:14px 16px;margin-top:12px;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
 .album-countdown.encerrado{background:rgba(255,80,80,.10);border-color:rgba(255,80,80,.4)}
 .album-countdown .ac-info{display:flex;flex-direction:column;gap:2px}
-.album-countdown .ac-titulo{font-family:'Orbitron',sans-serif;font-weight:900;letter-spacing:1px;font-size:13px}
-.album-countdown .ac-fim{color:var(--muted)}
-.album-countdown .ac-relogio{font-family:'Orbitron',sans-serif;font-weight:900;font-size:16px;color:var(--amarelo);white-space:nowrap}
+.album-countdown .ac-titulo{font-family:'Orbitron',sans-serif;font-weight:900;letter-spacing:1px;font-size:13px;color:var(--amarelo)}
+.album-countdown .ac-fim{color:var(--texto);font-size:12px;margin-top:3px}
+.album-countdown .ac-aviso{color:var(--muted);font-size:11px;margin-top:3px}
+.album-countdown .ac-contagem{display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:150px}
+.album-countdown .ac-label{font-size:9px;font-weight:800;letter-spacing:1.5px;color:var(--muted)}
+.album-countdown .ac-relogio{font-family:'Orbitron',sans-serif;font-weight:900;font-size:18px;color:var(--amarelo);white-space:nowrap}
 .album-countdown.encerrado .ac-relogio{color:#ff5f6d}
+.album-countdown.encerrado .ac-titulo{color:#ff7d8d}
+@media(max-width:640px){.album-countdown .ac-contagem{align-items:flex-start;width:100%}.album-countdown .ac-relogio{font-size:16px}}
 .album-completo-banner{background:linear-gradient(90deg,rgba(255,215,0,.16),rgba(125,255,155,.12));
     border:1px solid var(--borda);border-radius:12px;padding:12px 14px;margin-top:12px;display:flex;
     flex-direction:column;gap:8px;align-items:flex-start}
@@ -1033,11 +1164,34 @@ body{overflow-x:hidden}
 .ao-status.CONCLUIDA{background:rgba(125,255,155,.15);color:#7dff9b}
 .album-ofertas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
 .album-vendas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.ofertas-shell{display:block;width:100%}
+.ofertas-shell > div:first-child{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px!important;margin:0 0 24px!important}
+.ofertas-shell > div:first-child > div{display:flex;align-items:center;justify-content:center;gap:12px;min-height:82px;padding:16px!important;border:1px solid var(--borda)!important;border-radius:14px!important;background:linear-gradient(145deg,var(--painel2),var(--painel))!important;box-shadow:0 8px 22px rgba(0,0,0,.18)}
+.ofertas-shell > div:first-child > div > div:first-child{font-family:'Orbitron',sans-serif;font-size:28px!important;line-height:1;color:var(--amarelo)!important}
+.ofertas-shell > div:first-child > div > div:last-child{font-size:11px!important;font-weight:800;color:var(--muted)!important;letter-spacing:1px}
+.ofertas-shell > .secao-titulo{display:flex;align-items:center;gap:8px;font-size:16px!important;color:var(--texto)!important;margin:20px 0 10px!important;padding:0 0 10px!important;border-bottom:1px solid var(--borda)!important}
+.ofertas-shell > .vazio{display:flex;align-items:center;justify-content:center;min-height:76px;padding:18px!important;background:rgba(20,20,28,.55);border:1px dashed var(--borda);border-radius:12px;color:var(--muted)!important;font-size:13px}
+.album-ofertas-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.album-ofertas-grid > div{min-height:82px;display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(145deg,var(--painel2),var(--painel))!important;border:1px solid var(--borda)!important;border-radius:14px!important}
+.album-ofertas-grid > div > div:first-child{font-family:'Orbitron',sans-serif;font-size:26px!important;color:var(--amarelo)!important}
+.album-ofertas .vazio{display:flex;align-items:center;justify-content:center;min-height:70px;padding:16px!important;background:rgba(20,20,28,.55);border:1px dashed var(--borda);border-radius:12px;color:var(--muted)!important}
 .album-minha-venda{background:rgba(255,152,0,.10);border:1px dashed rgba(255,152,0,.5);border-radius:12px;
     padding:10px 12px;font-size:12px;margin-top:10px;color:var(--muted)}
 .album-minha-venda b{color:var(--amarelo);font-family:'Orbitron',sans-serif}
 @media (max-width:640px){
+    .ofertas-shell > div:first-child{grid-template-columns:1fr}
     .album-ofertas-grid,.album-vendas-grid{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+    .l-header-inner{grid-template-columns:minmax(0,1fr) auto;gap:8px;padding-left:12px;padding-right:12px}
+    .l-header-logo-link{min-width:0;overflow:hidden}
+    .l-header-account{max-width:42px;overflow:hidden}
+}
+@media (min-width:1024px) and (max-width:1399px){
+    .l-header-inner{gap:14px}
+    .l-header-nav{gap:12px}
+    .l-header-nav a{font-size:10px;letter-spacing:.07em}
+    .l-header-nav a.l-header-nav-return{font-size:9px;padding:8px;letter-spacing:.05em}
 }
 </style>
 </head>
@@ -1046,7 +1200,7 @@ body{overflow-x:hidden}
 <!-- ===== HEADER ===== -->
 <header class="l-header" id="mainHeader">
     <div class="l-header-inner">
-<a href="/" class="l-header-logo-link" style="display:flex;align-items:center;">
+        <a href="/colecionaveis.html" class="l-header-logo-link" style="display:flex;align-items:center;">
             <img src="/logo-milhao-door.png" alt="Milhão Door" class="l-header-logo">
             <img src="/logo-milhao-door.png" alt="Milhão Door" class="l-header-logo-mobile">
             <div style="display:flex;flex-direction:column;line-height:1.1;margin-left:8px;">
@@ -1056,12 +1210,13 @@ body{overflow-x:hidden}
         </a>
 
         <nav class="l-header-nav">
-            <a href="/" onclick="window.location.href='/'">INÍCIO</a>
+            <a href="/colecionaveis.html">INÍCIO</a>
             <a href="#como-funciona" onclick="abrirComoFunciona(event)">COMO FUNCIONA</a>
             <a href="#precos" onclick="abrirPrecos(event)">PREÇOS</a>
             <a href="#combos" onclick="verTodosKits(event)">COMBOS & KITS</a>
             <a href="#faq" onclick="abrirFaq(event)">FAQ</a>
-            <a href="/colecionaveis.html" class="active"><span class="l-header-nav-dot"></span>ESPAÇOS</a>
+            <a href="/colecionaveis.html" class="active"><span class="l-header-nav-dot"></span>COLECIONÁVEIS</a>
+            <a href="/" class="l-header-nav-return">↩ VOLTAR AO MAPA</a>
             <a href="#contato" onclick="scrollToFooter(event)">CONTATO</a>
         </nav>
 
@@ -1117,6 +1272,7 @@ body{overflow-x:hidden}
     <a href="#" onclick="event.preventDefault();abrirEditarPerfil();fecharContaDropdown()">✏️ Editar Perfil</a>
     <a href="#" onclick="event.preventDefault();abrirMeusDestaques();fecharContaDropdown()">✨ Meus Destaques</a>
     <a href="#" onclick="event.preventDefault();abrirSistemaIndicacao();fecharContaDropdown()">🎁 Indique e Ganhe</a>
+    <a href="#" onclick="event.preventDefault();abrirVerificacaoConta();fecharContaDropdown()">🛡️ Perfil verificado</a>
     <a href="#" id="contaDropSair" onclick="event.preventDefault();sairConta();fecharContaDropdown()">🚪 Sair</a>
 </div>
 
@@ -1126,6 +1282,20 @@ body{overflow-x:hidden}
     <div class="l-mobile-menu-head">
         <img src="/logo-milhao-door.png" alt="Milhão Door">
         <button class="l-mobile-menu-close" onclick="fecharMenuMobile()" aria-label="Fechar menu">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+    </div>
+    <nav class="l-mobile-menu-nav">
+        <a href="/colecionaveis.html" onclick="fecharMenuMobile()">Início</a>
+        <a href="#como-funciona" onclick="abrirComoFunciona(event);fecharMenuMobile()">Como funciona</a>
+        <a href="#precos" onclick="abrirPrecos(event);fecharMenuMobile()">Preços</a>
+        <a href="#combos" onclick="verTodosKits(event);fecharMenuMobile()">Combos &amp; Kits</a>
+        <a href="#faq" onclick="abrirFaq(event);fecharMenuMobile()">FAQ</a>
+        <a href="/colecionaveis.html" onclick="fecharMenuMobile()">Colecionáveis</a>
+        <a href="/" onclick="fecharMenuMobile()">↩ Voltar ao mapa</a>
+        <a href="#contato" onclick="scrollToFooter(event);fecharMenuMobile()">Contato</a>
+    </nav>
+</div>
 
 <section class="mp-recebimentos-banner" id="mpRecebimentosBanner" aria-label="Mercado Pago">
     <div><div class="titulo">💳 MERCADO PAGO</div><div class="texto" id="mpRecebimentosTexto">Conecte seu Mercado Pago para vender suas figurinhas.</div></div>
@@ -1134,6 +1304,15 @@ body{overflow-x:hidden}
 
 <!-- ===== HERO ===== -->
 <section class="hero">
+    <div class="hero-album-capa" aria-label="Capa do álbum Animais do Mundo">
+        <div class="hero-album-fotos">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/020_The_lion_king_Snyggve_in_the_Serengeti_National_Park_Photo_by_Giles_Laurent.jpg/960px-020_The_lion_king_Snyggve_in_the_Serengeti_National_Park_Photo_by_Giles_Laurent.jpg" alt="Leão africano">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Giraffe_Mikumi_National_Park.jpg/960px-Giraffe_Mikumi_National_Park.jpg" alt="Girafa">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/178_Male_African_bush_elephant_in_Etosha_National_Park_Photo_by_Giles_Laurent.jpg/960px-178_Male_African_bush_elephant_in_Etosha_National_Park_Photo_by_Giles_Laurent.jpg" alt="Elefante africano">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/008_Hyacinth_macaw_couple_kissing_under_Pink_Ip%C3%AA_tree_in_Encontro_das_%C3%81guas_State_Park_Photo_by_Giles_Laurent.jpg/960px-008_Hyacinth_macaw_couple_kissing_under_Pink_Ip%C3%AA_tree_in_Encontro_das_%C3%81guas_State_Park_Photo_by_Giles_Laurent.jpg" alt="Arara azul">
+        </div>
+        <div class="hero-album-overlay"><span class="hero-album-kicker">MILHÃO DOOR APRESENTA</span><strong class="hero-album-titulo">ANIMAIS DO MUNDO</strong><span class="hero-album-selo">100 ESPÉCIES • 1ª EDIÇÃO</span></div>
+    </div>
     <h1>ANIMAIS DO MUNDO</h1>
     <p>A coleção de figurinhas digitais da <b style="color:var(--amarelo)">Milhão Door</b>.
     Abra pacotinhos, descubra <b>100 espécies reais</b>, complete o álbum, venda repetidas
@@ -1168,9 +1347,9 @@ body{overflow-x:hidden}
 
 <!-- ===== NAV ABAS ===== -->
 <nav class="nav-abas" id="navAbas">
-    <button class="aba-btn ativa" data-aba="album" onclick="mudarAba('album')">📖 ÁLBUM</button>
+    <button class="aba-btn ativa" data-aba="album" onclick="mudarAba('album')">📖 MEU ÁLBUM</button>
     <button class="aba-btn" data-aba="completa" onclick="mudarAba('completa')">🌎 COLEÇÃO COMPLETA</button>
-    <button class="aba-btn" data-aba="acervo" onclick="mudarAba('acervo')">🗂️ ACERVO</button>
+    <button class="aba-btn" data-aba="acervo" onclick="mudarAba('acervo')">🗂️ MEU ACERVO</button>
     <button class="aba-btn" data-aba="packs" onclick="mudarAba('packs')">🎁 PACOTES</button>
     <button class="aba-btn" data-aba="mercado" onclick="mudarAba('mercado')">🏪 MERCADO</button>
     <button class="aba-btn" data-aba="leiloes" onclick="mudarAba('leiloes')">🔨 LEILÕES</button>
@@ -1333,7 +1512,7 @@ body{overflow-x:hidden}
         <div class="secao-titulo">Ofertas</div>
         <div class="secao-sub">Faça ofertas por figurinhas de outros colecionadores, negocie valores e finalize a compra de forma segura.</div>
         <div id="ofertasPendentes" style="font-size:12px;color:var(--amarelo);font-weight:700;margin-bottom:10px"></div>
-        <div class="grid-trades" id="ofertasGrid"></div>
+        <div class="ofertas-shell" id="ofertasGrid"></div>
         <div class="album-ofertas" id="albumOfertasWrap" style="display:none;margin-top:26px;">
             <div class="secao-titulo" style="border-top:2px solid var(--linha);padding-top:22px;margin-top:6px;">🏆 OFERTAS DE ÁLBUNS COMPLETOS</div>
             <div class="secao-sub">Ofertas que você recebeu e que você fez por álbuns completos.</div>
@@ -1383,6 +1562,7 @@ body{overflow-x:hidden}
 </div>
 
 <script src="/js/imagens-animais.js"></script>
+<script src="/js/dados-animais.js"></script>
 <script src="/js/colecao-ui.js"></script>
 <script>
 /* =========================================================
@@ -1391,9 +1571,24 @@ body{overflow-x:hidden}
 ========================================================= */
 
 let minhaConta = null;
+let colecaoMpSdk = null;
+let colecaoModoTeste = false;
+let colecaoCardNumberField = null;
+let colecaoCardPaymentMethodId = "";
 try {
     minhaConta = JSON.parse(localStorage.getItem("mega_conta") || "null");
 } catch(e){ minhaConta = null; }
+
+async function iniciarMercadoPagoColecao(){
+    try{
+        const resp = await fetch("/api/config", { cache: "no-store" });
+        const data = await resp.json();
+        colecaoModoTeste = !!data.allowTestMode;
+        if(data.mercadoPagoPublicKey && typeof MercadoPago !== "undefined"){
+            colecaoMpSdk = new MercadoPago(data.mercadoPagoPublicKey, { locale: "pt-BR" });
+        }
+    }catch(e){}
+}
 
 // Iniciar polling de notificações se já estiver logado
 if (minhaConta && minhaConta.token) {
@@ -1520,6 +1715,30 @@ function toggleModalFlip(){
         flipper.classList.toggle("virado");
     }
 }
+function classeAnimal(nome){
+    const n = String(nome || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (/leao/.test(n)) return ["animal-leao", "GRRRAAAU!"];
+    if (/tigre/.test(n)) return ["animal-tigre", "GRRRAU!"];
+    if (/elefante/.test(n)) return ["animal-elefante", "PRUUUUM!"];
+    if (/aguia/.test(n)) return ["animal-aguia", "WOOOOSH!"];
+    if (/falcao/.test(n)) return ["animal-falcao", "SHHHRR!"];
+    if (/cobra|serpente/.test(n)) return ["animal-cobra", "SSSSSS!"];
+    return ["animal-generico", "UAU!"];
+}
+function animarAnimal(card){
+    const overlay = document.getElementById("modalOverlay");
+    if (!overlay) return;
+    const [classe, grito] = classeAnimal(card && card.name);
+    overlay.classList.add("animal-animacao", classe);
+    const modal = overlay.querySelector(".modal");
+    if (modal) {
+        const efeito = document.createElement("div");
+        efeito.className = "animal-grito";
+        efeito.textContent = grito;
+        modal.appendChild(efeito);
+        setTimeout(() => efeito.remove(), 950);
+    }
+}
 
 /* ===== ATUALIZAR HEADER (COLECIONÁVEIS) ===== */
 function atualizarHeader(){
@@ -1583,6 +1802,57 @@ function atualizarHeader(){
     }
     carregarContaRecebimento();
 }
+
+async function sincronizarPerfilHeader(){
+    if(!minhaConta || !minhaConta.token) return;
+    try {
+        const resp = await fetch("/api/auth/me", { headers: { Authorization: "Bearer " + minhaConta.token } });
+        if(!resp.ok) return;
+        const data = await resp.json();
+        if(data && data.ok && data.usuario){
+            minhaConta.usuario = data.usuario;
+            minhaConta.foto_url = data.usuario.foto_url || null;
+            minhaConta.fotoUrl = data.usuario.foto_url || null;
+            localStorage.setItem("mega_conta", JSON.stringify(minhaConta));
+            atualizarHeader();
+        }
+    } catch(e) {}
+}
+
+function abrirContaDropdown(event){
+    if(event) event.stopPropagation();
+    const dropdown = document.getElementById("contaDropdown");
+    if(!dropdown) return;
+    const abrir = !dropdown.classList.contains("open");
+    dropdown.classList.toggle("open", abrir);
+    dropdown.style.display = abrir ? "block" : "none";
+}
+function fecharContaDropdown(){
+    const dropdown = document.getElementById("contaDropdown");
+    if(dropdown){ dropdown.classList.remove("open"); dropdown.style.display = "none"; }
+}
+function abrirAcaoDashboard(acao){
+    window.location.href = "/?acao=" + encodeURIComponent(acao);
+}
+function abrirPainelComando(){ abrirAcaoDashboard("painel"); }
+function abrirChatGeral(){ abrirAcaoDashboard("chat"); }
+function abrirEditarPerfil(){ abrirModalEditarPerfilColecao(); }
+function abrirMeusDestaques(){ abrirAcaoDashboard("destaques"); }
+function abrirSistemaIndicacao(){ abrirAcaoDashboard("indicacao"); }
+function abrirVerificacaoConta(){
+    mudarAba("perfil");
+    setTimeout(() => {
+        const el = document.getElementById("verificacaoInstagram");
+        if(el){ el.scrollIntoView({behavior:"smooth",block:"center"}); el.focus(); }
+    }, 180);
+}
+document.addEventListener("click", function(event){
+    const dropdown = document.getElementById("contaDropdown");
+    const avatar = document.getElementById("userAvatarHeader");
+    if(dropdown && dropdown.classList.contains("open") && !dropdown.contains(event.target) && !avatar?.contains(event.target)){
+        fecharContaDropdown();
+    }
+});
 
 /* ===== ATUALIZAR AVATAR NO HEADER (COLECIONÁVEIS) — compat ===== */
 function atualizarAvatarHeaderColecionaveis(){
@@ -1727,17 +1997,19 @@ function renderAlbumCiclo(d, res, total){
         cdEl.innerHTML =
             '<div class="ac-info"><span class="ac-titulo">🔚 ÁLBUM ENCERRADO</span>' +
             '<span class="ac-fim">Este álbum (' + esc(colecao.name) + ') terminou. ' +
-            'Um novo ciclo começa em breve!</span></div>' +
-            '<span class="ac-relogio">FINALIZADO</span>';
+            'Um novo tema e um novo álbum entrarão em breve.</span>' +
+            '<span class="ac-aviso">A campanha atual foi encerrada para preparar a próxima edição.</span></div>' +
+            '<div class="ac-contagem"><span class="ac-label">STATUS DA CAMPANHA</span><span class="ac-relogio">FINALIZADO</span></div>';
         pararContagem();
     } else if (colecao.ends_at) {
         const fimMs = new Date(colecao.ends_at).getTime();
         const inicioMs = new Date(colecao.starts_at).getTime();
         cdEl.classList.remove("hidden", "encerrado");
         cdEl.innerHTML =
-            '<div class="ac-info"><span class="ac-titulo">📖 ' + esc(colecao.name) + '</span>' +
-            '<span class="ac-fim">Início ' + fmtData(inicioMs) + ' · Fim ' + fmtData(fimMs) + '</span></div>' +
-            '<span class="ac-relogio" id="albumCountdownRelogio">--:--:--</span>';
+            '<div class="ac-info"><span class="ac-titulo">📖 EDIÇÃO ATUAL · ' + esc(colecao.name) + '</span>' +
+            '<span class="ac-fim">Campanha termina em ' + fmtData(fimMs) + '</span>' +
+            '<span class="ac-aviso">Ao final, entra um novo tema e um novo álbum.</span></div>' +
+            '<div class="ac-contagem"><span class="ac-label">ENCERRA EM</span><span class="ac-relogio" id="albumCountdownRelogio">-- dias</span></div>';
         iniciarContagem(fimMs);
     } else {
         pararContagem();
@@ -1801,17 +2073,16 @@ function atualizarRelogio(fimMs){
     const agora = Date.now() + SERVER_OFFSET_MS;
     const restante = fimMs - agora;
     if (restante <= 0) {
-        el.textContent = "00:00:00";
+        el.textContent = "ENCERRANDO...";
         pararContagem();
         carregarAlbum();
         carregarInfo();
         return;
     }
-    const s = Math.floor(restante / 1000);
-    const hh = String(Math.floor(s / 3600)).padStart(2, "0");
-    const mm = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
-    const ss = String(s % 60).padStart(2, "0");
-    el.textContent = hh + ":" + mm + ":" + ss;
+    const dias = Math.floor(restante / 86400000);
+    const horas = Math.floor((restante % 86400000) / 3600000);
+    const minutos = Math.floor((restante % 3600000) / 60000);
+    el.textContent = dias + (dias === 1 ? " dia" : " dias") + " · " + String(horas).padStart(2, "0") + "h " + String(minutos).padStart(2, "0") + "min";
 }
 
 /* Vender meu álbum completo (anunciar no mercado de álbuns). */
@@ -1865,7 +2136,7 @@ function completaCardHtml(card){
     const imageHtml = image
         ? '<img src="' + esc(image) + '" alt="' + esc(card.name) + '" loading="lazy" onerror="this.style.display=\'none\'">'
         : '<span style="font-size:42px">🐾</span>';
-    return '<article class="completa-card">' +
+    return '<article class="completa-card" role="button" tabindex="0" onclick="abrirModalFigurinha(' + Number(card.id) + ')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();abrirModalFigurinha(' + Number(card.id) + ')}">' +
         (owned ? '<span class="completa-posse">' + owned + 'x</span>' : '') +
         '<div class="completa-arte">' + imageHtml + '</div>' +
         '<div class="completa-info"><div class="completa-num">#' + String(card.number).padStart(3,"0") + ' · ' + esc(card.rarity) + '</div>' +
@@ -2870,7 +3141,7 @@ async function verPerfilColecionador(usuarioId){
     try {
         const d = await apiGet("/api/colecionaveis/colecionador/" + usuarioId);
         const p = d.perfil || {};
-        document.getElementById("modalBody").innerHTML = '<h2>👤 ' + esc(p.nome || "Colecionador") + '</h2>' +
+        document.getElementById("modalBody").innerHTML = '<h2>👤 ' + esc(p.nome || "Colecionador") + (p.verificado ? ' <span class="verified-badge" title="Perfil verificado">✓</span>' : '') + '</h2>' +
             '<div class="perfil-stats" style="margin:12px 0"><div class="stat-box"><div class="v">' + (p.diferentes || 0) + '</div><div class="l">DIFERENTES</div></div><div class="stat-box"><div class="v">' + (p.total || 0) + '</div><div class="l">FIGURINHAS</div></div><div class="stat-box"><div class="v">' + (p.vendas || 0) + '</div><div class="l">VENDAS</div></div></div>' +
             '<button class="btn btn-ghost" onclick="fecharModal()">Fechar</button>';
         document.getElementById("modalOverlay").classList.remove("hidden");
@@ -3066,8 +3337,10 @@ async function abrirModalFigurinha(cardId){
         const d = await apiGet("/api/colecionaveis/figurinha/" + cardId);
         const c = d.card;
         const r = c.rarity;
+        overlay.classList.add("figurinha-modal");
         overlay.classList.remove("hidden");
         document.getElementById("modalArte").outerHTML = cardModalArte(c);
+        animarAnimal(c);
 
         let html = '<div class="num">#' + String(c.number).padStart(3,"0") + ' • ' + nomeRaridade(r) + '</div>';
         html += '<h2>' + esc(c.name) + '</h2>';
@@ -3264,7 +3537,46 @@ function resolvePackageVisual(categoria) {
 /* =========================================================
    PAGAMENTO (MP)
 ========================================================= */
+function inicializarCartaoColecao(){
+    if(!colecaoMpSdk || document.getElementById("colecaoCardNumberContainer")?.children.length) return;
+    try{
+        colecaoCardNumberField = colecaoMpSdk.fields.create("cardNumber", { placeholder: "Número do cartão" });
+        colecaoCardNumberField.mount("colecaoCardNumberContainer");
+        colecaoCardNumberField.on("binChange", async data => {
+            const bin = data && data.bin;
+            if(!bin || bin.length < 6) return;
+            try{
+                const methods = await colecaoMpSdk.getPaymentMethods({ bin });
+                colecaoCardPaymentMethodId = methods?.results?.[0]?.id || "";
+            }catch(e){}
+        });
+        colecaoMpSdk.fields.create("expirationDate", { placeholder: "MM/AA" }).mount("colecaoCardExpiryContainer");
+        colecaoMpSdk.fields.create("securityCode", { placeholder: "CVV" }).mount("colecaoCardCvcContainer");
+    }catch(e){ toast("Não foi possível carregar o formulário do cartão.", "erro"); }
+}
+async function tokenizarCartaoColecao(){
+    if(!colecaoMpSdk || !colecaoCardNumberField) throw new Error("Formulário de cartão indisponível.");
+    const cpf = String(document.getElementById("pgCpf").value || "").replace(/\D/g, "");
+    const nome = String(document.getElementById("pgCardholder").value || "").trim();
+    if(!nome) throw new Error("Informe o titular do cartão.");
+    const result = await colecaoMpSdk.fields.createCardToken({
+        cardholderName: nome,
+        identificationType: cpf.length === 14 ? "CNPJ" : "CPF",
+        identificationNumber: cpf
+    });
+    if(!result?.id || !colecaoCardPaymentMethodId) throw new Error("Não foi possível validar o cartão.");
+    return result.id;
+}
+function alternarMetodoColecao(){
+    const metodo = document.getElementById("pgMetodo")?.value || "pix";
+    const fields = document.getElementById("colecaoCardFields");
+    if(fields) fields.style.display = metodo === "credit_card" ? "block" : "none";
+    if(metodo === "credit_card") inicializarCartaoColecao();
+}
+
 async function abrirModalPagamento(tipo, dados){
+    colecaoCardNumberField = null;
+    colecaoCardPaymentMethodId = "";
     document.getElementById("modalOverlay").classList.remove("hidden");
     const corpo = document.getElementById("modalBody");
     const titulo = tipo === "pack" ? "Abrir Pacote" : tipo === "mercado" ? "Comprar no Mercado" : tipo === "auction" ? "Pagar Lance Vencedor" : tipo === "oferta" ? "Pagar Oferta Aceita" : tipo === "album" ? "Comprar Álbum Completo" : tipo === "albumOferta" ? "Pagar Oferta de Álbum" : "Diferença de Troca";
@@ -3318,20 +3630,32 @@ async function abrirModalPagamento(tipo, dados){
     html += '<div class="desc">Escolha como deseja pagar. O pagamento é processado com segurança pelo Mercado Pago.</div>';
     html += '<div class="modal-form">' +
         '<label>Forma de pagamento</label>' +
-        '<select id="pgMetodo"><option value="pix">💠 Pix</option><option value="credit_card">💳 Cartão de crédito</option></select>' +
+        '<select id="pgMetodo" onchange="alternarMetodoColecao()"><option value="pix">💠 Pix</option><option value="credit_card">💳 Cartão de crédito</option></select>' +
         '<label>CPF/CNPJ</label><input id="pgCpf" placeholder="Somente números" maxlength="18">' +
+        '<div id="colecaoCardFields" style="display:none;margin-top:10px;padding:12px;border:1px solid rgba(255,212,0,.24);border-radius:12px;background:rgba(255,212,0,.04)" class="modal-form">' +
+            '<label>Número do cartão</label><div id="colecaoCardNumberContainer" style="height:42px;padding:0 9px;border:1px solid #3b3b45;border-radius:8px;background:#090909"></div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>Validade</label><div id="colecaoCardExpiryContainer" style="height:42px;padding:0 9px;border:1px solid #3b3b45;border-radius:8px;background:#090909"></div></div><div><label>CVV</label><div id="colecaoCardCvcContainer" style="height:42px;padding:0 9px;border:1px solid #3b3b45;border-radius:8px;background:#090909"></div></div></div>' +
+            '<label>Titular do cartão</label><input id="pgCardholder" placeholder="Nome como no cartão">' +
+            '<label>Parcelas</label><select id="pgInstallments"><option value="1">1x</option></select>' +
+        '</div>' +
         '<button class="btn btn-amarelo" onclick="iniciarPagamento(\'' + tipo + '\',' + JSON.stringify(dados).replace(/"/g,"&quot;") + ')">Gerar pagamento</button>' +
+        (colecaoModoTeste ? '<button class="btn btn-ghost" style="border-color:#45df6e;color:#7dff9b" onclick="iniciarPagamento(\'' + tipo + '\',' + JSON.stringify(dados).replace(/"/g,"&quot;") + ',true)">🧪 CRIAR E TESTAR SEM PAGAR</button>' : '') +
         '<button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>' +
     '</div>';
     corpo.innerHTML = html;
 }
 
-async function iniciarPagamento(tipo, dados){
+async function iniciarPagamento(tipo, dados, modoTeste){
     const metodo = document.getElementById("pgMetodo").value;
     const cpf = document.getElementById("pgCpf").value.replace(/\D/g, "");
     if (!cpf) { toast("Informe CPF ou CNPJ.", "erro"); return; }
     if (!validarCpfCnpj(cpf)) { toast("CPF/CNPJ inválido. Verifique os números.", "erro"); return; }
     let url, body;
+    let cardToken = "";
+    if(metodo === "credit_card"){
+        try { cardToken = await tokenizarCartaoColecao(); }
+        catch(e){ toast(msgErro(e), "erro"); return; }
+    }
     if (tipo === "pack") {
         url = "/api/colecionaveis/packs/" + dados.packId + "/checkout";
         body = { paymentMethod: metodo, cpfCnpj: cpf, storyOptIn: false };
@@ -3354,8 +3678,20 @@ async function iniciarPagamento(tipo, dados){
         url = "/api/colecionaveis/albuns/ofertas/" + dados.ofertaId + "/pagar";
         body = { paymentMethod: metodo, cpfCnpj: cpf };
     }
+    if(metodo === "credit_card"){
+        body.cardToken = cardToken;
+        body.paymentMethodId = colecaoCardPaymentMethodId;
+        body.installments = Number(document.getElementById("pgInstallments")?.value || 1);
+    }
     try {
         const d = await apiPost(url, body);
+        if(modoTeste && colecaoModoTeste && d.orderId){
+            await apiPost("/api/colecionaveis/test/confirm/" + encodeURIComponent(d.orderId), {});
+            fecharModal();
+            toast("Teste confirmado sem cobrança real.", "ok");
+            iniciarPolling(d.orderId, tipo);
+            return;
+        }
         mostrarQr(d, tipo);
     } catch(e){ toast(msgErro(e), "erro"); }
 }
@@ -3382,6 +3718,9 @@ function mostrarQr(d, tipo){
         '<button class="btn btn-amarelo" onclick="iniciarPolling(\'' + esc(d.orderId) + '\',\'' + esc(tipo || "") + '\')">JÁ PAGUEI (Verificar agora)</button>' +
         '<button class="btn btn-ghost" onclick="fecharModal()">Fechar</button>' +
     '</div>';
+    if(colecaoModoTeste && d.orderId){
+        html += '<button class="btn btn-ghost" style="width:100%;margin-top:10px;border-color:#45df6e;color:#7dff9b" onclick="confirmarPagamentoTesteColecao(\'' + esc(d.orderId) + '\',\'' + esc(tipo || "") + '\')">🧪 TESTAR SEM PAGAMENTO REAL</button>';
+    }
     corpo.innerHTML = html;
 
     /* Inicia polling automaticamente */
@@ -3627,7 +3966,35 @@ function renderFlipCard(item){
         '<div class="pack-contagem">Figurinha ' + (pacoteEstado.idx + 1) + ' de ' + pacoteEstado.figs.length + '</div>' +
         '<button class="btn btn-amarelo" style="margin-top:12px" onclick="event.stopPropagation();packEtapaClicada()">VIRAR CARTA</button>';
     pacoteEstado.etapa = "slotReveal";
+    destacarRaridadePacote(item.card);
     if (pacoteEstado.modo !== "manual") pacoteRoda(virarSlot, 1100);
+}
+
+async function confirmarPagamentoTesteColecao(orderId, tipo){
+    try{
+        await apiPost("/api/colecionaveis/test/confirm/" + encodeURIComponent(orderId), {});
+        toast("Pagamento simulado confirmado. Nenhuma cobrança foi feita.", "ok");
+        iniciarPolling(orderId, tipo);
+    }catch(e){ toast(msgErro(e), "erro"); }
+}
+
+function destacarRaridadePacote(card){
+    const overlay = document.getElementById("packOverlay");
+    if(!overlay || !card) return;
+    const finish = ColecaoUI.finishDeCard(card);
+    const rarity = String(card.rarity || "").toUpperCase();
+    let tipo = finish !== "normal" ? finish : (rarity === "RARA" || rarity === "EPICA" || rarity === "LENDARIA" || rarity === "MITICA" ? rarity.toLowerCase() : "");
+    if(!tipo) return;
+    overlay.classList.remove("rarity-rara","rarity-epica","rarity-lendaria","rarity-mitica","rarity-ouro","rarity-cromada");
+    overlay.classList.add("rarity-" + tipo);
+    const anterior = overlay.querySelector(".pack-rarity-flash");
+    if(anterior) anterior.remove();
+    const nomes = { rara:"💎 FIGURINHA RARA", epica:"🌟 FIGURINHA ÉPICA", lendaria:"🏆 FIGURINHA LENDÁRIA", mitica:"🔥 FIGURINHA MÍTICA", ouro:"✨ FIGURINHA OURO", cromada:"🪩 FIGURINHA CROMADA" };
+    const flash = document.createElement("div");
+    flash.className = "pack-rarity-flash";
+    flash.innerHTML = "<strong>" + nomes[tipo] + "</strong>";
+    overlay.appendChild(flash);
+    setTimeout(() => { flash.remove(); overlay.classList.remove("rarity-" + tipo); }, 1000);
 }
 
 function virarSlot(){
@@ -3682,8 +4049,9 @@ function renderPackVideo(){
         '<video id="packVideo" autoplay muted playsinline preload="auto" ' +
         'style="width:100%;height:100%;object-fit:contain;display:block" src="' + esc(url) + '"></video>' +
         '</div>' +
-        '<div class="grande-msg grande-msg-lendaria">' + (chave === "ouro" ? "✨ FIGURINHA OURO!" : "🔥 FIGURINHA ESPECIAL!") + '</div>' +
-        '</div>';
+         '<div class="grande-msg grande-msg-lendaria">' + (chave === "ouro" ? "✨ FIGURINHA OURO!" : "🔥 FIGURINHA ESPECIAL!") + '</div>' +
+         '<div class="pack-video-card">' + ColecaoUI.cardGrandeHtml(m) + '</div>' +
+         '</div>';
 
     let concluido = false;
     const finalizar = function(){
@@ -3824,18 +4192,28 @@ async function carregarPerfil(){
             (p.recompensa_mensal ? ' · Recompensa mensal registrada: <b style="color:var(--verde)">✅</b>' : '') +
             '</div>';
 
+        const v = p.verificacaoStatus || "nenhuma";
+        const vLabel = v === "aprovado" ? "✅ PERFIL VERIFICADO" : v === "pendente_pagamento" ? "⏳ AGUARDANDO PAGAMENTO" : v === "em_analise" ? "🔎 EM ANÁLISE MANUAL" : "Ainda não solicitado";
+        stats += '<div class="perfil-card" style="margin-top:12px;border-color:rgba(59,130,246,.45)">' +
+            '<h4>🛡️ Perfil verificado</h4>' +
+            '<div style="color:var(--muted);font-size:12px;margin-bottom:8px">Status: <b style="color:' + (v === "aprovado" ? "var(--verde)" : "var(--amarelo)") + '">' + vLabel + '</b></div>' +
+            '<div style="color:var(--muted);font-size:11px;margin-bottom:6px">Não pedimos senha do Instagram. O selo só é concedido após análise manual.</div>' +
+            '<input id="verificacaoInstagram" placeholder="@seu_perfil ou URL do Instagram" maxlength="500" style="width:100%;background:#0f0f16;border:1px solid var(--borda);color:var(--texto);border-radius:8px;padding:9px;margin:4px 0">' +
+            '<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="solicitarVerificacaoPerfil(\'manual\')">Solicitar análise sem senha</button><button class="btn btn-amarelo" onclick="solicitarVerificacaoPerfil(\'mercadopago\')">Comprar análise · R$ 50,00</button></div>' +
+            '<div id="verificacaoCheckout" style="margin-top:8px;color:var(--muted);font-size:11px"></div></div>';
+
         /* Visibilidade do álbum público. */
-        stats += '<div style="margin-top:12px;padding:12px;border:1px solid var(--borda);border-radius:10px;background:var(--painel)">' +
-            '<h4 style="margin-bottom:6px">🌐 Álbum público</h4>' +
-            '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">' +
+        stats += '<div class="album-publico-card">' +
+            '<h4 class="album-publico-title">🌐 Álbum público</h4>' +
+            '<div class="album-publico-status ' + (p.album_publico ? '' : 'privado') + '">' +
                 (p.album_publico
                     ? 'Seu álbum está <b style="color:var(--verde)">PÚBLICO</b>. Outros colecionadores podem ver seu acervo e fazer ofertas.'
                     : 'Seu álbum está <b style="color:var(--muted)">PRIVADO</b>. Só você consegue ver o acervo.') +
             '</div>' +
-            '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+            '<div class="album-publico-actions">' +
                 '<button class="btn ' + (p.album_publico ? "btn-amarelo" : "btn-ghost") + '" onclick="mudarVisibilidade(false)">🔒 Privado</button>' +
                 '<button class="btn ' + (p.album_publico ? "btn-ghost" : "btn-amarelo") + '" onclick="mudarVisibilidade(true)">🌐 Público</button>' +
-                '<a class="btn btn-ghost" style="margin:0" href="/perfil.html?id=' + encodeURIComponent(meuUsuarioId() || "") + '" target="_blank">Ver como público</a>' +
+                '<a class="btn btn-ghost" href="/perfil.html?id=' + encodeURIComponent(meuUsuarioId() || "") + '" target="_blank">Ver como público</a>' +
             '</div>' +
         '</div>';
         document.getElementById("perfilStatsCard").innerHTML = stats;
@@ -4033,7 +4411,7 @@ function abrirModalLogin(){
     document.getElementById("modalOverlay").classList.remove("hidden");
     const corpo = document.getElementById("modalBody");
     corpo.innerHTML = '<div class="login-panel">' +
-        '<div class="login-brand"><div class="icone">🃏</div><div class="marca">MILHÃO DOOR</div><div class="submarca">ANIMAIS DO MUNDO · COLECIONÁVEIS</div></div>' +
+        '<div class="login-brand"><div class="login-album-capa"><div class="fotos"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/020_The_lion_king_Snyggve_in_the_Serengeti_National_Park_Photo_by_Giles_Laurent.jpg/960px-020_The_lion_king_Snyggve_in_the_Serengeti_National_Park_Photo_by_Giles_Laurent.jpg" alt=""><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Giraffe_Mikumi_National_Park.jpg/960px-Giraffe_Mikumi_National_Park.jpg" alt=""><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/178_Male_African_bush_elephant_in_Etosha_National_Park_Photo_by_Giles_Laurent.jpg/960px-178_Male_African_bush_elephant_in_Etosha_National_Park_Photo_by_Giles_Laurent.jpg" alt=""><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/008_Hyacinth_macaw_couple_kissing_under_Pink_Ip%C3%AA_tree_in_Encontro_das_%C3%81guas_State_Park_Photo_by_Giles_Laurent.jpg/960px-008_Hyacinth_macaw_couple_kissing_under_Pink_Ip%C3%AA_tree_in_Encontro_das_%C3%81guas_State_Park_Photo_by_Giles_Laurent.jpg" alt=""></div><div class="texto">ANIMAIS DO MUNDO<span class="selo">100 ESPÉCIES · 1ª EDIÇÃO</span></div></div><div class="marca">MILHÃO DOOR</div><div class="submarca">ANIMAIS DO MUNDO · COLECIONÁVEIS</div></div>' +
         '<h2>Entrar na sua conta</h2>' +
         '<div class="sub">Para abrir pacotes, negociar e completar seu álbum.</div>' +
         '<div class="login-tabs">' +
@@ -4055,6 +4433,27 @@ function abrirModalLogin(){
             '<button class="btn btn-amarelo" onclick="fazerRegistro()">Criar conta</button>' +
         '</div>' +
     '</div>';
+}
+
+async function solicitarVerificacaoPerfil(metodo){
+    const campo = document.getElementById("verificacaoInstagram");
+    const valor = campo && campo.value.trim();
+    if (!valor) return toast("Informe seu @ ou URL do Instagram.", "erro");
+    try {
+        const d = await apiPost("/api/verificacoes-perfil", { instagramHandle: valor, metodo, paymentMethod: "pix" });
+        const c = d.checkout;
+        if (c) {
+            const area = document.getElementById("verificacaoCheckout");
+            area.innerHTML = "Checkout criado. Status permanece em análise após pagamento." +
+                (c.ticketUrl ? ' <a href="' + esc(c.ticketUrl) + '" target="_blank" rel="noopener">Abrir checkout</a>' : "") +
+                (c.payload ? '<div style="word-break:break-all;margin-top:4px">PIX copia e cola: ' + esc(c.payload) + '</div>' : "");
+        }
+        toast(d.mensagem || "Solicitação registrada.", "ok");
+        carregarPerfil();
+    } catch(e) { toast(msgErro(e), "erro"); }
+}
+function abrirLogin(){
+    abrirModalLogin();
 }
 function alternarLoginTab(modo){
     document.getElementById("tabLogin").classList.toggle("ativa", modo === "login");
@@ -4120,6 +4519,7 @@ function salvarSessao(d){
     localStorage.setItem("mega_conta", JSON.stringify(minhaConta));
     atualizarHeader();
     atualizarAvatarHeaderColecionaveis();
+    sincronizarPerfilHeader();
     iniciarPollingNotificacoes();
 }
 
@@ -4146,6 +4546,8 @@ async function sairConta(){
 
 function fecharModal(){
     document.getElementById("modalOverlay").classList.add("hidden");
+    document.getElementById("modalOverlay").classList.remove("figurinha-modal");
+    document.getElementById("modalOverlay").classList.remove("animal-animacao","animal-leao","animal-tigre","animal-elefante","animal-aguia","animal-falcao","animal-cobra","animal-generico");
     const arte = document.getElementById("modalArte");
     if (arte) arte.innerHTML = "";
     if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
@@ -4155,6 +4557,7 @@ function fecharModal(){
    INICIALIZAÇÃO
 ========================================================= */
 window.addEventListener("load", () => {
+    iniciarMercadoPagoColecao();
     const mp = new URLSearchParams(window.location.search).get("mercadopago");
     if (mp === "connected") {
         toast("🟢 Mercado Pago conectado com sucesso!", "ok");
@@ -4172,8 +4575,17 @@ window.addEventListener("load", () => {
         const params = new URLSearchParams(window.location.search);
         const sellerId = params.get("sellerId");
         const negociarCom = params.get("negociarCom");
+        const abrirPacotes = window.location.hash === "#packs";
+        const abrirPerfil = params.get("aba") === "perfil";
+        const abrirVerificacao = params.get("verificacao") === "1";
 
-        if (sellerId) {
+        if (abrirPacotes) {
+            mudarAba("packs");
+            setTimeout(() => document.getElementById("secao-packs")?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
+        } else if (abrirPerfil) {
+            mudarAba("perfil");
+            if(abrirVerificacao) setTimeout(abrirVerificacaoConta, 650);
+        } else if (sellerId) {
             mudarAba("mercado");
             estado.mercado.filtroVendedor = sellerId;
             carregarMercado(1);
@@ -4210,6 +4622,48 @@ function iniciarPollingColecionaveis(){
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible" && estado.aba === "ofertas") carregarOfertas();
     });
+}
+</script>
+<script>
+/* A navegação do cabeçalho permanece dentro da área de colecionáveis. */
+function abrirInfoCabecalho(event, titulo, html){
+    if(event) event.preventDefault();
+    const corpo = document.getElementById("modalBody");
+    const overlay = document.getElementById("modalOverlay");
+    if(!corpo || !overlay) return;
+    corpo.innerHTML = '<div class="login-panel" style="text-align:left"><h2 style="color:#ffd400;font-family:\'Orbitron\',sans-serif">' + titulo + '</h2>' + html + '</div>';
+    overlay.classList.remove("hidden");
+}
+function abrirComoFunciona(event){
+    abrirInfoCabecalho(event, "COMO FUNCIONA", '<p class="desc">Abra pacotinhos, descubra animais, complete seu álbum e negocie figurinhas repetidas com outros colecionadores.</p><p class="desc"><b style="color:#ffd400">1.</b> Escolha um pacote<br><b style="color:#ffd400">2.</b> Revele suas figurinhas<br><b style="color:#ffd400">3.</b> Complete a coleção<br><b style="color:#ffd400">4.</b> Troque ou venda repetidas</p>');
+}
+function abrirPrecos(event){
+    abrirInfoCabecalho(event, "PREÇOS", '<p class="desc">Consulte os pacotes disponíveis na aba <b style="color:#ffd400">PACOTES</b>. Os valores e quantidades são exibidos diretamente nos cards de cada pacote.</p>');
+}
+function verTodosKits(event){
+    if(event) event.preventDefault();
+    fecharMenuMobile();
+    mudarAba("packs");
+    document.getElementById("navAbas")?.scrollIntoView({behavior:"smooth", block:"start"});
+}
+function abrirFaq(event){
+    abrirInfoCabecalho(event, "FAQ", '<p class="desc"><b style="color:#ffd400">Como recebo as figurinhas?</b><br>Após a confirmação do pagamento, o pacote fica disponível para abertura.</p><p class="desc"><b style="color:#ffd400">Posso trocar repetidas?</b><br>Sim. Use as abas Mercado, Leilões, Trocas e Ofertas.</p><p class="desc"><b style="color:#ffd400">Onde vejo minha coleção?</b><br>Na aba Álbum, você acompanha descobertas, repetidas e especiais.</p>');
+}
+function scrollToFooter(event){
+    abrirInfoCabecalho(event, "CONTATO", '<p class="desc">Fale com a equipe Milhão Door pelo e-mail <a href="mailto:milhaodoor@gmail.com" style="color:#ffd400">milhaodoor@gmail.com</a>.</p><p class="desc">Acompanhe no Instagram: <a href="https://instagram.com/milhaodoor" target="_blank" rel="noopener" style="color:#ffd400">@milhaodoor</a></p>');
+}
+function toggleMenuMobile(){
+    document.getElementById("mobileMenu")?.classList.toggle("open");
+    document.getElementById("mobileMenuOverlay")?.classList.toggle("open");
+}
+function fecharMenuMobile(){
+    document.getElementById("mobileMenu")?.classList.remove("open");
+    document.getElementById("mobileMenuOverlay")?.classList.remove("open");
+}
+function toggleTema(){
+    document.body.classList.toggle("light-theme");
+    const icon = document.getElementById("btnTemaIcon");
+    if(icon) icon.textContent = document.body.classList.contains("light-theme") ? "☀️" : "🌙";
 }
 </script>
 </body>

@@ -19,8 +19,12 @@
     const ANIMAIS_DADOS = (typeof module !== "undefined" && module.exports)
         ? require("./imagens-animais.js")
         : (global.ANIMAIS_DADOS || {});
+    const CIENTIFICOS = (typeof module !== "undefined" && module.exports)
+        ? require("./dados-animais.js")
+        : (global.ANIMAIS_DADOS_CIENTIFICOS || {});
     const IMAGENS_ANIMAIS = ANIMAIS_DADOS.IMAGENS_ANIMAIS || {};
     const REGIOES_ANIMAIS = ANIMAIS_DADOS.REGIOES_ANIMAIS || {};
+    const DADOS_CIENTIFICOS = CIENTIFICOS.DADOS_ANIMAIS || {};
 
     /* ===== utilitários ===== */
     function esc(s) {
@@ -226,6 +230,20 @@
         return ((card && card.regiao) || REGIOES_ANIMAIS[(card && card.name) || ""] || "");
     }
 
+    function dadosCientificos(card) {
+        const base = DADOS_CIENTIFICOS[(card && card.name) || ""] || {};
+        const atual = card || {};
+        const classes = { Mammalia: "Mamífero", Aves: "Ave", Reptilia: "Répteis", Amphibia: "Anfíbio", Actinopterygii: "Peixe", Cephalopoda: "Molusco", Insecta: "Inseto", Arachnida: "Aracnídeo", Malacostraca: "Crustáceo" };
+        return {
+            classe: classes[atual.classe || base.classe] || atual.classe || base.classe || "Não informado",
+            dieta: atual.dieta || base.dieta || "Não informado",
+            comprimento: atual.comprimento || base.comprimento || "Não informado",
+            conservacao: atual.conservacao || base.conservacao || "Não informado",
+            fonte: atual.fonte || base.fonte || "Não informado",
+            observacao: atual.observacao || base.observacao || "Não informado"
+        };
+    }
+
     /* ===== BIOMA VISUAL ===== */
     function classeBioma(habitat) {
         const h = String(habitat || "").toLowerCase();
@@ -388,13 +406,13 @@
         '</div>';
     }
 
-    /* Verso da figurinha (modal). Mostra os dados reais disponíveis.
-       Campos ainda não cadastrados no banco aparecem como "—". */
+     /* Verso da figurinha (modal). Completa lacunas do backend com o catálogo
+        versionado e mantém explícita a ausência de informação verificável. */
     function cardVersoHtml(card) {
         const r = card.rarity || "COMUM";
         const finish = finishDeCard(card);
         const regiao = regiaoAnimal(card);
-        const traco = "—";
+        const cientifico = dadosCientificos(card);
         return '<div class="colecao-card cc-grande cc-verso-card ' + clsRaridade(r) + ' cc-fin-' + finish + '">' +
             '<div class="cc-topo">' +
                 simboloCard(r, finish) +
@@ -405,15 +423,16 @@
                 '<div class="cc-nome">' + esc(card.name) + '</div>' +
                 '<div class="cc-sn">' + esc(card.scientific_name || "") + '</div>' +
                 '<div class="cc-verso-lista">' +
-                    '<div><b>Classe:</b> ' + esc(card.classe || traco) + '</div>' +
-                    '<div><b>Dieta:</b> ' + esc(card.dieta || traco) + '</div>' +
-                    '<div><b>Peso:</b> ' + esc(card.peso || traco) + '</div>' +
-                    '<div><b>Comprimento:</b> ' + esc(card.comprimento || traco) + '</div>' +
-                    '<div><b>Conservação:</b> ' + esc(card.conservacao || traco) + '</div>' +
-                    '<div><b>Habitat:</b> ' + esc(card.habitat || traco) + '</div>' +
-                    '<div><b>Região:</b> ' + esc(regiao || traco) + '</div>' +
-                '</div>' +
-                '<div class="cc-curiosidade"><b>Curiosidade:</b> ' + esc(card.description || traco) + '</div>' +
+                     '<div><b>Classe:</b> ' + esc(cientifico.classe) + '</div>' +
+                     '<div><b>Dieta:</b> ' + esc(cientifico.dieta) + '</div>' +
+                     '<div><b>Peso:</b> ' + esc(card.peso || "Não informado") + '</div>' +
+                     '<div><b>Comprimento:</b> ' + esc(cientifico.comprimento) + '</div>' +
+                     '<div><b>Conservação:</b> ' + esc(cientifico.conservacao) + '</div>' +
+                     '<div><b>Habitat:</b> ' + esc(card.habitat || "Não informado") + '</div>' +
+                     '<div><b>Região:</b> ' + esc(regiao || "Não informado") + '</div>' +
+                 '</div>' +
+                 '<div class="cc-curiosidade"><b>Curiosidade:</b> ' + esc(card.description || "Não informado") + '</div>' +
+                  '<div class="cc-fonte"><b>Fonte:</b> ' + esc(cientifico.fonte) + '<br>' + esc(cientifico.observacao) + '</div>' +
             '</div>' +
             '<div class="cc-rodape">MILHÃO DOOR · ANIMAIS DO MUNDO</div>' +
         '</div>';
@@ -534,7 +553,8 @@
         REGIOES_ANIMAIS: REGIOES_ANIMAIS,
         emojiAnimal: emojiAnimal,
         imagemAnimal: imagemAnimal,
-        regiaoAnimal: regiaoAnimal,
+         regiaoAnimal: regiaoAnimal,
+         dadosCientificos: dadosCientificos,
         classeBioma: classeBioma,
         arteHtml: arteHtml,
         clsRaridade: clsRaridade,

@@ -389,6 +389,16 @@ module.exports = function criarModuloColecionaveis(deps) {
         return { ok: true, comprador };
     }
 
+    /* O sandbox do Mercado Pago aceita somente e-mails @testuser.com.
+       No modo local, usa um endereço técnico sem alterar a conta real. */
+    function emailPagamento(email, usuarioId) {
+        const valor = String(email || "").trim();
+        if (process.env.ALLOW_TEST_MODE === "true" && !/@testuser\.com$/i.test(valor)) {
+            return `testuser+mega${Number(usuarioId) || "local"}@testuser.com`;
+        }
+        return valor;
+    }
+
     /* =========================================================
        MATEMÁTICA FINANCEIRA EM CENTAVOS (INTEIROS)
        Toda venda/negociação: 10% Milhão Door / 90% vendedor.
@@ -3069,7 +3079,7 @@ module.exports = function criarModuloColecionaveis(deps) {
                 customer: {
                     name: comprador.nome || usuario.nome,
                     taxID: comprador.documento,
-                    email: comprador.email || usuario.email
+                    email: emailPagamento(comprador.email || usuario.email, req.usuario.id)
                 },
                 paymentMethod: req.body.paymentMethod || "pix",
                 paymentMethodId: req.body.paymentMethodId,
@@ -4061,7 +4071,7 @@ module.exports = function criarModuloColecionaveis(deps) {
                 customer: {
                     name: comprador.nome || usuario.nome,
                     taxID: comprador.documento,
-                    email: comprador.email || usuario.email
+                    email: emailPagamento(comprador.email || usuario.email, req.usuario.id)
                 },
                 paymentMethod: req.body.paymentMethod || "pix",
                 paymentMethodId: req.body.paymentMethodId,
@@ -4521,7 +4531,7 @@ module.exports = function criarModuloColecionaveis(deps) {
                 customer: {
                     name: comprador.nome || usuario.nome,
                     taxID: comprador.documento,
-                    email: comprador.email || usuario.email
+                    email: emailPagamento(comprador.email || usuario.email, req.usuario.id)
                 },
                 paymentMethod: req.body.paymentMethod || "pix",
                 paymentMethodId: req.body.paymentMethodId,
@@ -4612,7 +4622,7 @@ module.exports = function criarModuloColecionaveis(deps) {
                 sellerAccount: contaVendedor,
                 platformFee: centavosParaReais(feeCents),
                 description: "Milhão Door Colecionáveis — Leilão",
-                customer: { name: validacao.comprador.nome || req.usuario.nome, taxID: validacao.comprador.documento, email: validacao.comprador.email || req.usuario.email },
+                customer: { name: validacao.comprador.nome || req.usuario.nome, taxID: validacao.comprador.documento, email: emailPagamento(validacao.comprador.email || req.usuario.email, req.usuario.id) },
                 paymentMethod: req.body.paymentMethod || "pix",
                 paymentMethodId: req.body.paymentMethodId,
                 cardToken: req.body.cardToken,
@@ -5025,7 +5035,7 @@ module.exports = function criarModuloColecionaveis(deps) {
                     customer: {
                         name: comprador.nome || pagante.nome,
                         taxID: comprador.documento,
-                        email: comprador.email || pagante.email
+                    email: emailPagamento(comprador.email || pagante.email, req.usuario.id)
                     },
                     paymentMethod: req.body.paymentMethod || "pix",
                     paymentMethodId: req.body.paymentMethodId,
@@ -5461,6 +5471,15 @@ module.exports = function criarModuloColecionaveis(deps) {
                 [usuario.id]
             );
 
+            const verificacaoQ = await pg().query(
+                `SELECT status, instagram_handle, instagram_url
+                   FROM verificacoes_perfil
+                  WHERE usuario_id = $1
+                  ORDER BY criado_em DESC LIMIT 1`,
+                [usuario.id]
+            ).catch(() => ({ rows: [] }));
+            const verificacao = verificacaoQ.rows[0] || null;
+
             const perfil = {
                 id: usuario.id,
                 nome: usuario.nome,
@@ -5470,7 +5489,9 @@ module.exports = function criarModuloColecionaveis(deps) {
                 diferentes: Number(st.diferentes || 0),
                 repetidas: Number(st.repetidas || 0),
                 vendas: Number(vendasQ.rows[0]?.qtd || 0),
-                disponiveis_troca: Number(st.repetidas || 0)
+                disponiveis_troca: Number(st.repetidas || 0),
+                verificacaoStatus: verificacao?.status || null,
+                verificado: verificacao?.status === "aprovado"
             };
 
             /* Álbum privado: não expõe o acervo. */
@@ -6520,7 +6541,7 @@ module.exports = function criarModuloColecionaveis(deps) {
                 customer: {
                     name: comprador.nome || usuario.nome,
                     taxID: comprador.documento,
-                    email: comprador.email || usuario.email
+                    email: emailPagamento(comprador.email || usuario.email, req.usuario.id)
                 },
                 paymentMethod: req.body.paymentMethod || "pix",
                 paymentMethodId: req.body.paymentMethodId,
@@ -6942,7 +6963,7 @@ module.exports = function criarModuloColecionaveis(deps) {
                 customer: {
                     name: comprador.nome || usuario.nome,
                     taxID: comprador.documento,
-                    email: comprador.email || usuario.email
+                    email: emailPagamento(comprador.email || usuario.email, req.usuario.id)
                 },
                 paymentMethod: req.body.paymentMethod || "pix",
                 paymentMethodId: req.body.paymentMethodId,

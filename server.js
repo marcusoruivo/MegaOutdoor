@@ -896,6 +896,29 @@ async function initBanco() {
         await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_notificacoes_usuario ON notificacoes(usuario_id, lida_em NULLS FIRST)`);
         await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_notificacoes_criado ON notificacoes(criado_em DESC)`);
 
+        /* Verificação de perfil: não armazena senha nem token do Instagram.
+           Pagamento aprovado nunca concede o selo automaticamente; continua
+           aguardando análise manual. */
+        await pgPool.query(`
+            CREATE TABLE IF NOT EXISTS verificacoes_perfil (
+                id                  BIGSERIAL PRIMARY KEY,
+                usuario_id          INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                instagram_handle    VARCHAR(100),
+                instagram_url       VARCHAR(500),
+                status              VARCHAR(30) NOT NULL DEFAULT 'em_analise',
+                metodo              VARCHAR(30) NOT NULL DEFAULT 'manual',
+                order_id            VARCHAR(100) UNIQUE,
+                mp_order_id         VARCHAR(100),
+                payment_id          VARCHAR(100),
+                criado_em           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                atualizado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                pago_em             TIMESTAMPTZ,
+                UNIQUE (usuario_id, status)
+            )
+        `);
+        await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_verificacoes_usuario ON verificacoes_perfil(usuario_id, criado_em DESC)`);
+        await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_verificacoes_mp_order ON verificacoes_perfil(mp_order_id)`);
+
         await pgPool.query(
             "ALTER TABLE transacoes " +
             "ADD COLUMN IF NOT EXISTS usuario_id INTEGER"
@@ -3296,6 +3319,15 @@ app.get("/api/auth/me", authUsuario, async (req, res) => {
             [usuario.id]
         ).catch(() => null);
 
+        const verificacao = await pgPool.query(
+            `SELECT instagram_handle, instagram_url, status, metodo,
+                    order_id, mp_order_id, payment_id, criado_em, atualizado_em, pago_em
+               FROM verificacoes_perfil
+              WHERE usuario_id = $1
+              ORDER BY criado_em DESC LIMIT 1`,
+            [usuario.id]
+        ).catch(() => ({ rows: [] }));
+
         res.json({
             ok: true,
             usuario: usuarioSemSenha(usuario),
@@ -3305,13 +3337,122 @@ app.get("/api/auth/me", authUsuario, async (req, res) => {
             })),
             espacos: meusEspacos,
             totalTransacoes:
-                Number(transacoes?.rows?.[0]?.total || 0)
+                Number(transacoes?.rows?.[0]?.total || 0),
+            verificacaoPerfil: verificacao.rows[0] || null,
+            verificado: verificacao.rows[0]?.status === "aprovado"
         });
 
     } catch (error) {
         console.error("ERRO ao carregar conta:", error.message);
         res.status(500).json({ error: error.message });
     }
+});
+
+function normalizarInstagramVerificacao(valor) {
+    const bruto = String(valor || "").trim();
+    if (!bruto || bruto.length > 500) return { handle: null, url: null };
+    const url = /^https?:\/\/(www\.)?instagram\.com\//i.test(bruto)
+        ? bruto.split(/[?#]/)[0].replace(/\/$/, "")
+        : null;
+    const handle = (url ? url.split("/").pop() : bruto.replace(/^@/, ""))
+        .trim().replace(/^@/, "");
+    if (!/^[a-zA-Z0-9._]{1,30}$/.test(handle)) return { handle: null, url: null };
+    return { handle: handle.toLowerCase(), url: url || `https://instagram.com/${handle}` };
+}
+
+/* O pagamento é um sinal de intenção, não prova de identidade. */
+async function processarPagamentoVerificacaoPerfil(mpOrderId, totalPagoCents, paymentId) {
+    if (!pgDisponivel || !pgPool || !mpOrderId || Number(totalPagoCents) !== 5000) return false;
+    const q = await pgPool.query(
+        `SELECT id, usuario_id FROM verificacoes_perfil
+          WHERE mp_order_id = $1 AND status = 'pendente_pagamento' LIMIT 1`,
+        [String(mpOrderId)]
+    );
+    if (!q.rowCount) return false;
+    const v = q.rows[0];
+    const atualizado = await pgPool.query(
+        `UPDATE verificacoes_perfil
+            SET status = 'em_analise', payment_id = COALESCE(payment_id, $2),
+                pago_em = COALESCE(pago_em, NOW()), atualizado_em = NOW()
+          WHERE id = $1 AND status = 'pendente_pagamento'
+        RETURNING id`,
+        [v.id, paymentId ? String(paymentId) : null]
+    );
+    if (atualizado.rowCount) {
+        await criarNotificacao(v.usuario_id, "verificacao_pagamento", "Pagamento recebido", "Recebemos R$ 50,00. Seu perfil segue em análise manual; o selo não é automático.", { verificacaoId: v.id, mpOrderId: String(mpOrderId) });
+    }
+    return true;
+}
+
+app.get("/api/verificacoes-perfil", authUsuario, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    const result = await pgPool.query(
+        `SELECT id, instagram_handle, instagram_url, status, metodo, order_id,
+                mp_order_id, payment_id, criado_em, atualizado_em, pago_em
+           FROM verificacoes_perfil WHERE usuario_id = $1 ORDER BY criado_em DESC`,
+        [req.usuario.id]
+    );
+    res.json({ verificacoes: result.rows, verificado: result.rows.some(v => v.status === "aprovado") });
+});
+
+app.post("/api/verificacoes-perfil", limiterSensivel, authUsuario, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    const alvo = normalizarInstagramVerificacao(req.body.instagramHandle || req.body.instagramUrl);
+    if (!alvo.handle) return res.status(400).json({ error: "Informe um @ ou URL válida do Instagram." });
+    const metodo = String(req.body.metodo || "manual").toLowerCase() === "mercadopago" ? "mercadopago" : "manual";
+    const orderId = `VER-${req.usuario.id}-${crypto.randomUUID()}`;
+    const existente = await pgPool.query(
+        `SELECT * FROM verificacoes_perfil
+          WHERE usuario_id = $1 AND status IN ('pendente_pagamento', 'em_analise', 'aprovado')
+          ORDER BY criado_em DESC LIMIT 1`, [req.usuario.id]
+    );
+    if (existente.rowCount) return res.status(409).json({ error: "Já existe uma solicitação ativa.", verificacao: existente.rows[0] });
+    const status = metodo === "mercadopago" ? "pendente_pagamento" : "em_analise";
+    const inserida = await pgPool.query(
+        `INSERT INTO verificacoes_perfil
+            (usuario_id, instagram_handle, instagram_url, status, metodo, order_id)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [req.usuario.id, alvo.handle, alvo.url, status, metodo, orderId]
+    );
+    const verificacao = inserida.rows[0];
+    if (metodo === "manual") return res.status(201).json({ ok: true, verificacao, mensagem: "Solicitação enviada para análise manual." });
+    try {
+        const mp = await criarOrderMercadoPago({
+            idempotencyKey: orderId,
+            externalReference: orderId,
+            value: 50,
+            description: "Verificação de perfil MegaOutdoor",
+            customer: { email: req.usuario.email },
+            paymentMethod: String(req.body.paymentMethod || "pix") === "pix" ? "pix" : "pix"
+        });
+        await pgPool.query(
+            `UPDATE verificacoes_perfil SET mp_order_id = $1, payment_id = $2, atualizado_em = NOW() WHERE id = $3`,
+            [mp.orderId, mp.paymentId || null, verificacao.id]
+        );
+        verificacao.mp_order_id = mp.orderId;
+        return res.status(201).json({ ok: true, verificacao, checkout: { orderId: mp.orderId, paymentId: mp.paymentId || null, qrCodeBase64: mp.qrCodeBase64 || "", payload: mp.payload || "", ticketUrl: mp.ticketUrl || "" }, valor: 50 });
+    } catch (error) {
+        console.error("ERRO ao criar checkout de verificação:", error.message);
+        return res.status(202).json({ ok: true, pendente: true, verificacao, mensagem: "Solicitação criada, mas o checkout não está disponível. O status permanece pendente." });
+    }
+});
+
+/* Aprovação/rejeição fica restrita ao administrador; nunca é inferida do @,
+   da URL, da quantidade de seguidores ou do pagamento. */
+app.patch("/api/verificacoes-perfil/:id", limiterSensivel, authAdmin, async (req, res) => {
+    if (!pgDisponivel || !pgPool) return res.status(503).json({ error: "Serviço indisponível." });
+    const status = String(req.body.status || "").toLowerCase();
+    if (!["aprovado", "rejeitado", "em_analise"].includes(status)) return res.status(400).json({ error: "Status inválido." });
+    const result = await pgPool.query(
+        `UPDATE verificacoes_perfil SET status = $1, atualizado_em = NOW()
+          WHERE id = $2 RETURNING *`, [status, req.params.id]
+    );
+    if (!result.rowCount) return res.status(404).json({ error: "Solicitação não encontrada." });
+    const v = result.rows[0];
+    if (status === "aprovado" || status === "rejeitado") {
+        await criarNotificacao(v.usuario_id, "verificacao_status", status === "aprovado" ? "Perfil verificado" : "Verificação não aprovada", status === "aprovado" ? "Seu perfil foi aprovado na análise manual." : "Sua solicitação de verificação não foi aprovada.", { verificacaoId: v.id });
+    }
+    res.json({ ok: true, verificacao: v, verificado: status === "aprovado" });
 });
 
 app.post("/api/auth/anexar", authUsuario, async (req, res) => {
@@ -8555,9 +8696,15 @@ app.get("/api/perfis/publicos", async (req, res) => {
         const offset = Math.max(0, parseInt(req.query.offset) || 0);
 
         let query = `
-            SELECT id, nome, apelido, bio, foto_url, album_publico
-            FROM usuarios
-            WHERE album_publico = TRUE
+            SELECT u.id, u.nome, u.apelido, u.bio, u.foto_url, u.album_publico,
+                   v.status AS verificacao_status,
+                   (v.status = 'aprovado') AS verificado
+              FROM usuarios u
+              LEFT JOIN LATERAL (
+                  SELECT status FROM verificacoes_perfil
+                   WHERE usuario_id = u.id ORDER BY criado_em DESC LIMIT 1
+              ) v ON TRUE
+             WHERE u.album_publico = TRUE
         `;
         const params = [];
 
@@ -9836,6 +9983,11 @@ app.post("/webhooks/mercadopago", async (req, res) => {
         /* Pagamentos do módulo de colecionáveis (pacotes, compras
            no mercado e diferenças de troca). Independente e
            idempotente — só processa pedidos pendentes. */
+        try {
+            await processarPagamentoVerificacaoPerfil(orderId, totalPagoCents, dados.paymentId);
+        } catch (eVerificacao) {
+            console.error("ERRO ao processar pagamento de verificação:", eVerificacao.message);
+        }
         try {
             if (typeof colecionaveis?.processarPagamento === "function") {
                 await colecionaveis.processarPagamento({ mpOrderId: orderId, totalCents: totalPagoCents });

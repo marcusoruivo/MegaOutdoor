@@ -17,7 +17,9 @@ services:
       - key: MERCADOPAGO_PUBLIC_KEY
         sync: false
       - key: MERCADOPAGO_SANDBOX
-        sync: false
+        value: "false"
+      - key: ALLOW_TEST_MODE
+        value: "false"
       - key: MERCADOPAGO_WEBHOOK_URL
         sync: false
       - key: MERCADOPAGO_WEBHOOK_SECRET
@@ -45,6 +47,10 @@ services:
       - key: RESEND_API_KEY
         sync: false
       - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_USER
+        sync: false
+      - key: ADMIN_PASSWORD
         sync: false
       - key: ADMIN_USER
         sync: false

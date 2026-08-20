@@ -433,6 +433,36 @@ input::placeholder,textarea::placeholder{color:#b0b0b0;opacity:1}
     border:1px solid #444;
     border-radius:16px
 }
+.checkout-box{background:linear-gradient(180deg,#141414,#0b0b0b);border:1px solid rgba(255,212,0,.28);box-shadow:0 24px 70px rgba(0,0,0,.72)}
+.checkout-box h2{color:#ffd400;font-family:'Manrope','Inter',sans-serif;letter-spacing:-.3px}
+.checkout-box #cardFields{margin-top:14px;padding:14px;border:1px solid rgba(255,212,0,.22);border-radius:14px;background:rgba(255,212,0,.035)}
+.card-payment-head{display:flex;align-items:center;gap:10px;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,.08);color:#ffd400}
+.card-payment-head>span{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:rgba(255,212,0,.12);font-size:18px}
+.card-payment-head strong{display:block;font-size:13px}
+.card-payment-head small{display:block;margin-top:2px;color:#a9a9b5;font-size:10px;font-weight:500}
+.card-field-label{display:block;margin:0 0 5px;color:#ffd400;font-size:10px;font-weight:800;letter-spacing:.7px;text-transform:uppercase}
+.checkout-box #cardNumberContainer,.checkout-box #cardExpiryContainer,.checkout-box #cardCvcContainer{padding:0 10px;border:1px solid #3b3b45;border-radius:9px;background:#090909}
+.checkout-box #cardNumberContainer:focus-within,.checkout-box #cardExpiryContainer:focus-within,.checkout-box #cardCvcContainer:focus-within{border-color:#ffd400;box-shadow:0 0 0 2px rgba(255,212,0,.13)}
+.checkout-box #cardDocType,.checkout-box #installments{border-color:#3b3b45!important;border-radius:9px!important;background:#090909!important;color:#fff!important}
+.checkout-box #cardholderName,.checkout-box #cardDocNumber{border-color:#3b3b45;background:#090909;color:#fff}
+.checkout-box #cardholderName:focus,.checkout-box #cardDocNumber:focus{border-color:#ffd400;box-shadow:0 0 0 2px rgba(255,212,0,.13);outline:none}
+.checkout-box #btnPagar{width:100%;margin-top:8px;padding:14px;border-radius:11px;background:linear-gradient(135deg,#ffd400,#ff9d00);color:#111;font-weight:900;letter-spacing:.5px;border:0;box-shadow:0 8px 20px rgba(255,212,0,.22)}
+.checkout-box #btnTesteSemPagamento{width:100%;padding:12px;border-radius:11px;border:1px solid #454545;background:#1c1c1c;color:#f2f2f2;font-weight:800}
+.modal#ownerModal{background:rgba(0,0,0,.82);backdrop-filter:blur(6px)}
+#ownerModal>.box{width:min(820px,94vw)!important;max-height:90vh;padding:28px 26px 24px;background:linear-gradient(155deg,#18181c,#0e0e10);border:1px solid rgba(255,212,0,.3);border-radius:20px;box-shadow:0 28px 80px rgba(0,0,0,.75)}
+#ownerModal>.box>h2{margin:0;color:#ffd400!important;font-family:'Manrope','Inter',sans-serif;font-size:25px;letter-spacing:-.5px}
+.owner-subtitle{margin:5px 0 20px;color:#a9a9b5;font-size:12px}
+#painelTabs{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:9px!important;padding:10px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(0,0,0,.2)}
+#painelTabs button{min-height:42px!important;margin:0!important;border-radius:10px!important;border:1px solid #3b3b42!important;background:#202023!important;color:#ededf1!important;font-size:11px!important;font-weight:900!important;letter-spacing:.2px;transition:.2s}
+#painelTabs button:hover{border-color:#ffd400!important;color:#ffd400!important;transform:translateY(-1px)}
+#painelTabs button.btn:not(.sec){background:linear-gradient(135deg,#ffd400,#ff9d00)!important;border-color:#ffd400!important;color:#111!important;box-shadow:0 7px 18px rgba(255,212,0,.2)}
+#ownerList{margin-top:18px;color:#d7d7df;font-size:13px}
+#ownerList>div[style*="border:1px solid #333"]{border-color:#36363e!important;background:linear-gradient(145deg,#1a1a1d,#121214)!important;border-radius:15px!important;padding:16px!important;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+#ownerList .btn{min-height:38px;border-radius:10px!important;font-weight:800}
+@media(max-width:640px){#ownerModal>.box{padding:22px 14px 18px;border-radius:16px}#ownerModal>.box>h2{font-size:21px}#painelTabs{grid-template-columns:repeat(2,minmax(0,1fr))!important;padding:8px}#painelTabs button{font-size:10px!important}}
+.l-map-area-btn{height:36px;padding:0 11px;border:1px solid rgba(255,212,0,.45);border-radius:10px;background:rgba(255,212,0,.08);color:#ffd400;font-size:10px;font-weight:900;letter-spacing:.4px;cursor:pointer;white-space:nowrap;transition:.2s}
+.l-map-area-btn:hover,.l-map-area-btn.active{background:linear-gradient(135deg,#ffd400,#ff9d00);border-color:#ffd400;color:#111;box-shadow:0 5px 16px rgba(255,212,0,.2)}
+@media(max-width:640px){.l-map-area-btn{font-size:9px;padding:0 8px}.l-map-controls{gap:4px}}
 
 .box h2{
     margin-top:0
@@ -591,11 +621,22 @@ input::placeholder,textarea::placeholder{color:#b0b0b0;opacity:1}
 @keyframes authShine{0%{left:-50%}100%{left:150%}}
 .auth-tabs{display:flex;gap:8px;background:rgba(0,0,0,.3);border:1px solid var(--borda);border-radius:999px;padding:4px;margin-bottom:16px}
 .auth-tab{flex:1;border:none;border-radius:999px;padding:10px 8px;font-size:11px;font-weight:800;letter-spacing:1px;color:var(--text-muted);background:transparent;cursor:pointer;transition:.2s}
-.auth-tab.ativa{background:linear-gradient(135deg,var(--amarelo),var(--laranja));color:#000;box-shadow:0 4px 15px rgba(255,157,0,.3)}
+.auth-tab.ativa{background:linear-gradient(135deg,#ffd400,#ff9d00);color:#111;box-shadow:0 4px 15px rgba(255,157,0,.3)}
 #authEntrar input,#authCadastrar input{width:100%;padding:12px 14px;background:#0d0d0d;border:1px solid #333;border-radius:10px;color:#fff;font-size:14px;margin-top:10px;transition:.2s}
 #authEntrar input:focus,#authCadastrar input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,212,0,.12);outline:none}
 #authEntrar button,#authCadastrar button{margin-top:14px;width:100%;padding:14px;font-size:13px;font-weight:800;letter-spacing:1px;border-radius:10px;background:linear-gradient(135deg,var(--verde),#2dd36f);box-shadow:0 6px 18px rgba(40,209,127,.25);border:none;color:#000}
 #authMsg{min-height:18px;margin-top:10px;font-size:12px;text-align:center;color:var(--text-muted)}
+/* Identidade visual do login: amarelo Milhão Door e contraste alto. */
+#authModal .auth-title{font-family:'Manrope','Inter',sans-serif;color:#ffd400;background:none;-webkit-text-fill-color:#ffd400;text-shadow:0 0 12px rgba(255,212,0,.25)}
+#authModal .auth-subtitle{color:#b8b8c2}
+#authModal .auth-tab{color:#ffd400}
+#authModal .auth-tab.ativa{background:linear-gradient(135deg,#ffd400,#ff9d00);color:#111;box-shadow:0 4px 15px rgba(255,157,0,.3)}
+#authModal #authEntrar input,#authModal #authCadastrar input{background:#0b0b0b;color:#fff;border-color:#555}
+#authModal #authEntrar input::placeholder,#authModal #authCadastrar input::placeholder{color:#b8b8c2;opacity:1}
+#authModal #authEntrar input:focus,#authModal #authCadastrar input:focus{border-color:#ffd400;box-shadow:0 0 0 3px rgba(255,212,0,.18)}
+#authModal #authEntrar input:-webkit-autofill,#authModal #authCadastrar input:-webkit-autofill{-webkit-text-fill-color:#fff;caret-color:#fff;box-shadow:0 0 0 1000px #0b0b0b inset;border:1px solid #ffd400}
+#authModal #authEntrar button,#authModal #authCadastrar button{background:linear-gradient(135deg,#ffd400,#ff9d00);box-shadow:0 6px 18px rgba(255,212,0,.28);color:#111}
+#authModal #authEntrar a{color:#ffd400!important}
 
 .pix{
     display:none;
@@ -1195,6 +1236,7 @@ input::placeholder,textarea::placeholder{color:#b0b0b0;opacity:1}
         max-height:94vh !important;
         width:100% !important;
         max-width:100% !important;
+        overflow:hidden !important;
     }
 
     #chatModal .box .btn.sec{
@@ -1236,6 +1278,21 @@ input::placeholder,textarea::placeholder{color:#b0b0b0;opacity:1}
     #chatInput{
         font-family:inherit;
     }
+    #chatModal #chatMensagens{min-height:0!important;max-height:none!important;overflow-y:auto!important}
+    #chatModal{background:rgba(0,0,0,.82);backdrop-filter:blur(6px)}
+    #chatModal .chat-box{background:linear-gradient(155deg,#18181b,#0d0d0f);border:1px solid rgba(255,212,0,.28);border-radius:18px;box-shadow:0 28px 80px rgba(0,0,0,.72);padding:22px;gap:10px}
+    #chatModal #chatTitulo{display:flex;align-items:center;gap:8px;font-family:'Manrope','Inter',sans-serif;font-size:21px!important;color:#ffd400!important}
+    #chatModal #chatOnlineStatus{display:inline-flex;align-items:center;width:max-content;padding:4px 9px;border:1px solid rgba(74,222,128,.28);border-radius:999px;background:rgba(74,222,128,.08);font-weight:700}
+    #chatModal #chatMensagens{flex:1;min-height:300px;max-height:none;background:radial-gradient(circle at 20% 0,rgba(255,212,0,.06),transparent 35%),#0d0d0f;border:1px solid #303038;border-radius:14px;padding:14px;scrollbar-width:thin;scrollbar-color:#ffd400 #17171b}
+    #chatModal #chatMsgRapidasToggle{background:linear-gradient(90deg,rgba(255,212,0,.1),transparent)!important;border-radius:10px;color:#ffd400!important}
+    #chatModal #chatMsgRapidas{background:#151519;border-top-color:#303038!important}
+    #chatModal #chatMsgRapidas button{background:#232328;border-color:#41414a;color:#f0f0f3;padding:7px 12px;border-radius:999px}
+    #chatModal #chatMsgRapidas button:hover{background:rgba(255,212,0,.12);border-color:#ffd400;color:#ffd400}
+    #chatModal #chatInput{min-height:64px!important;border:1px solid #42424b!important;border-radius:12px!important;background:#09090b!important;color:#fff!important;padding:12px!important}
+    #chatModal #chatInput:focus{border-color:#ffd400!important;box-shadow:0 0 0 2px rgba(255,212,0,.14);outline:none}
+    #chatModal #btnEnviarChat{background:linear-gradient(135deg,#ffd400,#ff9d00);color:#111;border:0;border-radius:11px;font-weight:900;box-shadow:0 7px 18px rgba(255,212,0,.2)}
+    #chatModal .chat-row{margin-bottom:10px!important}
+    #chatModal .chat-bubble{border-radius:13px!important;padding:10px 12px!important;box-shadow:0 5px 14px rgba(0,0,0,.18)}
 
     .box h2{
         font-size:18px;
@@ -1375,6 +1432,10 @@ input::placeholder,textarea::placeholder{color:#b0b0b0;opacity:1}
     line-height:1.55;
     max-width:430px;
 }
+.tutQuickStart{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 4px}
+.tutQuickStart div{padding:10px 8px;text-align:center;background:rgba(255,212,0,.07);border:1px solid rgba(255,212,0,.22);border-radius:10px}
+.tutQuickStart strong{display:block;color:#ffd400;font-size:11px}
+.tutQuickStart span{display:block;margin-top:3px;color:#c8c8d0;font-size:10px;line-height:1.3}
 
 .tutSteps{
     display:grid;
@@ -1488,6 +1549,7 @@ input::placeholder,textarea::placeholder{color:#b0b0b0;opacity:1}
 }
 
 @media(max-width:640px){
+    .tutQuickStart{grid-template-columns:1fr}
     .tutCards{
         grid-template-columns:1fr;
     }
@@ -2227,6 +2289,16 @@ body.has-benefits{
 .card.collapsed > *:not(.card-header-collapse){
     display:none !important;
 }
+#selectionCard{overflow:hidden;border:1px solid rgba(255,212,0,.24)!important;border-radius:16px!important;background:linear-gradient(150deg,#16130a,#0e0e0e)!important;box-shadow:0 10px 28px rgba(0,0,0,.25)}
+#selectionCard .card-header-collapse{padding:13px 14px!important;border-bottom:1px solid rgba(255,255,255,.1);color:#ffd400!important;letter-spacing:.7px}
+#selectionCard .card-collapse-label{font-size:11px;font-weight:900}
+#selectionCard .card-collapse-icon{color:#ffd400}
+#selectionCard #selectionEmpty{padding:16px 14px!important;color:#a9a9b5!important;font-size:12px!important}
+#selectionCard #selectionContent{padding:15px 14px 14px}
+#selectionCard #selectionContent #qty{font-family:'Orbitron',sans-serif!important;font-size:34px!important;line-height:1!important;color:#ffd400!important}
+#selectionCard #selectionContent #total{margin-top:10px!important;padding-top:10px;border-top:1px solid rgba(255,255,255,.1);font-size:21px!important;color:#fff!important}
+#selectionCard #selectionContent .selection-continue{min-height:58px;margin-top:14px!important;border-radius:12px;background:linear-gradient(135deg,#ffd400,#ff9d00)!important;color:#111!important;font-size:13px;font-weight:900;box-shadow:0 8px 20px rgba(255,212,0,.2)}
+#selectionCard #selectionContent .btn.sec{min-height:44px;border-radius:11px;background:#1b1b1b;color:#eee;border:1px solid #454545;opacity:1}
 
 /* --- BOTÃO RECOLHER TODOS --- */
 .collapse-all-bar{
@@ -2238,6 +2310,7 @@ body.has-benefits{
     gap:6px;
     align-items:center;
 }
+#collapseAllBar{display:none!important}
 .collapse-all-btn{
     display:flex;
     align-items:center;
@@ -2270,6 +2343,19 @@ body.has-benefits{
 .collapse-all-btn.active .collapse-icon{
     transform:rotate(180deg);
 }
+/* Modo foco: deixa somente o mapa disponível na tela. */
+body.modo-mapa .l-header,
+body.modo-mapa .l-benefits-strip,
+body.modo-mapa .l-stories-section,
+body.modo-mapa .l-ticker-section,
+body.modo-mapa .stories-cta-shell,
+body.modo-mapa .dashboard-kits,
+body.modo-mapa #dashboardBottom{display:none!important}
+body.modo-mapa .l-main{padding-top:0!important;margin-top:0!important}
+body.modo-mapa .collapse-all-bar{top:16px;right:16px}
+body.modo-mapa .modo-mapa-btn{background:#ffd400;color:#111;border-color:#ffd400}
+.mapa-comprar-btn{display:none;position:fixed;left:50%;bottom:22px;z-index:70;transform:translateX(-50%);align-items:center;gap:8px;padding:13px 22px;border:1px solid #ffd400;border-radius:999px;background:linear-gradient(135deg,#ffd400,#ff9d00);color:#111;font-size:12px;font-weight:900;letter-spacing:.4px;box-shadow:0 8px 28px rgba(0,0,0,.5),0 0 20px rgba(255,212,0,.25);cursor:pointer}
+body.modo-mapa .mapa-comprar-btn{display:flex}
 
 /* --- EXPANDIR MAPA (ALL COLLAPSED) --- */
 .main-layout.all-collapsed{
@@ -3329,6 +3415,21 @@ body.footer-visible #area{
     gap:6px;
     margin:10px 0 0
 }
+.dashboard-kits{width:min(1180px,calc(100% - 32px));margin:18px auto 0;padding:22px 24px;background:linear-gradient(145deg,rgba(255,212,0,.07),rgba(17,17,17,.94) 42%);border:1px solid rgba(255,199,0,.25);border-radius:20px;box-shadow:0 14px 34px rgba(0,0,0,.24)}
+.dashboard-kits-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:16px}
+.dashboard-kits-head h2{margin:0;font-size:22px;color:var(--text-primary)}
+.dashboard-kits-head p{margin:5px 0 0;color:var(--text-muted);font-size:12px;line-height:1.4}
+.dashboard-kits-head .btn{margin:0;white-space:nowrap}
+.dashboard-kits .kit-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:0}
+.dashboard-kits .kit-card{min-height:190px;padding:16px;background:linear-gradient(145deg,var(--bg-card-hover),var(--bg-card))}
+.dashboard-kits .kit-card .kit-nome{font-size:16px;color:#fff}
+.dashboard-kits .kit-card .kit-desc{min-height:32px}
+.dashboard-kits .kit-card .kit-conteudo{margin-top:12px}
+.dashboard-kits-empty{grid-column:1/-1;padding:24px;text-align:center;color:var(--text-muted);border:1px dashed var(--border-color);border-radius:12px}
+.kit-card-field{height:42px;padding:0 9px;border:1px solid #3b3b45;border-radius:8px;background:#090909}
+.kit-card-field:focus-within{border-color:#ffd400;box-shadow:0 0 0 2px rgba(255,212,0,.12)}
+@media(max-width:900px){.dashboard-kits .kit-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.dashboard-kits{width:calc(100% - 16px);padding:16px 14px;border-radius:16px}.dashboard-kits-head{align-items:flex-start;flex-direction:column}.dashboard-kits-head .btn{width:100%}.dashboard-kits .kit-list{grid-template-columns:1fr}}
 
 .kit-chip{
     font-size:10px;
@@ -3515,6 +3616,16 @@ body.footer-visible #area{
 .cfm-num{flex:0 0 28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:linear-gradient(135deg,var(--amarelo),var(--laranja));color:#000;font-family:'Orbitron',sans-serif;font-weight:900;font-size:13px}
 .cfm-passo b{display:block;font-size:13px;color:var(--texto);margin-bottom:2px}
 .cfm-passo span{font-size:12px;color:var(--text-muted);line-height:1.4}
+/* Padrão visual dos modais informativos. */
+#infoModal .box{background:#111216;border:1px solid rgba(255,212,0,.35);box-shadow:0 24px 70px rgba(0,0,0,.7)}
+#infoModalTitulo{font-family:'Manrope','Inter',sans-serif;color:#ffd400!important;font-weight:900}
+#infoModalConteudo{color:#d7d7df!important}
+#infoModalConteudo .cfm-passo{background:#171820;border-color:#30313d}
+#infoModalConteudo .cfm-num{background:linear-gradient(135deg,#ffd400,#ff9d00);color:#111}
+#infoModalConteudo .cfm-passo b{color:#ffd400}
+#infoModalConteudo .cfm-passo span{color:#d0d0d9}
+#infoModalConteudo p,#infoModalConteudo li{color:#d0d0d9}
+#infoModalConteudo p b,#infoModalConteudo h3{color:#ffd400!important}
 .kit-breakdown{background:var(--painel);border:1px solid var(--borda);border-radius:12px;padding:12px;margin:12px 0}
 .kit-breakdown-title{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent);margin-bottom:10px}
 .kit-breakdown-linha{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)}
@@ -3563,7 +3674,7 @@ body.footer-visible #area{
     font-weight:800;
     cursor:pointer;
     box-shadow:0 8px 24px rgba(0,0,0,.4);
-    transition:var(--transition)
+     transition:var(--transition);touch-action:none;user-select:none
 }
 
 .bug-fab:hover{
@@ -3938,6 +4049,11 @@ body.footer-visible #area{
 </style>
 
 <script src="https://sdk.mercadopago.com/js/v2"></script>
+<style>
+/* Logo um pouco maior para manter presença sem aumentar a altura do cabeçalho. */
+.l-header-logo{height:84px!important}
+.l-header-logo-mobile{height:64px!important}
+</style>
 </head>
 
 <body>
@@ -4012,6 +4128,7 @@ body.footer-visible #area{
         <a href="#" onclick="event.preventDefault();abrirEditarPerfil();fecharContaDropdown()">✏️ Editar Perfil</a>
         <a href="#" onclick="event.preventDefault();abrirMeusDestaques();fecharContaDropdown()">✨ Meus Destaques</a>
         <a href="#" onclick="event.preventDefault();abrirSistemaIndicacao();fecharContaDropdown()">🎁 Indique e Ganhe</a>
+        <a href="/colecionaveis.html?aba=perfil&verificacao=1" onclick="fecharContaDropdown()">🛡️ Perfil verificado</a>
         <a href="#" id="contaDropSair" onclick="event.preventDefault();sairConta();fecharContaDropdown()">🚪 Sair</a>
     </div>
 </header>
@@ -4327,7 +4444,6 @@ LIMPAR
                     <input id="spaceSearch" type="number" min="1" max="1000000" placeholder="Número do espaço" onkeydown="if(event.key==='Enter') localizarEspaco()">
                 </div>
                 <div style="display:flex; gap:8px; margin-top:8px;">
-                    <button type="button" class="l-buy-action-btn" style="flex:1;" id="btnArea" onclick="toggleSelectArea()">⬜ Área</button>
                     <button type="button" class="l-buy-action-btn" style="flex:1;" id="btnOferta" onclick="toggleOfferMode()">💰 Oferta</button>
                 </div>
                 <label style="font-size:11px; color:var(--muted-foreground); display:block; margin:10px 0 6px;">Bloco (L × A)</label>
@@ -4351,6 +4467,7 @@ LIMPAR
                     <p class="l-map-sub">1.000.000 de espaços · toque para selecionar o seu</p>
                 </div>
                 <div class="l-map-controls">
+                    <button type="button" class="l-map-area-btn" id="btnArea" onclick="toggleSelectArea()" title="Selecionar vários blocos de uma vez">▦ SELECIONAR ÁREA</button>
                     <button type="button" class="l-map-control-btn" onclick="zoom(0.83)" title="Afastar" aria-label="Diminuir zoom">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     </button>
@@ -4367,6 +4484,7 @@ LIMPAR
             <div class="l-map-body">
                 <div id="area" class="l-map-canvas-area">
                     <canvas id="canvas"></canvas>
+                    <button type="button" class="mapa-comprar-btn" onclick="abrirCompraModoMapa()">🛒 COMPRAR ESPAÇOS</button>
                     <div class="zoom" style="display:none;">
                         <button onclick="zoom(1.2)" title="Aproximar">+</button>
                         <button onclick="zoom(.83)" title="Afastar">−</button>
@@ -4497,9 +4615,27 @@ LIMPAR
 
 </main>
 
+<!-- VITRINE CENTRAL DE COMBOS E KITS, ABAIXO DO MAPA -->
+<section class="dashboard-kits" id="combos" aria-label="Combos e kits">
+    <div class="dashboard-kits-head">
+        <div>
+            <h2>🔥 Compre <span class="l-text-gold">kits completos</span></h2>
+            <p>Espaços para o Outdoor + pacotes de figurinhas colecionáveis em uma só compra.</p>
+        </div>
+        <button type="button" class="btn btn-destaque" onclick="verTodosKits(event)">VER TODOS OS KITS</button>
+    </div>
+    <div class="kit-list" id="kitList">
+        <div class="dashboard-kits-empty">Carregando kits disponíveis...</div>
+    </div>
+</section>
+
 
 <!-- BOTÃO RECOLHER TODOS -->
-<div class="collapse-all-bar" id="collapseAllBar" style="display:none;">
+<div class="collapse-all-bar" id="collapseAllBar" style="display:flex;">
+    <button class="collapse-all-btn modo-mapa-btn" id="modoMapaBtn" onclick="toggleModoMapa()" title="Mostrar somente o mapa">
+        <span>⛶</span>
+        <span>SÓ MAPA</span>
+    </button>
     <button class="collapse-all-btn" id="collapseAllBtn" onclick="toggleCollapseAll()" title="Recolher/expandir todos os painéis">
         <span class="collapse-icon">◂◂</span>
         <span>RECOLHER PAINÉIS</span>
@@ -4594,7 +4730,8 @@ LIMPAR
 <!-- BOTÃO BUG / SUGESTÃO -->
 <button
     class="bug-fab"
-    onclick="abrirBugSugestao()"
+    id="bugFab"
+    onclick="abrirBugSeNaoArrastou(event)"
     title="Encontrou um problema ou quer sugerir uma melhoria?">
     <span class="bug-icone">🐞</span>
     <span class="bug-label">BUG / SUGESTÃO</span>
@@ -4603,7 +4740,7 @@ LIMPAR
 
 <div class="modal" id="chatModal" style="display:none;">
 
-<div class="box" style="max-width:540px;display:flex;flex-direction:column;height:600px;">
+<div class="box chat-box" style="max-width:540px;display:flex;flex-direction:column;height:600px;">
 
 <button
 class="close"
@@ -4696,7 +4833,7 @@ ENVIAR
 
 <div class="modal" id="modal">
 
-<div class="box">
+<div class="box checkout-box">
 
 <button
 class="close"
@@ -4793,12 +4930,14 @@ placeholder="Cupom de indicação (opcional)">
 </div>
 
 <div id="cardFields" style="display:none;">
+  <div class="card-payment-head"><span>💳</span><div><strong>Dados do cartão</strong><small>Pagamento protegido pelo Mercado Pago</small></div></div>
   <div id="cardNumberContainer" style="width:100%;height:42px;margin-bottom:10px;"></div>
   <div style="display:flex;gap:10px;margin-bottom:10px;">
     <div id="cardExpiryContainer" style="flex:1;height:42px;"></div>
     <div id="cardCvcContainer" style="flex:1;height:42px;"></div>
   </div>
-  <input id="cardholderName" placeholder="Nome do titular do cartão" style="margin-bottom:10px;">
+  <label class="card-field-label" for="cardholderName">Titular do cartão</label>
+  <input id="cardholderName" placeholder="Nome exatamente como no cartão" style="margin-bottom:10px;">
   <div style="display:flex;gap:10px;margin-bottom:10px;">
     <select id="cardDocType" style="flex:1;padding:10px;border-radius:6px;border:1px solid #333;background:#111;color:#fff;">
       <option value="CPF">CPF</option>
@@ -5451,6 +5590,7 @@ onclick="closeOwner()">
 </button>
 
 <h2 style="color:#ffd400;">Painel de comando</h2>
+<p class="owner-subtitle">Gerencie seus blocos, pagamentos, ofertas e dados da sua conta em um só lugar.</p>
 
 <div id="painelTabs" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
   <button
@@ -5619,12 +5759,17 @@ style="font-size:13px;color:#ccc;">
 
     <div class="tutHero">
       <span class="tutEmoji">🎉</span>
-      <h2>Bem-vindo ao Milhão Door!</h2>
+      <h2>Comece pelo mapa</h2>
       <p>
-        O <b>maior outdoor da internet</b>! Compre espaços por
-        <b style="color:#ffd400;">R$ 1,00</b> e exiba fotos,
-        anúncios e o link do seu site para o mundo inteiro.
+        No <b>Milhão Door</b>, você escolhe um espaço, paga com segurança
+        e publica sua imagem, anúncio ou link para o mundo inteiro.
       </p>
+    </div>
+
+    <div class="tutQuickStart" aria-label="Resumo para começar">
+      <div><strong>1. Escolha</strong><span>Clique nos blocos livres</span></div>
+      <div><strong>2. Pague</strong><span>Pix ou cartão</span></div>
+      <div><strong>3. Publique</strong><span>Imagem, título e link</span></div>
     </div>
 
     <div class="tutSteps">
@@ -5935,7 +6080,7 @@ function abrirInfoModal(titulo, html){
 
 function abrirPacotesModal(event){
     if(event) event.preventDefault();
-    abrirTutorialColecionaveis(null);
+    window.location.href = "/colecionaveis.html#packs";
 }
 
 function fecharInfoModal(){
@@ -6746,6 +6891,7 @@ function abrirTutorialColecionaveis(event){
 }
 
 document.addEventListener("DOMContentLoaded", async function(){
+    const acaoInicial = new URLSearchParams(window.location.search).get("acao");
     aplicarTema();
     document.body.classList.add("has-benefits");
     atualizarHeaderScroll();
@@ -6762,6 +6908,17 @@ document.addEventListener("DOMContentLoaded", async function(){
     if(minhaConta && minhaConta.token){
         updateBtnConta();
         iniciarSSENotificacoes();
+    }
+    if(acaoInicial){
+        setTimeout(function(){
+            if(acaoInicial === "painel") abrirPainelComando();
+            else if(acaoInicial === "chat") abrirChatGeral();
+            else if(acaoInicial === "destaques") abrirMeusDestaques();
+            else if(acaoInicial === "indicacao") abrirSistemaIndicacao();
+            const url = new URL(window.location.href);
+            url.searchParams.delete("acao");
+            window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+        }, 450);
     }
 });
 
@@ -6993,6 +7150,7 @@ function updateBtnConta(){
     // Carregar notificações se logado
     if(minhaConta && minhaConta.token){
         carregarNotificacoes();
+        iniciarSSENotificacoes();
     }
 }
 
@@ -7159,7 +7317,16 @@ function validarSessao(){
     }).then((resp) => {
         if(!resp.ok) return false;
         return reqJSON(resp)
-            .then((data) => !!(data && data.ok))
+            .then((data) => {
+                if(data && data.ok && data.usuario){
+                    minhaConta.usuario = data.usuario;
+                    minhaConta.foto_url = data.usuario.foto_url || null;
+                    minhaConta.fotoUrl = data.usuario.foto_url || null;
+                    localStorage.setItem("mega_conta", JSON.stringify(minhaConta));
+                    atualizarAvatarHeader();
+                }
+                return !!(data && data.ok);
+            })
             .catch(() => false);
     }).catch(() => true);
 }
@@ -8113,6 +8280,8 @@ row*T;
 
 const v =
 db[id];
+const semGrade = !!(v && v.status === "published");
+const margemImagem = semGrade ? 0 : 1;
 
 
 let extCompleto = false;
@@ -8216,10 +8385,10 @@ if(
                 sy,
                 sw,
                 sh,
-                px + 1,
-                py + 1,
-                T - 2,
-                T - 2
+                px + margemImagem,
+                py + margemImagem,
+                T - margemImagem * 2,
+                T - margemImagem * 2
             );
 
         }else{
@@ -8228,10 +8397,10 @@ if(
             // mantém o comportamento individual
             ctx.drawImage(
                 imgs[id],
-                px + 1,
-                py + 1,
-                T - 2,
-                T - 2
+                px + margemImagem,
+                py + margemImagem,
+                T - margemImagem * 2,
+                T - margemImagem * 2
             );
 
         }
@@ -8244,10 +8413,10 @@ if(
 
         ctx.drawImage(
             imgs[id],
-            px + 1,
-            py + 1,
-            T - 2,
-            T - 2
+            px + margemImagem,
+            py + margemImagem,
+            T - margemImagem * 2,
+            T - margemImagem * 2
         );
 
     }
@@ -8298,7 +8467,7 @@ ctx.restore();
 
 }
 
-if(!extCompleto){
+if(!extCompleto && (!semGrade || sel.has(id) || offerSel.has(id) || hoveredSpaceId === id || searchTarget === id)){
 
 if(offerSel.has(id)){
 
@@ -9898,13 +10067,15 @@ const s = db[id];
 if(
     s.status === "published" &&
     s.link &&
-    !minhaPropriedade(id)
+    !minhaPropriedade(id) &&
+    !document.body.classList.contains("modo-mapa") &&
+    !document.fullscreenElement
 ){
     window.open(s.link, "_blank");
     return;
 }
 
-mostrarDonoEspaco(id);
+abrirInfoEspaco(id);
 
 return;
 
@@ -13409,10 +13580,10 @@ function renderChatMensagens(msgs){
             : "";
 
         html +=
-            '<div style="display:flex;justify-content:' +
+            '<div class="chat-row" style="display:flex;justify-content:' +
             (ehMinha ? "flex-end" : "flex-start") +
             ';margin-bottom:8px;">' +
-              '<div style="max-width:82%;background:' +
+              '<div class="chat-bubble" style="max-width:82%;background:' +
               (ehMinha ? "#1f4733" : "#242424") +
               ';border-radius:10px;padding:7px 10px;' +
               (ehMinha
@@ -17041,6 +17212,8 @@ async function salvarMinhaChavePix(){
 ========================= */
 
 updateBtnConta();
+iniciarBugFabArrastavel();
+if(minhaConta && minhaConta.token) validarSessao();
 carregarBannerSorteio();
 
 /* =========================
@@ -17100,6 +17273,8 @@ function abrirPaginaSorteio(){
 ========================================================= */
 
 let kitsCache = null;
+let kitCardNumberField = null;
+let kitCardPaymentMethodId = "";
 
 function fmtMoeda(v){
     return "R$ " + Number(v || 0).toLocaleString("pt-BR", {
@@ -17263,6 +17438,8 @@ function verTodosKits(event){
 function abrirKit(kitId){
     const kit = (kitsCache || []).find(k => k.id === kitId);
     if(!kit) return;
+    kitCardNumberField = null;
+    kitCardPaymentMethodId = "";
 
     let html = '<div class="kitModalHeader">';
     html += '<div class="kitModalNome">🔥 ' + escHtml(kit.nome) + "</div>";
@@ -17336,8 +17513,10 @@ function abrirKit(kitId){
             '</select>' +
         '</div>';
         html += '<div id="kitCardFields" style="display:none;">' +
-            '<p style="font-size:12px;color:var(--text-muted);margin:8px 0;">' +
-            'Pagamento com cartão será habilitado em breve. Por enquanto, use Pix.</p>' +
+            '<div class="kitFormGroup"><label>Número do cartão</label><div id="kitCardNumberContainer" class="kit-card-field"></div></div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="kitFormGroup"><label>Validade</label><div id="kitCardExpiryContainer" class="kit-card-field"></div></div><div class="kitFormGroup"><label>CVV</label><div id="kitCardCvcContainer" class="kit-card-field"></div></div></div>' +
+            '<div class="kitFormGroup"><label>Titular do cartão</label><input id="kitCardholderName" placeholder="Nome como no cartão"></div>' +
+            '<div class="kitFormGroup"><label>Parcelas</label><select id="kitInstallments"><option value="1">1x</option></select></div>' +
             '</div>';
         html += '<label class="story-consent" style="display:block;">' +
             '<span><input type="checkbox" id="kitStoryOptIn"> <b>📣 QUER DESTACAR SUA COMPRA?</b>' +
@@ -17368,6 +17547,39 @@ function alternarMetodoKit(){
     const metodo = document.getElementById("kitMetodo") ? document.getElementById("kitMetodo").value : "pix";
     const cardFields = document.getElementById("kitCardFields");
     if(cardFields) cardFields.style.display = metodo === "credit_card" ? "block" : "none";
+    if(metodo === "credit_card") inicializarCartaoKit();
+}
+
+function inicializarCartaoKit(){
+    if(!mpSdk || document.getElementById("kitCardNumberContainer")?.children.length) return;
+    try{
+        kitCardNumberField = mpSdk.fields.create("cardNumber", { placeholder: "Número do cartão" });
+        kitCardNumberField.mount("kitCardNumberContainer");
+        kitCardNumberField.on("binChange", async data => {
+            const bin = data && data.bin;
+            if(!bin || bin.length < 6) return;
+            try{
+                const methods = await mpSdk.getPaymentMethods({ bin });
+                kitCardPaymentMethodId = methods?.results?.[0]?.id || "";
+            }catch(e){}
+        });
+        mpSdk.fields.create("expirationDate", { placeholder: "MM/AA" }).mount("kitCardExpiryContainer");
+        mpSdk.fields.create("securityCode", { placeholder: "CVV" }).mount("kitCardCvcContainer");
+    }catch(e){ moToast("Não foi possível carregar o formulário do cartão.", "err"); }
+}
+
+async function tokenizarCartaoKit(){
+    if(!mpSdk || !kitCardNumberField) throw new Error("Formulário de cartão indisponível.");
+    const cpf = String(document.getElementById("kitCpfCnpj")?.value || "").replace(/\D/g, "");
+    const nome = String(document.getElementById("kitCardholderName")?.value || "").trim();
+    if(!nome) throw new Error("Informe o titular do cartão.");
+    const result = await mpSdk.fields.createCardToken({
+        cardholderName: nome,
+        identificationType: cpf.length === 14 ? "CNPJ" : "CPF",
+        identificationNumber: cpf
+    });
+    if(!result?.id || !kitCardPaymentMethodId) throw new Error("Não foi possível validar o cartão.");
+    return result.id;
 }
 
 function atualizarBotaoComprarKit(){
@@ -17417,10 +17629,7 @@ async function comprarKit(kitId){
     }
 
     const metodo = document.getElementById("kitMetodo") ? document.getElementById("kitMetodo").value : "pix";
-    if(metodo === "credit_card"){
-        moToast("Pagamento com cartão para kits será habilitado em breve. Use Pix.", "err");
-        return;
-    }
+    let cardToken = "";
 
     const aceite = document.getElementById("kitAceiteRegras");
     if(!aceite || !aceite.checked){
@@ -17429,6 +17638,7 @@ async function comprarKit(kitId){
     }
 
     try{
+        if(metodo === "credit_card") cardToken = await tokenizarCartaoKit();
         const resp = await fetch("/api/combos/kits/" + kitId + "/checkout", {
             method: "POST",
             headers: authHeaders({ "Content-Type": "application/json" }),
@@ -17436,6 +17646,9 @@ async function comprarKit(kitId){
                 licensePlan,
                 cpfCnpj,
                 paymentMethod: metodo,
+                paymentMethodId: kitCardPaymentMethodId || undefined,
+                cardToken: cardToken || undefined,
+                installments: Number(document.getElementById("kitInstallments")?.value || 1),
                 aceiteRegras: true,
                 storyOptIn: !!(document.getElementById("kitStoryOptIn") && document.getElementById("kitStoryOptIn").checked)
             })
@@ -18047,8 +18260,8 @@ function buscaOutdoorCard(r){
     const catLabel = { EMPRESAS: "Empresa", "SERVIÇOS": "Serviço", PESSOAS: "Pessoa", REDES_SOCIAIS: "Rede social", OUTROS: "Outros" }[cat] || "Anúncio";
     const blocos = (r.blocos || []).map(function(b, i){
         const id = b[0];
-        return '<button type="button" class="busca-bloco-chip" title="Destacar no mapa" ' +
-            'onclick="buscaOutdoorDestacarBloco(' + id + ',' + escAttr(JSON.stringify(b)) + ')">' +
+        return '<button type="button" class="busca-bloco-chip" title="Ver informações do bloco" ' +
+            'onclick="buscaOutdoorAbrirBloco(' + id + ',' + escAttr(JSON.stringify(b)) + ')">' +
             '#' + Number(id).toLocaleString("pt-BR") + (b.length > 1 ? ' (' + b.length + ')' : '') +
             '</button>';
     }).join("");
@@ -18087,6 +18300,13 @@ function buscaOutdoorDestacarBloco(espacoId, blocoIds){
     buscaOutdoorFechar();
 }
 
+function buscaOutdoorAbrirBloco(espacoId, blocoIds){
+    if(!blocoIds || !blocoIds.length) blocoIds = [espacoId];
+    focusMapOnBlock(blocoIds);
+    buscaOutdoorFechar();
+    setTimeout(() => abrirInfoEspaco(Number(espacoId)), 180);
+}
+
 function buscaOutdoorDestacarAnunciante(espacos){
     if(!espacos || !espacos.length) return;
     focusMapOnBlock(espacos);
@@ -18097,7 +18317,18 @@ function buscaOutdoorVerEspaco(numero){
     const id = Number(numero);
     if(!id || !db[id]) return;
     buscaOutdoorFechar();
-    mostrarDonoEspaco(id);
+    abrirInfoEspaco(id);
+}
+
+function abrirInfoEspaco(numero){
+    const abrir = () => mostrarDonoEspaco(Number(numero));
+    if(document.fullscreenElement && document.exitFullscreen){
+        const saida = document.exitFullscreen();
+        if(saida && typeof saida.then === "function") saida.then(() => setTimeout(abrir, 100));
+        else setTimeout(abrir, 100);
+        return;
+    }
+    abrir();
 }
 
 /* ===== DADOS DA PESQUISA (anúncio) ===== */
@@ -18451,6 +18682,54 @@ function compartilharIndicacao(){
     }
 })();
 
+/* ===== BOTÃO BUG/SUGESTÃO ARRASTÁVEL ===== */
+let bugFabArrastado = false;
+function iniciarBugFabArrastavel(){
+    const fab = document.getElementById("bugFab");
+    if(!fab || fab.dataset.dragReady) return;
+    fab.dataset.dragReady = "1";
+    try{
+        const pos = JSON.parse(localStorage.getItem("mega_bug_fab_pos") || "null");
+        if(pos && Number.isFinite(pos.left) && Number.isFinite(pos.top)){
+            fab.style.left = pos.left + "px";
+            fab.style.top = pos.top + "px";
+            fab.style.bottom = "auto";
+        }
+    }catch(e){}
+    let inicioX = 0, inicioY = 0, baseLeft = 0, baseTop = 0;
+    fab.addEventListener("pointerdown", function(ev){
+        const rect = fab.getBoundingClientRect();
+        inicioX = ev.clientX; inicioY = ev.clientY;
+        baseLeft = rect.left; baseTop = rect.top;
+        bugFabArrastado = false;
+        fab.setPointerCapture?.(ev.pointerId);
+    });
+    fab.addEventListener("pointermove", function(ev){
+        if(!fab.hasPointerCapture?.(ev.pointerId)) return;
+        const dx = ev.clientX - inicioX, dy = ev.clientY - inicioY;
+        if(Math.abs(dx) + Math.abs(dy) < 4) return;
+        bugFabArrastado = true;
+        const maxLeft = Math.max(0, window.innerWidth - fab.offsetWidth);
+        const maxTop = Math.max(0, window.innerHeight - fab.offsetHeight);
+        const left = Math.min(maxLeft, Math.max(0, baseLeft + dx));
+        const top = Math.min(maxTop, Math.max(0, baseTop + dy));
+        fab.style.left = left + "px";
+        fab.style.top = top + "px";
+        fab.style.bottom = "auto";
+        ev.preventDefault();
+    });
+    fab.addEventListener("pointerup", function(){
+        if(bugFabArrastado){
+            const rect = fab.getBoundingClientRect();
+            try{ localStorage.setItem("mega_bug_fab_pos", JSON.stringify({left:rect.left,top:rect.top})); }catch(e){}
+        }
+    });
+}
+function abrirBugSeNaoArrastou(ev){
+    if(bugFabArrastado){ ev.preventDefault(); bugFabArrastado = false; return; }
+    abrirBugSugestao();
+}
+
 /* ===== COLLAPSE INDIVIDUAL DOS PAINÉIS ===== */
 function toggleCollapse(card){
     if(!card) return;
@@ -18495,6 +18774,38 @@ function toggleCollapseAll(){
         cards.forEach(function(c){ c.classList.remove("collapsed"); });
     }
     /* Redesenhar canvas após transição */
+    setTimeout(function(){
+        if(typeof draw === "function") draw();
+        if(typeof center === "function") center();
+    }, 350);
+}
+
+function toggleModoMapa(){
+    const body = document.body;
+    const layout = document.getElementById("mainLayout");
+    const btn = document.getElementById("modoMapaBtn");
+    if(!layout || !btn) return;
+    const ativar = !body.classList.contains("modo-mapa");
+    body.classList.toggle("modo-mapa", ativar);
+    layout.classList.toggle("all-collapsed", ativar);
+    layout.querySelectorAll(".card").forEach(function(card){ card.classList.toggle("collapsed", ativar); });
+    btn.querySelector("span:last-child").textContent = ativar ? "SAIR DO MODO MAPA" : "SÓ MAPA";
+    btn.querySelector("span:first-child").textContent = ativar ? "↙" : "⛶";
+    setTimeout(function(){
+        if(typeof draw === "function") draw();
+        if(typeof center === "function") center();
+    }, 350);
+}
+
+function abrirCompraModoMapa(){
+    const body = document.body;
+    const layout = document.getElementById("mainLayout");
+    if(!layout) return;
+    body.classList.remove("modo-mapa");
+    layout.classList.remove("all-collapsed");
+    layout.querySelectorAll(".card").forEach(function(card){ card.classList.remove("collapsed"); });
+    const comprar = document.getElementById("comprar");
+    if(comprar) setTimeout(() => comprar.scrollIntoView({behavior:"smooth", block:"start"}), 120);
     setTimeout(function(){
         if(typeof draw === "function") draw();
         if(typeof center === "function") center();

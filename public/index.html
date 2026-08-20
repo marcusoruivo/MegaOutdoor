@@ -462,8 +462,11 @@ input::placeholder,textarea::placeholder{color:#b0b0b0;opacity:1}
 @media(max-width:640px){#ownerModal>.box{padding:22px 14px 18px;border-radius:16px}#ownerModal>.box>h2{font-size:21px}#painelTabs{grid-template-columns:repeat(2,minmax(0,1fr))!important;padding:8px}#painelTabs button{font-size:10px!important}}
 .l-map-area-btn{height:36px;padding:0 11px;border:1px solid rgba(255,212,0,.45);border-radius:10px;background:rgba(255,212,0,.08);color:#ffd400;font-size:10px;font-weight:900;letter-spacing:.4px;cursor:pointer;white-space:nowrap;transition:.2s}
 .l-map-area-btn:hover,.l-map-area-btn.active{background:linear-gradient(135deg,#ffd400,#ff9d00);border-color:#ffd400;color:#111;box-shadow:0 5px 16px rgba(255,212,0,.2)}
+.area-selection-counter{display:none;align-items:center;height:30px;padding:0 9px;border:1px solid rgba(69,223,110,.45);border-radius:8px;background:rgba(69,223,110,.1);color:#7dff9b;font-size:10px;font-weight:900;white-space:nowrap}
 .segmento-chip{padding:6px 9px;border:1px solid #383b44;border-radius:999px;background:#17191f;color:#c7cad2;font-size:10px;font-weight:700;cursor:pointer}
 .segmento-chip:hover,.segmento-chip.selecionado{border-color:#ffd400;background:rgba(255,212,0,.14);color:#ffd400}
+.l-buy-select-target{width:100%;margin-top:8px;padding:8px 10px;border:1px dashed rgba(255,212,0,.45);border-radius:9px;background:rgba(255,212,0,.06);color:#ffd400;font-size:10px;font-weight:800;cursor:pointer}
+.l-buy-select-target:hover{background:rgba(255,212,0,.14)}
 @media(max-width:640px){.l-map-area-btn{font-size:9px;padding:0 8px}.l-map-controls{gap:4px}}
 
 .box h2{
@@ -3435,6 +3438,11 @@ body.footer-visible #area{
 .kit-card-field:focus-within{border-color:#ffd400;box-shadow:0 0 0 2px rgba(255,212,0,.12)}
 @media(max-width:900px){.dashboard-kits .kit-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.dashboard-kits{width:calc(100% - 16px);padding:16px 14px;border-radius:16px}.dashboard-kits-head{align-items:flex-start;flex-direction:column}.dashboard-kits-head .btn{width:100%}.dashboard-kits .kit-list{grid-template-columns:1fr}}
+@media(min-width:1101px){
+    .main-layout{grid-template-columns:minmax(260px,290px) minmax(0,1fr) minmax(240px,270px);gap:10px;padding:10px}
+    #area{height:75vh;min-height:560px}
+    .sidebar-left,.sidebar-right{max-height:calc(75vh + 20px)}
+}
 
 .kit-chip{
     font-size:10px;
@@ -4051,6 +4059,11 @@ body.footer-visible #area{
         margin-top:0
     }
 }
+@media(min-width:1101px){
+    .main-layout{grid-template-columns:minmax(260px,290px) minmax(0,1fr) minmax(240px,270px);gap:10px;padding:10px}
+    #area{height:75vh;min-height:560px}
+    .sidebar-left,.sidebar-right{max-height:calc(75vh + 20px)}
+}
 </style>
 
 <script src="https://sdk.mercadopago.com/js/v2"></script>
@@ -4400,6 +4413,7 @@ LIMPAR
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 </button>
             </div>
+            <button type="button" class="l-buy-select-target" id="btnSelecionarQtdMapa" onclick="prepararSelecaoQuantidade()">▦ SELECIONAR NO MAPA</button>
 
             <div class="l-buy-total">
                 <span class="l-buy-total-label">Total</span>
@@ -4473,6 +4487,7 @@ LIMPAR
                 </div>
                 <div class="l-map-controls">
                     <button type="button" class="l-map-area-btn" id="btnArea" onclick="toggleSelectArea()" title="Selecionar vários blocos de uma vez">▦ SELECIONAR ÁREA</button>
+                    <span class="area-selection-counter" id="areaSelectionCounter">0 espaços</span>
                     <button type="button" class="l-map-control-btn" onclick="zoom(0.83)" title="Afastar" aria-label="Diminuir zoom">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     </button>
@@ -4526,7 +4541,7 @@ LIMPAR
                 </div>
                 <label class="l-map-search">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    <input name="mapSpaceSearch" autocomplete="off" type="text" placeholder="Buscar espaço por número" onkeydown="if(event.key==='Enter') localizarEspacoPorInput(this.value)">
+                    <input id="mapSpaceSearch" name="mapSpaceSearch" autocomplete="off" type="text" placeholder="Buscar espaço por número" onkeydown="if(event.key==='Enter') localizarEspacoPorInput(this.value)">
                 </label>
             </div>
         </section>
@@ -6903,6 +6918,8 @@ document.addEventListener("DOMContentLoaded", async function(){
     const buscaNumero = document.getElementById("spaceSearch");
     if(buscaNumero) buscaNumero.value = "";
     document.querySelectorAll('input[name="mapSpaceSearch"]').forEach(input => input.value = "");
+    const buscaMapaInferior = document.getElementById("mapSpaceSearch");
+    if(buscaMapaInferior) buscaMapaInferior.value = "";
     const acaoInicial = new URLSearchParams(window.location.search).get("acao");
     aplicarTema();
     document.body.classList.add("has-benefits");
@@ -8988,8 +9005,10 @@ btn.style.color =
 
 area.style.cursor =
 "grab";
-const dragBadgeOff = document.getElementById("dragCount");
-if(dragBadgeOff) dragBadgeOff.style.display = "none";
+    const dragBadgeOff = document.getElementById("dragCount");
+    if(dragBadgeOff) dragBadgeOff.style.display = "none";
+    const areaCounterOff = document.getElementById("areaSelectionCounter");
+    if(areaCounterOff) areaCounterOff.style.display = "none";
 
 return;
 
@@ -9023,6 +9042,8 @@ if(dragBadgeOn){
     dragBadgeOn.style.top = "90px";
     dragBadgeOn.style.transform = "translateX(-50%)";
 }
+const areaCounterOn = document.getElementById("areaSelectionCounter");
+if(areaCounterOn) areaCounterOn.style.display = "inline-flex";
 
 }
 
@@ -9269,6 +9290,10 @@ id=>conjunto.has(id)
     badge.textContent = ids.length
     ? ((todosMarcados ? "− " : "+ ") + ids.length.toLocaleString("pt-BR") + " espaços selecionáveis")
     : "0 espaços";
+    const counter = document.getElementById("areaSelectionCounter");
+    if(counter) counter.textContent = ids.length
+        ? ((todosMarcados ? "− " : "+ ") + ids.length.toLocaleString("pt-BR") + " espaços")
+        : "0 espaços";
 
 badge.style.display = "block";
 
@@ -9546,6 +9571,12 @@ const todosSelecionados =
 ids.every(
 id=>sel.has(id)
 );
+
+if(!todosSelecionados && sel.size + ids.length > buyPanelQtyDesejada){
+    alert("Essa seleção ultrapassa a quantidade escolhida (" + buyPanelQtyDesejada + ").");
+    draw();
+    return;
+}
 
 if(!todosSelecionados &&
 sel.size + ids.length > 1000){
@@ -10008,6 +10039,8 @@ pinchActive = false;
 area.onclick =
 e=>{
 
+if(e.target && e.target.closest && e.target.closest(".busca-outdoor")) return;
+if(e.target && e.target.closest && e.target.closest(".l-map-search")) return;
 if(moved)return;
 
 const pos = getMousePos(e);
@@ -10106,6 +10139,10 @@ sel.delete(id);
 
 }else{
 
+if(sel.size >= buyPanelQtyDesejada){
+    toastMsg("Quantidade completa: " + buyPanelQtyDesejada + " espaço(s).", "info");
+    return;
+}
 sel.add(id);
 
 }
@@ -10253,19 +10290,31 @@ function ajustarQtyCompra(delta){
     atualizarBuyPanel();
 }
 
+function prepararSelecaoQuantidade(){
+    if(sel.size >= buyPanelQtyDesejada){
+        abrirInfoModal("Quantidade completa", "<p>Você já selecionou <b>" + buyPanelQtyDesejada + " espaços</b>. Ajuste no mapa ou clique em limpar seleção para começar novamente.</p>");
+        return;
+    }
+    if(!selectAreaMode) toggleSelectArea();
+    const mapa = document.getElementById("mapaSection");
+    if(mapa) mapa.scrollIntoView({behavior:"smooth", block:"center"});
+}
+
 function atualizarBuyPanel(){
     const qtyEl = document.getElementById("buyPanelQty");
     const totalEl = document.getElementById("buyPanelTotal");
     const cta = document.getElementById("buyPanelCta");
-    const n = sel.size || buyPanelQtyDesejada;
-    if(qtyEl) qtyEl.textContent = n.toLocaleString("pt-BR");
+    const n = sel.size;
+    if(qtyEl) qtyEl.textContent = n.toLocaleString("pt-BR") + " / " + buyPanelQtyDesejada.toLocaleString("pt-BR");
     if(totalEl) totalEl.textContent = formatarReais(n * 100);
-    if(cta) cta.disabled = !sel.size;
+    if(cta) cta.disabled = sel.size !== buyPanelQtyDesejada;
+    const alvo = document.getElementById("btnSelecionarQtdMapa");
+    if(alvo) alvo.textContent = n >= buyPanelQtyDesejada ? "✓ QUANTIDADE COMPLETA" : "▦ SELECIONAR NO MAPA — " + n + "/" + buyPanelQtyDesejada;
 }
 
 function checkoutFromPanel(){
-    if(!sel.size){
-        abrirInfoModal("Selecione espaços", "<p>Clique no mapa ou use <b>Aleatório</b> para selecionar espaços antes de comprar.</p>");
+    if(sel.size !== buyPanelQtyDesejada){
+        abrirInfoModal("Complete sua seleção", "<p>Selecione exatamente <b>" + buyPanelQtyDesejada + " espaço(s)</b> no mapa ou use <b>Aleatório</b> para preencher automaticamente.</p>");
         return;
     }
     checkout();

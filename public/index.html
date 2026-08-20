@@ -3439,9 +3439,9 @@ body.footer-visible #area{
 @media(max-width:900px){.dashboard-kits .kit-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.dashboard-kits{width:calc(100% - 16px);padding:16px 14px;border-radius:16px}.dashboard-kits-head{align-items:flex-start;flex-direction:column}.dashboard-kits-head .btn{width:100%}.dashboard-kits .kit-list{grid-template-columns:1fr}}
 @media(min-width:1101px){
-    .main-layout{grid-template-columns:minmax(260px,290px) minmax(0,1fr) minmax(240px,270px);gap:10px;padding:10px}
-    #area{height:75vh;min-height:560px}
-    .sidebar-left,.sidebar-right{max-height:calc(75vh + 20px)}
+    .main-layout{grid-template-columns:minmax(230px,250px) minmax(0,1fr) minmax(210px,230px);gap:8px;padding:8px 10px}
+    #area{height:78vh;min-height:600px}
+    .sidebar-left,.sidebar-right{max-height:calc(78vh + 16px)}
 }
 
 .kit-chip{
@@ -7759,6 +7759,7 @@ let storyHighlightIds = new Set();
 let meusBlocosMode = false;
 
 let selectAreaMode = false;
+let areaPreviewCount = null;
 let offerMode = false;
 let offerSel = new Set();
 let currentOfferIds = [];
@@ -9281,11 +9282,15 @@ idsNoRetangulo();
 const conjunto =
 offerMode ? offerSel : sel;
 
-const todosMarcados =
-ids.length &&
-ids.every(
-id=>conjunto.has(id)
-);
+    const todosMarcados =
+    ids.length &&
+    ids.every(
+    id=>conjunto.has(id)
+    );
+    areaPreviewCount = todosMarcados
+        ? Math.max(0, sel.size - ids.length)
+        : sel.size + ids.length;
+    atualizarBuyPanel();
 
     badge.textContent = ids.length
     ? ((todosMarcados ? "− " : "+ ") + ids.length.toLocaleString("pt-BR") + " espaços selecionáveis")
@@ -9314,6 +9319,8 @@ document.getElementById("dragCount");
 if(badge){
 badge.style.display = "none";
 }
+areaPreviewCount = null;
+atualizarBuyPanel();
 
 }
 
@@ -10304,7 +10311,7 @@ function atualizarBuyPanel(){
     const qtyEl = document.getElementById("buyPanelQty");
     const totalEl = document.getElementById("buyPanelTotal");
     const cta = document.getElementById("buyPanelCta");
-    const n = sel.size;
+    const n = areaPreviewCount == null ? sel.size : areaPreviewCount;
     if(qtyEl) qtyEl.textContent = n.toLocaleString("pt-BR") + " / " + buyPanelQtyDesejada.toLocaleString("pt-BR");
     if(totalEl) totalEl.textContent = formatarReais(n * 100);
     if(cta) cta.disabled = sel.size !== buyPanelQtyDesejada;

@@ -7018,6 +7018,16 @@ const CARD_BRAND_LOGOS = Object.freeze({
     discover: { label: "Discover", src: "https://api.iconify.design/logos:discover.svg" }
 });
 
+const CARD_BRAND_PAYMENT_METHOD_IDS = Object.freeze({
+    visa: "visa",
+    mastercard: "master",
+    elo: "elo",
+    amex: "amex",
+    hipercard: "hipercard",
+    dinersclub: "diners",
+    discover: "discover"
+});
+
 const GENERIC_CARD_ICON =
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2' y='5' width='20' height='14' rx='2' fill='none' stroke='%23777' stroke-width='2'/%3E%3Cpath d='M2 9h20M6 15h4' stroke='%23777' stroke-width='2'/%3E%3C/svg%3E";
 
@@ -7112,10 +7122,14 @@ function limparCamposCartao(){
 }
 
 async function atualizarBandeiraCartao(bin){
-    atualizarLogoBandeira(null, bin);
+    const localBrand = detectarBandeiraPorBin(bin);
+    atualizarLogoBandeira(localBrand, bin);
+    mpPaymentMethodId = localBrand ? (CARD_BRAND_PAYMENT_METHOD_IDS[localBrand] || "") : "";
+    mpIssuerId = "";
     if(!mpSdk || !bin || bin.length < 6) return;
     try{
         const methods = await mpSdk.getPaymentMethods({ bin });
+        if(mpCardBin !== bin) return;
         if(methods && methods.results && methods.results.length){
             const pm = methods.results[0];
             atualizarLogoBandeira(pm.id, bin);

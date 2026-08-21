@@ -21,6 +21,14 @@ global.fetch = async (url, options = {}) => {
 
 const { newDb } = require("pg-mem");
 const db = newDb();
+for (const type of ["text", "varchar"]) {
+    db.public.registerFunction({
+        name: "trim",
+        args: [type],
+        returns: type,
+        implementation: value => String(value ?? "").trim()
+    });
+}
 const adapter = db.adapters.createPg();
 const pgReal = require("pg");
 pgReal.Pool = adapter.Pool;
@@ -101,6 +109,43 @@ async function main() {
     });
     t("PUT /api/perfil atualiza bio", resp.r.status === 200 && resp.body.perfil.bio === "Nova bio", "bio=" + (resp.body.perfil && resp.body.perfil.bio));
     t("PUT /api/perfil altera privacidade", resp.body.perfil.album_publico === false, "album_publico=" + (resp.body.perfil && resp.body.perfil.album_publico));
+
+    // Salvar o próprio apelido não deve ser tratado como duplicidade.
+    resp = await reqJson(BASE + "/api/perfil", {
+        method: "PUT", headers: h1,
+        body: JSON.stringify({ apelido: "user_um" })
+    });
+    t("PUT /api/perfil aceita o próprio apelido", resp.r.status === 200 && resp.body.perfil.apelido === "user_um", "status=" + resp.r.status);
+
+    // Apelidos aceitam letras, acentos, espaços, números e underscore.
+    const apelidosValidos = [
+        "MilhaoDoor", "Milhão Door", "João Silva", "Marcus Ângelo",
+        "José123", "Cliente 2026", "João_Silva", "André 123"
+    ];
+    for (const apelido of apelidosValidos) {
+        resp = await reqJson(BASE + "/api/perfil", {
+            method: "PUT", headers: h1,
+            body: JSON.stringify({ apelido })
+        });
+        t("aceita apelido " + apelido, resp.r.status === 200 && resp.body.perfil.apelido === apelido, "status=" + resp.r.status);
+    }
+
+    // A comparação é case-insensitive e ignora espaços nas extremidades.
+    resp = await reqJson(BASE + "/api/perfil", {
+        method: "PUT", headers: h1,
+        body: JSON.stringify({ apelido: "MilhaoDoor" })
+    });
+    resp = await reqJson(BASE + "/api/perfil", {
+        method: "PUT", headers: h3,
+        body: JSON.stringify({ apelido: "  milhaodoor  " })
+    });
+    t("rejeita duplicidade por caixa e espaços", resp.r.status === 400, "status=" + resp.r.status);
+
+    resp = await reqJson(BASE + "/api/perfil", {
+        method: "PUT", headers: h1,
+        body: JSON.stringify({ apelido: "   " })
+    });
+    t("PUT /api/perfil rejeita apelido vazio", resp.r.status === 400, "status=" + resp.r.status);
 
     // Testa validação de apelido
     resp = await reqJson(BASE + "/api/perfil", {

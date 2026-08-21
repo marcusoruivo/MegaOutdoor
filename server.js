@@ -688,6 +688,18 @@ async function initBanco() {
             `);
         } catch (e) { /* se as colunas já existirem, segue o boot */ }
 
+        /* Garante unicidade normalizada, protegendo também contra condições de
+           corrida. NULL e valores vazios ficam fora do índice. */
+        try {
+            await pgPool.query(`
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_usuarios_apelido_unico
+                    ON usuarios (LOWER(TRIM(apelido)))
+                    WHERE apelido IS NOT NULL AND TRIM(apelido) <> ''
+            `);
+        } catch (e) {
+            console.error("Não foi possível criar o índice único de apelido:", e.message);
+        }
+
         /* Tabela de indicações */
         try {
             await pgPool.query(`
@@ -8747,15 +8759,20 @@ app.put("/api/perfil", authUsuario, async (req, res) => {
         // Validações
         if (apelido !== undefined) {
             const apelidoStr = String(apelido || "").trim();
+            if (!apelidoStr) {
+                return res.status(400).json({ error: "Informe um apelido." });
+            }
             if (apelidoStr.length > 50) {
                 return res.status(400).json({ error: "Apelido muito longo (máx. 50 caracteres)." });
             }
-            if (apelidoStr && !/^[a-zA-Z0-9_]+$/.test(apelidoStr)) {
-                return res.status(400).json({ error: "Apelido contém caracteres inválidos. Use apenas letras, números e underscore." });
+            if (!/^[\p{L}\p{M}0-9_ ]+$/u.test(apelidoStr)) {
+                return res.status(400).json({ error: "Apelido contém caracteres inválidos. Use letras, acentos, espaços, números e underscore." });
             }
             // Verifica unicidade do apelido
             const check = await pgPool.query(
-                `SELECT id FROM usuarios WHERE LOWER(apelido) = LOWER($1) AND id != $2`,
+                `SELECT id FROM usuarios
+                  WHERE LOWER(TRIM(apelido)) = LOWER(TRIM($1))
+                    AND id != $2`,
                 [apelidoStr, usuarioId]
             );
             if (check.rowCount > 0) {
@@ -8803,6 +8820,9 @@ app.put("/api/perfil", authUsuario, async (req, res) => {
         res.json({ ok: true, perfil: result.rows[0] });
     } catch (error) {
         console.error("ERRO ao atualizar perfil:", error.message);
+        if (error.code === "23505" && error.constraint === "idx_usuarios_apelido_unico") {
+            return res.status(400).json({ error: "Este apelido já está em uso." });
+        }
         res.status(500).json({ error: "Não foi possível atualizar o perfil." });
     }
 });
@@ -11889,6 +11909,9 @@ app.delete("/api/admin/usuarios/:id", authAdmin, async (req, res) => {
         if (!Number.isInteger(userId) || userId < 1) {
             return res.status(400).json({ error: "ID de usuário inválido." });
         }
+        if (userId === 1) {
+            return res.status(400).json({ error: "O usuário administrador ID 1 não pode ser excluído." });
+        }
 
         // Verifica se usuário existe
         const checkUser = await pgPool.query("SELECT id, email FROM usuarios WHERE id = $1", [userId]);
@@ -11904,7 +11927,7 @@ app.delete("/api/admin/usuarios/:id", authAdmin, async (req, res) => {
         // para preservar integridade de dados financeiros
         const novoEmail = `excluido_${userId}@deleted.local`;
         await pgPool.query(
-            "UPDATE usuarios SET bloqueado = TRUE, email = $2, nome = 'Usuário Excluído' WHERE id = $1",
+            "UPDATE usuarios SET bloqueado = TRUE, email = $2, nome = 'Usuário Excluído', apelido = NULL WHERE id = $1",
             [userId, novoEmail]
         );
 

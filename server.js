@@ -4907,6 +4907,18 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
         let mp;
 
         try {
+            console.log("[CHECKOUT DEBUG PRINCIPAL]", {
+                valorCobrado,
+                amount: reaisParaMercadoPago(paraCentavos(valorCobrado)),
+                total_amount: reaisParaMercadoPago(paraCentavos(valorCobrado)),
+                currency: "BRL",
+                payment_type: metodoPagamento,
+                payment_method_id: req.body.paymentMethodId || "",
+                issuer_id: req.body.issuerId || "",
+                installments: Number(installments) || 1,
+                spaces: ids,
+                plan: licensePlanKey
+            });
 
             mp = await criarOrderMercadoPago({
                 idempotencyKey: orderId,

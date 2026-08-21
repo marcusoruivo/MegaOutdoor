@@ -443,6 +443,11 @@ input::placeholder,textarea::placeholder{color:#b0b0b0;opacity:1}
 .card-field-label{display:block;margin:0 0 5px;color:#ffd400;font-size:10px;font-weight:800;letter-spacing:.7px;text-transform:uppercase}
 .checkout-box #cardNumberContainer,.checkout-box #cardExpiryContainer,.checkout-box #cardCvcContainer{padding:0 10px;border:1px solid #3b3b45;border-radius:9px;background:#090909}
 .checkout-box #cardNumberContainer:focus-within,.checkout-box #cardExpiryContainer:focus-within,.checkout-box #cardCvcContainer:focus-within{border-color:#ffd400;box-shadow:0 0 0 2px rgba(255,212,0,.13)}
+.card-brand-badge{position:absolute;z-index:2;right:9px;top:50%;display:block;width:40px;height:25px;padding:2px 4px;box-sizing:border-box;object-fit:contain;object-position:center;transform:translateY(-50%);border-radius:5px;background:#fff;opacity:0;transition:opacity .18s ease;pointer-events:none}
+.card-brand-badge.visible{opacity:1}
+.checkout-box #cardFields input,.checkout-box #cardFields select{color:#fff!important;caret-color:#fff}
+.checkout-box #cardFields input::placeholder{color:#a9a9b5!important;opacity:1}
+.checkout-box #cardFields select option{color:#fff;background:#090909}
 .checkout-box #cardDocType,.checkout-box #installments{border-color:#3b3b45!important;border-radius:9px!important;background:#090909!important;color:#fff!important}
 .checkout-box #cardholderName,.checkout-box #cardDocNumber{border-color:#3b3b45;background:#090909;color:#fff}
 .checkout-box #cardholderName:focus,.checkout-box #cardDocNumber:focus{border-color:#ffd400;box-shadow:0 0 0 2px rgba(255,212,0,.13);outline:none}
@@ -7003,6 +7008,70 @@ let mpPaymentMethodId = "";
 let mpIssuerId = "";
 let appConfig = { sandbox: false, allowTestMode: false };
 
+const CARD_BRAND_LOGOS = Object.freeze({
+    visa: { label: "Visa", src: "https://api.iconify.design/logos:visa.svg" },
+    mastercard: { label: "Mastercard", src: "https://api.iconify.design/logos:mastercard.svg" },
+    elo: { label: "Elo", src: "https://api.iconify.design/logos:elo.svg" },
+    amex: { label: "American Express", src: "https://api.iconify.design/logos:amex.svg" },
+    hipercard: { label: "Hipercard", src: "https://api.iconify.design/logos:hipercard.svg" },
+    dinersclub: { label: "Diners Club", src: "https://api.iconify.design/logos:dinersclub.svg" },
+    discover: { label: "Discover", src: "https://api.iconify.design/logos:discover.svg" }
+});
+
+const GENERIC_CARD_ICON =
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2' y='5' width='20' height='14' rx='2' fill='none' stroke='%23777' stroke-width='2'/%3E%3Cpath d='M2 9h20M6 15h4' stroke='%23777' stroke-width='2'/%3E%3C/svg%3E";
+
+function normalizarIdBandeira(id){
+    return String(id || "").toLowerCase().replace(/[\s_-]/g, "");
+}
+
+function prefixoEntre(numero, inicio, fim){
+    const prefixo = Number(String(numero || "").slice(0, String(inicio).length));
+    return Number.isFinite(prefixo) && prefixo >= inicio && prefixo <= fim;
+}
+
+function detectarBandeiraPorBin(numero){
+    const d = String(numero || "").replace(/\D/g, "");
+    if(!d) return null;
+    if(/^4/.test(d)) return "visa";
+    if(/^(5[1-5]|2[2-7])/.test(d) || prefixoEntre(d, 222100, 272099)) return "mastercard";
+    if(/^(34|37)/.test(d)) return "amex";
+    if(/^(300|301|302|303|304|305|36|38|39)/.test(d)) return "dinersclub";
+    if(/^6(011|65)/.test(d) || prefixoEntre(d, 622126, 622925) || /^(644|645|646|647|648|649)/.test(d)) return "discover";
+    if(/^(606282|384100)/.test(d)) return "hipercard";
+    if(/^(401178|401179|431274|438935|451416|457393|504175|627780|636297|636368)/.test(d)) return "elo";
+    if(prefixoEntre(d, 506699, 506778) || prefixoEntre(d, 509000, 509999) || prefixoEntre(d, 650031, 650033) || prefixoEntre(d, 650035, 650051) || prefixoEntre(d, 650405, 650439) || prefixoEntre(d, 650485, 650538) || prefixoEntre(d, 650541, 650598) || prefixoEntre(d, 650700, 650718) || prefixoEntre(d, 650720, 650727) || prefixoEntre(d, 650901, 650920) || prefixoEntre(d, 651652, 651679) || prefixoEntre(d, 655000, 655019) || prefixoEntre(d, 655021, 655058)) return "elo";
+    return null;
+}
+
+function garantirBadgeBandeira(){
+    const container = document.getElementById("cardNumberContainer");
+    if(!container) return null;
+    let badge = document.getElementById("cardBrandBadge");
+    if(!badge){
+        badge = document.createElement("img");
+        badge.id = "cardBrandBadge";
+        badge.className = "card-brand-badge";
+        badge.alt = "";
+        badge.src = GENERIC_CARD_ICON;
+        badge.onerror = () => { badge.src = GENERIC_CARD_ICON; };
+        container.appendChild(badge);
+    }
+    return badge;
+}
+
+function atualizarLogoBandeira(id, numero){
+    const badge = garantirBadgeBandeira();
+    if(!badge) return;
+    const brandId = CARD_BRAND_LOGOS[normalizarIdBandeira(id)]
+        ? normalizarIdBandeira(id)
+        : detectarBandeiraPorBin(numero || id);
+    const brand = CARD_BRAND_LOGOS[brandId];
+    badge.src = brand ? brand.src : GENERIC_CARD_ICON;
+    badge.alt = brand ? brand.label : "";
+    badge.classList.toggle("visible", Boolean(brand));
+}
+
 async function carregarConfigMercadoPago(){
     try{
         const response = await fetch("/api/config");
@@ -7043,11 +7112,13 @@ function limparCamposCartao(){
 }
 
 async function atualizarBandeiraCartao(bin){
+    atualizarLogoBandeira(null, bin);
     if(!mpSdk || !bin || bin.length < 6) return;
     try{
         const methods = await mpSdk.getPaymentMethods({ bin });
         if(methods && methods.results && methods.results.length){
             const pm = methods.results[0];
+            atualizarLogoBandeira(pm.id, bin);
             mpPaymentMethodId = pm.id || "";
             mpIssuerId = "";
             if(pm.issuer && pm.issuer.id){
@@ -7072,14 +7143,24 @@ function inicializarFormularioCartao(){
     if(container.children.length > 0) return;
     try{
         limparCamposCartao();
-        mpCardNumberField = mpSdk.fields.create("cardNumber", {placeholder: "Número do cartão"});
+        const estiloCampoCartao = {
+            base: {
+                color: "#fff",
+                fontSize: "16px",
+                fontFamily: "inherit",
+                "::placeholder": { color: "#a9a9b5", opacity: 1 }
+            }
+        };
+        mpCardNumberField = mpSdk.fields.create("cardNumber", {placeholder: "Número do cartão", style: estiloCampoCartao});
         mpCardNumberField.mount("cardNumberContainer");
         mpCardNumberField.on("binChange", (data) => {
             mpCardBin = (data && data.bin) || "";
+            atualizarLogoBandeira(null, mpCardBin);
             atualizarBandeiraCartao(mpCardBin);
         });
-        mpSdk.fields.create("expirationDate", {placeholder: "MM/AA"}).mount("cardExpiryContainer");
-        mpSdk.fields.create("securityCode", {placeholder: "CVV"}).mount("cardCvcContainer");
+        mpSdk.fields.create("expirationDate", {placeholder: "MM/AA", style: estiloCampoCartao}).mount("cardExpiryContainer");
+        mpSdk.fields.create("securityCode", {placeholder: "CVV", style: estiloCampoCartao}).mount("cardCvcContainer");
+        garantirBadgeBandeira();
     }catch(e){
         console.error("Erro ao montar campos do cartão:", e);
     }
@@ -10766,13 +10847,24 @@ document.getElementById(
 "coupon"
 ).value.trim();
 
+const method =
+(document.querySelector('input[name="paymentMethod"]:checked') || {}).value || "pix";
+
+const cardDocType =
+(document.getElementById("cardDocType") || {}).value || "CPF";
+
+const cardDocNumber =
+((document.getElementById("cardDocNumber") || {}).value || "").replace(/\D/g, "");
+
+const documentoPagamento =
+method === "credit_card"
+    ? cardDocNumber
+    : cpf.replace(/\D/g, "");
+
 const msg =
 document.getElementById(
 "msg"
 );
-
-const method =
-(document.querySelector('input[name="paymentMethod"]:checked') || {}).value || "pix";
 
 const licensePlan =
 (document.querySelector('input[name="licensePlan"]:checked') || {}).value || "1_year";
@@ -10829,7 +10921,7 @@ return;
 }
 
 
-if(!cpf){
+if(!documentoPagamento){
 
 msg.textContent =
 "Informe CPF ou CNPJ.";
@@ -10840,7 +10932,11 @@ return;
 
 }
 
-if(!validarCpfCnpjIdx(cpf)){
+const documentoValido = method === "credit_card"
+    ? (cardDocType === "CNPJ" ? _validarCnpjIdx(cardDocNumber) : _validarCpfIdx(cardDocNumber))
+    : validarCpfCnpjIdx(documentoPagamento);
+
+if(!documentoValido){
 
 msg.textContent =
 "CPF ou CNPJ inválido.";
@@ -10901,7 +10997,7 @@ name:name,
 
 email:email,
 
-cpfCnpj:cpf,
+cpfCnpj:documentoPagamento,
 
 coupon,
 

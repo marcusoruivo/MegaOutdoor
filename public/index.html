@@ -7144,12 +7144,10 @@ function inicializarFormularioCartao(){
     try{
         limparCamposCartao();
         const estiloCampoCartao = {
-            base: {
-                color: "#fff",
-                fontSize: "16px",
-                fontFamily: "inherit",
-                "::placeholder": { color: "#a9a9b5", opacity: 1 }
-            }
+            color: "#fff",
+            fontSize: "16px",
+            fontFamily: "inherit",
+            placeholderColor: "#a9a9b5"
         };
         mpCardNumberField = mpSdk.fields.create("cardNumber", {placeholder: "Número do cartão", style: estiloCampoCartao});
         mpCardNumberField.mount("cardNumberContainer");
@@ -17759,7 +17757,13 @@ function alternarMetodoKit(){
 function inicializarCartaoKit(){
     if(!mpSdk || document.getElementById("kitCardNumberContainer")?.children.length) return;
     try{
-        kitCardNumberField = mpSdk.fields.create("cardNumber", { placeholder: "Número do cartão" });
+        const estiloCampoCartaoKit = {
+            color: "#fff",
+            fontSize: "16px",
+            fontFamily: "inherit",
+            placeholderColor: "#a9a9b5"
+        };
+        kitCardNumberField = mpSdk.fields.create("cardNumber", { placeholder: "Número do cartão", style: estiloCampoCartaoKit });
         kitCardNumberField.mount("kitCardNumberContainer");
         kitCardNumberField.on("binChange", async data => {
             const bin = data && data.bin;
@@ -17769,8 +17773,8 @@ function inicializarCartaoKit(){
                 kitCardPaymentMethodId = methods?.results?.[0]?.id || "";
             }catch(e){}
         });
-        mpSdk.fields.create("expirationDate", { placeholder: "MM/AA" }).mount("kitCardExpiryContainer");
-        mpSdk.fields.create("securityCode", { placeholder: "CVV" }).mount("kitCardCvcContainer");
+        mpSdk.fields.create("expirationDate", { placeholder: "MM/AA", style: estiloCampoCartaoKit }).mount("kitCardExpiryContainer");
+        mpSdk.fields.create("securityCode", { placeholder: "CVV", style: estiloCampoCartaoKit }).mount("kitCardCvcContainer");
     }catch(e){ moToast("Não foi possível carregar o formulário do cartão.", "err"); }
 }
 

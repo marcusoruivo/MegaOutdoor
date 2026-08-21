@@ -11849,7 +11849,7 @@ resize
 
 resize();
 
-posicionarMapaInicio();
+if(typeof posicionarMapaInicio === "function") posicionarMapaInicio();
 
 load();
 
@@ -19025,7 +19025,7 @@ async function carregarResumoGeral(){
         const resp = await fetch("/api/status");
         const data = await resp.json();
         const total = data.total || 1000000;
-        const vendidos = data.vendidos || 0;
+        const vendidos = data.sold || 0;
         const disponiveis = total - vendidos;
         const pctVendidos = ((vendidos / total) * 100);
 

@@ -7019,15 +7019,6 @@ const CARD_BRAND_LOGOS = Object.freeze({
     discover: { label: "Discover", src: "https://api.iconify.design/logos:discover.svg" }
 });
 
-const CARD_BRAND_PAYMENT_METHOD_IDS = Object.freeze({
-    visa: "visa",
-    mastercard: "master",
-    elo: "elo",
-    amex: "amex",
-    hipercard: "hipercard",
-    dinersclub: "diners",
-    discover: "discover"
-});
 
 const GENERIC_CARD_ICON =
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2' y='5' width='20' height='14' rx='2' fill='none' stroke='%23777' stroke-width='2'/%3E%3Cpath d='M2 9h20M6 15h4' stroke='%23777' stroke-width='2'/%3E%3C/svg%3E";
@@ -7120,12 +7111,14 @@ function limparCamposCartao(){
     mpCardBin = "";
     mpPaymentMethodId = "";
     mpIssuerId = "";
+    const installmentsField = document.getElementById("installments");
+    if(installmentsField) installmentsField.value = "1";
 }
 
 async function atualizarBandeiraCartao(bin){
     const localBrand = detectarBandeiraPorBin(bin);
     atualizarLogoBandeira(localBrand, bin);
-    mpPaymentMethodId = localBrand ? (CARD_BRAND_PAYMENT_METHOD_IDS[localBrand] || "") : "";
+    mpPaymentMethodId = "";
     mpIssuerId = "";
     if(!mpSdk || !bin || bin.length < 6) return;
     try{
@@ -10978,7 +10971,7 @@ if(method === "credit_card"){
             await atualizarBandeiraCartao(mpCardBin);
         }
         if(!mpPaymentMethodId){
-            throw new Error("Não foi possível identificar a bandeira do cartão. Digite novamente o número do cartão.");
+            throw new Error("N�o foi poss�vel confirmar este cart�o para pagamento. Tente outro cart�o ou PIX.");
         }
     }catch(e){
         msg.textContent = e.message;

@@ -2342,10 +2342,12 @@ function normalizarDadosComprador(body = {}) {
 
 /* Converte erros técnicos do Mercado Pago (ou internos) em mensagens
    amigáveis para o usuário final, preservando o log técnico. */
-function formatarErroPagamento(erro) {
+function formatarErroPagamento(erro, metodoPagamento = "pix") {
     const msg = (erro && erro.message) || String(erro);
     const tecnicas = [
-        { re: /properties? not supported/i, msg: "Não foi possível gerar o PIX agora. Tente novamente em alguns segundos." },
+        { re: /properties? not supported/i, msg: metodoPagamento === "credit_card"
+            ? "Não foi possível processar o cartão. Verifique os dados e tente novamente."
+            : "Não foi possível gerar o PIX agora. Tente novamente em alguns segundos." },
         { re: /X-Idempotency-Key/i, msg: "Erro de segurança na requisição. Tente novamente." },
         { re: /MERCADOPAGO_ACCESS_TOKEN/i, msg: "Pagamento temporariamente indisponível. Tente mais tarde." },
         { re: /token do cartão/i, msg: "Dados do cartão inválidos. Verifique e tente novamente." },
@@ -2614,9 +2616,6 @@ async function criarOrderMercadoPago({
     if (!isPix && cardToken) {
         paymentBody.payment_method.token = cardToken;
         paymentBody.payment_method.installments = Number(installments) || 1;
-        if (issuerId) {
-            paymentBody.payment_method.issuer_id = String(issuerId);
-        }
     }
 
     /* O Orders API do Mercado Pago aceita apenas email e identification
@@ -5171,7 +5170,12 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
         console.error("ERRO CHECKOUT:", mascararSensivel(error.message));
 
         res.status(500).json({
-            error: formatarErroPagamento(error)
+            error: formatarErroPagamento(
+                error,
+                req.body.paymentMethod === "card" || req.body.paymentMethod === "credit_card"
+                    ? "credit_card"
+                    : "pix"
+            )
         });
     }
 });

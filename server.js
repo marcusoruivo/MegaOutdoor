@@ -4939,6 +4939,17 @@ app.post("/api/checkout", authUsuario, async (req, res) => {
 
         } catch (error) {
 
+            console.error("[MP ORDER DEBUG SAFE]", {
+                status: error.status || 0,
+                code: error.code || "",
+                message: mascararSensivel(error.message || ""),
+                cause: Array.isArray(error.cause)
+                    ? error.cause.map(item => ({
+                        code: item.code || "",
+                        description: mascararSensivel(item.description || "")
+                    }))
+                    : []
+            });
             rollbackReserva();
             throw error;
         }

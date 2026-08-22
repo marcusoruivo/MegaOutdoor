@@ -7007,6 +7007,9 @@ let mpCardNumberField = null;
 let mpCardBin = "";
 let mpPaymentMethodId = "";
 let mpIssuerId = "";
+let mpInstallmentOptions = [];
+let mpInstallmentsReady = false;
+let mpCardRequestSeq = 0;
 let appConfig = { sandbox: false, allowTestMode: false };
 
 const CARD_BRAND_LOGOS = Object.freeze({
@@ -7111,19 +7114,69 @@ function limparCamposCartao(){
     mpCardBin = "";
     mpPaymentMethodId = "";
     mpIssuerId = "";
+    mpInstallmentOptions = [];
+    mpInstallmentsReady = false;
+    mpCardRequestSeq++;
     const installmentsField = document.getElementById("installments");
-    if(installmentsField) installmentsField.value = "1";
+    if(installmentsField){
+        installmentsField.innerHTML = '<option value="1">1x</option>';
+        installmentsField.value = "1";
+    }
+}
+
+async function atualizarParcelasCartao(paymentMethodId, bin, requestSeq){
+    if(!mpSdk || !paymentMethodId || !bin) return false;
+    const amount = (Number(valorCheckoutAtualCents || 0) / 100).toFixed(2);
+    try{
+        const result = await mpSdk.getInstallments({
+            amount,
+            bin,
+            paymentMethodId,
+            paymentTypeId: "credit_card"
+        });
+        if(requestSeq !== mpCardRequestSeq || mpCardBin !== bin) return false;
+        const options = result && result[0] && Array.isArray(result[0].payer_costs)
+            ? result[0].payer_costs
+            : [];
+        mpInstallmentOptions = options;
+        mpInstallmentsReady = options.some(option => Number(option.installments) === 1);
+        const installmentsField = document.getElementById("installments");
+        if(installmentsField){
+            installmentsField.innerHTML = options
+                .map(option => '<option value="' + Number(option.installments) + '">' +
+                    Number(option.installments) + "x" +
+                    (option.recommended_message ? " — " + option.recommended_message : "") +
+                    "</option>")
+                .join("");
+            if(mpInstallmentsReady) installmentsField.value = "1";
+        }
+        return mpInstallmentsReady;
+    }catch(e){
+        if(requestSeq === mpCardRequestSeq){
+            mpInstallmentOptions = [];
+            mpInstallmentsReady = false;
+            const installmentsField = document.getElementById("installments");
+            if(installmentsField) installmentsField.innerHTML = "";
+        }
+        console.error("Erro ao consultar parcelas do cart�o:", e);
+        return false;
+    }
 }
 
 async function atualizarBandeiraCartao(bin){
+    const requestSeq = ++mpCardRequestSeq;
     const localBrand = detectarBandeiraPorBin(bin);
     atualizarLogoBandeira(localBrand, bin);
     mpPaymentMethodId = "";
     mpIssuerId = "";
+    mpInstallmentOptions = [];
+    mpInstallmentsReady = false;
+    const installmentsField = document.getElementById("installments");
+    if(installmentsField) installmentsField.innerHTML = "";
     if(!mpSdk || !bin || bin.length < 6) return;
     try{
         const methods = await mpSdk.getPaymentMethods({ bin });
-        if(mpCardBin !== bin) return;
+        if(requestSeq !== mpCardRequestSeq || mpCardBin !== bin) return;
         if(methods && methods.results && methods.results.length){
             const pm = methods.results[0];
             atualizarLogoBandeira(pm.id, bin);
@@ -7133,11 +7186,13 @@ async function atualizarBandeiraCartao(bin){
                 mpIssuerId = String(pm.issuer.id);
             } else if(pm.additional_info_needed && pm.additional_info_needed.indexOf("issuer_id") >= 0){
                 const issuers = await mpSdk.getIssuers({ paymentMethodId: pm.id, bin });
+                if(requestSeq !== mpCardRequestSeq || mpCardBin !== bin) return;
                 if(issuers && issuers.results && issuers.results.length){
                     const def = issuers.results.find(i => i.default) || issuers.results[0];
                     mpIssuerId = String(def.id || "");
                 }
             }
+            await atualizarParcelasCartao(pm.id, bin, requestSeq);
         }
     }catch(e){
         console.error("Erro ao consultar bandeira do cartão:", e);
@@ -10614,6 +10669,7 @@ function renderResumoCheckout() {
     
     const valorBaseComDescontoIndicacao = valorBaseCents - descontoIndicacaoCents;
     const valorFinalCents = valorBaseComDescontoIndicacao + lic.feeCents;
+    valorCheckoutAtualCents = valorFinalCents;
     const totalSemDescontoCents = lic.baseAmountCents + lic.feeCents;
     const totalSemDescontoIndicacao = totalSemDescontoCents - descontoIndicacaoCents;
 
@@ -10972,6 +11028,10 @@ if(method === "credit_card"){
         }
         if(!mpPaymentMethodId){
             throw new Error("N�o foi poss�vel confirmar este cart�o para pagamento. Tente outro cart�o ou PIX.");
+        }
+        const installmentsValue = parseInt(document.getElementById("installments").value, 10) || 0;
+        if(!mpInstallmentsReady || !mpInstallmentOptions.some(option => Number(option.installments) === installmentsValue)){
+            throw new Error("A parcela selecionada n�o est� dispon�vel para este cart�o. Tente outro cart�o ou PIX.");
         }
     }catch(e){
         msg.textContent = e.message;

@@ -7899,6 +7899,18 @@ return ehMeuEspaco(id);
 
 }
 
+function idsDoGrupoMesclado(id){
+  const s = db[Number(id)];
+  if(!s || !s.mergeGroupId) return [Number(id)];
+  return Object.values(db)
+    .filter(x => x && x.mergeGroupId === s.mergeGroupId)
+    .map(x => Number(x.id));
+}
+
+function ehMeuGrupoMesclado(id){
+  return idsDoGrupoMesclado(id).every(ehMeuEspaco);
+}
+
 function atualizarSelecaoMesclagem(){
   const btn = document.getElementById("btnMesclarMapa");
   const cancelar = document.getElementById("btnCancelarMesclagem");
@@ -8734,6 +8746,16 @@ T,
 T
 );
 
+}
+
+if(mergeMode && mergeSel.has(id)){
+  ctx.save();
+  ctx.fillStyle = "rgba(255,212,0,.22)";
+  ctx.fillRect(px + 2, py + 2, T - 4, T - 4);
+  ctx.strokeStyle = "#ffd400";
+  ctx.lineWidth = 6 / sc;
+  ctx.strokeRect(px + 1, py + 1, T - 2, T - 2);
+  ctx.restore();
 }
 
 if(
@@ -12743,7 +12765,7 @@ function editarFoto(numero){
         return;
     }
 
-    if(!ehMeuEspaco(id)){
+    if(!ehMeuGrupoMesclado(id)){
         alert("Você não é o proprietário deste espaço.");
         return;
     }
@@ -12810,7 +12832,7 @@ function editarExtensao(numero){
         return;
     }
 
-    if(!ehMeuEspaco(id)){
+    if(!ehMeuGrupoMesclado(id)){
         alert("Você não é o proprietário deste espaço.");
         return;
     }

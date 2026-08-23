@@ -4500,7 +4500,7 @@ LIMPAR
                     <button type="button" class="l-map-control-btn" onclick="zoom(0.83)" title="Afastar" aria-label="Diminuir zoom">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     </button>
-                     <span class="l-map-zoom-value" id="zoomLevel">35%</span>
+                     <span class="l-map-zoom-value" id="zoomLevel">15%</span>
                     <button type="button" class="l-map-control-btn" onclick="zoom(1.2)" title="Aproximar" aria-label="Aumentar zoom">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     </button>
@@ -6001,7 +6001,7 @@ const area =
 document.getElementById("area");
 
 
-let sc = .35;
+let sc = .15;
 atualizarZoomVisual();
 
 /* =========================
@@ -8954,36 +8954,11 @@ function iniciarVista(){
 }
 
 function setInitialMapViewport(){
-
-    const blocos = meusBlocos();
-
-    const temBloco = blocos.length > 0;
-
-    const alvo = temBloco ? blocos[0][0] : 1;
-
-    if(temBloco){
-        sc = 0.8;
-        atualizarZoomVisual();
-    }
-
-    const indice = alvo - 1;
-
-    const coluna = indice % C;
-
-    const linha = Math.floor(indice / C);
-
-    if(temBloco){
-        x = canvas.width / 2 - (coluna * T + T / 2) * sc;
-        y = canvas.height / 2 - (linha * T + T / 2) * sc;
-    }else{
-        /* A primeira célula fica junto ao canto inicial do mural,
-           em vez de começar no centro do milhão de espaços. */
-        sc = .35;
-        atualizarZoomVisual();
-        const margem = Math.max(18, Math.min(64, Math.min(canvas.width, canvas.height) * .08));
-        x = margem - (coluna * T + T / 2) * sc;
-        y = margem - (linha * T + T / 2) * sc;
-    }
+    sc = .15;
+    atualizarZoomVisual();
+    const margem = Math.max(18, Math.min(64, Math.min(canvas.width, canvas.height) * .08));
+    x = margem;
+    y = margem;
 
 }
 
@@ -9270,9 +9245,10 @@ toggleOfferMode();
 }
 
 function posicionarMapaInicio(){
-    sc = .35;
-    x = 0;
-    y = 0;
+    sc = .15;
+    const margem = Math.max(18, Math.min(64, Math.min(canvas.width, canvas.height) * .08));
+    x = margem;
+    y = margem;
     atualizarZoomVisual();
     draw();
 }

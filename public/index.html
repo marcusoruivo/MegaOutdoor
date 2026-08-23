@@ -4495,6 +4495,7 @@ LIMPAR
                     <button type="button" class="l-map-area-btn" id="btnArea" onclick="toggleSelectArea()" title="Selecionar vários blocos de uma vez">▦ SELECIONAR ÁREA</button>
                     <span class="area-selection-counter" id="areaSelectionCounter">0 espaços</span>
                     <button type="button" class="l-map-area-btn" id="btnMesclarMapa" onclick="confirmarMesclagem()" style="display:none;">MESCLAR BLOCOS</button>
+                    <button type="button" class="l-map-area-btn" id="btnSelecionarAreaMesclagem" onclick="alternarSelecaoPorArea()">SELECIONAR POR ÁREA</button>
                     <button type="button" class="l-map-area-btn" id="btnCancelarMesclagem" onclick="cancelarMesclagem()" style="display:none;">CANCELAR</button>
                     <button type="button" class="l-map-control-btn" onclick="zoom(0.83)" title="Afastar" aria-label="Diminuir zoom">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -7914,15 +7915,44 @@ function ehMeuGrupoMesclado(id){
   return idsDoGrupoMesclado(id).every(ehMeuEspaco);
 }
 
+function dadosGrupoMesclado(id){
+  const membro = db[Number(id)];
+  if(!membro || !membro.mergeGroupId) return {ids: [Number(id)], principal: membro};
+  const ids = idsDoGrupoMesclado(id);
+  const principal = ids.map(x => db[x]).find(x => x && x.image && x.status === "published")
+    || ids.map(x => db[x]).find(x => x && x.image)
+    || membro;
+  return {ids, principal};
+}
+
 function atualizarSelecaoMesclagem(){
   const btn = document.getElementById("btnMesclarMapa");
+  const areaBtn = document.getElementById("btnSelecionarAreaMesclagem");
   const cancelar = document.getElementById("btnCancelarMesclagem");
   if(btn){
     btn.style.display = mergeMode && mergeSel.size >= 2 ? "inline-flex" : "none";
     btn.textContent = "MESCLAR BLOCOS (" + mergeSel.size + ")";
   }
+  if(areaBtn){
+    areaBtn.classList.toggle("active", mergeAreaMode);
+    areaBtn.textContent = mergeAreaMode ? "CANCELAR SELEÇÃO POR ÁREA" : "SELECIONAR POR ÁREA";
+  }
+  const counter = document.getElementById("areaSelectionCounter");
+  if(counter && mergeMode){
+    counter.style.display = mergeSel.size ? "inline-flex" : "none";
+    counter.textContent = mergeSel.size + " espaços";
+  }else if(counter && !mergeMode){
+    counter.style.display = "none";
+  }
   if(cancelar) cancelar.style.display = mergeMode ? "inline-flex" : "none";
   draw();
+}
+
+function alternarSelecaoPorArea(){
+  mergeMode = true;
+  mergeAreaMode = !mergeAreaMode;
+  rectDrag = false;
+  atualizarSelecaoMesclagem();
 }
 
 function iniciarMesclagem(numero){
@@ -7937,6 +7967,7 @@ function iniciarMesclagem(numero){
 
 function cancelarMesclagem(){
   mergeMode = false;
+  mergeAreaMode = false;
   mergeSel.clear();
   atualizarSelecaoMesclagem();
 }
@@ -7989,6 +8020,7 @@ let offerMode = false;
 let offerSel = new Set();
 let mergeMode = false;
 let mergeSel = new Set();
+let mergeAreaMode = false;
 let currentOfferIds = [];
 let rectDrag = false;
 let rectX1 = 0;
@@ -8040,7 +8072,11 @@ draw();
 }
 function mostrarInfoEspaco(numero){
 
-  const vendido = !!db[numero];
+  const grupo = dadosGrupoMesclado(numero);
+  const s = grupo.principal;
+  const areaMesclada = grupo.ids.length > 1;
+  const donoAtual = areaMesclada ? ehMeuGrupoMesclado(numero) : minhaPropriedade(numero);
+  const vendido = !!s;
 
   let painel = document.getElementById("spaceInfo");
 
@@ -8088,13 +8124,13 @@ function mostrarInfoEspaco(numero){
           Este espaço não está disponível para compra direta.
         </div>
         ${
-          db[numero].link
+          s.link
           ? `
             <div style="font-size:11px;color:#888;margin-top:10px;letter-spacing:1px;">
               LINK DO SITE
             </div>
             <div style="font-size:13px;color:#5aa2ff;word-break:break-all;margin:2px 0 6px;">
-              ${escStr(db[numero].link)}
+              ${escStr(s.link)}
             </div>
             <button
               onclick="abrirLinkDoEspaco(${numero})"
@@ -8116,7 +8152,7 @@ function mostrarInfoEspaco(numero){
           : ""
         }
         ${
-          minhaPropriedade(numero)
+          (areaMesclada ? ehMeuGrupoMesclado(numero) : minhaPropriedade(numero))
           ? `
             <div style="font-size:12px;color:#45d66f;margin-top:8px;">
               ✅ Este espaço é seu.
@@ -8154,8 +8190,8 @@ function mostrarInfoEspaco(numero){
               🌐 EDITAR LINK
             </button>
           `
-          : db[numero] &&
-            db[numero].status === "published"
+          : s &&
+            s.status === "published"
             ? `
             <button
               onclick="abrirOferta(${numero})"
@@ -8228,7 +8264,10 @@ function fecharInfoEspaco(){
 
 function mostrarDonoEspaco(numero){
 
-  const s = db[numero];
+  const grupo = dadosGrupoMesclado(numero);
+  const s = grupo.principal;
+  const areaMesclada = grupo.ids.length > 1;
+  const donoAtual = areaMesclada ? ehMeuGrupoMesclado(numero) : minhaPropriedade(numero);
 
   if(!s)return;
 
@@ -8236,7 +8275,7 @@ function mostrarDonoEspaco(numero){
      (CORREÇÃO 7). */
   const donoTitulo = document.getElementById("donoTitulo");
   if(donoTitulo){
-    if(minhaPropriedade(numero)){
+    if(donoAtual){
       donoTitulo.textContent = "✅ MEU ESPAÇO";
       donoTitulo.style.color = "#45d66f";
     }else{
@@ -8289,10 +8328,10 @@ function mostrarDonoEspaco(numero){
     nomeEl.textContent =
       titulo || nome || "Proprietário";
 
-    if(minhaPropriedade(numero)){
+    if(donoAtual){
 
       const temVizinhos =
-        meusEspacosDoDono(numero).length > 1;
+        areaMesclada || meusEspacosDoDono(numero).length > 1;
 
       acoesEl.innerHTML =
         '<div style="color:#45d66f;font-weight:700;">' +
@@ -8338,7 +8377,7 @@ function mostrarDonoEspaco(numero){
   }else{
 
     statusEl.textContent =
-      minhaPropriedade(numero)
+      donoAtual
       ? "Aguardando publicação"
       : "Vendido";
 
@@ -8346,7 +8385,7 @@ function mostrarDonoEspaco(numero){
       titulo || nome || "Proprietário";
 
     acoesEl.innerHTML =
-      minhaPropriedade(numero)
+      donoAtual
       ? '<div style="color:#45d66f;font-weight:700;">' +
           '✅ Este espaço é seu.</div>' +
         '<div style="font-size:13px;color:#aaa;margin-top:6px;">' +
@@ -8368,7 +8407,7 @@ function mostrarDonoEspaco(numero){
 
 function visualizarAnuncio(numero){
 
-  const s = db[numero];
+  const s = dadosGrupoMesclado(numero).principal;
 
   if(!s) return;
 
@@ -8486,6 +8525,8 @@ ctx.translate(x,y);
 
 ctx.scale(sc,sc);
 
+const gruposDesenhados = new Set();
+
 
 let l =
 Math.max(
@@ -8542,7 +8583,8 @@ row*T;
 const v =
 db[id];
 const semGrade = !!(v && v.status === "published");
-const margemImagem = semGrade ? 0 : 1;
+const imagemMesclada = !!(v && v.displayMode === "extended" && Array.isArray(v.imageGroupSpaces) && v.imageGroupSpaces.length > 1);
+const margemImagem = imagemMesclada || semGrade ? 0 : 1;
 
 
 let extCompleto = false;
@@ -8601,56 +8643,33 @@ if(
         const colunasGrupo =
             maxColuna - minColuna + 1;
 
-        // Confirma que os espaços formam um bloco completo
-        const grupoCompleto =
-            grupo.length ===
-            linhasGrupo * colunasGrupo;
-
         if(grupo.length > 1){
 
             extCompleto = true;
+            const chaveGrupo = grupo.slice().sort((a, b) => a - b).join(",");
 
-            // Desenha a fatia da imagem
-            // correspondente a esta célula,
-            // para a imagem não sumir ao dar zoom
-            // ou rolar para fora do primeiro espaço
-            const indice =
-                id - 1;
+            if(!gruposDesenhados.has(chaveGrupo)){
+                gruposDesenhados.add(chaveGrupo);
+                const img = imgs[id];
 
-            const linha =
-                Math.floor(indice / C);
-
-            const coluna =
-                indice % C;
-
-            const img =
-                imgs[id];
-
-            const sw =
-                img.naturalWidth /
-                colunasGrupo;
-
-            const sh =
-                img.naturalHeight /
-                linhasGrupo;
-
-            const sx =
-                (coluna - minColuna) * sw;
-
-            const sy =
-                (linha - minLinha) * sh;
-
-            ctx.drawImage(
-                img,
-                sx,
-                sy,
-                sw,
-                sh,
-                px + margemImagem,
-                py + margemImagem,
-                T - margemImagem * 2,
-                T - margemImagem * 2
-            );
+                ctx.save();
+                ctx.beginPath();
+                for(const membro of grupo){
+                    const indiceMembro = membro - 1;
+                    const linhaMembro = Math.floor(indiceMembro / C);
+                    const colunaMembro = indiceMembro % C;
+                    ctx.rect(colunaMembro * T, linhaMembro * T, T, T);
+                }
+                ctx.clip();
+                ctx.drawImage(
+                    img,
+                    minColuna * T,
+                    minLinha * T,
+                    colunasGrupo * T,
+                    linhasGrupo * T
+                );
+                ctx.restore();
+            }
 
 
     }else{
@@ -9623,6 +9642,38 @@ tt.style.top = Math.max(8, cy - tt.offsetHeight - 14) + "px";
 
 }
 
+function finalizarSelecaoAreaMesclagem(){
+  const left = Math.min(rectX1, rectX2);
+  const right = Math.max(rectX1, rectX2);
+  const top = Math.min(rectY1, rectY2);
+  const bottom = Math.max(rectY1, rectY2);
+  if(right - left < 2 || bottom - top < 2){
+    atualizarSelecaoMesclagem();
+    return;
+  }
+
+  const colMin = Math.max(0, Math.floor((left - x) / (sc * T)) - 1);
+  const colMax = Math.min(C - 1, Math.ceil((right - x) / (sc * T)) + 1);
+  const rowMin = Math.max(0, Math.floor((top - y) / (sc * T)) - 1);
+  const rowMax = Math.min(C - 1, Math.ceil((bottom - y) / (sc * T)) + 1);
+
+  for(let row = rowMin; row <= rowMax; row++){
+    for(let col = colMin; col <= colMax; col++){
+      const id = row * C + col + 1;
+      const space = db[id];
+      if(!space || !["paid", "published"].includes(space.status) || !ehMeuEspaco(id)) continue;
+      const blockLeft = x + col * T * sc;
+      const blockTop = y + row * T * sc;
+      const blockRight = blockLeft + T * sc;
+      const blockBottom = blockTop + T * sc;
+      if(blockLeft < right && blockRight > left && blockTop < bottom && blockBottom > top){
+        mergeSel.add(id);
+      }
+    }
+  }
+  atualizarSelecaoMesclagem();
+}
+
 function finalizarSelecaoOferta(){
 
 const left =
@@ -9997,7 +10048,7 @@ if(e.target && e.target.closest && e.target.closest(".busca-outdoor")){
 return;
 }
 
-if(offerMode || selectAreaMode){
+if(mergeAreaMode || offerMode || selectAreaMode){
 
 rectDrag=true;
 
@@ -10057,10 +10108,9 @@ rectY2=pos.y;
 
 moved=true;
 
-mostrarContagemDrag(
-e.clientX,
-e.clientY
-);
+ if(!mergeAreaMode){
+   mostrarContagemDrag(e.clientX, e.clientY);
+ }
 
 draw();
 
@@ -10141,8 +10191,10 @@ rectDrag=false;
 
 esconderContagemDrag();
 
-if(offerMode){
-finalizarSelecaoOferta();
+    if(mergeAreaMode){
+        finalizarSelecaoAreaMesclagem();
+    }else if(offerMode){
+        finalizarSelecaoOferta();
 }else{
 finalizarSelecaoArea();
 }

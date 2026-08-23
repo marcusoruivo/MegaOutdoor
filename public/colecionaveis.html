@@ -3172,6 +3172,98 @@ async function verPerfilColecionador(usuarioId){
         document.getElementById("modalOverlay").classList.remove("hidden");
     } catch(e) { toast(e.message, "erro"); }
 }
+let albumPublicoAtual = null;
+let albumPublicoCards = new Map();
+let albumPublicoSelecionados = new Set();
+
+function alternarOfertaAlbumPublico(cardId){
+    const id = Number(cardId);
+    const card = albumPublicoCards.get(id);
+    if(!card || card.disponivel <= 0) return;
+    if(albumPublicoSelecionados.has(id)) albumPublicoSelecionados.delete(id);
+    else albumPublicoSelecionados.add(id);
+    renderAlbumPublicoSelecao();
+}
+
+function renderAlbumPublicoSelecao(){
+    const total = document.getElementById("albumPublicoSelecionados");
+    const btn = document.getElementById("btnOfertaAlbumPublico");
+    if(total) total.textContent = albumPublicoSelecionados.size + " selecionada(s)";
+    if(btn) btn.disabled = albumPublicoSelecionados.size === 0;
+    document.querySelectorAll("#albumPublicoGrid [data-public-card]").forEach(el => {
+        el.classList.toggle("selecionada", albumPublicoSelecionados.has(Number(el.dataset.publicCard)));
+    });
+}
+
+async function fazerOfertaAlbumPublico(){
+    if(!exigirLogin() || !albumPublicoAtual || !albumPublicoSelecionados.size) return;
+    const ofertas = [];
+    for(const id of albumPublicoSelecionados){
+        const card = albumPublicoCards.get(id);
+        const valor = prompt("Sua oferta por #" + String(card.number).padStart(3,"0") + " " + card.name + " (R$):", "1.00");
+        if(valor === null) return;
+        const amount = Number(String(valor).replace(",", "."));
+        if(!isFinite(amount) || amount <= 0) return toast("Informe valores válidos.", "erro");
+        ofertas.push({cardId: id, offereeId: albumPublicoAtual.id, quantidade: 1, valor: amount, mensagem: ""});
+    }
+    try{
+        for(const oferta of ofertas) await apiPost("/api/colecionaveis/offers", oferta);
+        toast(ofertas.length + " oferta(s) enviada(s)!", "ok");
+        albumPublicoSelecionados.clear();
+        renderAlbumPublicoSelecao();
+        carregarOfertas();
+    }catch(e){ toast(msgErro(e), "erro"); }
+}
+
+function albumPublicoCardHtml(card, visitanteQuantidade){
+    const possui = Number(card.quantidade || 0);
+    const repetidas = Math.max(0, possui - 1);
+    const visitantePossui = Number(visitanteQuantidade || 0);
+    const negociavel = repetidas > 0 && visitantePossui === 0;
+    const classe = albumPublicoSelecionados.has(Number(card.id)) ? " selecionada" : "";
+    return '<article class="completa-card album-publico-card' + classe + '" data-public-card="' + Number(card.id) + '"' + (negociavel ? ' onclick="alternarOfertaAlbumPublico(' + Number(card.id) + ')"' : '') + '>' +
+        '<div class="completa-arte">' + (card.image_url ? '<img src="' + esc(card.image_url) + '" alt="' + esc(card.name) + '" loading="lazy" onerror="this.style.display=\'none\'">' : '<span style="font-size:42px">' + emojiRaridade(card.rarity) + '</span>') + '</div>' +
+        '<div class="completa-info"><div class="completa-num">#' + String(card.number).padStart(3,"0") + ' · ' + esc(nomeRaridade(card.rarity)) + '</div>' +
+        '<div class="completa-nome">' + esc(card.name) + '</div><div class="completa-meta">📍 ' + esc(card.habitat || "Região não informada") + '<br>Possui: <b>' + possui + 'x</b> · Repetidas: <b>' + repetidas + '</b></div>' +
+        '<div style="margin-top:5px;font-size:11px;color:' + (visitantePossui > 0 ? '#45d66f' : '#ffd400') + '">' + (visitantePossui > 0 ? '✅ VOCÊ JÁ POSSUI' : '⭐ VOCÊ NÃO POSSUI') + '</div>' +
+        (negociavel ? '<div style="margin-top:4px;font-size:11px;color:#5aa2ff;font-weight:800">🤝 DISPONÍVEL PARA NEGOCIAÇÃO</div>' : '') + '</div></article>';
+}
+
+async function abrirAlbumPublicoCompleto(usuarioId){
+    try{
+        const respostas = await Promise.all([
+            apiGet("/api/colecionaveis/colecionador/" + encodeURIComponent(usuarioId)),
+            apiGet("/api/colecionaveis/info")
+        ]);
+        const perfil = respostas[0].perfil || {};
+        const dono = new Map((respostas[0].cards || []).map(c => [Number(c.id), c]));
+        let visitante = new Map();
+        if(minhaConta && minhaConta.token){
+            try{
+                const meu = await apiGet("/api/colecionaveis/meu-album");
+                visitante = new Map((meu.cards || []).map(c => [Number(c.id), Number(c.quantidade || 0)]));
+            }catch(e){}
+        }
+        const cards = (respostas[1].cards || []).map(c => {
+            const ownerCard = dono.get(Number(c.id));
+            return Object.assign({}, c, { quantidade: ownerCard ? Number(ownerCard.quantity ?? ownerCard.quantidade ?? 0) : 0 });
+        });
+        albumPublicoAtual = perfil;
+        albumPublicoCards = new Map(cards.map(c => [Number(c.id), Object.assign({}, c, { disponivel: Math.max(0, Number(c.quantidade || 0) - 1) })]));
+        albumPublicoSelecionados.clear();
+        const diferentes = cards.filter(c => Number(c.quantidade || 0) > 0).length;
+        const unidades = cards.reduce((sum, c) => sum + Number(c.quantidade || 0), 0);
+        const repetidas = cards.reduce((sum, c) => sum + Math.max(0, Number(c.quantidade || 0) - 1), 0);
+        document.getElementById("modalBody").innerHTML = '<h2>📖 ÁLBUM DE ' + esc(perfil.nome || "COLECIONADOR") + '</h2>' +
+            '<div class="perfil-stats" style="margin:12px 0"><div class="stat-box"><div class="v">' + diferentes + '/100</div><div class="l">ESPÉCIES</div></div><div class="stat-box"><div class="v">' + unidades + '</div><div class="l">UNIDADES</div></div><div class="stat-box"><div class="v">' + repetidas + '</div><div class="l">REPETIDAS</div></div></div>' +
+            '<div class="desc">⭐ Você não possui · 🤝 Disponível para negociação · ✅ Você já possui</div>' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><span id="albumPublicoSelecionados" class="desc">0 selecionada(s)</span><button id="btnOfertaAlbumPublico" class="btn btn-laranja" disabled onclick="fazerOfertaAlbumPublico()">🤝 FAZER OFERTA</button><button class="btn btn-ghost" onclick="fecharModal()">FECHAR</button></div>' +
+            '<div id="albumPublicoGrid" class="completa-grid">' + cards.map(c => albumPublicoCardHtml(c, visitante.get(Number(c.id)) || 0)).join("") + '</div>';
+        document.getElementById("modalOverlay").classList.remove("hidden");
+        renderAlbumPublicoSelecao();
+    }catch(e){ toast(msgErro(e), "erro"); }
+}
+
 async function abrirAlbunsPublicos(){
     try{
         const d = await fetch("/api/perfis/publicos?limite=50", { cache:"no-store" }).then(r => r.json());
@@ -3180,7 +3272,7 @@ async function abrirAlbunsPublicos(){
             '<div class="publicos-grid">' + (perfis.length ? perfis.map(p =>
                 '<div class="publico-card"><h3>' + esc(p.nome || p.apelido || "Colecionador") + (p.verificado ? '<span class="publico-badge" title="Verificado">✓</span>' : '') + '</h3>' +
                 '<p>📖 ' + Number(p.diferentes || 0) + '/100 espécies descobertas</p>' +
-                '<button class="btn btn-amarelo" onclick="fecharModal();verPerfilColecionador(' + Number(p.id) + ')">👀 VER ÁLBUM</button></div>'
+                '<button class="btn btn-amarelo" onclick="fecharModal();abrirAlbumPublicoCompleto(' + Number(p.id) + ')">👀 VER ÁLBUM</button></div>'
             ).join('') : '<div class="publico-card">Nenhum álbum público encontrado.</div>') + '</div>';
         document.getElementById("modalBody").innerHTML = html;
         document.getElementById("modalOverlay").classList.remove("hidden");

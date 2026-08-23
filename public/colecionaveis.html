@@ -3751,6 +3751,7 @@ async function iniciarPagamento(tipo, dados, modoTeste){
 
 function mostrarQr(d, tipo){
     const corpo = document.getElementById("modalBody");
+    const valor = d.valor ?? d.total ?? d.preco ?? 0;
     let html = '<div class="num">✅ PEDIDO CRIADO</div>';
     html += '<h2>' + (tipo === "pack" ? "Pacote reservado" : tipo === "mercado" ? "Compra reservada" : tipo === "auction" ? "Lance reservado" : tipo === "oferta" ? "Oferta reservada" : tipo === "album" ? "Álbum reservado" : tipo === "albumOferta" ? "Oferta de álbum reservada" : "Diferença de troca") + '</h2>';
     html += '<div class="desc" style="text-align:center;margin-bottom:10px;">' +
@@ -3764,9 +3765,16 @@ function mostrarQr(d, tipo){
     } else {
         html += '<div class="desc">Pagamento gerado! Use o link abaixo para concluir:</div>';
     }
-    html += '<div style="background:#0f0f16;border:1px solid var(--borda);border-radius:10px;padding:12px;font-size:12px;word-break:break-all;margin:10px 0">' +
-        esc(d.payload || (d.ticketUrl || d.paymentId || "—")) + '</div>';
-    html += '<div class="desc">Valor: <b style="color:var(--amarelo)">' + fmtR$(d.valor) + '</b> • Pedido: ' + esc(d.externalReference || d.orderId) + '</div>';
+    if(d.payload){
+        html += '<div class="desc" style="margin-top:12px">PIX COPIA E COLA</div>';
+        html += '<div id="pixCopiaCola" style="background:#0f0f16;border:1px solid var(--borda);border-radius:10px;padding:12px;font-size:12px;word-break:break-all;margin:6px 0 8px">' + esc(d.payload) + '</div>';
+        html += '<button class="btn btn-ghost" style="width:100%" onclick="copiarPixPagamento()">📋 COPIAR PIX</button>';
+    }
+    if(d.ticketUrl){
+        html += '<div class="desc" style="text-align:center;margin-top:14px">──── ou ────</div>';
+        html += '<a class="btn btn-ghost" style="display:block;text-align:center;margin-top:8px" href="' + esc(d.ticketUrl) + '" target="_blank" rel="noopener">ABRIR CHECKOUT MERCADO PAGO</a>';
+    }
+    html += '<div class="desc" style="margin-top:12px">Valor: <b style="color:var(--amarelo)">' + fmtR$(valor) + '</b> • Pedido: ' + esc(d.externalReference || d.orderId) + '</div>';
     html += '<div style="display:flex;gap:8px;margin-top:14px">' +
         '<button class="btn btn-amarelo" onclick="iniciarPolling(\'' + esc(d.orderId) + '\',\'' + esc(tipo || "") + '\')">JÁ PAGUEI (Verificar agora)</button>' +
         '<button class="btn btn-ghost" onclick="fecharModal()">Fechar</button>' +
@@ -3793,6 +3801,12 @@ async function abrirPacoteConfirmadoAutomaticamente(d){
         const aberto = await apiPost(rota, {});
         return aberto?.pacote?.figurinhas?.length ? aberto.pacote : null;
     }catch(e){ return null; }
+}
+
+function copiarPixPagamento(){
+    const el = document.getElementById("pixCopiaCola");
+    if(!el) return;
+    navigator.clipboard.writeText(el.textContent).then(() => toast("PIX copiado.", "ok")).catch(() => toast("N�o foi poss�vel copiar o PIX.", "erro"));
 }
 async function iniciarPolling(orderId, tipo){
     if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
@@ -3827,6 +3841,10 @@ async function iniciarPolling(orderId, tipo){
                 }
                 return;
             }
+            if (["rejected", "cancelled", "refunded"].includes(String(d.status || "").toLowerCase())) {
+                toast("O pagamento não foi aprovado. Nenhuma figurinha foi entregue.", "erro");
+                return;
+            }
         } catch(e){}
         pollTimer = setTimeout(checar, 4000);
     };
@@ -3859,6 +3877,10 @@ function iniciarPollingAutomatico(orderId, tipo){
                     carregarLeiloes();
                     carregarOfertas();
                 }
+                return;
+            }
+            if (["rejected", "cancelled", "refunded"].includes(String(d.status || "").toLowerCase())) {
+                toast("O pagamento não foi aprovado. Nenhuma figurinha foi entregue.", "erro");
                 return;
             }
         } catch(e){}

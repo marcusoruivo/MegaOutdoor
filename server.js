@@ -2473,10 +2473,43 @@ async function mercadoPagoRequestComToken(accessToken, endpoint, options = {}) {
 /* Checkout Pro Marketplace 1:1. A preferência é criada com o access token
    OAuth do vendedor; marketplace_fee é enviado ao gateway, não é repasse interno. */
 async function criarOrderMercadoPagoSplit({
-    sellerAccount, idempotencyKey, externalReference, value, description, customer, platformFee
+    sellerAccount, idempotencyKey, externalReference, value, description, customer, platformFee,
+    paymentMethod = "credit_card", gerarPix = false
 }) {
     if (!MERCADOPAGO_MARKETPLACE_SPLIT_ENABLED) throw new Error("Split Marketplace desativado.");
     if (!sellerAccount || !sellerAccount.accessToken) throw new Error("Conta Mercado Pago do vendedor não conectada.");
+    if (gerarPix && paymentMethod === "pix") {
+        const pagamento = await mercadoPagoRequestComToken(sellerAccount.accessToken, "/v1/payments", {
+            method: "POST",
+            headers: { "X-Idempotency-Key": String(idempotencyKey || externalReference) },
+            body: JSON.stringify({
+                transaction_amount: Number(value),
+                description: description || "Compra no marketplace",
+                payment_method_id: "pix",
+                external_reference: String(externalReference),
+                marketplace_fee: Number(platformFee),
+                payer: {
+                    email: customer && customer.email ? String(customer.email).trim() : undefined,
+                    ...(customer && customer.taxID && identificacaoMercadoPago(customer.taxID)
+                        ? { identification: identificacaoMercadoPago(customer.taxID) }
+                        : {})
+                },
+                notification_url: process.env.MERCADOPAGO_WEBHOOK_URL || undefined
+            })
+        });
+        const transactionData = pagamento.point_of_interaction?.transaction_data || {};
+        return {
+            orderId: String(pagamento.id),
+            externalReference: String(externalReference),
+            paymentId: String(pagamento.id),
+            paymentStatus: pagamento.status || "pending",
+            ticketUrl: transactionData.ticket_url || "",
+            qrCodeBase64: transactionData.qr_code_base64 || "",
+            payload: transactionData.qr_code || "",
+            marketplaceFee: Number(platformFee),
+            raw: pagamento
+        };
+    }
     const preference = await mercadoPagoRequestComToken(sellerAccount.accessToken, "/checkout/preferences", {
         method: "POST",
         headers: { "X-Idempotency-Key": String(idempotencyKey || externalReference) },

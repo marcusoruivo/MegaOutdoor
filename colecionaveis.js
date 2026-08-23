@@ -3241,16 +3241,33 @@ module.exports = function criarModuloColecionaveis(deps) {
             }
 
             const splitOrder = await pg().query(
-                `SELECT status FROM sticker_orders
+                `SELECT status, mp_order_id, order_id, total, offer_id FROM sticker_orders
                   WHERE (mp_order_id = $1 OR order_id = $1)
                     AND buyer_id = $2 AND payment_type = 'STICKER_MARKETPLACE_SPLIT'
                   LIMIT 1`,
                 [orderId, req.usuario.id]
             );
             if (splitOrder.rows[0]) {
+                const pedidoSplit = splitOrder.rows[0];
+                const mpPaymentId = String(pedidoSplit.mp_order_id || "").trim();
+                let resultado = null;
+                if (pedidoSplit.status !== "paid" && mpPaymentId && typeof processarMarketplacePayment === "function") {
+                    resultado = await processarMarketplacePayment(mpPaymentId);
+                }
+                const atualizado = await pg().query(
+                    `SELECT status FROM sticker_orders WHERE order_id = $1 LIMIT 1`,
+                    [pedidoSplit.order_id]
+                );
+                const statusLocal = atualizado.rows[0]?.status || pedidoSplit.status;
+                const statusMercadoPago = String(resultado?.status || "").toLowerCase();
+                const status = statusLocal === "paid"
+                    ? "RECEIVED"
+                    : ["rejected", "cancelled", "refunded"].includes(statusMercadoPago)
+                        ? statusMercadoPago
+                        : "pending";
                 return res.json({
                     ok: true,
-                    status: splitOrder.rows[0].status === "paid" ? "RECEIVED" : "pending",
+                    status,
                     orderId,
                     marketplace: true
                 });
@@ -4529,6 +4546,7 @@ module.exports = function criarModuloColecionaveis(deps) {
                 value: total,
                 sellerAccount: contaVendedor,
                 platformFee: fee,
+                gerarPix: true,
                 description: `MegaOutdoor Colecionáveis — Oferta aceita`,
                 customer: {
                     name: comprador.nome || usuario.nome,
@@ -4583,6 +4601,7 @@ module.exports = function criarModuloColecionaveis(deps) {
                 expiresDate: mp.expirationDate,
                 paymentId: mp.paymentId,
                 total,
+                valor: total,
                 fee,
                 netSeller
             });

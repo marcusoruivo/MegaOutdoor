@@ -7497,6 +7497,7 @@ function validarSessao(){
             .then((data) => {
                 if(data && data.ok && data.usuario){
                     minhaConta.usuario = data.usuario;
+                    minhaConta.espacosProprios = (data.espacos || []).map(e => Number(e.id));
                     minhaConta.foto_url = data.usuario.foto_url || null;
                     minhaConta.fotoUrl = data.usuario.foto_url || null;
                     localStorage.setItem("mega_conta", JSON.stringify(minhaConta));
@@ -7884,6 +7885,8 @@ minhaConta.id &&
 s.usuarioId &&
 Number(s.usuarioId) === Number(minhaConta.id)
 )return true;
+
+    if(minhaConta && Array.isArray(minhaConta.espacosProprios) && minhaConta.espacosProprios.includes(Number(n))) return true;
 
 return false;
 

@@ -9200,8 +9200,19 @@ app.post("/api/spaces/unmerge", authUsuario, async (req, res) => {
                 return res.status(403).json({ error: "Você só pode desfazer uma mesclagem dos seus espaços." });
             }
         }
+        const referencia = grupo.map(id => db[id]).find(space => space && space.image) || {};
         for (const id of grupo) {
-            db[id] = { ...db[id], mergeGroupId: undefined, displayMode: "individual", imageGroupSpaces: [id] };
+            const atual = db[id];
+            db[id] = {
+                ...atual,
+                mergeGroupId: undefined,
+                displayMode: "individual",
+                imageGroupSpaces: [id],
+                image: atual.image || referencia.image,
+                title: atual.title || referencia.title,
+                link: atual.link || referencia.link,
+                publishedAt: atual.publishedAt || referencia.publishedAt
+            };
         }
         writeDB(db);
         registrarLog("espacos_desmesclados", { usuarioId: req.usuario.id, ids: grupo });

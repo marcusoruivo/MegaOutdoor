@@ -2474,10 +2474,16 @@ async function mercadoPagoRequestComToken(accessToken, endpoint, options = {}) {
    OAuth do vendedor; marketplace_fee é enviado ao gateway, não é repasse interno. */
 async function criarOrderMercadoPagoSplit({
     sellerAccount, idempotencyKey, externalReference, value, description, customer, platformFee,
-    paymentMethod = "credit_card", gerarPix = false
+    paymentMethod = "credit_card", gerarPix = false, validarSellerToken = false
 }) {
     if (!MERCADOPAGO_MARKETPLACE_SPLIT_ENABLED) throw new Error("Split Marketplace desativado.");
     if (!sellerAccount || !sellerAccount.accessToken) throw new Error("Conta Mercado Pago do vendedor não conectada.");
+    if (validarSellerToken) {
+        const vendedor = await mercadoPagoRequestComToken(sellerAccount.accessToken, "/users/me", { method: "GET" });
+        if (!vendedor.id || (sellerAccount.sellerUserId && String(vendedor.id) !== String(sellerAccount.sellerUserId))) {
+            throw new Error("O token OAuth do vendedor não corresponde à conta Mercado Pago conectada.");
+        }
+    }
     if (gerarPix && paymentMethod === "pix") {
         const pagamento = await mercadoPagoRequestComToken(sellerAccount.accessToken, "/v1/payments", {
             method: "POST",

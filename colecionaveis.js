@@ -4749,6 +4749,7 @@ module.exports = function criarModuloColecionaveis(deps) {
                 value: total,
                 sellerAccount: contaVendedor,
                 platformFee: fee,
+                validarSellerToken: true,
                 gerarPix: true,
                 description: `MegaOutdoor Colecionáveis — Oferta aceita`,
                 customer: {

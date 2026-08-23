@@ -2487,7 +2487,7 @@ async function criarOrderMercadoPagoSplit({
                 description: description || "Compra no marketplace",
                 payment_method_id: "pix",
                 external_reference: String(externalReference),
-                marketplace_fee: Number(platformFee),
+                application_fee: Number(platformFee),
                 payer: {
                     email: customer && customer.email ? String(customer.email).trim() : undefined,
                     ...(customer && customer.taxID && identificacaoMercadoPago(customer.taxID)

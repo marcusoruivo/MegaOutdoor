@@ -663,12 +663,20 @@ module.exports = function criarModuloColecionaveis(deps) {
                 order_id      VARCHAR(60) UNIQUE NOT NULL,
                 mp_order_id   VARCHAR(60),
                 payment_id    VARCHAR(60),
-                payment_type  VARCHAR(30) NOT NULL DEFAULT 'STICKER_PURCHASE',
-                status        VARCHAR(20) NOT NULL DEFAULT 'pending',
-                test          BOOLEAN NOT NULL DEFAULT FALSE,
+                 payment_type  VARCHAR(30) NOT NULL DEFAULT 'STICKER_PURCHASE',
+                 status        VARCHAR(20) NOT NULL DEFAULT 'pending',
+                 reservation_status VARCHAR(20) NOT NULL DEFAULT 'none',
+                 reservation_expires_at TIMESTAMPTZ,
+                 test          BOOLEAN NOT NULL DEFAULT FALSE,
                 created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 paid_at       TIMESTAMPTZ
             )
+         `);
+
+        await pool.query(`
+            ALTER TABLE sticker_orders
+                ADD COLUMN IF NOT EXISTS reservation_status VARCHAR(20) NOT NULL DEFAULT 'none',
+                ADD COLUMN IF NOT EXISTS reservation_expires_at TIMESTAMPTZ
         `);
 
         await pool.query(`
@@ -1177,13 +1185,20 @@ module.exports = function criarModuloColecionaveis(deps) {
     }
 
     /* Quantidade bloqueada por listagens ativas do usuário. */
-    async function bloqueadoPorListagem(usuarioId, cardId) {
+    async function bloqueadoPorListagem(usuarioId, cardId, excluirListingId = null) {
+        const params = [usuarioId, cardId];
+        let excluirSql = "";
+        if (excluirListingId) {
+            params.push(excluirListingId);
+            excluirSql = `AND id <> $${params.length}`;
+        }
         const q = await pg().query(
             `SELECT COALESCE(SUM(quantity),0) AS qtd
-               FROM sticker_listings
+              FROM sticker_listings
               WHERE seller_id = $1 AND card_id = $2
-                AND status = 'active'`,
-            [usuarioId, cardId]
+                AND status = 'active'
+                ${excluirSql}`,
+            params
         );
         return Number(q.rows[0]?.qtd || 0);
     }
@@ -1241,9 +1256,9 @@ module.exports = function criarModuloColecionaveis(deps) {
     }
 
     /* Quantidade disponível (possui - bloqueada). */
-    async function quantidadeDisponivel(usuarioId, cardId, excluirTradeId = null) {
+    async function quantidadeDisponivel(usuarioId, cardId, excluirTradeId = null, excluirListingId = null) {
         const possui = await quantidadePossuida(usuarioId, cardId);
-        const bloqListagem = await bloqueadoPorListagem(usuarioId, cardId);
+        const bloqListagem = await bloqueadoPorListagem(usuarioId, cardId, excluirListingId);
         const bloqTrocas = await bloqueadoPorTrocas(usuarioId, cardId, excluirTradeId);
         const bloqLeilao = await bloqueadoPorLeilao(usuarioId, cardId);
         const bloqOfertas = await bloqueadoPorOfertas(usuarioId, cardId);
@@ -1254,14 +1269,21 @@ module.exports = function criarModuloColecionaveis(deps) {
        marketplace listar quanto cada anúncio ainda pode vender e marcar
        RESERVADA sem estourar o banco a cada polling. */
     const mercadoDispCache = new Map();
-    async function disponivelListagem(sellerId, cardId) {
-        const key = Number(sellerId) + ":" + Number(cardId);
+    async function disponivelListagem(sellerId, cardId, listingId = null) {
+        const key = Number(sellerId) + ":" + Number(cardId) + ":" + Number(listingId || 0);
         const hit = mercadoDispCache.get(key);
         if (hit && Date.now() - hit.at < 5000) return hit.disp;
-        const disp = await quantidadeDisponivel(sellerId, cardId);
+        const disp = await quantidadeDisponivel(sellerId, cardId, null, listingId);
         mercadoDispCache.set(key, { disp, at: Date.now() });
         if (mercadoDispCache.size > 500) mercadoDispCache.clear();
         return disp;
+    }
+
+    function invalidarDisponibilidadeListagem(sellerId, cardId) {
+        const prefixo = Number(sellerId) + ":" + Number(cardId) + ":";
+        for (const key of mercadoDispCache.keys()) {
+            if (key.startsWith(prefixo)) mercadoDispCache.delete(key);
+        }
     }
 
     async function registrarTransacaoCol(usuarioId, tipo, detalhe, valor = 0, refId = null) {
@@ -1469,6 +1491,48 @@ module.exports = function criarModuloColecionaveis(deps) {
                            AND o.expires_at < NOW()
                     )`
             );
+
+            const client = await pg().connect();
+            try {
+                await client.query("BEGIN");
+                const reservas = await client.query(
+                    `SELECT * FROM sticker_orders
+                      WHERE status = 'pending'
+                        AND reservation_status = 'reserved'
+                        AND reservation_expires_at < NOW()
+                        AND listing_id IS NOT NULL
+                      FOR UPDATE`
+                );
+                for (const order of reservas.rows) {
+                    const listingQ = await client.query(
+                        `SELECT * FROM sticker_listings WHERE id = $1 FOR UPDATE`,
+                        [order.listing_id]
+                    );
+                    const listing = listingQ.rows[0];
+                    if (listing) {
+                        await client.query(
+                            `UPDATE sticker_listings
+                                SET quantity = quantity + $2,
+                                    status = CASE WHEN status = 'reserved' THEN 'active' ELSE status END
+                              WHERE id = $1`,
+                            [listing.id, order.quantity]
+                        );
+                    }
+                    await client.query(
+                        `UPDATE sticker_orders
+                            SET status = 'cancelled', reservation_status = 'released'
+                          WHERE id = $1 AND status = 'pending' AND reservation_status = 'reserved'`,
+                        [order.id]
+                    );
+                    invalidarDisponibilidadeListagem(order.seller_id, order.card_id);
+                }
+                await client.query("COMMIT");
+            } catch (error) {
+                try { await client.query("ROLLBACK"); } catch (_) {}
+                throw error;
+            } finally {
+                client.release();
+            }
 
             await expirarAlbumNegociacoes();
         } catch (e) {
@@ -2351,6 +2415,21 @@ module.exports = function criarModuloColecionaveis(deps) {
         try {
             await client.query("BEGIN");
 
+            const orderQ = await client.query(
+                `SELECT * FROM sticker_orders WHERE id = $1 FOR UPDATE`,
+                [order.id]
+            );
+            const orderAtual = orderQ.rows[0];
+            if (!orderAtual || orderAtual.status !== "pending") {
+                await client.query("ROLLBACK");
+                return false;
+            }
+            if (orderAtual.reservation_status === "released") {
+                await client.query("ROLLBACK");
+                return false;
+            }
+            const reservaAtiva = orderAtual.reservation_status === "reserved";
+
             /* Bloqueia a linha da listagem para evitar race condition */
             const lq = await client.query(
                 `SELECT * FROM sticker_listings
@@ -2359,17 +2438,24 @@ module.exports = function criarModuloColecionaveis(deps) {
             );
             const listing = lq.rows[0];
 
-            if (!listing || listing.status !== "active") {
+            if (!listing || (!reservaAtiva && listing.status !== "active") || (reservaAtiva && !["active", "reserved"].includes(listing.status))) {
                 throw new Error("Anúncio não está mais ativo.");
             }
 
-            if (listing.quantity < order.quantity) {
+            if (!reservaAtiva && listing.quantity < order.quantity) {
                 throw new Error("Quantidade insuficiente no anúncio.");
             }
 
-            const novaQtd = listing.quantity - order.quantity;
+            const novaQtd = reservaAtiva ? listing.quantity : listing.quantity - order.quantity;
 
-            if (novaQtd === 0) {
+            if (reservaAtiva) {
+                await client.query(
+                    `UPDATE sticker_listings
+                        SET status = CASE WHEN quantity = 0 THEN 'sold' ELSE 'active' END
+                      WHERE id = $1`,
+                    [listing.id]
+                );
+            } else if (novaQtd === 0) {
                 await client.query(
                     `UPDATE sticker_listings
                         SET status = 'sold'
@@ -2409,12 +2495,14 @@ module.exports = function criarModuloColecionaveis(deps) {
             await client.query(
                 `UPDATE sticker_orders
                     SET status = 'paid', paid_at = NOW(),
-                        mp_order_id = COALESCE(mp_order_id, $2)
+                        mp_order_id = COALESCE(mp_order_id, $2),
+                        reservation_status = CASE WHEN reservation_status = 'reserved' THEN 'confirmed' ELSE reservation_status END
                   WHERE id = $1`,
-                [order.id, mpOrderId]
+                [orderAtual.id, mpOrderId]
             );
 
             await client.query("COMMIT");
+            invalidarDisponibilidadeListagem(order.seller_id, order.card_id);
         } catch (e) {
             await client.query("ROLLBACK");
             throw e;
@@ -2455,6 +2543,7 @@ module.exports = function criarModuloColecionaveis(deps) {
             comprador: order.buyer_id,
             vendedor: order.seller_id
         });
+        return true;
     }
 
     /* Pagamento de uma OFERTA aceita. Transfere as figurinhas do
@@ -3622,8 +3711,8 @@ module.exports = function criarModuloColecionaveis(deps) {
                conta reservas de ofertas/leilões/trocas). Marca RESERVADA
                quando nada mais pode ser vendido. */
             const listingsComDisponivel = await Promise.all(q.rows.map(async l => {
-                const livre = await disponivelListagem(l.seller_id, l.card_id);
-                const disponivel = Math.max(0, Math.min(Number(l.quantity), livre + Number(l.quantity)));
+                const livre = await disponivelListagem(l.seller_id, l.card_id, l.id);
+                const disponivel = Math.max(0, Math.min(Number(l.quantity), livre));
                 return { ...l, _disponivel: disponivel };
             }));
 
@@ -4022,12 +4111,128 @@ module.exports = function criarModuloColecionaveis(deps) {
         }
     });
 
-    /* Compra de um anúncio — cria pedido com pagamento. */
+    async function reservarCompraListing({ listingId, buyerId, requestedQuantity, orderId, paymentId, splitUsado }) {
+        const client = await pg().connect();
+        try {
+            await client.query("BEGIN");
+            const listingQ = await client.query(
+                `SELECT * FROM sticker_listings WHERE id = $1 FOR UPDATE`,
+                [listingId]
+            );
+            const listing = listingQ.rows[0];
+            if (!listing || listing.status !== "active") throw Object.assign(new Error("Anúncio não disponível."), { statusCode: 404 });
+
+            const stockQ = await client.query(
+                `SELECT quantity FROM user_stickers WHERE usuario_id = $1 AND card_id = $2 FOR UPDATE`,
+                [listing.seller_id, listing.card_id]
+            );
+            const possui = Number(stockQ.rows[0]?.quantity || 0);
+            const outrasListagensQ = await client.query(
+                `SELECT COALESCE(SUM(quantity),0) AS qtd
+                   FROM sticker_listings
+                  WHERE seller_id = $1 AND card_id = $2 AND status = 'active' AND id <> $3`,
+                [listing.seller_id, listing.card_id, listing.id]
+            );
+            const trocasQ = await client.query(
+                `SELECT COUNT(*)::int AS qtd
+                   FROM sticker_trade_items ti
+                   JOIN sticker_trades t ON t.id = ti.trade_id
+                  WHERE ti.owner_id = $1 AND ti.card_id = $2
+                    AND t.status IN ('PENDING','COUNTER_OFFER','ACCEPTED','WAITING_PAYMENT','PAID','PROCESSING')`,
+                [listing.seller_id, listing.card_id]
+            );
+            const leiloesQ = await client.query(
+                `SELECT COUNT(*)::int AS qtd
+                   FROM sticker_auction_reservations r
+                   JOIN sticker_auctions a ON a.id = r.auction_id
+                  WHERE r.owner_id = $1 AND r.card_id = $2 AND r.status = 'reserved'
+                    AND a.status IN ('active','payment_pending')`,
+                [listing.seller_id, listing.card_id]
+            );
+            const ofertasQ = await client.query(
+                `SELECT COALESCE(SUM(quantity),0)::int AS qtd
+                   FROM sticker_offer_reservations
+                  WHERE owner_id = $1 AND card_id = $2 AND status = 'ATIVA'`,
+                [listing.seller_id, listing.card_id]
+            );
+            const livre = Math.max(
+                0,
+                possui - Number(outrasListagensQ.rows[0]?.qtd || 0)
+                    - Number(trocasQ.rows[0]?.qtd || 0)
+                    - Number(leiloesQ.rows[0]?.qtd || 0)
+                    - Number(ofertasQ.rows[0]?.qtd || 0)
+            );
+            const qtd = Math.max(1, Math.min(Number(requestedQuantity) || 1, Number(listing.quantity), livre));
+            if (qtd < 1) throw Object.assign(new Error("Este anúncio não possui unidades disponíveis."), { statusCode: 409 });
+
+            const total = Math.round(Number(listing.unit_price) * qtd * 100) / 100;
+            const { feeCents, netSellerCents } = calcularComissao(paraCentavos(total), mercadopagoMarketplaceFeePercent || MARKETPLACE_FEE_PERCENT);
+            const fee = centavosParaReais(feeCents);
+            const netSeller = centavosParaReais(netSellerCents);
+            const restante = Number(listing.quantity) - qtd;
+            await client.query(
+                `UPDATE sticker_listings SET quantity = $2, status = CASE WHEN $2 = 0 THEN 'reserved' ELSE 'active' END WHERE id = $1`,
+                [listing.id, restante]
+            );
+            await client.query(
+                `INSERT INTO sticker_orders
+                    (buyer_id, seller_id, card_id, listing_id, quantity,
+                     unit_price, total, fee, net_seller, order_id, mp_order_id, payment_id,
+                     payment_type, status, reservation_status, reservation_expires_at, test)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NULL,$11,$12,'pending','reserved',$13,$14)`,
+                [buyerId, listing.seller_id, listing.card_id, listing.id, qtd,
+                 Number(listing.unit_price), total, fee, netSeller, orderId, paymentId,
+                 splitUsado ? "STICKER_MARKETPLACE_SPLIT" : "STICKER_PURCHASE",
+                 new Date(Date.now() + EXPIRA_BLOQUEIO_HORAS * 60 * 60 * 1000), !!process.env.ALLOW_TEST_MODE]
+            );
+            await client.query("COMMIT");
+            return { listing, qtd, total, fee, netSeller };
+        } catch (error) {
+            try { await client.query("ROLLBACK"); } catch (_) {}
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    async function liberarReservaCompra(orderId) {
+        const client = await pg().connect();
+        try {
+            await client.query("BEGIN");
+            const orderQ = await client.query(
+                `SELECT * FROM sticker_orders WHERE order_id = $1 AND status = 'pending' AND reservation_status = 'reserved' FOR UPDATE`,
+                [orderId]
+            );
+            const order = orderQ.rows[0];
+            if (order) {
+                const listingQ = await client.query(`SELECT * FROM sticker_listings WHERE id = $1 FOR UPDATE`, [order.listing_id]);
+                if (listingQ.rows[0]) {
+                    await client.query(
+                        `UPDATE sticker_listings SET quantity = quantity + $2, status = 'active' WHERE id = $1`,
+                        [order.listing_id, order.quantity]
+                    );
+                }
+                await client.query(
+                    `UPDATE sticker_orders SET status = 'cancelled', reservation_status = 'released' WHERE id = $1`,
+                    [order.id]
+                );
+            }
+            await client.query("COMMIT");
+        } catch (error) {
+            try { await client.query("ROLLBACK"); } catch (_) {}
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    /* Compra de um anúncio — reserva antes de criar o pagamento. */
     router.post("/listings/:id/buy", obterAuthUsuario(), async (req, res) => {
         if (!pgOk()) {
             return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
         }
         try {
+            await expirarNegociacoesVencidas();
             const validacao = validarComprador(req);
             if (!validacao.ok) {
                 return res.status(400).json({ error: validacao.error });
@@ -4055,19 +4260,6 @@ module.exports = function criarModuloColecionaveis(deps) {
                 return res.status(503).json({ error: "O pagamento deste anúncio ainda não está disponível porque o Marketplace não está configurado." });
             }
 
-            /* Quantidade realmente vendável: o anúncio não pode vender
-               unidade que esteja reservada por oferta/leilão/troca. */
-            const livre = await quantidadeDisponivel(listing.seller_id, listing.card_id);
-            const vendavel = Math.max(0, Math.min(Number(listing.quantity), livre + Number(listing.quantity)));
-            if (vendavel < 1) {
-                return res.status(409).json({ error: "Este anúncio está reservado para outro interessado no momento." });
-            }
-            const qtd = Math.max(1, Math.min(Number(req.body.quantidade) || 1, vendavel));
-
-            const total = Math.round(listing.unit_price * qtd * 100) / 100;
-            const { feeCents, netSellerCents } = calcularComissao(paraCentavos(total), mercadopagoMarketplaceFeePercent || MARKETPLACE_FEE_PERCENT);
-            const fee = centavosParaReais(feeCents);
-            const netSeller = centavosParaReais(netSellerCents);
             const splitUsado = mercadopagoMarketplaceSplitEnabled && typeof criarOrderMercadoPagoSplit === "function" && !!contaVendedor;
 
             const usuario = await usuarioPorId(req.usuario.id);
@@ -4078,9 +4270,21 @@ module.exports = function criarModuloColecionaveis(deps) {
             const orderId = gerarOrderId("COL-BUY");
             const paymentId = crypto.randomUUID();
 
+            const reserva = await reservarCompraListing({
+                listingId: listing.id,
+                buyerId: req.usuario.id,
+                requestedQuantity: req.body.quantidade,
+                orderId,
+                paymentId,
+                splitUsado
+            });
+            const { qtd, total, fee, netSeller } = reserva;
+
             const criarOrder = mercadopagoMarketplaceSplitEnabled && typeof criarOrderMercadoPagoSplit === "function"
                 ? criarOrderMercadoPagoSplit : criarOrderMercadoPago;
-            const mp = await criarOrder({
+            let mp;
+            try {
+                mp = await criarOrder({
                 idempotencyKey: orderId,
                 externalReference: orderId,
                 value: total,
@@ -4096,18 +4300,17 @@ module.exports = function criarModuloColecionaveis(deps) {
                 paymentMethodId: req.body.paymentMethodId,
                 cardToken: req.body.cardToken,
                 installments: req.body.installments
-            });
+                });
+            } catch (error) {
+                await liberarReservaCompra(orderId);
+                throw error;
+            }
 
             await pg().query(
-                `INSERT INTO sticker_orders
-                    (buyer_id, seller_id, card_id, listing_id, quantity,
-                      unit_price, total, fee, net_seller, order_id, mp_order_id, payment_id,
-                      payment_type, status, test)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
-                         $13,'pending',$14)`,
-                [req.usuario.id, listing.seller_id, listing.card_id, listing.id,
-                 qtd, Number(listing.unit_price), total, fee, netSeller,
-                 orderId, String(mp.orderId), paymentId, splitUsado ? "STICKER_MARKETPLACE_SPLIT" : "STICKER_PURCHASE", !!process.env.ALLOW_TEST_MODE]
+                `UPDATE sticker_orders
+                    SET mp_order_id = $2, payment_id = COALESCE($3, payment_id)
+                  WHERE order_id = $1 AND status = 'pending' AND reservation_status = 'reserved'`,
+                [orderId, String(mp.orderId), mp.paymentId || null]
             );
 
             await registrarTransacaoCol(
@@ -4143,7 +4346,7 @@ module.exports = function criarModuloColecionaveis(deps) {
                 listingId: req.params.id,
                 usuarioId: req.usuario && req.usuario.id
             });
-            res.status(500).json({ error: formatarErroPagamento(error) });
+            res.status(error.statusCode || 500).json({ error: formatarErroPagamento(error) });
         }
     });
 
@@ -5563,6 +5766,161 @@ module.exports = function criarModuloColecionaveis(deps) {
         } catch (error) {
             registrarLog && registrarLog("colecionador_publico_erro", { erro: error.message, id: req.params.id });
             res.status(500).json({ error: error.message });
+        }
+    });
+
+    async function listarAlvosLimpezaOfertasAdmin() {
+        const ofertasQ = await pg().query(
+            `SELECT o.id, o.offeror_id, o.offeree_id, o.card_id, o.amount, o.status,
+                    c.number AS card_number, c.name AS card_name,
+                    uo.nome AS offeror_nome, uo.apelido AS offeror_apelido,
+                    ue.nome AS offeree_nome, ue.apelido AS offeree_apelido
+               FROM sticker_offers o
+               JOIN sticker_cards c ON c.id = o.card_id
+               LEFT JOIN usuarios uo ON uo.id = o.offeror_id
+               LEFT JOIN usuarios ue ON ue.id = o.offeree_id
+              WHERE (uo.id IS NULL OR ue.id IS NULL)
+                 OR (c.number = 99
+                     AND o.amount = 2.00
+                     AND LOWER(COALESCE(uo.apelido, uo.nome, '')) = 'marco8319'
+                     AND o.status IN ('PENDENTE','ACEITA','AGUARDANDO_PAGAMENTO'))
+              ORDER BY o.id`
+        );
+        const ids = ofertasQ.rows.map(o => Number(o.id));
+        const reservas = ids.length
+            ? await pg().query(
+                `SELECT id, offer_id, card_id, owner_id, quantity, status
+                   FROM sticker_offer_reservations
+                  WHERE offer_id = ANY($1::int[])
+                  ORDER BY id`,
+                [ids]
+            )
+            : { rows: [] };
+        const pedidos = ids.length
+            ? await pg().query(
+                `SELECT id, offer_id, order_id, mp_order_id, payment_id, status, total
+                   FROM sticker_orders
+                  WHERE offer_id = ANY($1::int[])
+                  ORDER BY id`,
+                [ids]
+            )
+            : { rows: [] };
+        return ofertasQ.rows.map(o => ({
+            offerId: Number(o.id),
+            offerorId: o.offeror_id,
+            offeror: o.offeror_apelido || o.offeror_nome || null,
+            offereeId: o.offeree_id,
+            offeree: o.offeree_apelido || o.offeree_nome || null,
+            cardId: Number(o.card_id),
+            cardNumber: Number(o.card_number),
+            cardName: o.card_name,
+            amount: Number(o.amount),
+            status: o.status,
+            reservas: reservas.rows.filter(r => Number(r.offer_id) === Number(o.id)),
+            pedidos: pedidos.rows.filter(p => Number(p.offer_id) === Number(o.id))
+        }));
+    }
+
+    router.get("/admin/ofertas/limpeza/preview", authAdmin, async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        try {
+            const alvos = await listarAlvosLimpezaOfertasAdmin();
+            const candidatas099 = alvos.filter(o => o.cardNumber === 99 && o.amount === 2 && o.offerorId != null && String(o.offeror || "").toLowerCase() === "marco8319");
+            const oferta099 = candidatas099.length === 1 ? candidatas099[0] : null;
+            const orfas = alvos.filter(o => o.offerorId == null || o.offereeId == null);
+            res.json({
+                ok: true,
+                oferta099,
+                oferta099Candidatas: candidatas099.length,
+                ofertasOrfas: orfas,
+                totalEncontradas: alvos.length,
+                totalOrfas: orfas.length,
+                ids: alvos.map(o => o.offerId)
+            });
+        } catch (error) {
+            registrarLog("admin_preview_limpeza_ofertas_erro", { erro: error.message });
+            res.status(500).json({ error: "Não foi possível gerar a prévia da limpeza de ofertas." });
+        }
+    });
+
+    router.post("/admin/ofertas/limpeza", authAdmin, async (req, res) => {
+        if (!pgOk()) return res.status(503).json({ error: "Sistema de colecionáveis indisponível no momento." });
+        if (req.body.confirmar !== true) {
+            return res.status(400).json({ error: "Confirmação administrativa obrigatória. Use a prévia antes de executar." });
+        }
+        const client = await pg().connect();
+        try {
+            await client.query("BEGIN");
+            const alvosQ = await client.query(
+                `SELECT o.id, o.offeror_id, o.offeree_id, o.card_id, o.amount, o.status,
+                        c.number AS card_number, c.name AS card_name,
+                        uo.apelido AS offeror_apelido, uo.nome AS offeror_nome
+                   FROM sticker_offers o
+                   JOIN sticker_cards c ON c.id = o.card_id
+                   LEFT JOIN usuarios uo ON uo.id = o.offeror_id
+                   LEFT JOIN usuarios ue ON ue.id = o.offeree_id
+                  WHERE (uo.id IS NULL OR ue.id IS NULL)
+                     OR (c.number = 99
+                         AND o.amount = 2.00
+                         AND LOWER(COALESCE(uo.apelido, uo.nome, '')) = 'marco8319'
+                         AND o.status IN ('PENDENTE','ACEITA','AGUARDANDO_PAGAMENTO'))
+                  FOR UPDATE OF o`
+            );
+            const ids = alvosQ.rows.map(o => Number(o.id));
+            const candidatas099 = alvosQ.rows.filter(o => Number(o.card_number) === 99 && Number(o.amount) === 2 && o.offeror_id != null && String(o.offeror_apelido || o.offeror_nome || "").toLowerCase() === "marco8319");
+            if (candidatas099.length > 1) {
+                throw new Error("Mais de uma oferta corresponde à combinação específica da figurinha #099; limpeza abortada.");
+            }
+            const resumo = { encontrados: ids.length, canceladas: 0, reservasLiberadas: 0, pedidosPendentesCancelados: 0, oferta099: null };
+            for (const oferta of alvosQ.rows) {
+                registrarLog("admin_limpeza_oferta_alvo", {
+                    offerId: Number(oferta.id),
+                    offerorId: oferta.offeror_id,
+                    offereeId: oferta.offeree_id,
+                    cardId: Number(oferta.card_id),
+                    amount: Number(oferta.amount),
+                    status: oferta.status
+                });
+                const reservaQ = await client.query(
+                    `UPDATE sticker_offer_reservations
+                        SET status = 'LIBERADA'
+                      WHERE offer_id = $1 AND status = 'ATIVA'
+                  RETURNING id`,
+                    [oferta.id]
+                );
+                resumo.reservasLiberadas += reservaQ.rowCount;
+                const pedidoQ = await client.query(
+                    `UPDATE sticker_orders
+                        SET status = 'cancelled'
+                      WHERE offer_id = $1 AND status = 'pending'
+                  RETURNING id`,
+                    [oferta.id]
+                );
+                resumo.pedidosPendentesCancelados += pedidoQ.rowCount;
+                const canceladaQ = await client.query(
+                    `UPDATE sticker_offers
+                        SET status = 'CANCELADA', responded_at = COALESCE(responded_at, NOW()), updated_at = NOW()
+                      WHERE id = $1 AND status NOT IN ('CONCLUIDA','PAGA')
+                  RETURNING id`,
+                    [oferta.id]
+                );
+                resumo.canceladas += canceladaQ.rowCount;
+                if (Number(oferta.card_number) === 99 && Number(oferta.amount) === 2 && String(oferta.offeror_apelido || oferta.offeror_nome || "").toLowerCase() === "marco8319") {
+                    resumo.oferta099 = Number(oferta.id);
+                }
+            }
+            await client.query("COMMIT");
+            for (const oferta of alvosQ.rows) {
+                invalidarDisponibilidadeListagem(oferta.offeree_id, oferta.card_id);
+            }
+            registrarLog("admin_limpeza_ofertas", { ...resumo, ids });
+            res.json({ ok: true, ...resumo, ids });
+        } catch (error) {
+            try { await client.query("ROLLBACK"); } catch (_) {}
+            registrarLog("admin_limpeza_ofertas_erro", { erro: error.message });
+            res.status(500).json({ error: "Não foi possível concluir a limpeza de ofertas." });
+        } finally {
+            client.release();
         }
     });
 

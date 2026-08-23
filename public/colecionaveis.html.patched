@@ -1,0 +1,62 @@
+function listingHtml(l){
+    const meuId = meuUsuarioId();
+    const ehMeu = meuId != null && l.seller_id === meuId;
+    const finish = ColecaoUI.finishDeCard({ id: l.card_id, rarity: l.rarity });
+    const finishLabel = finish === "ouro" ? "🏆 OURO" : finish === "cromada" ? "🪞 CROMADA" : "NORMAL";
+    const resumo = JSON.stringify({
+        number: l.number, name: l.name, rarity: l.rarity,
+        finish: finishLabel, image_url: l.image_url, seller_nome: l.seller_nome
+    }).replace(/"/g, """);
+    const image = l.image_url
+        ? '<img src="' + esc(l.image_url) + '" alt="' + esc(l.name) + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'
+        : '';
+    const total = Math.max(0, Number(l.quantity) || 0);
+    const disponivel = Math.max(0, Number(l.disponivel != null ? l.disponivel : total) || 0);
+    const reservada = l.reservada === true || disponivel <= 0;
+    const badge = reservada
+        ? '<span class="listing-badge badge-reservada">🔒 RESERVADA</span>'
+        : (disponivel < total ? '<span class="listing-badge badge-parcial">🔒 Parcialmente reservada</span>' : '');
+    const btChat = '<button class="btn btn-ghost" onclick="abrirChatAnuncio(' + l.id + ')">💬 CHAT</button>';
+    const btComprar = reservada
+        ? '<button class="btn btn-laranja" disabled title="Este anúncio está totalmente reservado">🔒 RESERVADA</button>'
+        : '<button class="btn btn-laranja" onclick="comprarDoMercado(' + l.id + ',' + l.unit_price + ',' + disponivel + ',' + resumo + ')">COMPRAR</button>';
+    const btOferta = '<button class="btn btn-ghost" onclick="abrirModalOferta(' + l.card_id + ',' + l.seller_id + ',' + l.unit_price + ',\'' + esc(l.seller_nome || "") + '\',\'' + esc(l.name || "") + '\')">FAZER OFERTA</button>';
+    const btBisbilhotar = !ehMeu
+        ? '<button class="btn btn-amarelo" onclick="bisbilhotarColecionador(' + l.seller_id + ')">👀 BISBILHOTAR</button>'
+        : '';
+
+    let acoes;
+    if (ehMeu) {
+        acoes = '<div class="listing-acoes">' + btChat +
+            '<button class="btn btn-ghost" onclick="verInteressados(' + l.id + ')">👀 Ver interessados</button>' +
+            '<button class="btn btn-ghost" onclick="cancelarVenda(' + l.id + ')">Meu anúncio — cancelar</button>' +
+        '</div>';
+    } else {
+        acoes = '<div class="listing-acoes">' + btComprar + btOferta + btChat +
+            '<button class="btn btn-ghost" onclick="verPerfilColecionador(' + l.seller_id + ')">VER PERFIL</button>' +
+            btBisbilhotar +
+        '</div>';
+    }
+
+    return '<div class="listing-card' + (reservada ? ' reservada' : '') + '">' +
+        '<div class="listing-arte-grande">' + image + '<span class="fallback" style="' + (image ? 'display:none' : '') + '">' + emojiRaridade(l.rarity) + '</span></div>' +
+        '<div class="listing-top">' +
+            '<div class="info">' +
+                '<div class="n">#' + String(l.number).padStart(3,"0") + ' — ' + esc(l.name) + '</div>' +
+                '<div class="muted">' + nomeRaridade(l.rarity) + ' • ' + finishLabel + ' • ' + disponivel + ' disponível(is)' + (ehMeu ? ' • <b>seu anúncio</b>' : '') + '</div>' +
+            '</div>' +
+        '</div>' +
+        badge +
+        '<div class="listing-preco">' + fmtR$(l.unit_price) + ' <small>/ cada</small></div>' +
+        '<div class="listing-vendedor">Vendedor: ' + esc(l.seller_nome || "—") + '</div>' +
+        acoes +
+    '</div>';
+}
+
+function bisbilhotarColecionador(sellerId){
+    window.open('/perfil.html?id=' + encodeURIComponent(sellerId), '_blank');
+}
+
+function verInteressados(listingId){
+    abrirChatAnuncio(listingId);
+}

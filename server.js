@@ -3610,8 +3610,9 @@ app.get("/api/spaces", (req, res) => {
             image: s.image,
             title: s.title,
             link: s.link,
-            displayMode: s.displayMode,
-            imageGroupSpaces: s.imageGroupSpaces,
+             displayMode: s.displayMode,
+             imageGroupSpaces: s.imageGroupSpaces,
+             mergeGroupId: s.mergeGroupId,
             test: s.test === true,
             publishedAt: s.publishedAt,
             paidAt: s.paidAt,
@@ -9126,6 +9127,91 @@ function espacosSaoContiguos(ids) {
     return visitados.size === set.size;
 }
 
+function expandirGruposMesclagem(db, ids) {
+    const resultado = new Set(ids.map(Number));
+    let alterou = true;
+    while (alterou) {
+        alterou = false;
+        for (const id of [...resultado]) {
+            const grupoId = db[id] && db[id].mergeGroupId;
+            if (!grupoId) continue;
+            for (const [sid, space] of Object.entries(db)) {
+                if (space.mergeGroupId === grupoId && !resultado.has(Number(sid))) {
+                    resultado.add(Number(sid));
+                    alterou = true;
+                }
+            }
+        }
+    }
+    return [...resultado].sort((a, b) => a - b);
+}
+
+app.post("/api/spaces/merge", authUsuario, async (req, res) => {
+    try {
+        const recebidos = Array.isArray(req.body.ids) ? req.body.ids : [];
+        const ids = [...new Set(recebidos.map(Number))].filter(Number.isInteger);
+        if (ids.length < 2) return res.status(400).json({ error: "Selecione pelo menos dois espaços." });
+        if (ids.some(id => id < 1 || id > 1000000)) return res.status(400).json({ error: "Espaço inválido." });
+
+        const db = readDB();
+        const grupo = expandirGruposMesclagem(db, ids);
+        if (grupo.some(id => !db[id])) return res.status(404).json({ error: "Um dos espaços não foi encontrado." });
+        if (grupo.some(id => !["paid", "published"].includes(db[id].status))) {
+            return res.status(403).json({ error: "Só é possível mesclar espaços com pagamento confirmado." });
+        }
+        for (const id of grupo) {
+            if (!(await usuarioEhDonoEspaco(req, db[id]))) {
+                return res.status(403).json({ error: "Você só pode mesclar espaços que pertencem a você." });
+            }
+        }
+        if (!espacosSaoContiguos(grupo)) {
+            return res.status(400).json({ error: "Os espaços precisam ser vizinhos ou conectados." });
+        }
+
+        const mergeGroupId = db[grupo[0]].mergeGroupId || `merge-${crypto.randomUUID()}`;
+        const imagem = grupo.map(id => db[id].image).find(Boolean) || null;
+        for (const id of grupo) {
+            db[id] = {
+                ...db[id],
+                mergeGroupId,
+                displayMode: "extended",
+                imageGroupSpaces: grupo,
+                ...(imagem ? { image: imagem } : {})
+            };
+        }
+        writeDB(db);
+        registrarLog("espacos_mesclados", { usuarioId: req.usuario.id, ids: grupo, mergeGroupId });
+        res.json({ ok: true, ids: grupo, mergeGroupId });
+    } catch (error) {
+        console.error("ERRO ao mesclar espaços:", error.message);
+        res.status(500).json({ error: "Não foi possível mesclar os espaços." });
+    }
+});
+
+app.post("/api/spaces/unmerge", authUsuario, async (req, res) => {
+    try {
+        const recebidos = Array.isArray(req.body.ids) ? req.body.ids : [];
+        const ids = [...new Set(recebidos.map(Number))].filter(Number.isInteger);
+        if (!ids.length) return res.status(400).json({ error: "Informe um espaço mesclado." });
+        const db = readDB();
+        const grupo = expandirGruposMesclagem(db, ids);
+        for (const id of grupo) {
+            if (!db[id] || !(await usuarioEhDonoEspaco(req, db[id]))) {
+                return res.status(403).json({ error: "Você só pode desfazer uma mesclagem dos seus espaços." });
+            }
+        }
+        for (const id of grupo) {
+            db[id] = { ...db[id], mergeGroupId: undefined, displayMode: "individual", imageGroupSpaces: [id] };
+        }
+        writeDB(db);
+        registrarLog("espacos_desmesclados", { usuarioId: req.usuario.id, ids: grupo });
+        res.json({ ok: true, ids: grupo });
+    } catch (error) {
+        console.error("ERRO ao desfazer mesclagem:", error.message);
+        res.status(500).json({ error: "Não foi possível desfazer a mesclagem." });
+    }
+});
+
 app.post(
     "/api/upload/:id",
     authOpcional,
@@ -9357,10 +9443,11 @@ app.post(
                 publishedAt,
                 orderToken:
                     atual.orderToken || String(req.body.orderToken || req.body.token || "").trim(),
-                ...(isExtended ? {
-                    displayMode: "extended",
-                    imageGroupSpaces: ids
-                } : {
+                 ...(isExtended ? {
+                     displayMode: "extended",
+                     imageGroupSpaces: ids,
+                     mergeGroupId: atual.mergeGroupId || undefined
+                 } : {
                     displayMode: "individual",
                     imageGroupSpaces: [spaceId]
                 })

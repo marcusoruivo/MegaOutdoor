@@ -73,7 +73,7 @@ function validateProductionEnvironment(env = process.env, fsImpl = fs) {
         throw new Error("Startup bloqueado: RESET_DATA=true não é permitido em produção.");
     }
     if (!isValidProductionDatabaseUrl(env.DATABASE_URL)) {
-        throw new Error("Startup bloqueado: DATABASE_URL não configurada ou inválida para produção.");
+        throw new Error("Startup bloqueado: DATABASE_URL não configurada ou inválida para produção. Cadastre a URL do PostgreSQL nas variáveis do serviço no Render.");
     }
     if (env.DATA_DIR !== EXPECTED_DATA_DIR) {
         throw new Error("Startup bloqueado: DATA_DIR não aponta para o armazenamento persistente de produção.");
